@@ -1,0 +1,13 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.workingDirectories": ["dashboard"],
+  "prettier.configPath": "dashboard/.prettierrc.json",
+  "typescript.tsdk": "dashboard/node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "tailwindCSS.experimental.configFile": "dashboard/src/app/globals.css",
+  "files.eol": "\n"
+}
