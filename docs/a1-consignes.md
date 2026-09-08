@@ -1,5 +1,7 @@
 # Jalon A1 : consignes d'implémentation (A1.3 → A1.7)
 
+**Jalon A1 clos le 2026-09-08** : toutes les étapes ci-dessous sont livrées et vérifiées. Ce fichier reste comme référence ; les consignes de A2 viendront dans `docs/a2-consignes.md`.
+
 Mis à jour le 2026-09-08. A1.0 à A1.2 sont livrés. Tu implémentes, Claude corrige et écrit les tests dans `test/`. Toutes les commandes se lancent depuis `dashboard/`. Détails d'interface dans [a1-spec-ui.md](a1-spec-ui.md), détails backend dans [a1-spec-branchements.md](a1-spec-branchements.md) : ce fichier te dit quoi faire, ceux-là pourquoi en profondeur si tu en as besoin.
 
 Règles valables partout : imports en `@/…`, `import type` pour un type, `"use client"` seulement là où un hook ou un error boundary l'exige.
