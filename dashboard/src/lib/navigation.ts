@@ -1,12 +1,28 @@
+import {
+  Carrot,
+  ChartColumn,
+  LayoutDashboard,
+  ShoppingBasket,
+  Users,
+} from "lucide-react";
+
 /*
- * A1.4 — Navigation de la coquille (voir docs/a1-spec-ui.md partie 1).
- *
- * À écrire ici :
- *   - export const NAV_ITEMS = [ { title, href, icon }, ... ] as const
- *     (Tableau de bord "/", Commandes, Catalogue, Clients, Métriques ; icônes lucide :
- *      LayoutDashboard, ShoppingBasket, Carrot, Users, ChartColumn)
- *   - export function isNavItemActive(pathname: string, href: string): boolean
- *     → égalité stricte pour "/", sinon pathname === href || pathname.startsWith(href + "/")
- *     testée dans navigation.test.ts (3 cas : racine, section, sous-page).
+ * Navigation de la coquille : une seule liste, lue par la sidebar (A1.4) et
+ * plus tard par le fil d'Ariane. Les `href` sont les dossiers de routes de
+ * src/app/(dashboard)/ : un href qui ne correspond à aucun dossier donne un 404.
+ * Les icônes sont les composants lucide eux-mêmes (pas leur nom en chaîne),
+ * pour que nav-main.tsx les rende directement avec <item.icon />.
  */
-export {};
+export const NAV_ITEMS = [
+  { title: "Tableau de bord", href: "/", icon: LayoutDashboard },
+  { title: "Commandes", href: "/commandes", icon: ShoppingBasket },
+  { title: "Catalogue", href: "/catalogue", icon: Carrot },
+  { title: "Clients", href: "/clients", icon: Users },
+  { title: "Métriques", href: "/metriques", icon: ChartColumn },
+] as const;
+
+/** La racine n'est active que sur "/" ; une section reste active sur ses sous-pages. */
+export function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
