@@ -89,7 +89,7 @@ src/lib/
 
 ## Jalon A1 en détail : « Coquille + liste des commandes »
 
-**Mise à jour du 2026-09-08.** Zaki avance sur les fonctionnalités et n'écrit pas de tests ; Claude écrit et maintient les tests dans `dashboard/test/` (miroir de `src/`) à chaque étape. **Jalon A1 livré le 2026-09-08** : coquille (sidebar, en-tête, cinq pages), liste des commandes avec états chargement / vide / erreur, simulation dev vérifiée inerte en build de production, `docs/branchements.md` créé. Prochaine étape : A2.
+**Mise à jour du 2026-09-08.** Zaki avance sur les fonctionnalités et n'écrit pas de tests ; Claude écrit et maintient les tests dans `dashboard/test/` (miroir de `src/`) à chaque étape. **Jalon A1 livré le 2026-09-08** : coquille (sidebar, en-tête, cinq pages), liste des commandes avec états chargement / vide / erreur, simulation dev vérifiée inerte en build de production, `docs/branchements.md` créé. **A2 cadré le 2026-09-08** : consignes dans `docs/a2-consignes.md`, specs `docs/a2-spec-ui.md` et `docs/a2-spec-branchements.md`.
 
 Ordre : types → fixtures → source → coquille → écran. Toutes les commandes depuis `dashboard/`. Après chaque étape : relecture par `mentor-reviewer` ; pour A1.3 et A1.6 aussi par `security-backend-architect`.
 

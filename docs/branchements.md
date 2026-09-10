@@ -10,9 +10,9 @@ Mis à jour à la fin du jalon A1 (2026-09-08). À compléter à chaque jalon A 
 
 | Fonction | Entrées | Sortie | Implémentation actuelle | Requête cible (B3) | Consommateur |
 |---|---|---|---|---|---|
-| `getOrders` | aucune (A2 : `filters?: OrderFilters`) | `Order[]`, ordre des fixtures (A2 : tri `createdAt` desc) | copie des 14 fixtures après 400 ms | `SELECT … FROM <commandes> [WHERE statut, date] ORDER BY … LIMIT` | `app/(dashboard)/commandes/page.tsx` |
+| `getOrders` | aucune (A2 : `filters?: OrderFilters`) | `Order[]`, triées par créneau croissant (A2 : `sortOrdersBySlot` : date, début, référence, après `filterOrders`) | copie des 14 fixtures après 400 ms | `SELECT … FROM <commandes> [WHERE statut, date] ORDER BY … LIMIT` | `app/(dashboard)/commandes/page.tsx` |
 | `getOrder` | `id: string` | `Order \| null` | `find` par id + clone | `SELECT … WHERE id = $1` | A2 : `commandes/[id]/page.tsx` |
-| `updateOrderStatus` (A2) | `id, from: OrderStatus, to: OrderStatus` | `Order \| null` (`null` si absent ou statut ≠ `from`) | Map mutable | `UPDATE … SET statut = $3 WHERE id = $1 AND statut = $2 RETURNING …` | A2 : `commandes/actions.ts` |
+| `updateOrderStatus` (A2) | `id, from: OrderStatus, to: OrderStatus` | `Order \| null` (`null` si absent ou statut ≠ `from`) | Map mutable | `UPDATE … SET statut = $3 WHERE id = $1 AND statut = $2 RETURNING …` | A2 : `commandes/[id]/actions.ts` |
 
 ### Session (`src/data/session.ts`)
 
@@ -28,7 +28,7 @@ Chaque champ affiché ou utilisé par le front, avec sa forme attendue. Le mappe
 |---|---|---|---|---|---|
 | `id` | `string` | opaque, stable | clé de ligne, URL de détail (A2) | inconnue | `String(row.id)` si entier |
 | `reference` | `string` | libre, unique, ex. `FIG-260907-001` | colonne Référence | inconnue | telle quelle, ou dérivée de l'id si absente |
-| `createdAt` | `string` | ISO 8601 avec fuseau | tri (A2) | inconnue (`timestamptz` espéré) | `row.created_at.toISOString()` |
+| `createdAt` | `string` | ISO 8601 avec fuseau | « commandée le » (parking) | inconnue (`timestamptz` espéré) | `row.created_at.toISOString()` |
 | `status` | `OrderStatus` | `pending \| confirmed \| preparing \| delivering \| delivered \| cancelled` | badge, filtres (A2) | inconnue | table de correspondance ; valeur inconnue → erreur loguée, jamais devinée |
 | `customer.id` | `string` | opaque | fiche client (A5) | inconnue | `String(...)` |
 | `customer.fullName` | `string` | | colonne Client | inconnue (prénom + nom séparés ?) | concaténation si deux colonnes |
@@ -54,7 +54,7 @@ Champs **non consommés** et à ne jamais mapper : adresse de rue, notes libres 
 | Notion | Vocabulaire du front (A1) | Vocabulaire du client | Décision |
 |---|---|---|---|
 | Statuts de commande | 6 valeurs `ORDER_STATUSES`, libellés FR dans `ORDER_STATUS_LABELS` | inconnu | `toOrder` traduit ; statut client sans équivalent → erreur loguée, ligne ignorée, jamais deviné |
-| Ordre des statuts | matrice `canTransition` (A2, liste blanche) | inconnu | à confronter aux règles et triggers de la base avant B5 |
+| Ordre des statuts | matrice `canTransition` (A2, liste blanche) | inconnu | à confronter aux règles et triggers de la base avant B5. Questions ouvertes : `delivering → cancelled` (échec de livraison ?), retour arrière (erreur de saisie, réservé à `admin` ?), réouverture d'une commande livrée ou annulée |
 | Créneaux de livraison | `{ date, start, end }` en chaînes | inconnu (créneaux fixes ? id ?) | Q7 |
 | Unités de quantité | `"g"` ou `"piece"` | inconnu | Q7 |
 | Rôles du back-office | `admin \| gestionnaire \| lecture` | inconnu (auth existante ?) | Q5 |

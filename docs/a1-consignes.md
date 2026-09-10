@@ -203,4 +203,4 @@ curl -s "localhost:3000/commandes?simuler=vide" | grep -c "Aucune commande"   # 
 - `docs/branchements.md` : copier le gabarit de `a1-spec-branchements.md` § 6 et le remplir avec les fonctions et champs réellement consommés (`getOrders`, `getOrder`, `getCurrentUser` ; chaque champ d'`Order`). Les colonnes client restent « inconnue ».
 - `npm run check`, `git status` (aucun `.env*` sauf `.env.example`), puis commit `feat: coquille du back-office et liste des commandes sur fixtures`.
 
-Fin du jalon A1. Suite : A2 (filtres, détail, changement de statut via Server Action sur le mock mutable).
+Fin du jalon A1. Suite : A2 (filtres, détail, changement de statut via Server Action sur le mock mutable) : [a2-consignes.md](a2-consignes.md).

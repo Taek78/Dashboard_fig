@@ -22,6 +22,10 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Mapper** (piste B3) : une fonction qui convertit une ligne de la base du client (ses noms de colonnes, ses unités) en type métier `Order`. C'est l'unique endroit où les deux vocabulaires se rencontrent.
 
+**Machine d'états** (A2) : la liste des passages autorisés entre statuts (`pending → confirmed`, jamais `delivered → pending`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
+
+**Idempotent** (A2) : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
+
 **Logique pure / fonction pure** : une fonction dont le résultat dépend uniquement de ses arguments et qui ne modifie rien autour d'elle. Testable en isolation, réutilisable partout. `computeOrderTotalCents`, `readSimulationMode`, `assertMockSessionAllowed`.
 
 ## Sécurité et accès
@@ -60,6 +64,14 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **`searchParams`** : les paramètres d'URL (`?simuler=vide`). En Next 16, c'est une `Promise` : toujours `await`.
 
+**Route dynamique `[id]`** (A2) : dossier entre crochets dont le nom devient un paramètre d'URL : `/commandes/cmd-0001` rend `commandes/[id]/page.tsx` avec `params` = `{ id: "cmd-0001" }`. En Next 16, `params` est une `Promise` : `await`. Le type `PageProps<"/commandes/[id]">` est généré par `next dev` ou `npx next typegen`.
+
+**`notFound()` / `not-found.tsx`** (A2) : appeler `notFound()` interrompt le rendu et affiche le `not-found.tsx` le plus proche avec un code 404. Elle lève une exception spéciale : pas de `return` devant, et jamais dans un `try/catch`.
+
+**`revalidatePath(chemin, "layout")`** (A2) : après une écriture, dit à Next que les pages sous ce chemin sont périmées et doivent être rerendues à la prochaine requête. Avec `"layout"`, `/commandes` et toutes les pages dessous (`/commandes/[id]`) sont couvertes en un appel.
+
+**`next/form`** (A2) : le composant `Form` de Next. En GET, les champs deviennent les paramètres d'URL comme un `<form method="get">` classique, mais la navigation est faite côté client et `loading.tsx` s'affiche pendant le chargement. Composant serveur, aucun hook.
+
 **Hydratation** : après réception du HTML, React « réveille » la page dans le navigateur. Si le HTML serveur et le rendu client diffèrent (dates formatées dans deux fuseaux, par exemple), avertissement `Hydration failed`.
 
 **Skeleton** : silhouette grise de la future interface, affichée pendant le chargement pour éviter un saut de mise en page.
@@ -78,7 +90,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Dump anonymisé** : export de la base où les données personnelles ont été remplacées par des valeurs factices avant de sortir de chez le client.
 
-**Mise à jour conditionnelle** (B5) : `UPDATE … WHERE id = $1 AND status = $2`. Si le statut a changé entre-temps, zéro ligne modifiée et on le sait. Évite d'écraser le travail d'un collègue.
+**Mise à jour conditionnelle / compare-and-set** (A2 mock, B5 base) : `UPDATE … WHERE id = $1 AND status = $2`. Si le statut a changé entre-temps, zéro ligne modifiée et on le sait. Évite d'écraser le travail d'un collègue.
 
 ## Méthode
 
