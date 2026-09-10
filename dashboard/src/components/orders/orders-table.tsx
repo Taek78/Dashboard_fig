@@ -20,57 +20,66 @@ import { formatEuros, formatSlot } from "@/lib/format";
  *   TableCell, sinon l'en-tête se décale.
  * - Ville et Articles sont masquées sous 768 px ; les nombres sont alignés à droite
  *   avec tabular-nums pour que les chiffres se superposent.
+ * - Le conteneur arrondi avec bordure et fond carte est partagé avec loading.tsx
+ *   (même enveloppe, donc aucun saut visuel au chargement).
  * - Pas de lien sur les lignes en A1 : la cellule Référence l'accueillera en A2.
  */
 const hideOnMobile = "hidden md:table-cell";
 const numeric = "text-right tabular-nums";
 
+export const tableFrame =
+  "overflow-hidden rounded-xl border bg-card shadow-sm [&_thead]:bg-muted/60";
+
 export function OrdersTable({ orders }: { orders: Order[] }) {
   return (
-    <Table>
-      <TableCaption className="sr-only">
-        Liste des commandes triées par créneau de livraison.
-      </TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col">Référence</TableHead>
-          <TableHead scope="col">Client</TableHead>
-          <TableHead scope="col">Créneau</TableHead>
-          <TableHead scope="col" className={hideOnMobile}>
-            Ville
-          </TableHead>
-          <TableHead scope="col" className={`${hideOnMobile} ${numeric}`}>
-            Articles
-          </TableHead>
-          <TableHead scope="col" className={numeric}>
-            Total
-          </TableHead>
-          <TableHead scope="col">Statut</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {orders.map((order) => (
-          <TableRow key={order.id}>
-            <TableCell className="font-mono text-xs">
-              {order.reference}
-            </TableCell>
-            <TableCell className="font-medium">
-              {order.customer.fullName}
-            </TableCell>
-            <TableCell>{formatSlot(order.deliverySlot)}</TableCell>
-            <TableCell className={hideOnMobile}>{order.deliveryCity}</TableCell>
-            <TableCell className={`${hideOnMobile} ${numeric}`}>
-              {order.lines.length}
-            </TableCell>
-            <TableCell className={numeric}>
-              {formatEuros(order.totalCents)}
-            </TableCell>
-            <TableCell>
-              <OrderStatusBadge status={order.status} />
-            </TableCell>
+    <div className={tableFrame}>
+      <Table>
+        <TableCaption className="sr-only">
+          Liste des commandes triées par créneau de livraison.
+        </TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col">Référence</TableHead>
+            <TableHead scope="col">Client</TableHead>
+            <TableHead scope="col">Créneau</TableHead>
+            <TableHead scope="col" className={hideOnMobile}>
+              Ville
+            </TableHead>
+            <TableHead scope="col" className={`${hideOnMobile} ${numeric}`}>
+              Articles
+            </TableHead>
+            <TableHead scope="col" className={numeric}>
+              Total
+            </TableHead>
+            <TableHead scope="col">Statut</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {orders.map((order) => (
+            <TableRow key={order.id}>
+              <TableCell className="text-muted-foreground font-mono text-xs">
+                {order.reference}
+              </TableCell>
+              <TableCell className="font-medium">
+                {order.customer.fullName}
+              </TableCell>
+              <TableCell>{formatSlot(order.deliverySlot)}</TableCell>
+              <TableCell className={hideOnMobile}>
+                {order.deliveryCity}
+              </TableCell>
+              <TableCell className={`${hideOnMobile} ${numeric}`}>
+                {order.lines.length}
+              </TableCell>
+              <TableCell className={`${numeric} font-medium`}>
+                {formatEuros(order.totalCents)}
+              </TableCell>
+              <TableCell>
+                <OrderStatusBadge status={order.status} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ Décisions client connues (2026-09-07) :
 - L'application FIG du client **existe déjà avec sa base de données**. Le dashboard s'y connecte directement : le schéma n'est pas à inventer mais à **introspecter** (`npx drizzle-kit pull`) puis à respecter. Aucune migration sur cette base sans accord explicite du client.
 - Utilisateurs : l'équipe du client. Périmètre par ordre de priorité : gestion des commandes et livraisons, catalogue et stocks, clients et support, métriques et pilotage.
 
-État actuel : scaffold `create-next-app` outillé (voir Stack), sans schéma ni page métier. Plan de travail dans `docs/backlog.md` : piste A « frontend sur fixtures » d'abord (jalon A1 en cours), piste B « branchements base » ensuite. Tant que A7 (auth) n'est pas livré : aucune `DATABASE_URL` réelle sur le poste, aucun déploiement, aucune donnée personnelle dans les fixtures, jamais `next dev` ailleurs que sur un poste de dev.
+État actuel : jalon A1 livré (coquille, liste des commandes sur fixtures via façade), aucun schéma base. Plan de travail dans `docs/backlog.md` : piste A « frontend sur fixtures » d'abord (A2 en cours : `docs/a2-consignes.md`), piste B « branchements base » ensuite. Tant que A7 (auth) n'est pas livré : aucune `DATABASE_URL` réelle sur le poste, aucun déploiement, aucune donnée personnelle dans les fixtures, jamais `next dev` ailleurs que sur un poste de dev.
 
 Glossaire des termes d'architecture pour l'auteur : `docs/glossaire.md`. Tout terme nouveau employé avec lui doit y être ajouté.
 
@@ -85,7 +85,8 @@ Formatage : Prettier avec `prettier-plugin-tailwindcss` (tri des classes). VS Co
 - **Auth.js v5** (`next-auth@beta`) pour l'authentification. Config attendue dans `src/auth.ts`, secret dans `AUTH_SECRET`.
 - **recharts** v3 pour les graphiques de métriques (composants client uniquement : `"use client"`).
 - **Variables d'environnement** : copier `.env.example` en `.env.local` (ignoré par git). Ne jamais lire `process.env` dans un composant client.
-- **Polices** : Geist et Geist Mono chargées dans `src/app/layout.tsx` via `next/font/google`, exposées en `--font-geist-sans` / `--font-geist-mono` et mappées vers `--font-sans` / `--font-mono` dans `globals.css`.
+- **Polices** : Plus Jakarta Sans (texte et titres) et Geist Mono chargées dans `src/app/layout.tsx` via `next/font/google`, exposées en `--font-plus-jakarta` / `--font-geist-mono` et mappées vers `--font-sans` / `--font-mono` dans `globals.css`.
+- **Thème** : palette mauve en oklch (teinte ~302) définie uniquement par tokens dans `globals.css` (clair et `.dark`), plus `--success`, `--warning` et le dégradé de marque `--brand-from` / `--brand-to` (utilitaires `bg-gradient-brand`, `text-gradient-brand`). Jamais de couleur en dur dans un composant. Sidebar en `variant="inset"` : le contenu est une carte flottante.
 
 ## Conventions
 

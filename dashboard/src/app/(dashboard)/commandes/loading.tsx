@@ -1,3 +1,4 @@
+import { tableFrame } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,8 +13,8 @@ import {
 /*
  * État de chargement de /commandes. Next l'affiche automatiquement pendant que
  * page.tsx attend getOrders() (frontière Suspense). Composant serveur.
- * On reproduit la grille du tableau (mêmes en-têtes, mêmes classes de colonnes)
- * pour éviter un saut de mise en page quand les données arrivent.
+ * On reproduit la grille du tableau (même enveloppe, mêmes en-têtes, mêmes classes
+ * de colonnes) pour éviter un saut de mise en page quand les données arrivent.
  */
 const hideOnMobile = "hidden md:table-cell";
 const numeric = "text-right tabular-nums";
@@ -26,7 +27,7 @@ export default function CommandesLoading() {
         title="Commandes"
         description="Suivez et préparez les commandes à livrer."
       />
-      <div aria-busy="true">
+      <div aria-busy="true" className={tableFrame}>
         <p className="sr-only">Chargement des commandes…</p>
         <Table>
           <TableHeader>

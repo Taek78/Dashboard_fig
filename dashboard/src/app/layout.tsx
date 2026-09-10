@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "@/app/globals.css";
 
 /*
@@ -10,11 +10,15 @@ import "@/app/globals.css";
  * (/connexion en A7), elle se place à côté du groupe (dashboard) et hérite de ce
  * layout racine sans la sidebar.
  *
+ * Polices : Plus Jakarta Sans (texte et titres, moderne et lisible en petite
+ * taille) et Geist Mono (références, montants). Chargées par next/font : servies
+ * depuis le projet, sans requête vers Google au chargement de la page.
+ *
  * title.template s'applique aux pages enfants (« Commandes · FIG Back-office »),
  * default sert aux pages sans titre. lang="fr" pilote la voix des lecteurs d'écran.
  */
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
 });
 
@@ -35,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

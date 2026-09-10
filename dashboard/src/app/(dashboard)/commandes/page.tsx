@@ -38,9 +38,12 @@ export default async function CommandesPage({
         description="Suivez et préparez les commandes à livrer."
       />
       {orders.length === 0 ? (
-        <Empty className="min-h-[50vh] border">
+        <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
           <EmptyHeader>
-            <EmptyMedia variant="icon">
+            <EmptyMedia
+              variant="icon"
+              className="bg-gradient-brand size-12 rounded-xl text-white shadow-sm [&_svg]:size-6"
+            >
               <Inbox />
             </EmptyMedia>
             <EmptyTitle>Aucune commande</EmptyTitle>
