@@ -142,7 +142,9 @@ Arbitrages du tech lead entre les trois rapports :
 ## Parking (ne pas rouvrir avant la fin du jalon en cours)
 
 - Filtres, tri, pagination, page de détail, lien sur les lignes (A2).
-- Tokens sémantiques succès / avertissement dans `globals.css` (proposition du designer, après A1).
+- Passe « micro-animations » à la clôture A2 (demande du 2026-09-13) : niveau 1 en CSS seul via `tw-animate-css` déjà installé (fondu d'entrée des pages, apparition des messages d'action, `transition-colors`), toujours sous `motion-safe:` / `prefers-reduced-motion` ; Motion (`LazyMotion` + `m`, ~6 ko) réservé aux cas que CSS ne couvre pas (réordonnancement de liste, `AnimatePresence`) ; View Transitions de Next 16 exclues tant qu'expérimentales.
+- Entrée animée de l'app (demande du 2026-09-13) : pas de splash bloquant sur un outil ouvert plusieurs fois par jour ; à la place, entrée orchestrée de la coquille au premier chargement (< 600 ms, une fois par session via `sessionStorage`, désactivée sous `prefers-reduced-motion`) et animation du logo sur la page de connexion (A7). Décision du 2026-09-13 : pas de splash. Loaders retenus : skeleton embelli (shimmer CSS aux couleurs du thème) pour les pages, barre de progression fine au dégradé de marque en haut pendant les navigations, spinner dans le bouton pour les formulaires, logo animé réservé à la page de connexion (A7).
+- Métriques animées (A6) : compteurs qui montent (Motion `animate`), graphiques recharts avec animation d'entrée et de mise à jour au changement de période.
 - Menu utilisateur fonctionnel, fil d'Ariane dynamique, lecture du cookie `sidebar_state` dans le layout (A2 ou plus tard).
 - Règle ESLint `no-restricted-imports` interdisant `orders.mock` hors façade (modif de config à valider).
 - Schémas zod des entités pour valider les lignes Drizzle en dev (B3). Test de contrat commun aux implémentations mock et db (B3).
