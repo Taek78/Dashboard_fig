@@ -134,4 +134,8 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **`md:contents`** (CSS) : `display: contents` fait disparaître une boîte de la mise en page, ses enfants se placent comme s'ils étaient directement dans le parent. Utilisé pour grouper « Du / Au » côte à côte sur mobile puis les rendre au flex du formulaire dès 768 px.
 
+**`has-checked:` (variant CSS)** (Tailwind v4) : applique un style à un élément dont un descendant est coché (`:has(:checked)`). Permet de mettre en valeur l'emoji choisi dans le formulaire d'article sans état React : le bouton radio caché fait tout.
+
+**Article programmé** (articles) : article visible dont la date de parution est postérieure à aujourd'hui ; l'application ne l'affichera qu'à cette date. Calculé par `publicationState()`.
+
 **vi.mock / vi.hoisted** (tests) : remplacer un module par une version simulée pour un fichier de test (`server-only`, `next/cache`, la session, l'env). `vi.hoisted` déclare une variable utilisable dans ce remplacement.

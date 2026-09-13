@@ -35,6 +35,11 @@ export function canEditProduct(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
+/** Rédiger, modifier, masquer ou supprimer un article « à lire » (2026-09-13). */
+export function canEditArticle(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
 /** Ajouter une note interne sur un client (A5). */
 export function canAddCustomerNote(role: Role): boolean {
   return WRITERS.includes(role);

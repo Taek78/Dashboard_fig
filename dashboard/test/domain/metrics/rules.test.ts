@@ -8,6 +8,7 @@ import {
   computeKpis,
   computeTrend,
   daysBetween,
+  DEFAULT_TAX_MODE,
   distinctBuyers,
   endOfMonth,
   filterByRange,
@@ -20,6 +21,7 @@ import {
   referenceRange,
   revenueSeries,
   startOfWeek,
+  TAX_MODES,
   toExcludingTax,
   topProducts,
 } from "@/domain/metrics/rules";
@@ -39,6 +41,8 @@ describe("TVA", () => {
     expect(toExcludingTax(290)).toBe(275);
     expect(applyTaxMode(1055, "ht")).toBe(1000);
     expect(applyTaxMode(1055, "ttc")).toBe(1055);
+    expect(TAX_MODES[0]).toBe(DEFAULT_TAX_MODE);
+    expect(DEFAULT_TAX_MODE).toBe("ht");
   });
 });
 

@@ -111,6 +111,18 @@ Les notes internes sont une donnée du dashboard, pas de l'appli : table préfix
 
 Champ `passwordHash` : scrypt (`src/lib/password.ts`). Jamais de mot de passe en clair, ni en base ni dans les logs.
 
+### Articles (`ArticlesSource`, 2026-09-13)
+
+| Fonction | Entrées | Sortie | Mock | SQL attendu | Consommateurs |
+|---|---|---|---|---|---|
+| `getArticles` | — | `Article[]` du plus récent au plus ancien, masqués et programmés compris | tri pur | `SELECT … ORDER BY parution DESC, maj DESC` | `articles/page.tsx` |
+| `getArticle` | `id` | `Article \| null` | Map | `SELECT … WHERE id = $1` | `articles/[id]/page.tsx`, actions |
+| `createArticle` | `ArticleInput` | `Article` | id compteur | `INSERT … RETURNING` | `articles/actions.ts` |
+| `updateArticle` | `id, ArticleInput` | `Article \| null` | écrit + updatedAt | `UPDATE … WHERE id = $1 RETURNING` | actions (modification, visibilité) |
+| `deleteArticle` | `id` | `boolean` | Map | `DELETE … WHERE id = $1` | `removeArticle` |
+
+Champs : `title`, `body` (texte brut, paragraphes séparés par une ligne vide, 8 000 caractères max), `category` (nutrition \| recipe \| science \| news), `illustration` (emoji) + `imageUrl` (https), `publishedAt` (jour AAAA-MM-JJ ; dans le futur = programmé), `visible`. Question au client (Q12) : les articles existent-ils déjà dans l'application, avec quel format de texte (brut, Markdown, HTML) et quel stockage d'images ?
+
 ### Usage de l'application (`EngagementSource`, 2026-09-13)
 
 | Fonction | Entrées | Sortie | Mock | Source réelle attendue | Consommateurs |

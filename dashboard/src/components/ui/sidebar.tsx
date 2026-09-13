@@ -23,7 +23,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PanelLeftIcon } from "lucide-react";
+import { MenuIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -258,7 +258,23 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, state, isMobile } = useSidebar();
+
+  /*
+   * L'icône dit ce que fera le clic : sur mobile un hamburger ouvre le panneau ;
+   * sur grand écran un panneau avec flèche vers la gauche replie la barre, vers
+   * la droite la déplie. Le libellé (lecteurs d'écran et infobulle) suit.
+   */
+  const label = isMobile
+    ? "Ouvrir le menu"
+    : state === "expanded"
+      ? "Replier le menu"
+      : "Déplier le menu";
+  const Icon = isMobile
+    ? MenuIcon
+    : state === "expanded"
+      ? PanelLeftCloseIcon
+      : PanelLeftOpenIcon;
 
   return (
     <Button
@@ -266,6 +282,8 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon-sm"
+      title={label}
+      aria-label={label}
       className={cn(className)}
       onClick={(event) => {
         onClick?.(event);
@@ -273,8 +291,7 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <span className="sr-only">Afficher ou masquer le menu</span>
-      <PanelLeftIcon />
+      <Icon />
     </Button>
   );
 }

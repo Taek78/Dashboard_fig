@@ -40,7 +40,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
       >
         <SiteHeader user={user} />
         {/* Largeur bornée et marges généreuses : la lisibilité avant la densité. */}
-        <div className="mx-auto flex w-full max-w-[1400px] min-w-0 flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8">
+        <div className="mx-auto flex w-full max-w-350 min-w-0 flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8">
           {children}
         </div>
       </SidebarInset>

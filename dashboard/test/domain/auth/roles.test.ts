@@ -3,6 +3,7 @@ import {
   ROLES,
   canAddCustomerNote,
   canChangeOrderStatus,
+  canEditArticle,
   canEditProduct,
 } from "@/domain/auth/roles";
 
@@ -16,6 +17,7 @@ describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
   const rules = {
     canChangeOrderStatus,
     canEditProduct,
+    canEditArticle,
     canAddCustomerNote,
   };
   for (const [name, rule] of Object.entries(rules)) {

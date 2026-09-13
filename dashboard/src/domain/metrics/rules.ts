@@ -19,8 +19,10 @@ import type { Order } from "@/domain/orders/types";
 /* ---------- TVA ---------- */
 
 export const VAT_RATE = 0.055;
-export const TAX_MODES = ["ttc", "ht"] as const;
+export const TAX_MODES = ["ht", "ttc"] as const;
 export type TaxMode = (typeof TAX_MODES)[number];
+/** Mode par défaut de toute page qui affiche des montants (décision du 2026-09-14). */
+export const DEFAULT_TAX_MODE: TaxMode = "ht";
 export const TAX_MODE_LABELS: Record<TaxMode, string> = {
   ttc: "TTC",
   ht: "HT",
