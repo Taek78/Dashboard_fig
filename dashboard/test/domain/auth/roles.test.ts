@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   ROLES,
   canAddCustomerNote,
-  canAssignCourier,
   canChangeOrderStatus,
   canEditProduct,
 } from "@/domain/auth/roles";
@@ -16,7 +15,6 @@ describe("ROLES", () => {
 describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
   const rules = {
     canChangeOrderStatus,
-    canAssignCourier,
     canEditProduct,
     canAddCustomerNote,
   };

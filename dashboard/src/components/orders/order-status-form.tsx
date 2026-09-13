@@ -84,7 +84,11 @@ export function OrderStatusForm({
         </NativeSelect>
       </div>
 
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button
+        type="submit"
+        disabled={pending}
+        className="w-full sm:w-auto sm:self-start"
+      >
         {pending ? (
           <>
             <LoaderCircle className="animate-spin" />

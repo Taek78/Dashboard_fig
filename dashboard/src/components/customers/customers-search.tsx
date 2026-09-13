@@ -32,6 +32,7 @@ export function CustomersSearch({ query }: { query: string | undefined }) {
                 className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2"
               />
               <Input
+                key={query ?? ""}
                 id="q"
                 name="q"
                 type="search"

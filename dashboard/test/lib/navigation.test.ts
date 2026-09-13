@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAV_ITEMS, isNavActive } from "@/lib/navigation";
+import { NAV_ITEMS, breadcrumbFor, isNavActive } from "@/lib/navigation";
 
 describe("NAV_ITEMS", () => {
   it("pointe vers les six sections du back-office, racine en premier", () => {
@@ -36,5 +36,31 @@ describe("isNavActive", () => {
   it("section : inactive sur une autre section ou un préfixe trompeur", () => {
     expect(isNavActive("/clients", "/commandes")).toBe(false);
     expect(isNavActive("/commandes-archive", "/commandes")).toBe(false);
+  });
+});
+
+describe("breadcrumbFor", () => {
+  it("une section seule n'a qu'un maillon, non cliquable", () => {
+    expect(breadcrumbFor("/commandes")).toEqual([
+      { title: "Commandes", href: null },
+    ]);
+    expect(breadcrumbFor("/")).toEqual([
+      { title: "Tableau de bord", href: null },
+    ]);
+  });
+
+  it("une sous-page ajoute Détail ou Nouveau, la section devient cliquable", () => {
+    expect(breadcrumbFor("/commandes/cmd-0001")).toEqual([
+      { title: "Commandes", href: "/commandes" },
+      { title: "Détail", href: null },
+    ]);
+    expect(breadcrumbFor("/catalogue/nouveau")).toEqual([
+      { title: "Catalogue", href: "/catalogue" },
+      { title: "Nouveau", href: null },
+    ]);
+  });
+
+  it("un chemin hors navigation donne une liste vide", () => {
+    expect(breadcrumbFor("/inconnu")).toEqual([]);
   });
 });

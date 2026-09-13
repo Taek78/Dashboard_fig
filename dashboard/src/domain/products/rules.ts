@@ -25,20 +25,46 @@ export function centsToEurosInput(cents: number): string {
   return `${euros},${String(rest).padStart(2, "0")}`;
 }
 
+/** « le kg » ou « la pièce » : l'unité de vente telle qu'on l'écrit après un prix. */
+export function unitLabel(unit: Product["unit"]): string {
+  return unit === "g" ? "le kg" : "la pièce";
+}
+
+/**
+ * Prix au kilo, déduit : le prix lui-même pour un produit au poids ; pour une
+ * pièce, priceCents rapporté au poids moyen ; null si ce poids est inconnu.
+ */
+export function pricePerKgCents(
+  product: Pick<Product, "unit" | "priceCents" | "unitWeightGrams">,
+): number | null {
+  if (product.unit === "g") return product.priceCents;
+  if (!product.unitWeightGrams || product.unitWeightGrams <= 0) return null;
+  return Math.round((product.priceCents * 1000) / product.unitWeightGrams);
+}
+
+/** Prix unitaire (par pièce) : le prix lui-même pour une pièce, null pour un produit au poids. */
+export function unitPriceCents(
+  product: Pick<Product, "unit" | "priceCents">,
+): number | null {
+  return product.unit === "piece" ? product.priceCents : null;
+}
+
 export function filterProducts(
   products: readonly Product[],
   filters: ProductFilters,
 ): Product[] {
   const query = filters.query ? normalize(filters.query) : undefined;
   return products.filter((product) => {
+    const visibleOk = filters.includeHidden === true || product.visible;
     const categoryOk =
       filters.category === undefined || product.category === filters.category;
     const queryOk =
-      query === undefined || normalize(product.name).includes(query);
+      query === undefined ||
+      normalize(`${product.name} ${product.variety ?? ""}`).includes(query);
     const availabilityOk =
       filters.availability === undefined ||
       product.available === (filters.availability === "available");
-    return categoryOk && queryOk && availabilityOk;
+    return visibleOk && categoryOk && queryOk && availabilityOk;
   });
 }
 
@@ -54,4 +80,12 @@ export function isLowStock(
   product: Pick<Product, "unit" | "stockQuantity">,
 ): boolean {
   return product.stockQuantity < LOW_STOCK_THRESHOLD[product.unit];
+}
+
+/** « 70–80 mm » ; « 60 mm » si les bornes sont égales ; null si le calibre est inconnu. */
+export function formatCaliber(caliber: Product["caliber"]): string | null {
+  if (!caliber) return null;
+  return caliber.minMm === caliber.maxMm
+    ? `${caliber.minMm} mm`
+    : `${caliber.minMm}–${caliber.maxMm} mm`;
 }

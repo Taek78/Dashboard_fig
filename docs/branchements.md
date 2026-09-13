@@ -69,7 +69,11 @@ Champs **non consommés** et à ne jamais mapper : adresse de rue, notes libres 
 
 Même convention : la colonne client est **inconnue** partout tant que B2 (introspection) n'a pas eu lieu. Chaque contrat vit dans `src/domain/<domaine>/source.ts`, la façade dans `src/data/<domaine>.ts` choisit mock ou db par `DATA_SOURCE` (`selectSource`).
 
-### Livraisons (`DeliveriesSource`)
+### Livraisons (`DeliveriesSource`) : RETIRÉ le 2026-09-13
+
+L'attribution de livreur a été retirée à la demande du client. Il ne reste dans `src/domain/deliveries` que des règles pures (jour courant, jours avec commandes, compteurs de tournée) : aucune fonction de source, aucune colonne à mapper. Le tableau ci-dessous est conservé pour mémoire si la fonctionnalité revient (question Q7).
+
+#### Ancien contrat (inactif)
 
 | Fonction | Entrées | Sortie | Mock | SQL attendu (B3) | Consommateurs |
 |---|---|---|---|---|---|
@@ -87,7 +91,7 @@ Champs : `Courier.id/name/phone/zone`, `Assignment.orderId/courierId/date/start/
 | `getProduct` | `id` | `Product \| null` | Map | `SELECT … WHERE id = $1` | `catalogue/[id]/page.tsx`, action |
 | `updateProduct` | `id, { priceCents, available, stockQuantity }` | `Product \| null` | écrit + updatedAt | `UPDATE … SET prix, dispo, stock, maj = now() WHERE id = $1 RETURNING …` | `catalogue/[id]/actions.ts` |
 
-Champs : `priceCents` par kg (unit g) ou par pièce ; `stockQuantity` en g ou pièces ; `category` (vocabulaire provisoire, Q9). Conversion euros → centimes faite par zod, jamais en base.
+Champs (fiche complète depuis le 2026-09-13) : `name`, `variety`, `category` (fruit | vegetable), `unit`, `priceCents` (par kg si g, par pièce sinon), `unitWeightGrams` (pièce seulement, le prix au kilo s'en déduit), `container` (none | tray | parcel | crate | bag), `originCountry` (ISO2) + `originRegion`, `caliber { minMm, maxMm }`, `organic`, `inSeason`, `available`, `visible`, `stockQuantity`, `illustration` (emoji) + `imageUrl` (https). Fonctions ajoutées : `createProduct(input)` → `INSERT … RETURNING`, `deleteProduct(id)` → `DELETE … WHERE id = $1` (à confronter aux contraintes de clés étrangères des lignes de commande chez le client : peut devenir un archivage). Conversion euros → centimes faite par zod, jamais en base.
 
 ### Clients (`CustomersSource`)
 
@@ -106,6 +110,12 @@ Les notes internes sont une donnée du dashboard, pas de l'appli : table préfix
 | `findUserByEmail` | `email` | `UserAccount \| null` | compte d'amorçage seedé depuis l'env | `SELECT … FROM dashboard_users WHERE email = $1` (table **à créer**, Q4/Q5) | `src/auth.ts` |
 
 Champ `passwordHash` : scrypt (`src/lib/password.ts`). Jamais de mot de passe en clair, ni en base ni dans les logs.
+
+### Usage de l'application (`EngagementSource`, 2026-09-13)
+
+| Fonction | Entrées | Sortie | Mock | Source réelle attendue | Consommateurs |
+|---|---|---|---|---|---|
+| `getEngagement` | aucune | `EngagementPoint[]` (par mois : téléchargements, inscriptions, réclamations, note moyenne, nombre d'avis) | fixtures mensuelles 2024-01 → 2026-09 | export des stores et du support (Q11), table `dashboard_engagement` mensuelle ou API | `metriques/page.tsx` |
 
 ### Métriques (A6)
 

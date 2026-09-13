@@ -3,13 +3,16 @@ import { selectSource } from "@/data/select-source";
 import type { ProductsSource } from "@/domain/products/source";
 import { productsMock } from "@/data/products.mock";
 
-/* FAÇADE du catalogue : seul module importé par le front. Une ligne change en B3. */
-// B1 : choix par DATA_SOURCE. La version Drizzle (B3) remplacera le null.
+/* FAÇADE du catalogue : seul module importé par le front. Le null devient productsDb en B3. */
 const source: ProductsSource = selectSource("catalogue", productsMock, null);
 
 export const getProducts: ProductsSource["getProducts"] = (filters) =>
   source.getProducts(filters);
 export const getProduct: ProductsSource["getProduct"] = (id) =>
   source.getProduct(id);
-export const updateProduct: ProductsSource["updateProduct"] = (id, patch) =>
-  source.updateProduct(id, patch);
+export const createProduct: ProductsSource["createProduct"] = (input) =>
+  source.createProduct(input);
+export const updateProduct: ProductsSource["updateProduct"] = (id, input) =>
+  source.updateProduct(id, input);
+export const deleteProduct: ProductsSource["deleteProduct"] = (id) =>
+  source.deleteProduct(id);

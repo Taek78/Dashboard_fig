@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
@@ -39,16 +40,30 @@ const buttonVariants = cva(
   },
 );
 
+/*
+ * Adaptation locale : quand `render` remplace le <button> par un autre élément
+ * (<Link>, <div>), Base UI attend qu'on le lui dise via nativeButton={false},
+ * sinon il avertit en développement. On le déduit ici une fois pour toutes au
+ * lieu de le répéter à chaque usage.
+ */
 function Button({
   className,
   variant = "default",
   size = "default",
+  render,
+  nativeButton,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  const isNativeButton =
+    nativeButton ??
+    (render === undefined ||
+      (React.isValidElement(render) && render.type === "button"));
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      render={render}
+      nativeButton={isNativeButton}
       {...props}
     />
   );

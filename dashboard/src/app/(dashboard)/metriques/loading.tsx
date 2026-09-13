@@ -5,12 +5,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function MetriquesLoading() {
   return (
     <>
-      <PageHeader
-        title="Métriques"
-        description="Chiffre d'affaires, volumes et produits phares."
-      />
+      <PageHeader title="Métriques" description="Chargement de la période…" />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement des métriques…</p>
+        <Card>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <Skeleton className="h-8 w-full md:w-60" />
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-8 w-28" />
+            </div>
+            <Skeleton className="h-8 w-56" />
+          </CardContent>
+        </Card>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} size="sm">
@@ -24,6 +32,14 @@ export default function MetriquesLoading() {
             </Card>
           ))}
         </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-72" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-80 w-full" />
+          </CardContent>
+        </Card>
         <div className="grid gap-4 lg:grid-cols-2">
           {[1, 2].map((i) => (
             <Card key={i}>
@@ -36,16 +52,6 @@ export default function MetriquesLoading() {
             </Card>
           ))}
         </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-36" />
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </CardContent>
-        </Card>
       </div>
     </>
   );

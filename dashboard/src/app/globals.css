@@ -13,7 +13,7 @@
  * Les composants n'utilisent que des tokens (jamais de couleur en dur) :
  * changer l'identité visuelle = changer ce fichier.
  * --brand-from / --brand-to : bornes du dégradé de marque (bg-gradient-brand).
- * --success / --warning : couleurs sémantiques (livrée, en attente, stock bas).
+ * --success / --warning / --info : couleurs sémantiques (favorable, alerte, neutre).
  * --halo-1 / --halo-2 : les deux lueurs du fond de page.
  */
 @custom-variant dark (&:where(
@@ -48,8 +48,13 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-brand-from: var(--brand-from);
   --color-brand-to: var(--brand-to);
+  --color-fruit: var(--fruit);
+  --color-fruit-foreground: var(--fruit-foreground);
+  --color-vegetable: var(--vegetable);
+  --color-vegetable-foreground: var(--vegetable-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -92,6 +97,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --success: oklch(0.55 0.16 150);
   --warning: oklch(0.58 0.16 65);
+  --info: oklch(0.55 0.15 245);
   --brand-from: oklch(0.56 0.22 302);
   --brand-to: oklch(0.66 0.2 330);
   --border: oklch(0.91 0.02 305);
@@ -112,6 +118,11 @@
   --sidebar-ring: oklch(0.62 0.2 302);
   --halo-1: color-mix(in oklch, var(--primary) 12%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 8%, transparent);
+  /* Catalogue : fond de carte par catégorie (orange = fruit, vert = légume). */
+  --fruit: oklch(0.95 0.06 65);
+  --fruit-foreground: oklch(0.45 0.14 55);
+  --vegetable: oklch(0.95 0.06 140);
+  --vegetable-foreground: oklch(0.42 0.12 145);
 }
 
 /* ---------- dark ---------- */
@@ -134,6 +145,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --success: oklch(0.72 0.17 150);
   --warning: oklch(0.8 0.16 75);
+  --info: oklch(0.76 0.13 245);
   --brand-from: oklch(0.7 0.18 302);
   --brand-to: oklch(0.75 0.17 330);
   --border: oklch(1 0 0 / 10%);
@@ -154,6 +166,10 @@
   --sidebar-ring: oklch(0.6 0.18 302);
   --halo-1: color-mix(in oklch, var(--primary) 18%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 10%, transparent);
+  --fruit: oklch(0.32 0.07 60);
+  --fruit-foreground: oklch(0.88 0.1 70);
+  --vegetable: oklch(0.3 0.06 145);
+  --vegetable-foreground: oklch(0.86 0.12 145);
 }
 
 /* ---------- fig : aubergine, rose figue, vert feuille ---------- */
@@ -176,6 +192,7 @@
   --destructive: oklch(0.72 0.19 25);
   --success: oklch(0.76 0.16 145);
   --warning: oklch(0.82 0.15 80);
+  --info: oklch(0.78 0.12 240);
   --brand-from: oklch(0.72 0.18 350);
   --brand-to: oklch(0.8 0.15 30);
   --border: oklch(1 0 0 / 11%);
@@ -196,11 +213,25 @@
   --sidebar-ring: oklch(0.7 0.16 350);
   --halo-1: color-mix(in oklch, var(--primary) 22%, transparent);
   --halo-2: color-mix(in oklch, var(--success) 12%, transparent);
+  --fruit: oklch(0.36 0.09 50);
+  --fruit-foreground: oklch(0.9 0.11 70);
+  --vegetable: oklch(0.33 0.08 145);
+  --vegetable-foreground: oklch(0.88 0.13 145);
 }
 
 /* Dégradé de marque, réutilisable partout sans recopier les couleurs. */
 @utility bg-gradient-brand {
   background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to));
+}
+
+/* Pastille tricolore « produit français » : les couleurs du drapeau, pas du thème. */
+@utility flag-fr {
+  background-image: linear-gradient(
+    90deg,
+    #0055a4 0 33.3%,
+    #ffffff 33.3% 66.6%,
+    #ef4135 66.6% 100%
+  );
 }
 
 @utility text-gradient-brand {

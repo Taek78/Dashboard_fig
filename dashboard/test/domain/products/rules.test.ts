@@ -4,8 +4,11 @@ import {
   centsToEurosInput,
   eurosToCents,
   filterProducts,
+  formatCaliber,
   isLowStock,
+  pricePerKgCents,
   sortProductsByName,
+  unitPriceCents,
 } from "@/domain/products/rules";
 import { normalize } from "@/lib/text";
 
@@ -34,48 +37,86 @@ describe("eurosToCents", () => {
 });
 
 describe("centsToEurosInput", () => {
-  it("formate avec virgule et deux décimales", () => {
+  it("formate avec virgule et deux décimales, aller-retour exact", () => {
     expect(centsToEurosInput(1250)).toBe("12,50");
     expect(centsToEurosInput(60)).toBe("0,60");
-    expect(centsToEurosInput(700)).toBe("7,00");
-  });
-
-  it("fait l'aller-retour avec eurosToCents", () => {
     for (const cents of [1, 29, 100, 1250, 99999]) {
       expect(eurosToCents(centsToEurosInput(cents))).toBe(cents);
     }
   });
 });
 
-describe("normalize et filterProducts", () => {
-  it("ignore accents et casse", () => {
-    expect(normalize("  Pêche Blanche ")).toBe("peche blanche");
+describe("prix unitaire et prix au kilo", () => {
+  it("au poids : prix au kilo = prix, pas de prix unitaire", () => {
+    const p = { unit: "g" as const, priceCents: 290, unitWeightGrams: null };
+    expect(pricePerKgCents(p)).toBe(290);
+    expect(unitPriceCents(p)).toBeNull();
   });
 
-  it("sans filtre, tout ; par recherche, sans accents ; par catégorie ; par disponibilité", () => {
-    expect(filterProducts(productsFixtures, {})).toHaveLength(16);
+  it("à la pièce : prix unitaire = prix, prix au kilo déduit du poids moyen", () => {
+    const p = { unit: "piece" as const, priceCents: 180, unitWeightGrams: 180 };
+    expect(unitPriceCents(p)).toBe(180);
+    expect(pricePerKgCents(p)).toBe(1000);
+    expect(pricePerKgCents({ ...p, unitWeightGrams: 350 })).toBe(514);
+  });
+
+  it("à la pièce sans poids connu : prix au kilo inconnu", () => {
+    expect(
+      pricePerKgCents({
+        unit: "piece",
+        priceCents: 180,
+        unitWeightGrams: null,
+      }),
+    ).toBeNull();
+    expect(
+      pricePerKgCents({ unit: "piece", priceCents: 180, unitWeightGrams: 0 }),
+    ).toBeNull();
+  });
+});
+
+describe("formatCaliber", () => {
+  it("écrit la fourchette, ou la valeur seule, ou rien", () => {
+    expect(formatCaliber({ minMm: 70, maxMm: 80 })).toBe("70–80 mm");
+    expect(formatCaliber({ minMm: 60, maxMm: 60 })).toBe("60 mm");
+    expect(formatCaliber(null)).toBeNull();
+  });
+});
+
+describe("filterProducts", () => {
+  it("masque les produits non visibles par défaut, les inclut sur demande", () => {
+    expect(filterProducts(productsFixtures, {})).toHaveLength(15);
+    expect(
+      filterProducts(productsFixtures, { includeHidden: true }),
+    ).toHaveLength(16);
+  });
+
+  it("recherche sur le nom ET la variété, sans accents", () => {
     expect(
       filterProducts(productsFixtures, { query: "coeur" }).map((p) => p.name),
-    ).toEqual(["Tomates cœur de bœuf"]);
+    ).toEqual(["Tomates"]);
     expect(
-      filterProducts(productsFixtures, { category: "fruits" }).every(
-        (p) => p.category === "fruits",
+      filterProducts(productsFixtures, { query: "gala" }).map((p) => p.name),
+    ).toEqual(["Pommes"]);
+    expect(normalize("Cœur")).toBe("coeur");
+  });
+
+  it("filtre par catégorie et disponibilité, critères cumulés", () => {
+    expect(
+      filterProducts(productsFixtures, { category: "fruit" }).every(
+        (p) => p.category === "fruit",
       ),
     ).toBe(true);
     expect(
       filterProducts(productsFixtures, { availability: "unavailable" }).map(
         (p) => p.id,
       ),
-    ).toEqual(["prd-0009", "prd-0016"]);
-  });
-
-  it("cumule les critères", () => {
+    ).toEqual(["prd-0009"]);
     expect(
       filterProducts(productsFixtures, {
-        category: "vegetables",
         availability: "unavailable",
+        includeHidden: true,
       }).map((p) => p.id),
-    ).toEqual(["prd-0016"]);
+    ).toEqual(["prd-0009", "prd-0016"]);
   });
 });
 
@@ -83,7 +124,7 @@ describe("sortProductsByName", () => {
   it("trie en ordre français sans muter l'entrée", () => {
     const sorted = sortProductsByName(productsFixtures);
     expect(sorted[0]?.name).toBe("Avocat");
-    expect(sorted.at(-1)?.name).toBe("Tomates cœur de bœuf");
+    expect(sorted.at(-1)?.name).toBe("Tomates");
     expect(productsFixtures[0]?.name).toBe("Carottes");
   });
 });

@@ -28,3 +28,22 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(href + "/");
 }
+
+/** Un maillon du fil d'Ariane : `href` null = la page courante (non cliquable). */
+export type Crumb = { title: string; href: string | null };
+
+/**
+ * Fil d'Ariane d'un chemin, à partir des sections de NAV_ITEMS :
+ * "/commandes" → [Commandes] ; "/commandes/cmd-1" → [Commandes › Détail] ;
+ * "/catalogue/nouveau" → [Catalogue › Nouveau] ; chemin inconnu → [].
+ */
+export function breadcrumbFor(pathname: string): Crumb[] {
+  const section = NAV_ITEMS.find((item) => isNavActive(pathname, item.href));
+  if (!section) return [];
+  if (pathname === section.href) return [{ title: section.title, href: null }];
+  const leaf = pathname.endsWith("/nouveau") ? "Nouveau" : "Détail";
+  return [
+    { title: section.title, href: section.href },
+    { title: leaf, href: null },
+  ];
+}

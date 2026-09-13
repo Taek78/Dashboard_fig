@@ -71,12 +71,12 @@ export async function changeOrderStatus(
     // 7. Écriture conditionnelle : `from` est le statut RELU, jamais une valeur du client.
     const updated = await updateOrderStatus(order.id, order.status, nextStatus);
     if (!updated) {
-      revalidatePath("/commandes", "layout");
+      revalidatePath("/", "layout");
       return { status: "error", message: MESSAGES.conflict };
     }
 
-    // 8. Un seul appel couvre la liste et toutes les pages de détail.
-    revalidatePath("/commandes", "layout");
+    // 8. Un seul appel couvre tout le back-office : liste, détail, tournée, accueil, métriques.
+    revalidatePath("/", "layout");
 
     // 9.
     return {

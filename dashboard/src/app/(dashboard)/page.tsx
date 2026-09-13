@@ -4,30 +4,23 @@ import { KpiCard } from "@/components/metrics/kpi-card";
 import { OrdersTable } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { getAssignments, getCouriers } from "@/data/deliveries";
 import { getOrders } from "@/data/orders";
-import {
-  buildTour,
-  countUnassigned,
-  todayInParis,
-} from "@/domain/deliveries/rules";
+import { todayInParis } from "@/domain/deliveries/rules";
 import { computeKpis } from "@/domain/metrics/rules";
 import { formatDateFr, formatEuros } from "@/lib/format";
 
 /*
  * Tableau de bord, route « / » (A6) : l'activité du jour et ce qui attend une
- * action. Chiffres calculés par les fonctions pures de metrics et deliveries.
+ * action. Chiffres calculés par les fonctions pures de metrics.
  */
 export default async function TableauDeBordPage() {
   const today = todayInParis(new Date());
-  const [orders, assignments, couriers, pending] = await Promise.all([
+  const [orders, pending] = await Promise.all([
     getOrders({ date: today }),
-    getAssignments(today),
-    getCouriers(),
     getOrders({ status: "pending" }),
   ]);
   const kpis = computeKpis(orders);
-  const unassigned = countUnassigned(buildTour(orders, assignments, couriers));
+  const delivering = orders.filter((o) => o.status === "delivering").length;
 
   return (
     <>
@@ -56,15 +49,16 @@ export default async function TableauDeBordPage() {
           icon={<Clock />}
         />
         <KpiCard
-          label="Sans livreur aujourd'hui"
-          value={String(unassigned)}
+          label="En livraison aujourd'hui"
+          value={String(delivering)}
           icon={<Truck />}
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button
           variant="outline"
+          className="justify-between sm:justify-center"
           render={<Link href="/commandes?statut=pending" />}
         >
           Commandes à confirmer
@@ -72,12 +66,17 @@ export default async function TableauDeBordPage() {
         </Button>
         <Button
           variant="outline"
+          className="justify-between sm:justify-center"
           render={<Link href={`/livraisons?date=${today}`} />}
         >
           Tournée du jour
           <ArrowRight />
         </Button>
-        <Button variant="outline" render={<Link href="/metriques" />}>
+        <Button
+          variant="outline"
+          className="justify-between sm:justify-center"
+          render={<Link href="/metriques" />}
+        >
           Métriques
           <ArrowRight />
         </Button>

@@ -13,6 +13,8 @@ Patron commun à tous les domaines (posé en A1-A2, répété tel quel) :
 
 ## A3 : Livraisons (`/livraisons`)
 
+> **Mise à jour du 2026-09-13** : l'attribution de livreur décrite ci-dessous a été retirée à la demande du client. La page présente la tournée en cartes horizontales avec le changement de statut ; seuls `todayInParis`, `deliveryDates`, `summarizeTour` et `parseTourDate` subsistent.
+
 - `domain/deliveries/types.ts` : `Courier { id, name, phone, zone }`, `Assignment { orderId, courierId, date, start, end }`. Le créneau est copié depuis la commande à l'attribution : la règle de conflit se vérifie sur les seules attributions du jour.
 - `rules.ts` : `ASSIGNABLE_STATUSES` (confirmée, en préparation, en livraison) et `canBeAssigned(status)` ; `hasSlotConflict(assignments, courierId, slot, orderId)` (même livreur, même jour, même heure, autre commande) ; `buildTour(orders, assignments, couriers)` croise une fois pour la page ; `countUnassigned(tour)` ; `todayInParis(now)` ; `deliveryDates(orders)` pour les raccourcis.
 - `schemas.ts` : `assignCourierSchema { orderId, courierId }` strict ; `parseTourDate(raw)` tolérant.

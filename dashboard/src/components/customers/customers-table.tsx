@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { tableFrame } from "@/components/orders/orders-table";
+import { Mail, MapPin, Phone } from "lucide-react";
+import { mobileCardFrame, tableFrame } from "@/components/orders/orders-table";
 import {
   Table,
   TableBody,
@@ -10,53 +11,113 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Customer } from "@/domain/customers/types";
+import { toTelHref } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-/* Tableau des clients (serveur). Le nom mène à la fiche ; e-mail et téléphone sont des liens d'action. */
-const hideOnMobile = "hidden md:table-cell";
+/*
+ * Liste des clients (serveur). Sous 768 px, une pile de cartes : le nom mène à
+ * la fiche, l'e-mail et le téléphone sont des liens d'action (mailto:, tel:)
+ * assez grands pour le doigt. À partir de 768 px, le tableau ; Téléphone et
+ * Ville apparaissent dès 1024 px. Un seul des deux rendus est affiché.
+ */
+const hideUntilLg = "hidden lg:table-cell";
 
 export function CustomersTable({ customers }: { customers: Customer[] }) {
   return (
-    <div className={tableFrame}>
-      <Table>
-        <TableCaption className="sr-only">
-          Clients avec leurs coordonnées.
-        </TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col">Nom</TableHead>
-            <TableHead scope="col">E-mail</TableHead>
-            <TableHead scope="col" className={hideOnMobile}>
-              Téléphone
-            </TableHead>
-            <TableHead scope="col" className={hideOnMobile}>
-              Ville
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {customers.map((customer) => (
-            <TableRow key={customer.id}>
-              <TableCell className="font-medium">
-                <Link
-                  href={`/clients/${customer.id}`}
-                  className="underline-offset-4 hover:underline focus-visible:underline"
+    <>
+      <ul className="flex flex-col gap-3 md:hidden">
+        {customers.map((customer) => (
+          <li key={customer.id} className={mobileCardFrame}>
+            <Link
+              href={`/clients/${customer.id}`}
+              className="font-medium underline-offset-4 hover:underline focus-visible:underline"
+            >
+              {customer.fullName}
+            </Link>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              <li className="flex items-center gap-2">
+                <Mail
+                  className="text-muted-foreground size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <a
+                  href={`mailto:${customer.email}`}
+                  className="min-w-0 truncate underline-offset-4 hover:underline"
                 >
-                  {customer.fullName}
-                </Link>
-              </TableCell>
-              <TableCell className="text-muted-foreground break-all">
-                {customer.email}
-              </TableCell>
-              <TableCell className={`${hideOnMobile} tabular-nums`}>
-                {customer.phone}
-              </TableCell>
-              <TableCell className={hideOnMobile}>
-                {customer.postalCode} {customer.city}
-              </TableCell>
+                  <span className="sr-only">E-mail : </span>
+                  {customer.email}
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <Phone
+                  className="text-muted-foreground size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <a
+                  href={toTelHref(customer.phone)}
+                  className="tabular-nums underline-offset-4 hover:underline"
+                >
+                  <span className="sr-only">Téléphone : </span>
+                  {customer.phone}
+                </a>
+              </li>
+              <li className="flex items-center gap-2">
+                <MapPin
+                  className="text-muted-foreground size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <span>
+                  <span className="sr-only">Ville : </span>
+                  {customer.postalCode} {customer.city}
+                </span>
+              </li>
+            </ul>
+          </li>
+        ))}
+      </ul>
+
+      <div className={cn(tableFrame, "hidden md:block")}>
+        <Table>
+          <TableCaption className="sr-only">
+            Clients avec leurs coordonnées.
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col">Nom</TableHead>
+              <TableHead scope="col">E-mail</TableHead>
+              <TableHead scope="col" className={hideUntilLg}>
+                Téléphone
+              </TableHead>
+              <TableHead scope="col" className={hideUntilLg}>
+                Ville
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {customers.map((customer) => (
+              <TableRow key={customer.id}>
+                <TableCell className="font-medium">
+                  <Link
+                    href={`/clients/${customer.id}`}
+                    className="underline-offset-4 hover:underline focus-visible:underline"
+                  >
+                    {customer.fullName}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground break-all">
+                  {customer.email}
+                </TableCell>
+                <TableCell className={`${hideUntilLg} tabular-nums`}>
+                  {customer.phone}
+                </TableCell>
+                <TableCell className={hideUntilLg}>
+                  {customer.postalCode} {customer.city}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }

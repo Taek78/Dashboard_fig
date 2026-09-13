@@ -1,66 +1,58 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SearchX } from "lucide-react";
+import { Suspense } from "react";
+import { CircleCheck, Plus } from "lucide-react";
 import { ProductsFilters } from "@/components/products/products-filters";
-import { ProductsTable } from "@/components/products/products-table";
+import {
+  ProductsResults,
+  ProductsResultsSkeleton,
+} from "@/components/products/products-results";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { getProducts } from "@/data/products";
 import { parseProductFilters } from "@/domain/products/schemas";
 
-/* Catalogue et stocks (A4) : liste filtrable, chaque produit mène à sa fiche éditable. */
+/*
+ * Catalogue (A4, revu le 2026-09-13) : moteur de recherche en tête (même
+ * présentation que les clients), grille complète affichée d'emblée. La page ne
+ * fait aucun await de données elle-même : la grille charge dans son propre
+ * <Suspense>, le moteur reste en place pendant la recherche (pas de loading.tsx
+ * pour ce segment, c'est voulu). ?supprime=1 confirme une suppression.
+ */
 export const metadata: Metadata = { title: "Catalogue" };
 
 export default async function CataloguePage({
   searchParams,
 }: PageProps<"/catalogue">) {
-  const filters = parseProductFilters(await searchParams);
-  const products = await getProducts(filters);
-  const count = products.length;
+  const raw = await searchParams;
+  const filters = parseProductFilters(raw);
+  const justDeleted = raw.supprime === "1";
+  const key = JSON.stringify(filters);
 
   return (
     <>
       <PageHeader
         title="Catalogue"
-        description="Produits, prix et stocks proposés dans l'application."
+        description="Fruits et légumes proposés dans l'application : prix, origine, saison, disponibilité."
+        actions={
+          <Button render={<Link href="/catalogue/nouveau" />}>
+            <Plus />
+            Nouveau produit
+          </Button>
+        }
       />
-      <div className="flex flex-col gap-4">
-        <ProductsFilters filters={filters} />
-        <p role="status" className="text-muted-foreground text-sm">
-          {count} produit{count > 1 ? "s" : ""}
+      {justDeleted ? (
+        <p
+          role="status"
+          className="text-success flex items-center gap-1.5 text-sm"
+        >
+          <CircleCheck className="size-4" aria-hidden="true" />
+          Produit supprimé.
         </p>
-        {count > 0 ? (
-          <ProductsTable products={products} />
-        ) : (
-          <Empty className="bg-card/60 min-h-[40vh] rounded-xl border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia
-                variant="icon"
-                className="bg-gradient-brand size-12 rounded-xl text-white shadow-sm [&_svg]:size-6"
-              >
-                <SearchX />
-              </EmptyMedia>
-              <EmptyTitle>Aucun produit ne correspond</EmptyTitle>
-              <EmptyDescription>
-                Modifiez la recherche ou les filtres.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button variant="outline" render={<Link href="/catalogue" />}>
-                Réinitialiser les filtres
-              </Button>
-            </EmptyContent>
-          </Empty>
-        )}
-      </div>
+      ) : null}
+      <ProductsFilters filters={filters} />
+      <Suspense key={key} fallback={<ProductsResultsSkeleton />}>
+        <ProductsResults filters={filters} />
+      </Suspense>
     </>
   );
 }

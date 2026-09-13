@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { ROLE_LABELS } from "@/domain/auth/roles";
 import type { CurrentUser } from "@/domain/auth/types";
 
 /*
@@ -26,23 +27,21 @@ import type { CurrentUser } from "@/domain/auth/types";
  * déconnexion est un formulaire dont l'action est la Server Action logout :
  * fonctionne sans JavaScript, pas de "use client".
  */
-const ROLE_LABELS = {
-  admin: "Administrateur",
-  gestionnaire: "Gestionnaire",
-  lecture: "Lecture seule",
-} as const;
-
 export function AppSidebar({ user }: { user: CurrentUser }) {
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href="/" />}>
-              <div className="bg-gradient-brand flex size-8 items-center justify-center rounded-lg text-white shadow-sm">
+            <SidebarMenuButton
+              size="lg"
+              render={<Link href="/" />}
+              tooltip="FIG Back-office"
+            >
+              <div className="bg-gradient-brand flex size-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
                 <Carrot className="size-4" />
               </div>
-              <div className="flex flex-col leading-tight">
+              <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="font-semibold tracking-tight">
                   FIG Back-office
                 </span>
@@ -62,11 +61,15 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<div />}>
-              <div className="bg-sidebar-accent text-sidebar-accent-foreground flex size-8 items-center justify-center rounded-full">
+            <SidebarMenuButton
+              size="lg"
+              render={<div />}
+              tooltip={`${user.name} · ${ROLE_LABELS[user.role]}`}
+            >
+              <div className="bg-sidebar-accent text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
                 <CircleUser className="size-4" />
               </div>
-              <div className="flex min-w-0 flex-col leading-tight">
+              <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">{user.name}</span>
                 <span className="text-sidebar-foreground/70 text-xs">
                   {ROLE_LABELS[user.role]}
@@ -81,7 +84,9 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
                 tooltip="Se déconnecter"
               >
                 <LogOut />
-                <span>Se déconnecter</span>
+                <span className="group-data-[collapsible=icon]:hidden">
+                  Se déconnecter
+                </span>
               </SidebarMenuButton>
             </form>
           </SidebarMenuItem>

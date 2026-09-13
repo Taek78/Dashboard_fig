@@ -1,12 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { parseMetricPeriod } from "@/domain/metrics/schemas";
+import { parseMetricsQuery } from "@/domain/metrics/schemas";
 
-describe("parseMetricPeriod", () => {
-  it("accepte 7, 30, tout ; 30 par défaut ou si invalide", () => {
-    expect(parseMetricPeriod({ periode: "7" })).toBe("7");
-    expect(parseMetricPeriod({ periode: "tout" })).toBe("tout");
-    expect(parseMetricPeriod({})).toBe("30");
-    expect(parseMetricPeriod({ periode: "90" })).toBe("30");
-    expect(parseMetricPeriod({ periode: ["7", "30"] })).toBe("30");
+describe("parseMetricsQuery", () => {
+  it("défauts : ce mois-ci, pas de plage libre, TTC", () => {
+    expect(parseMetricsQuery({})).toEqual({
+      period: "ce-mois",
+      customRange: null,
+      tax: "ttc",
+      comparison: "n-1",
+    });
+  });
+
+  it("lit la période, le mode TVA, et ignore l'invalide", () => {
+    expect(parseMetricsQuery({ periode: "n-2", tva: "ht" })).toEqual({
+      period: "n-2",
+      customRange: null,
+      tax: "ht",
+      comparison: "n-1",
+    });
+    expect(parseMetricsQuery({ comparaison: "precedente" }).comparison).toBe(
+      "precedente",
+    );
+    expect(parseMetricsQuery({ comparaison: "n-5" }).comparison).toBe("n-1");
+    expect(parseMetricsQuery({ periode: "7", tva: "HT" })).toEqual({
+      period: "ce-mois",
+      customRange: null,
+      tax: "ttc",
+      comparison: "n-1",
+    });
+  });
+
+  it("accepte une plage libre ordonnée, la refuse sinon", () => {
+    expect(
+      parseMetricsQuery({ du: "2026-07-13", au: "2026-07-19" }).customRange,
+    ).toEqual({
+      from: "2026-07-13",
+      to: "2026-07-19",
+    });
+    expect(
+      parseMetricsQuery({ du: "2026-07-19", au: "2026-07-13" }).customRange,
+    ).toBeNull();
+    expect(parseMetricsQuery({ du: "2026-07-13" }).customRange).toBeNull();
+    expect(
+      parseMetricsQuery({ du: "13/07/2026", au: "2026-07-19" }).customRange,
+    ).toBeNull();
   });
 });

@@ -4,19 +4,22 @@ import type { ProductsSource } from "@/domain/products/source";
 import type {
   Product,
   ProductFilters,
-  ProductPatch,
+  ProductInput,
 } from "@/domain/products/types";
 
 /*
  * Implémentation FIXTURES du contrat ProductsSource : Map mutable seedée, clone à
  * l'entrée et à la sortie, latence simulée, resetProductsMock() hors contrat.
  * `updatedAt` reçoit une valeur fixe et non new Date() pour rester déterministe
- * sous Vitest ; la vraie base mettra un timestamp (B3).
+ * sous Vitest ; la vraie base mettra un timestamp (B3). Les ids créés sont un
+ * compteur local ("prd-m-1"…) : la vraie base en générera.
  */
 const store = new Map<string, Product>();
+let counter = 0;
 
 function seed(): void {
   store.clear();
+  counter = 0;
   for (const p of productsFixtures) store.set(p.id, structuredClone(p));
 }
 
@@ -41,15 +44,34 @@ export const productsMock: ProductsSource = {
     return product ? structuredClone(product) : null;
   },
 
-  updateProduct: async (id: string, patch: ProductPatch) => {
+  createProduct: async (input: ProductInput) => {
+    await sleep(PRODUCTS_MOCK_LATENCY_MS);
+    counter += 1;
+    const created: Product = {
+      ...structuredClone(input),
+      id: `prd-m-${counter}`,
+      updatedAt: MOCK_UPDATED_AT,
+    };
+    store.set(created.id, created);
+    return structuredClone(created);
+  },
+
+  updateProduct: async (id: string, input: ProductInput) => {
     await sleep(PRODUCTS_MOCK_LATENCY_MS);
     const current = store.get(id);
     if (!current) return null;
-    current.priceCents = patch.priceCents;
-    current.available = patch.available;
-    current.stockQuantity = patch.stockQuantity;
-    current.updatedAt = MOCK_UPDATED_AT;
-    return structuredClone(current);
+    const updated: Product = {
+      ...structuredClone(input),
+      id: current.id,
+      updatedAt: MOCK_UPDATED_AT,
+    };
+    store.set(id, updated);
+    return structuredClone(updated);
+  },
+
+  deleteProduct: async (id: string) => {
+    await sleep(PRODUCTS_MOCK_LATENCY_MS);
+    return store.delete(id);
   },
 };
 

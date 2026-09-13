@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 import { CustomersTable } from "@/components/customers/customers-table";
-import { tableFrame } from "@/components/orders/orders-table";
+import { mobileCardFrame, tableFrame } from "@/components/orders/orders-table";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { getCustomers } from "@/data/customers";
 import type { CustomerSearch } from "@/domain/customers/schemas";
+import { cn } from "@/lib/utils";
 
 /*
  * Zone de résultats, composant serveur ASYNC rendu dans un <Suspense> par la
@@ -78,16 +79,26 @@ export function CustomersResultsSkeleton() {
       <p role="status" className="text-muted-foreground text-sm">
         Recherche en cours…
       </p>
-      <div className={tableFrame}>
+      <ul className="flex flex-col gap-3 md:hidden">
+        {ROWS.map((row) => (
+          <li key={row} className={mobileCardFrame}>
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-4 w-24" />
+          </li>
+        ))}
+      </ul>
+      <div className={cn(tableFrame, "hidden md:block")}>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead scope="col">Nom</TableHead>
               <TableHead scope="col">E-mail</TableHead>
-              <TableHead scope="col" className="hidden md:table-cell">
+              <TableHead scope="col" className="hidden lg:table-cell">
                 Téléphone
               </TableHead>
-              <TableHead scope="col" className="hidden md:table-cell">
+              <TableHead scope="col" className="hidden lg:table-cell">
                 Ville
               </TableHead>
             </TableRow>
@@ -101,10 +112,10 @@ export function CustomersResultsSkeleton() {
                 <TableCell>
                   <Skeleton className="h-4 w-48" />
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="hidden lg:table-cell">
                   <Skeleton className="h-4 w-28" />
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="hidden lg:table-cell">
                   <Skeleton className="h-4 w-24" />
                 </TableCell>
               </TableRow>

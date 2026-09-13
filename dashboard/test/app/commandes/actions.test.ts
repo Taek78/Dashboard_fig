@@ -75,7 +75,7 @@ describe("changeOrderStatus", () => {
       status: "success",
       message: "Statut mis à jour : Confirmée.",
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/commandes", "layout");
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
   it("refuse une transition hors liste blanche avec un message français", async () => {

@@ -6,6 +6,7 @@ import {
   resetProductsMock,
 } from "@/data/products.mock";
 import { productsFixtures } from "@/domain/products/fixtures";
+import type { ProductInput } from "@/domain/products/types";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -18,54 +19,86 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
   return promise;
 }
 
+const input: ProductInput = {
+  name: "Poires",
+  variety: "Conférence",
+  category: "fruit",
+  unit: "g",
+  priceCents: 320,
+  unitWeightGrams: null,
+  container: "tray",
+  originCountry: "FR",
+  originRegion: "Savoie",
+  caliber: { minMm: 60, maxMm: 70 },
+  organic: false,
+  inSeason: true,
+  available: true,
+  visible: true,
+  stockQuantity: 5000,
+  illustration: "🍐",
+  imageUrl: null,
+};
+
 describe("productsMock", () => {
-  it("getProducts renvoie tout trié par nom, et filtre", async () => {
+  it("getProducts renvoie les visibles triés par nom, et filtre", async () => {
     const all = await settle(productsMock.getProducts());
-    expect(all).toHaveLength(16);
+    expect(all).toHaveLength(15);
     expect(all[0]?.name).toBe("Avocat");
     const fruits = await settle(
-      productsMock.getProducts({ category: "fruits" }),
+      productsMock.getProducts({ category: "fruit" }),
     );
-    expect(fruits.every((p) => p.category === "fruits")).toBe(true);
+    expect(fruits.every((p) => p.category === "fruit")).toBe(true);
   });
 
-  it("getProduct trouve ou renvoie null", async () => {
-    expect((await settle(productsMock.getProduct("prd-0003")))?.name).toBe(
-      "Bananes",
+  it("getProduct trouve (même masqué) ou renvoie null", async () => {
+    expect((await settle(productsMock.getProduct("prd-0016")))?.name).toBe(
+      "Poivron",
     );
     expect(await settle(productsMock.getProduct("prd-9999"))).toBeNull();
   });
 
-  it("updateProduct écrit prix, disponibilité, stock et updatedAt, visible ensuite", async () => {
+  it("createProduct attribue un id et updatedAt, visible ensuite dans la liste", async () => {
+    const created = await settle(productsMock.createProduct(input));
+    expect(created.id).toBe("prd-m-1");
+    expect(created.updatedAt).toBe(MOCK_UPDATED_AT);
+    const all = await settle(productsMock.getProducts());
+    expect(all.some((p) => p.id === "prd-m-1" && p.name === "Poires")).toBe(
+      true,
+    );
+    expect(productsFixtures).toHaveLength(16);
+  });
+
+  it("updateProduct remplace toute la fiche, garde l'id, ou renvoie null", async () => {
     const updated = await settle(
       productsMock.updateProduct("prd-0003", {
-        priceCents: 275,
-        available: false,
-        stockQuantity: 0,
+        ...input,
+        name: "Bananes",
+        visible: false,
       }),
     );
     expect(updated).toMatchObject({
-      priceCents: 275,
-      available: false,
-      stockQuantity: 0,
+      id: "prd-0003",
+      name: "Bananes",
+      visible: false,
       updatedAt: MOCK_UPDATED_AT,
     });
     const again = await settle(productsMock.getProduct("prd-0003"));
-    expect(again?.priceCents).toBe(275);
-    expect(productsFixtures.find((p) => p.id === "prd-0003")?.priceCents).toBe(
-      250,
-    );
+    expect(again?.originRegion).toBe("Savoie");
+    expect(
+      productsFixtures.find((p) => p.id === "prd-0003")?.originRegion,
+    ).toBeNull();
+    expect(
+      await settle(productsMock.updateProduct("prd-9999", input)),
+    ).toBeNull();
   });
 
-  it("updateProduct renvoie null pour un id inconnu", async () => {
-    expect(
-      await settle(
-        productsMock.updateProduct("prd-9999", {
-          priceCents: 1,
-          available: true,
-          stockQuantity: 1,
-        }),
-      ),
-    ).toBeNull();
+  it("deleteProduct retire le produit et dit s'il existait", async () => {
+    expect(await settle(productsMock.deleteProduct("prd-0003"))).toBe(true);
+    expect(await settle(productsMock.getProduct("prd-0003"))).toBeNull();
+    expect(await settle(productsMock.deleteProduct("prd-0003"))).toBe(false);
+    resetProductsMock();
+    expect((await settle(productsMock.getProduct("prd-0003")))?.name).toBe(
+      "Bananes",
+    );
   });
 });

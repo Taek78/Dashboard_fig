@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import "@/app/globals.css";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -13,9 +14,10 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
  * Polices : Plus Jakarta Sans (texte et titres) et Geist Mono (références,
  * montants), servies depuis le projet par next/font.
  *
- * Mode d'affichage : le script inline lit localStorage et pose data-theme sur
- * <html> AVANT le premier rendu, pour éviter un flash clair sur un utilisateur en
- * sombre. Le serveur ne connaît pas ce choix : suppressHydrationWarning limite
+ * Mode d'affichage : le script inline (next/script, beforeInteractive) lit
+ * localStorage et pose data-theme sur <html> AVANT le premier rendu, pour éviter
+ * un flash clair sur un utilisateur en sombre. Un <script> brut dans du JSX
+ * déclenche un avertissement React ; next/script est la voie prévue. Le serveur ne connaît pas ce choix : suppressHydrationWarning limite
  * l'avertissement à cet attribut.
  */
 const plusJakarta = Plus_Jakarta_Sans({
@@ -44,7 +46,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${plusJakarta.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* beforeInteractive : injecté dans le HTML initial, exécuté avant l'hydratation. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {THEME_INIT_SCRIPT}
+        </Script>
       </head>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

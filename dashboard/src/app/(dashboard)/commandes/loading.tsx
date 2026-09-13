@@ -1,4 +1,8 @@
-import { tableFrame } from "@/components/orders/orders-table";
+import {
+  hideUntilLg,
+  mobileCardFrame,
+  tableFrame,
+} from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -9,14 +13,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 /*
  * État de chargement de /commandes. Next l'affiche automatiquement pendant que
  * page.tsx attend getOrders() (frontière Suspense). Composant serveur.
- * On reproduit la grille du tableau (même enveloppe, mêmes en-têtes, mêmes classes
- * de colonnes) pour éviter un saut de mise en page quand les données arrivent.
+ * On reproduit les deux rendus d'OrdersTable (pile de cartes sous 768 px, tableau
+ * au-dessus : mêmes cadres, mêmes en-têtes, mêmes classes de colonnes) pour
+ * éviter un saut de mise en page quand les données arrivent.
  */
-const hideOnMobile = "hidden md:table-cell";
 const numeric = "text-right tabular-nums";
 const ROWS = [1, 2, 3, 4, 5, 6];
 
@@ -39,20 +44,38 @@ export default function CommandesLoading() {
             <Skeleton className="h-4 w-16" />
             <Skeleton className="h-8 w-full" />
           </div>
-          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-full md:w-20" />
         </div>
         <Skeleton className="h-4 w-28" />
-        <div className={tableFrame}>
+
+        <ul className="flex flex-col gap-3 md:hidden">
+          {ROWS.slice(0, 4).map((row) => (
+            <li key={row} className={mobileCardFrame}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <Skeleton className="h-5 w-24 rounded-4xl" />
+              </div>
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-36" />
+            </li>
+          ))}
+        </ul>
+
+        <div className={cn(tableFrame, "hidden md:block")}>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead scope="col">Référence</TableHead>
                 <TableHead scope="col">Client</TableHead>
                 <TableHead scope="col">Créneau</TableHead>
-                <TableHead scope="col" className={hideOnMobile}>
+                <TableHead scope="col" className={hideUntilLg}>
                   Ville
                 </TableHead>
-                <TableHead scope="col" className={`${hideOnMobile} ${numeric}`}>
+                <TableHead scope="col" className={`${hideUntilLg} ${numeric}`}>
                   Articles
                 </TableHead>
                 <TableHead scope="col" className={numeric}>
@@ -73,10 +96,10 @@ export default function CommandesLoading() {
                   <TableCell>
                     <Skeleton className="h-4 w-36" />
                   </TableCell>
-                  <TableCell className={hideOnMobile}>
+                  <TableCell className={hideUntilLg}>
                     <Skeleton className="h-4 w-20" />
                   </TableCell>
-                  <TableCell className={`${hideOnMobile} ${numeric}`}>
+                  <TableCell className={`${hideUntilLg} ${numeric}`}>
                     <Skeleton className="ml-auto h-4 w-6" />
                   </TableCell>
                   <TableCell className={numeric}>

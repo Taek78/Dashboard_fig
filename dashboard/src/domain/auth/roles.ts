@@ -11,6 +11,13 @@
 export const ROLES = ["admin", "gestionnaire", "lecture"] as const;
 export type Role = (typeof ROLES)[number];
 
+/** Libellés français des rôles, pour la sidebar et le bandeau. */
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Administrateur",
+  gestionnaire: "Gestionnaire",
+  lecture: "Lecture seule",
+};
+
 /*
  * Règles d'autorisation pures, une par action métier. Testées côté serveur dans
  * les Server Actions après relecture de la session, jamais en faisant confiance
@@ -20,11 +27,6 @@ const WRITERS: readonly Role[] = ["admin", "gestionnaire"];
 
 /** Changer le statut d'une commande (A2). */
 export function canChangeOrderStatus(role: Role): boolean {
-  return WRITERS.includes(role);
-}
-
-/** Attribuer un livreur (A3). */
-export function canAssignCourier(role: Role): boolean {
   return WRITERS.includes(role);
 }
 

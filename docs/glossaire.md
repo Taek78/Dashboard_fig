@@ -128,4 +128,10 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Docker Compose** (B1) : `compose.yaml` décrit les services locaux (ici Postgres) ; `docker compose up -d` les lance, `down` les arrête, `down -v` efface les données.
 
+**Fil d'Ariane (breadcrumb)** (coquille) : la ligne « Commandes › Détail » du bandeau qui situe la page dans la navigation. Calculé par `breadcrumbFor(pathname)` (pur, testé) et rendu par `site-breadcrumb.tsx` ; le dernier maillon porte `aria-current="page"`.
+
+**Point de rupture (breakpoint)** (responsive) : largeur à partir de laquelle une classe préfixée s'applique (`sm:` 640 px, `md:` 768 px, `lg:` 1024 px, `xl:` 1280 px). Mobile d'abord : la classe sans préfixe vaut pour le petit écran, le préfixe ajoute le comportement grand écran.
+
+**`md:contents`** (CSS) : `display: contents` fait disparaître une boîte de la mise en page, ses enfants se placent comme s'ils étaient directement dans le parent. Utilisé pour grouper « Du / Au » côte à côte sur mobile puis les rendre au flex du formulaire dès 768 px.
+
 **vi.mock / vi.hoisted** (tests) : remplacer un module par une version simulée pour un fichier de test (`server-only`, `next/cache`, la session, l'env). `vi.hoisted` déclare une variable utilisable dans ce remplacement.

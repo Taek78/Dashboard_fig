@@ -12,12 +12,14 @@ import { verifySession } from "@/lib/dal";
  *
  * A7 : verifySession() en tête. Sans session, redirection vers /connexion avant
  * de rendre quoi que ce soit (le proxy le fait déjà, ceinture et bretelles). Le
- * nom et le rôle affichés dans la sidebar viennent de la session, jamais d'un
- * paramètre.
+ * nom et le rôle affichés dans la sidebar et le bandeau viennent de la session,
+ * jamais d'un paramètre.
  *
  * - SidebarProvider : contexte lu par SidebarTrigger, NavMain et Sidebar.
  * - Le lien d'évitement est le premier élément focusable.
  * - SidebarInset est le <main> ; id="contenu" est la cible du lien.
+ * - min-w-0 sur le conteneur de page : un enfant large (tableau, graphe) défile
+ *   dans son propre cadre au lieu d'élargir la page sur mobile.
  */
 export default async function DashboardLayout({ children }: LayoutProps<"/">) {
   const user = await verifySession();
@@ -34,11 +36,11 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
       <SidebarInset
         id="contenu"
         tabIndex={-1}
-        className="md:peer-data-[variant=inset]:rounded-2xl"
+        className="min-w-0 md:peer-data-[variant=inset]:rounded-2xl"
       >
-        <SiteHeader />
+        <SiteHeader user={user} />
         {/* Largeur bornée et marges généreuses : la lisibilité avant la densité. */}
-        <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 p-4 md:p-8">
+        <div className="mx-auto flex w-full max-w-[1400px] min-w-0 flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8">
           {children}
         </div>
       </SidebarInset>

@@ -40,7 +40,11 @@ export function CustomerNoteForm({ customerId }: { customerId: string }) {
           className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
         />
       </div>
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button
+        type="submit"
+        disabled={pending}
+        className="w-full sm:w-auto sm:self-start"
+      >
         {pending ? (
           <>
             <LoaderCircle className="animate-spin" />

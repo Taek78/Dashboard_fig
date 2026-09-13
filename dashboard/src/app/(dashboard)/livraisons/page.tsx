@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
 import { CalendarX2 } from "lucide-react";
-import { TourTable } from "@/components/deliveries/tour-table";
+import { TourCards } from "@/components/deliveries/tour-cards";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +14,12 @@ import {
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAssignments, getCouriers } from "@/data/deliveries";
 import { getOrders } from "@/data/orders";
+import { getCurrentUser } from "@/data/session";
+import { canChangeOrderStatus } from "@/domain/auth/roles";
 import {
-  buildTour,
-  countUnassigned,
   deliveryDates,
+  summarizeTour,
   todayInParis,
 } from "@/domain/deliveries/rules";
 import { parseTourDate } from "@/domain/deliveries/schemas";
@@ -27,9 +27,9 @@ import { formatDateFr } from "@/lib/format";
 
 /*
  * Tournée du jour : toutes les commandes livrées un jour donné (?date=, défaut :
- * aujourd'hui en Europe/Paris) avec leur livreur, et l'attribution en ligne.
- * Composant serveur : trois lectures via les façades, croisement par buildTour().
- * Les raccourcis « jours avec des commandes » évitent de chercher à l'aveugle.
+ * aujourd'hui en Europe/Paris), en cartes horizontales avec le changement de
+ * statut. Composant serveur : lectures via les façades, compteurs purs.
+ * L'attribution de livreur a été retirée (décision du 2026-09-13).
  */
 export const metadata: Metadata = { title: "Livraisons" };
 
@@ -39,31 +39,31 @@ export default async function LivraisonsPage({
   const raw = await searchParams;
   const date = parseTourDate(raw) ?? todayInParis(new Date());
 
-  const [orders, assignments, couriers, allOrders] = await Promise.all([
+  const [orders, allOrders, user] = await Promise.all([
     getOrders({ date }),
-    getAssignments(date),
-    getCouriers(),
     getOrders(),
+    getCurrentUser(),
   ]);
-  const tour = buildTour(orders, assignments, couriers);
-  const unassigned = countUnassigned(tour);
+  const summary = summarizeTour(orders);
   const dates = deliveryDates(allOrders);
+  const plural = (n: number) => (n > 1 ? "s" : "");
 
   return (
     <>
       <PageHeader
         title="Livraisons"
-        description="Tournée du jour et attribution des livreurs."
+        description="Tournée du jour : suivez chaque livraison et faites avancer son statut."
       />
       <div className="flex flex-col gap-4">
         <Form
           action="/livraisons"
           aria-label="Choix du jour"
-          className="flex flex-col gap-3 md:flex-row md:items-end"
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
         >
-          <div className="grid gap-1.5 md:w-48">
+          <div className="grid gap-1.5 sm:w-48">
             <Label htmlFor="date">Jour de livraison</Label>
             <Input
+              key={date}
               id="date"
               type="date"
               name="date"
@@ -71,7 +71,9 @@ export default async function LivraisonsPage({
               className="dark:scheme-dark"
             />
           </div>
-          <Button type="submit">Afficher</Button>
+          <Button type="submit" className="w-full sm:w-auto">
+            Afficher
+          </Button>
         </Form>
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -91,15 +93,19 @@ export default async function LivraisonsPage({
         </div>
 
         <p role="status" className="text-muted-foreground text-sm">
-          {formatDateFr(date)} : {tour.length} commande
-          {tour.length > 1 ? "s" : ""}
-          {tour.length > 0 ? `, ${unassigned} sans livreur` : ""}
+          {formatDateFr(date)} : {summary.total} commande{plural(summary.total)}
+          {summary.total > 0
+            ? ` · ${summary.toConfirm} à confirmer · ${summary.inProgress} en cours · ${summary.done} terminée${plural(summary.done)}`
+            : ""}
         </p>
 
-        {tour.length > 0 ? (
-          <TourTable tour={tour} couriers={couriers} date={date} />
+        {orders.length > 0 ? (
+          <TourCards
+            orders={orders}
+            canChangeStatus={canChangeOrderStatus(user.role)}
+          />
         ) : (
-          <Empty className="bg-card/60 min-h-[40vh] rounded-xl border border-dashed">
+          <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">
             <EmptyHeader>
               <EmptyMedia
                 variant="icon"

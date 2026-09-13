@@ -51,6 +51,7 @@ export function OrdersFilters({ filters }: { filters: OrderFilters }) {
       <div className="grid gap-1.5 md:w-48">
         <Label htmlFor="date">Date de livraison</Label>
         <Input
+          key={filters.date ?? ""}
           id="date"
           type="date"
           name="date"
@@ -60,9 +61,15 @@ export function OrdersFilters({ filters }: { filters: OrderFilters }) {
       </div>
 
       <div className="flex gap-2">
-        <Button type="submit">Filtrer</Button>
+        <Button type="submit" className="flex-1 md:flex-none">
+          Filtrer
+        </Button>
         {isFiltered ? (
-          <Button variant="ghost" render={<Link href="/commandes" />}>
+          <Button
+            variant="ghost"
+            className="flex-1 md:flex-none"
+            render={<Link href="/commandes" />}
+          >
             Réinitialiser
           </Button>
         ) : null}
