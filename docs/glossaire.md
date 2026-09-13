@@ -26,6 +26,8 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Idempotent** (A2) : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
 
+**`Map`** (A2) : structure clé → valeur du langage (`set`, `get`, `values()`, `clear()`), typée `Map<string, Order>` dans le mock : la « table » en mémoire, un objet par id, modifiable.
+
 **Logique pure / fonction pure** : une fonction dont le résultat dépend uniquement de ses arguments et qui ne modifie rien autour d'elle. Testable en isolation, réutilisable partout. `computeOrderTotalCents`, `readSimulationMode`, `assertMockSessionAllowed`.
 
 ## Sécurité et accès
@@ -99,3 +101,31 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Parking** : la liste des bonnes idées hors périmètre, notées pour ne pas les perdre et ne pas les faire maintenant.
 
 **Sous-traitant (RGPD)** : celui qui traite des données personnelles pour le compte d'un autre (le client, responsable du traitement). Il n'a le droit de faire que ce que le client a autorisé par écrit.
+
+## Ajouts A3 à B1 (2026-09-13)
+
+**Upsert** (A3) : écrire « en remplaçant si ça existe déjà ». `assignOrder` remplace l'attribution d'une commande au lieu d'en ajouter une seconde.
+
+**DAL (Data Access Layer) de session** (A7) : `src/lib/dal.ts`, l'unique endroit qui lit la session Auth.js et la traduit en `CurrentUser`. Sans session valide, `verifySession()` redirige vers `/connexion`.
+
+**JWT** (A7) : jeton signé (pas chiffré) qui porte l'identité et le rôle de l'utilisateur, stocké dans un cookie HttpOnly. Le serveur vérifie la signature avec `AUTH_SECRET` : impossible de forger un rôle sans le secret.
+
+**Credentials (fournisseur)** (A7) : la méthode « e-mail + mot de passe » d'Auth.js. `authorize()` reçoit le formulaire, vérifie, et renvoie l'utilisateur ou `null`, sans jamais dire lequel des deux champs est faux.
+
+**scrypt / hachage salé** (A7) : on ne stocke jamais un mot de passe, seulement son hachage avec un sel aléatoire. Vérifier = rehacher la saisie et comparer en temps constant (`timingSafeEqual`).
+
+**Proxy (ex-middleware)** (A7) : `src/proxy.ts`, code exécuté avant toute page. Ici : redirige les anonymes vers la connexion. Runtime Node.js en Next 16.
+
+**Compte d'amorçage** (A7) : le premier compte, défini par variables d'environnement, qui permet d'entrer avant que les comptes existent en base.
+
+**Union discriminée** (B1) : un type `A | B` où un champ commun (`DATA_SOURCE`) dit lequel des deux on a. En mode `db`, `DATABASE_URL` devient obligatoire ; en `mock`, non.
+
+**Pool de connexions** (B1) : petit stock de connexions Postgres réutilisées (`max: 5`) au lieu d'en ouvrir une par requête.
+
+**Route Handler** (B1) : fichier `route.ts` qui répond à une requête HTTP brute (`GET`, `POST`) sans page. `/api/health` en est un.
+
+**instrumentation.ts** (B1) : fichier dont `register()` s'exécute une fois au démarrage du serveur, avant la première requête. Utilisé pour valider l'environnement tôt.
+
+**Docker Compose** (B1) : `compose.yaml` décrit les services locaux (ici Postgres) ; `docker compose up -d` les lance, `down` les arrête, `down -v` efface les données.
+
+**vi.mock / vi.hoisted** (tests) : remplacer un module par une version simulée pour un fichier de test (`server-only`, `next/cache`, la session, l'env). `vi.hoisted` déclare une variable utilisable dans ce remplacement.

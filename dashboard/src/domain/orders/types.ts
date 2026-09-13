@@ -43,4 +43,9 @@ export type Order = {
  * createdAt : le gestionnaire cherche « les commandes à livrer tel jour ».
  * Chaque champ absent = pas de filtre sur ce critère.
  */
-export type OrderFilters = { status?: OrderStatus; date?: string };
+export type OrderFilters = {
+  status?: OrderStatus;
+  date?: string;
+  /** Fiche client (A5) : commandes d'une personne. */
+  customerId?: string;
+};

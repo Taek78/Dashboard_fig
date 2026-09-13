@@ -11,8 +11,8 @@ Mis à jour à la fin du jalon A1 (2026-09-08). À compléter à chaque jalon A 
 | Fonction | Entrées | Sortie | Implémentation actuelle | Requête cible (B3) | Consommateur |
 |---|---|---|---|---|---|
 | `getOrders` | aucune (A2 : `filters?: OrderFilters`) | `Order[]`, triées par créneau croissant (A2 : `sortOrdersBySlot` : date, début, référence, après `filterOrders`) | copie des 14 fixtures après 400 ms | `SELECT … FROM <commandes> [WHERE statut, date] ORDER BY … LIMIT` | `app/(dashboard)/commandes/page.tsx` |
-| `getOrder` | `id: string` | `Order \| null` | `find` par id + clone | `SELECT … WHERE id = $1` | A2 : `commandes/[id]/page.tsx` |
-| `updateOrderStatus` (A2) | `id, from: OrderStatus, to: OrderStatus` | `Order \| null` (`null` si absent ou statut ≠ `from`) | Map mutable | `UPDATE … SET statut = $3 WHERE id = $1 AND statut = $2 RETURNING …` | A2 : `commandes/[id]/actions.ts` |
+| `getOrder` | `id: string` | `Order \| null` | `find` par id + clone | `SELECT … WHERE id = $1` | `commandes/[id]/page.tsx`, `commandes/[id]/actions.ts` |
+| `updateOrderStatus` (A2) | `id, from: OrderStatus, to: OrderStatus` | `Order \| null` (`null` si absent ou statut ≠ `from`) | Map mutable | `UPDATE … SET statut = $3 WHERE id = $1 AND statut = $2 RETURNING …` | `commandes/[id]/actions.ts` (étape 7 du flux) |
 
 ### Session (`src/data/session.ts`)
 
@@ -64,3 +64,49 @@ Champs **non consommés** et à ne jamais mapper : adresse de rue, notes libres 
 
 - **Change** : `src/data/orders.db.ts` (nouveau, `ordersDb: OrdersSource` + `toOrder`), la ligne `const source` de `src/data/orders.ts` (ou son choix par `DATA_SOURCE`, B1), `src/lib/env-schema.ts`, `src/db/`.
 - **Ne change pas** : `src/domain/**`, `src/components/**`, `src/app/**`, `src/lib/format.ts`, `src/lib/simulation.ts`. Si l'un d'eux doit bouger au branchement, c'est un défaut de ce contrat à corriger ici d'abord.
+
+## Domaines ajoutés (A3 → A7, 2026-09-13)
+
+Même convention : la colonne client est **inconnue** partout tant que B2 (introspection) n'a pas eu lieu. Chaque contrat vit dans `src/domain/<domaine>/source.ts`, la façade dans `src/data/<domaine>.ts` choisit mock ou db par `DATA_SOURCE` (`selectSource`).
+
+### Livraisons (`DeliveriesSource`)
+
+| Fonction | Entrées | Sortie | Mock | SQL attendu (B3) | Consommateurs |
+|---|---|---|---|---|---|
+| `getCouriers` | aucune | `Courier[]` | fixtures | `SELECT … FROM <livreurs>` | `livraisons/page.tsx`, `/`, action |
+| `getAssignments` | `date?` | `Assignment[]` | Map par orderId | `SELECT … WHERE date = $1` | idem |
+| `assignOrder` | `Assignment` | `Assignment` | upsert par orderId | `INSERT … ON CONFLICT (commande_id) DO UPDATE` | `livraisons/actions.ts` |
+
+Champs : `Courier.id/name/phone/zone`, `Assignment.orderId/courierId/date/start/end`. Question client Q7 : les créneaux et livreurs existent-ils en base, sous quelle forme ?
+
+### Catalogue (`ProductsSource`)
+
+| Fonction | Entrées | Sortie | Mock | SQL attendu (B3) | Consommateurs |
+|---|---|---|---|---|---|
+| `getProducts` | `filters?` (catégorie, recherche, disponibilité) | `Product[]` triés par nom | filtre + tri purs | `SELECT … WHERE … ORDER BY nom` | `catalogue/page.tsx` |
+| `getProduct` | `id` | `Product \| null` | Map | `SELECT … WHERE id = $1` | `catalogue/[id]/page.tsx`, action |
+| `updateProduct` | `id, { priceCents, available, stockQuantity }` | `Product \| null` | écrit + updatedAt | `UPDATE … SET prix, dispo, stock, maj = now() WHERE id = $1 RETURNING …` | `catalogue/[id]/actions.ts` |
+
+Champs : `priceCents` par kg (unit g) ou par pièce ; `stockQuantity` en g ou pièces ; `category` (vocabulaire provisoire, Q9). Conversion euros → centimes faite par zod, jamais en base.
+
+### Clients (`CustomersSource`)
+
+| Fonction | Entrées | Sortie | Mock | SQL attendu (B3) | Consommateurs |
+|---|---|---|---|---|---|
+| `getCustomers` | `query?` | `Customer[]` triés par nom | recherche pure | `SELECT … WHERE nom ILIKE / email ILIKE / tel LIKE` | `clients/page.tsx` |
+| `getCustomer` | `id` | `Customer \| null` (avec notes) | Map | `SELECT … + notes` | `clients/[id]/page.tsx`, action |
+| `addNote` | `customerId, { text, authorName, createdAt }` | `CustomerNote \| null` | push | `INSERT INTO dashboard_notes …` (table **à créer**, accord Q4) | `clients/[id]/actions.ts` |
+
+Les notes internes sont une donnée du dashboard, pas de l'appli : table préfixée `dashboard_*` à négocier (Q4). L'historique de commandes d'un client passe par `getOrders({ customerId })`.
+
+### Comptes (`UsersSource`, A7)
+
+| Fonction | Entrées | Sortie | Mock | SQL attendu | Consommateurs |
+|---|---|---|---|---|---|
+| `findUserByEmail` | `email` | `UserAccount \| null` | compte d'amorçage seedé depuis l'env | `SELECT … FROM dashboard_users WHERE email = $1` (table **à créer**, Q4/Q5) | `src/auth.ts` |
+
+Champ `passwordHash` : scrypt (`src/lib/password.ts`). Jamais de mot de passe en clair, ni en base ni dans les logs.
+
+### Métriques (A6)
+
+Aucune fonction de source : tout est calculé par `src/domain/metrics/rules.ts` à partir de `getOrders()`. En B3, si les volumes l'exigent, ces agrégations pourront devenir des requêtes `GROUP BY` avec le **même résultat** que les fonctions pures (tests de référence).

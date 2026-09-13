@@ -7,17 +7,33 @@
  * relu la session côté serveur, jamais en faisant confiance au client.
  *
  * Vocabulaire provisoire (question Q5 au client).
- *
- * À écrire ici :
- *   - export const ROLES = ["admin", "gestionnaire", "lecture"] as const
- *   - export type Role = (typeof ROLES)[number]
- *   - export function canChangeOrderStatus(role: Role): boolean  (admin et gestionnaire)
  */
 export const ROLES = ["admin", "gestionnaire", "lecture"] as const;
 export type Role = (typeof ROLES)[number];
 
-//Change le rôle d'une commande : admin et gestionnaire seulement.
-// Le front ne doit jamais faire confiance au client, donc la règle est testée côté serveur dans les Server Actions.
+/*
+ * Règles d'autorisation pures, une par action métier. Testées côté serveur dans
+ * les Server Actions après relecture de la session, jamais en faisant confiance
+ * au client. A7 remplacera la session mock, pas ces règles.
+ */
+const WRITERS: readonly Role[] = ["admin", "gestionnaire"];
+
+/** Changer le statut d'une commande (A2). */
 export function canChangeOrderStatus(role: Role): boolean {
-  return role === "admin" || role === "gestionnaire";
+  return WRITERS.includes(role);
+}
+
+/** Attribuer un livreur (A3). */
+export function canAssignCourier(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
+/** Modifier prix, disponibilité et stock du catalogue (A4). */
+export function canEditProduct(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
+/** Ajouter une note interne sur un client (A5). */
+export function canAddCustomerNote(role: Role): boolean {
+  return WRITERS.includes(role);
 }

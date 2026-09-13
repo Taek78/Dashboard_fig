@@ -1,4 +1,5 @@
-import type { Order } from "@/domain/orders/types";
+import type { OrderStatus } from "@/domain/orders/status";
+import type { Order, OrderFilters } from "@/domain/orders/types";
 
 /*
  * CONTRAT que toute source de commandes doit respecter : le mock aujourd'hui
@@ -16,7 +17,11 @@ import type { Order } from "@/domain/orders/types";
  * panne, et `strict` force l'appelant à le traiter, ce qu'un throw ne fait pas).
  */
 export type OrdersSource = {
-  getOrders(): Promise<Order[]>;
+  getOrders(filters?: OrderFilters): Promise<Order[]>;
   getOrder(id: string): Promise<Order | null>;
-  // A2 : updateOrderStatus(id, from, to): Promise<Order | null>
+  updateOrderStatus(
+    id: string,
+    from: OrderStatus,
+    to: OrderStatus,
+  ): Promise<Order | null>;
 };

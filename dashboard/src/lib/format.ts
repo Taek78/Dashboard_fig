@@ -64,6 +64,15 @@ export function formatQuantity(quantity: number, unit: "piece" | "g"): string {
   return `${kilos.format(quantity / 1000)}${NBSP}kg`;
 }
 
+/** Numéro affiché "06 39 98 00 01" → href "tel:+33639980001" (espaces retirés, 0 initial → +33). */
+export function toTelHref(phone: string): string {
+  const digits = phone.replace(/\s/g, "");
+  const international = digits.startsWith("0")
+    ? `+33${digits.slice(1)}`
+    : digits;
+  return `tel:${international}`;
+}
+
 /** Compteur de la liste filtrée. 0 → "0 commande", 1 → "1 commande", 5 → "5 commandes" */
 export function formatOrdersCount(count: number): string {
   const label = count > 1 ? "commandes" : "commande";

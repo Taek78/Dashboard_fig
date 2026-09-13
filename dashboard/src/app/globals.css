@@ -2,16 +2,27 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-
 /*
- * Thème FIG Back-office : palette mauve en oklch (teinte ~302), déclinée en clair
- * et sombre. Les composants n'utilisent que ces tokens (jamais de couleur en dur) :
+ * Trois modes, choisis par l'attribut data-theme sur <html> (posé avant le premier
+ * rendu par le script de src/app/layout.tsx, mémorisé dans localStorage) :
+ *   - light : clair, mauve discret, beaucoup de blanc.
+ *   - dark  : sombre neutre, mauve adouci.
+ *   - fig   : la « figue » : aubergine profond, rose figue, vert feuille. Sombre.
+ * Le variant `dark:` de Tailwind s'applique en dark ET en fig.
+ *
+ * Les composants n'utilisent que des tokens (jamais de couleur en dur) :
  * changer l'identité visuelle = changer ce fichier.
- * --brand-from / --brand-to : les deux bornes du dégradé de marque (utilitaires
- * bg-gradient-brand et text-gradient-brand ci-dessous).
- * --success / --warning : couleurs sémantiques pour les statuts (livrée, en attente).
+ * --brand-from / --brand-to : bornes du dégradé de marque (bg-gradient-brand).
+ * --success / --warning : couleurs sémantiques (livrée, en attente, stock bas).
+ * --halo-1 / --halo-2 : les deux lueurs du fond de page.
  */
+@custom-variant dark (&:where(
+  [data-theme="dark"],
+  [data-theme="dark"] *,
+  [data-theme="fig"],
+  [data-theme="fig"] *
+));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -60,81 +71,131 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ---------- light (défaut) ---------- */
 :root {
-  --background: oklch(0.99 0.006 305);
-  --foreground: oklch(0.2 0.03 300);
+  color-scheme: light;
+  --radius: 0.875rem;
+  --background: oklch(0.985 0.006 305);
+  --foreground: oklch(0.22 0.03 300);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.03 300);
+  --card-foreground: oklch(0.22 0.03 300);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.03 300);
+  --popover-foreground: oklch(0.22 0.03 300);
   --primary: oklch(0.56 0.22 302);
   --primary-foreground: oklch(0.99 0.01 305);
-  --secondary: oklch(0.95 0.035 305);
+  --secondary: oklch(0.955 0.03 305);
   --secondary-foreground: oklch(0.38 0.14 302);
-  --muted: oklch(0.965 0.015 305);
-  --muted-foreground: oklch(0.5 0.04 300);
-  --accent: oklch(0.94 0.05 305);
+  --muted: oklch(0.965 0.012 305);
+  --muted-foreground: oklch(0.52 0.035 300);
+  --accent: oklch(0.945 0.045 305);
   --accent-foreground: oklch(0.35 0.15 302);
   --destructive: oklch(0.577 0.245 27.325);
   --success: oklch(0.55 0.16 150);
   --warning: oklch(0.58 0.16 65);
   --brand-from: oklch(0.56 0.22 302);
   --brand-to: oklch(0.66 0.2 330);
-  --border: oklch(0.9 0.03 305);
-  --input: oklch(0.9 0.03 305);
+  --border: oklch(0.91 0.02 305);
+  --input: oklch(0.9 0.025 305);
   --ring: oklch(0.62 0.2 302);
   --chart-1: oklch(0.45 0.22 302);
   --chart-2: oklch(0.56 0.22 302);
   --chart-3: oklch(0.68 0.17 302);
   --chart-4: oklch(0.78 0.12 302);
   --chart-5: oklch(0.88 0.07 302);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.965 0.02 305);
-  --sidebar-foreground: oklch(0.25 0.04 300);
+  --sidebar: oklch(0.975 0.012 305);
+  --sidebar-foreground: oklch(0.27 0.04 300);
   --sidebar-primary: oklch(0.56 0.22 302);
   --sidebar-primary-foreground: oklch(0.99 0.01 305);
-  --sidebar-accent: oklch(0.92 0.05 305);
+  --sidebar-accent: oklch(0.93 0.045 305);
   --sidebar-accent-foreground: oklch(0.32 0.14 302);
-  --sidebar-border: oklch(0.88 0.035 305);
+  --sidebar-border: oklch(0.9 0.03 305);
   --sidebar-ring: oklch(0.62 0.2 302);
+  --halo-1: color-mix(in oklch, var(--primary) 12%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 8%, transparent);
 }
 
-.dark {
-  --background: oklch(0.16 0.025 300);
-  --foreground: oklch(0.96 0.01 305);
-  --card: oklch(0.21 0.03 300);
-  --card-foreground: oklch(0.96 0.01 305);
-  --popover: oklch(0.21 0.03 300);
-  --popover-foreground: oklch(0.96 0.01 305);
+/* ---------- dark ---------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: oklch(0.15 0.02 300);
+  --foreground: oklch(0.955 0.01 305);
+  --card: oklch(0.2 0.025 300);
+  --card-foreground: oklch(0.955 0.01 305);
+  --popover: oklch(0.2 0.025 300);
+  --popover-foreground: oklch(0.955 0.01 305);
   --primary: oklch(0.74 0.17 302);
   --primary-foreground: oklch(0.18 0.05 300);
-  --secondary: oklch(0.28 0.05 300);
+  --secondary: oklch(0.27 0.045 300);
   --secondary-foreground: oklch(0.9 0.04 305);
-  --muted: oklch(0.26 0.03 300);
-  --muted-foreground: oklch(0.72 0.04 300);
-  --accent: oklch(0.3 0.07 300);
+  --muted: oklch(0.25 0.025 300);
+  --muted-foreground: oklch(0.72 0.035 300);
+  --accent: oklch(0.3 0.06 300);
   --accent-foreground: oklch(0.94 0.03 305);
   --destructive: oklch(0.704 0.191 22.216);
   --success: oklch(0.72 0.17 150);
   --warning: oklch(0.8 0.16 75);
   --brand-from: oklch(0.7 0.18 302);
   --brand-to: oklch(0.75 0.17 330);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.6 0.18 302);
   --chart-1: oklch(0.85 0.1 302);
   --chart-2: oklch(0.74 0.17 302);
   --chart-3: oklch(0.62 0.2 302);
   --chart-4: oklch(0.5 0.2 302);
   --chart-5: oklch(0.4 0.17 302);
-  --sidebar: oklch(0.19 0.03 300);
+  --sidebar: oklch(0.17 0.025 300);
   --sidebar-foreground: oklch(0.95 0.01 305);
   --sidebar-primary: oklch(0.74 0.17 302);
   --sidebar-primary-foreground: oklch(0.18 0.05 300);
-  --sidebar-accent: oklch(0.28 0.06 300);
+  --sidebar-accent: oklch(0.27 0.055 300);
   --sidebar-accent-foreground: oklch(0.95 0.02 305);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.6 0.18 302);
+  --halo-1: color-mix(in oklch, var(--primary) 18%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 10%, transparent);
+}
+
+/* ---------- fig : aubergine, rose figue, vert feuille ---------- */
+[data-theme="fig"] {
+  color-scheme: dark;
+  --background: oklch(0.19 0.05 335);
+  --foreground: oklch(0.96 0.02 80);
+  --card: oklch(0.24 0.055 335);
+  --card-foreground: oklch(0.96 0.02 80);
+  --popover: oklch(0.24 0.055 335);
+  --popover-foreground: oklch(0.96 0.02 80);
+  --primary: oklch(0.76 0.17 350);
+  --primary-foreground: oklch(0.2 0.06 340);
+  --secondary: oklch(0.31 0.07 335);
+  --secondary-foreground: oklch(0.93 0.04 350);
+  --muted: oklch(0.28 0.05 335);
+  --muted-foreground: oklch(0.78 0.04 340);
+  --accent: oklch(0.34 0.08 340);
+  --accent-foreground: oklch(0.96 0.03 350);
+  --destructive: oklch(0.72 0.19 25);
+  --success: oklch(0.76 0.16 145);
+  --warning: oklch(0.82 0.15 80);
+  --brand-from: oklch(0.72 0.18 350);
+  --brand-to: oklch(0.8 0.15 30);
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.7 0.16 350);
+  --chart-1: oklch(0.86 0.1 350);
+  --chart-2: oklch(0.76 0.17 350);
+  --chart-3: oklch(0.66 0.18 340);
+  --chart-4: oklch(0.55 0.16 335);
+  --chart-5: oklch(0.44 0.12 330);
+  --sidebar: oklch(0.17 0.05 335);
+  --sidebar-foreground: oklch(0.95 0.02 80);
+  --sidebar-primary: oklch(0.76 0.17 350);
+  --sidebar-primary-foreground: oklch(0.2 0.06 340);
+  --sidebar-accent: oklch(0.3 0.07 340);
+  --sidebar-accent-foreground: oklch(0.96 0.03 350);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.7 0.16 350);
+  --halo-1: color-mix(in oklch, var(--primary) 22%, transparent);
+  --halo-2: color-mix(in oklch, var(--success) 12%, transparent);
 }
 
 /* Dégradé de marque, réutilisable partout sans recopier les couleurs. */
@@ -153,17 +214,27 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-    /* Halo mauve discret en haut à droite, sur le fond de page. */
-    background-image: radial-gradient(
-      70rem 45rem at 110% -20%,
-      color-mix(in oklch, var(--primary) 14%, transparent),
-      transparent 65%
-    );
-    background-attachment: fixed;
-  }
   html {
     @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Fond : deux lueurs douces (haut droit, bas gauche), fixes au défilement. */
+    background-image:
+      radial-gradient(60rem 40rem at 105% -15%, var(--halo-1), transparent 65%),
+      radial-gradient(50rem 35rem at -10% 110%, var(--halo-2), transparent 65%);
+    background-attachment: fixed;
+  }
+  /* Changement de thème en douceur, sauf si l'utilisateur refuse les animations. */
+  @media (prefers-reduced-motion: no-preference) {
+    body,
+    [data-slot="card"],
+    [data-slot="sidebar-inner"],
+    [data-slot="sidebar-inset"] {
+      transition:
+        background-color 200ms ease,
+        color 200ms ease,
+        border-color 200ms ease;
+    }
   }
 }

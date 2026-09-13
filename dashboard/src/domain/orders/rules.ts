@@ -31,7 +31,10 @@ export function filterOrders(
       filters.status === undefined || order.status === filters.status;
     const dateOk =
       filters.date === undefined || order.deliverySlot.date === filters.date;
-    return dateOk && statusOk;
+    const customerOk =
+      filters.customerId === undefined ||
+      order.customer.id === filters.customerId;
+    return dateOk && statusOk && customerOk;
   });
 }
 

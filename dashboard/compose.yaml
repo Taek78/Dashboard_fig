@@ -1,0 +1,31 @@
+# Postgres LOCAL de développement (piste B1). Données factices ou anonymisées
+# uniquement : jamais la base du client depuis un poste de dev.
+#
+# - image épinglée en 16 : à réaligner sur `SELECT version();` chez le client (B2),
+#   une version majeure différente change les types renvoyés par drizzle-kit pull.
+# - fig/fig est un secret de dev volontairement trivial : il ne protège qu'une base
+#   locale joignable sur 127.0.0.1 seulement (pas "5432:5432", qui publierait le
+#   port sur toutes les interfaces). Il ne doit JAMAIS servir ailleurs.
+# - volume nommé : les données survivent à `docker compose down` ; `down -v` pour
+#   repartir de zéro.
+#
+#   docker compose up -d      docker compose ps (healthy)      docker compose down
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fig
+      POSTGRES_PASSWORD: fig
+      POSTGRES_DB: fig
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - fig-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fig -d fig"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  fig-pgdata: {}

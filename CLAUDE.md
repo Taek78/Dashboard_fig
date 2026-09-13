@@ -10,7 +10,7 @@ Décisions client connues (2026-09-07) :
 - L'application FIG du client **existe déjà avec sa base de données**. Le dashboard s'y connecte directement : le schéma n'est pas à inventer mais à **introspecter** (`npx drizzle-kit pull`) puis à respecter. Aucune migration sur cette base sans accord explicite du client.
 - Utilisateurs : l'équipe du client. Périmètre par ordre de priorité : gestion des commandes et livraisons, catalogue et stocks, clients et support, métriques et pilotage.
 
-État actuel : jalon A1 livré (coquille, liste des commandes sur fixtures via façade), aucun schéma base. Plan de travail dans `docs/backlog.md` : piste A « frontend sur fixtures » d'abord (A2 en cours : `docs/a2-consignes.md`), piste B « branchements base » ensuite. Tant que A7 (auth) n'est pas livré : aucune `DATABASE_URL` réelle sur le poste, aucun déploiement, aucune donnée personnelle dans les fixtures, jamais `next dev` ailleurs que sur un poste de dev.
+État actuel (2026-09-13) : **piste A livrée en entier (A1 à A7)** et **B1** : commandes, livraisons, catalogue, clients, métriques, tableau de bord, authentification Auth.js (Credentials, compte d'amorçage par env), socle base (compose.yaml, `getDb()`, `/api/health`, `DATA_SOURCE`). Tout tourne sur fixtures (`DATA_SOURCE=mock`). Détail : `docs/a3-b1-livraison.md`. **B2 à B6 bloqués** tant que le client n'a pas répondu aux 9 questions du backlog (accès lecture seule, schéma, accord écrit). Toujours : aucune `DATABASE_URL` du client sur un poste, aucun déploiement, aucune donnée personnelle dans les fixtures.
 
 Glossaire des termes d'architecture pour l'auteur : `docs/glossaire.md`. Tout terme nouveau employé avec lui doit y être ajouté.
 
@@ -20,6 +20,8 @@ L'auteur est un développeur junior en formation : Claude joue le rôle du senio
 
 - Donner des consignes directes et détaillées, avec le pourquoi de chaque choix technique en une ou deux phrases. **Ne pas écrire le code à sa place** sauf demande explicite (« applique », « fais-le toi-même », « corrige », « fais les commits »).
 - **Calibrage (2026-09-08)** : il maîtrise App Router, Server Actions/FormData, cookies serveur, couche pure + Vitest, zod, TypeScript strict, Tailwind. Ne pas réexpliquer ces bases. Pas d'analogies, pas de questions de compréhension, pas d'exercices : il veut avancer vite. Nouveautés à expliquer brièvement la première fois : shadcn base-nova, `server-only`, `loading`/`error.tsx`, groupes de routes, `useActionState`, `searchParams` en `Promise`, Drizzle, Auth.js.
+- **Mode depuis le 2026-09-13** : à la demande de l'auteur, Claude code lui-même les jalons (A2.3 à A2.8 livrés ainsi). Les consignes restent rédigées pour qu'il puisse suivre et reprendre la main ; tests, vérifications et rapport pédagogique court inchangés.
+- **Format des consignes (demande du 2026-09-13)** : chaque étape est une liste numérotée d'instructions d'implémentation (« créer une `Map<string, Order>` », « déclarer `seed(): void` dont le corps fait `store.clear()` puis une boucle… »), chacune suivie d'une phrase sur ce que fait la ligne et pourquoi. Pas de paragraphe de synthèse à traduire soi-même en code. Modèle : `docs/a2-consignes.md` à partir de A2.3.
 - Vérifier systématiquement ses corrections avec les commandes ci-dessous et signaler les erreurs sans les comptabiliser.
 - **Tests (décision du 2026-09-08)** : l'auteur n'écrit pas de tests pour l'instant, il avance sur les fonctionnalités. Claude écrit et maintient les tests dans `dashboard/test/`, en miroir de `src/` (`test/domain/orders/rules.test.ts` teste `src/domain/orders/rules.ts`), à chaque fonctionnalité livrée ou corrigée.
 - Le fonctionnement sécurisé et visible passe avant le style, sauf demande ponctuelle.
@@ -44,7 +46,9 @@ Architecture applicative (détail et justifications dans `docs/backlog.md`) :
 
 - `src/domain/<domaine>/` : types métier en TypeScript simple, `XXX_STATUSES as const` dans `status.ts` (clés anglaises, libellés français), règles pures, schémas zod des **entrées** seulement (`FormData`, `searchParams`), contrat `XxxSource`, fixtures déterministes. Tests correspondants dans `test/domain/<domaine>/`.
 - `src/data/<domaine>.mock.ts` (implémentation fixtures) et `<domaine>.db.ts` (Drizzle, piste B) satisfont le contrat ; `src/data/<domaine>.ts` est la **façade** (`import "server-only"` ligne 1, `const source: XxxSource = xxxMock`) et le seul module que le front importe. `src/data/session.ts` : `getCurrentUser()` mock qui lève hors `development`/`test`, remplacé par `verifySession()` en A7.
-- `src/lib/` : utilitaires purs testés (`format`, `simulation`, `navigation`). `src/components/` : coquille et composants métier ; `src/components/ui/` : shadcn.
+- Domaines existants : `orders`, `deliveries`, `products`, `customers`, `metrics` (agrégations pures), `auth` (rôles, `UserAccount`, `loginSchema`). Chaque domaine métier a sa façade `src/data/<domaine>.ts` qui appelle `selectSource(domaine, mock, db | null)` (B1) : `DATA_SOURCE=db` sans implémentation Drizzle lève une erreur explicite.
+- `src/lib/` : utilitaires purs testés (`format`, `simulation`, `navigation`, `text`, `env-schema`, `password`, `action-result`) ; `env.ts` (`getEnv()` paresseux, server-only) ; `dal.ts` (`verifySession()`). `src/components/` : coquille et composants métier par domaine ; `src/components/ui/` : shadcn.
+- Auth (A7) : `src/auth.ts` (config Auth.js paresseuse), `src/proxy.ts` (redirige les anonymes vers `/connexion`), `src/app/connexion/`, `src/data/session.ts` → `verifySession()`. Base (B1) : `src/db/client.ts` (`getDb()`), `src/db/schema.ts` (vide jusqu'à `drizzle-kit pull`), `src/app/api/health/route.ts`, `src/instrumentation.ts` (validation de l'env au démarrage), `compose.yaml`.
 - Règles : la source renvoie toujours des types métier, jamais des lignes Drizzle ; seul `src/data/<domaine>.ts` importe le mock ; les tests importent le mock ou `src/domain/**`, jamais une façade `server-only` ; `"use client"` seulement là où un hook ou un error boundary l'exige ; `error.tsx` utilise la prop `retry`.
 
 `dashboard/CLAUDE.md` importe `AGENTS.md`, un bloc regénéré par `next dev` à chaque lancement. Le commiter avec le travail en cours plutôt que d'essayer de le retirer.
@@ -55,7 +59,8 @@ Git : la racine du dépôt est ce dossier (`Dashboard_fig/`), branche `main`, re
 
 ```bash
 cd dashboard
-npm run dev           # next dev (Turbopack) sur http://localhost:3000
+npm run dev           # next dev (Turbopack) sur http://localhost:3000 ; exige .env.local (copier .env.example)
+docker compose up -d  # Postgres local (B1), 127.0.0.1:5432, fig/fig ; docker compose down
 npm run build         # next build
 npm run start         # sert le build de production
 npm run check         # typecheck + lint + format:check + test, dans cet ordre
@@ -70,7 +75,7 @@ grep -rn "orders.mock" src --include=*.tsx   # doit rester vide (façade contour
 
 Vérification rituelle avant de considérer une tâche terminée : `npm run check`. ESLint doit rester en version 9 : la 10 casse le plugin React embarqué par `eslint-config-next`.
 
-Tests : Vitest cherche `test/**/*.test.ts` (fonctions pures et fixtures uniquement, pas de rendu de composants), organisés en miroir de `src/`. L'alias `@/` est redéclaré dans `vitest.config.mts` car Vitest ne lit pas le tsconfig. Un test n'importe jamais un module `server-only` (les façades `src/data/*.ts`) : il importe `src/domain/**`, `src/lib/**` ou le mock.
+Tests : Vitest cherche `test/**/*.test.ts` (fonctions pures et fixtures uniquement, pas de rendu de composants), organisés en miroir de `src/`. L'alias `@/` est redéclaré dans `vitest.config.mts` car Vitest ne lit pas le tsconfig. Un test n'importe jamais un module `server-only` (les façades `src/data/*.ts`) : il importe `src/domain/**`, `src/lib/**` ou le mock. Exception encadrée : `test/app/**` teste les Server Actions de bout en bout en neutralisant `server-only` et `next/cache` avec `vi.mock` en tête de fichier (voir `test/app/commandes/actions.test.ts`).
 
 Formatage : Prettier avec `prettier-plugin-tailwindcss` (tri des classes). VS Code formate à la sauvegarde via `.vscode/settings.json` à la racine du workspace ; `.gitattributes` force les fins de ligne LF.
 
@@ -82,11 +87,11 @@ Formatage : Prettier avec `prettier-plugin-tailwindcss` (tri des classes). VS Co
 - **shadcn/ui** (style `base-nova`, primitives `@base-ui/react`, icônes `lucide-react`). Les composants sont copiés dans `src/components/ui/` via `npx shadcn@latest add <nom>` et t'appartiennent : les modifier sur place, ne pas les réinstaller. Le helper `cn()` est dans `src/lib/utils.ts`. Les tokens de couleur shadcn (`--primary`, `--card`…) sont déclarés dans `globals.css` avec le thème clair/sombre.
 - **Drizzle ORM** + driver `postgres` (postgres.js). Schéma attendu dans `src/db/schema.ts`, migrations SQL générées dans `drizzle/` via `npx drizzle-kit generate` puis appliquées avec `npx drizzle-kit migrate` ; `npx drizzle-kit studio` pour explorer les données. La base appartient au client : schéma obtenu par `npx drizzle-kit pull`, jamais de `generate`/`migrate`/`push` vers elle sans accord écrit.
 - **zod** v4 pour valider les `FormData` dans les Server Actions avant tout accès à la base.
-- **Auth.js v5** (`next-auth@beta`) pour l'authentification. Config attendue dans `src/auth.ts`, secret dans `AUTH_SECRET`.
+- **Auth.js v5** (`next-auth@beta`) : `src/auth.ts` (Credentials, JWT 8 h, rôle dans le jeton, `callbacks.authorized` pour le proxy), `src/proxy.ts` (fonction `proxy` nommée : `auth` est asynchrone avec une config paresseuse, `auth(fn)` ne convient pas), `src/lib/dal.ts`. Mots de passe hachés par scrypt (`src/lib/password.ts`), aucun compte en dur : compte d'amorçage par env, comptes en base en piste B.
 - **recharts** v3 pour les graphiques de métriques (composants client uniquement : `"use client"`).
-- **Variables d'environnement** : copier `.env.example` en `.env.local` (ignoré par git). Ne jamais lire `process.env` dans un composant client.
+- **Variables d'environnement** : copier `.env.example` en `.env.local` (ignoré par git) : `DATA_SOURCE=mock|db`, `AUTH_SECRET` (≥ 32, `npx auth secret`), `AUTH_BOOTSTRAP_EMAIL/PASSWORD/NAME` (compte admin d'amorçage), `DATABASE_URL` en mode db. Validées par `src/lib/env-schema.ts` (pur, testé) via `getEnv()` ; une variable manquante fait échouer le démarrage (`instrumentation.ts`). Ne jamais lire `process.env` dans un composant client.
 - **Polices** : Plus Jakarta Sans (texte et titres) et Geist Mono chargées dans `src/app/layout.tsx` via `next/font/google`, exposées en `--font-plus-jakarta` / `--font-geist-mono` et mappées vers `--font-sans` / `--font-mono` dans `globals.css`.
-- **Thème** : palette mauve en oklch (teinte ~302) définie uniquement par tokens dans `globals.css` (clair et `.dark`), plus `--success`, `--warning` et le dégradé de marque `--brand-from` / `--brand-to` (utilitaires `bg-gradient-brand`, `text-gradient-brand`). Jamais de couleur en dur dans un composant. Sidebar en `variant="inset"` : le contenu est une carte flottante.
+- **Thème** : trois modes par `data-theme` sur `<html>` (`light`, `dark`, `fig` : aubergine, rose figue, vert feuille), tokens oklch uniquement dans `globals.css`, plus `--success`, `--warning`, `--halo-1/2` (lueurs du fond) et le dégradé de marque `--brand-from` / `--brand-to` (`bg-gradient-brand`, `text-gradient-brand`). Le variant `dark:` s'applique en dark et en fig. Choix mémorisé dans localStorage (`src/lib/theme.ts`, script inline anti-flash dans `layout.tsx`, sélecteur `src/components/theme-toggle.tsx`). Jamais de couleur en dur dans un composant. Sidebar en `variant="inset"`, contenu borné à 1400 px avec marges généreuses.
 
 ## Conventions
 

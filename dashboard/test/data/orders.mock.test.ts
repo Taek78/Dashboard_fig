@@ -1,12 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MOCK_LATENCY_MS, ordersMock } from "@/data/orders.mock";
+import {
+  MOCK_LATENCY_MS,
+  ordersMock,
+  resetOrdersMock,
+} from "@/data/orders.mock";
 import { ordersFixtures } from "@/domain/orders/fixtures";
 
 /*
  * Timers factices : on n'attend pas réellement les 400 ms de latence simulée,
- * on avance l'horloge à la main.
+ * on avance l'horloge à la main. resetOrdersMock() avant chaque cas : le store est
+ * un singleton de module, une écriture dans un test ne doit pas fuir dans le suivant.
  */
-beforeEach(() => vi.useFakeTimers());
+beforeEach(() => {
+  vi.useFakeTimers();
+  resetOrdersMock();
+});
 afterEach(() => vi.useRealTimers());
 
 async function settle<T>(promise: Promise<T>): Promise<T> {
@@ -15,24 +23,39 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
 }
 
 describe("ordersMock.getOrders", () => {
-  it("renvoie toutes les fixtures après la latence simulée", async () => {
+  it("renvoie toutes les fixtures, triées par créneau, après la latence simulée", async () => {
     const orders = await settle(ordersMock.getOrders());
     expect(orders).toHaveLength(ordersFixtures.length);
-    expect(orders.map((o) => o.id)).toEqual(ordersFixtures.map((o) => o.id));
+    expect(orders[0]?.id).toBe("cmd-0007");
+    expect(orders.at(-1)?.id).toBe("cmd-0012");
   });
 
-  it("renvoie des copies : muter le résultat ne touche pas les fixtures", async () => {
+  it("applique les filtres reçus", async () => {
+    const pending = await settle(ordersMock.getOrders({ status: "pending" }));
+    expect(pending).toHaveLength(3);
+    expect(pending.every((o) => o.status === "pending")).toBe(true);
+
+    const both = await settle(
+      ordersMock.getOrders({ status: "pending", date: "2026-09-08" }),
+    );
+    expect(both.map((o) => o.id)).toEqual(["cmd-0009", "cmd-0010"]);
+  });
+
+  it("renvoie des copies : muter le résultat ne touche ni le store ni les fixtures", async () => {
     const orders = await settle(ordersMock.getOrders());
-    orders[0].status = "cancelled";
-    orders[0].lines.push({
+    const first = orders.find((o) => o.id === "cmd-0001")!;
+    first.status = "cancelled";
+    first.lines.push({
       productId: "prd-x",
       productName: "Intrus",
       quantity: 1,
       unit: "piece",
       lineTotalCents: 1,
     });
+    const again = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(again?.status).toBe("pending");
+    expect(again?.lines).toHaveLength(3);
     expect(ordersFixtures[0].status).toBe("pending");
-    expect(ordersFixtures[0].lines).toHaveLength(3);
   });
 });
 
@@ -50,6 +73,79 @@ describe("ordersMock.getOrder", () => {
     const order = await settle(ordersMock.getOrder("cmd-0001"));
     expect(order).not.toBeNull();
     order!.customer.fullName = "Modifié";
+    const again = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(again?.customer.fullName).toBe("Amel Benali");
     expect(ordersFixtures[0].customer.fullName).toBe("Amel Benali");
+  });
+});
+
+describe("ordersMock.updateOrderStatus", () => {
+  it("écrit le nouveau statut et le rend visible par getOrder et getOrders", async () => {
+    const updated = await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "confirmed"),
+    );
+    expect(updated?.status).toBe("confirmed");
+
+    const byId = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(byId?.status).toBe("confirmed");
+
+    const confirmed = await settle(
+      ordersMock.getOrders({ status: "confirmed" }),
+    );
+    expect(confirmed.map((o) => o.id)).toContain("cmd-0001");
+  });
+
+  it("renvoie null pour un id inconnu", async () => {
+    expect(
+      await settle(
+        ordersMock.updateOrderStatus("cmd-9999", "pending", "confirmed"),
+      ),
+    ).toBeNull();
+  });
+
+  it("renvoie null si le statut attendu (from) ne correspond plus, sans rien écrire", async () => {
+    await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "confirmed"),
+    );
+    const stale = await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "cancelled"),
+    );
+    expect(stale).toBeNull();
+    const order = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(order?.status).toBe("confirmed");
+  });
+
+  it("renvoie une copie : la muter ne change pas le store", async () => {
+    const updated = await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "confirmed"),
+    );
+    updated!.status = "delivered";
+    const order = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(order?.status).toBe("confirmed");
+  });
+
+  it("ne modifie jamais les fixtures", async () => {
+    await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "confirmed"),
+    );
+    expect(ordersFixtures[0].status).toBe("pending");
+  });
+
+  it("n'applique pas la règle métier : pending → delivered passe (la règle vit dans l'action)", async () => {
+    const updated = await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "delivered"),
+    );
+    expect(updated?.status).toBe("delivered");
+  });
+});
+
+describe("resetOrdersMock", () => {
+  it("restaure l'état initial après une écriture", async () => {
+    await settle(
+      ordersMock.updateOrderStatus("cmd-0001", "pending", "confirmed"),
+    );
+    resetOrdersMock();
+    const order = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(order?.status).toBe("pending");
   });
 });

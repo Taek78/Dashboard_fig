@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import {
   Table,
@@ -22,13 +23,15 @@ import { formatEuros, formatSlot } from "@/lib/format";
  *   avec tabular-nums pour que les chiffres se superposent.
  * - Le conteneur arrondi avec bordure et fond carte est partagé avec loading.tsx
  *   (même enveloppe, donc aucun saut visuel au chargement).
- * - Pas de lien sur les lignes en A1 : la cellule Référence l'accueillera en A2.
+ * - La Référence est un lien vers le détail, seule cible cliquable de la ligne : un
+ *   <tr> cliquable n'est ni focusable ni annoncé comme lien. Pas de
+ *   text-muted-foreground sur un lien (contraste 4,5:1 exigé).
  */
 const hideOnMobile = "hidden md:table-cell";
 const numeric = "text-right tabular-nums";
 
 export const tableFrame =
-  "overflow-hidden rounded-xl border bg-card shadow-sm [&_thead]:bg-muted/60";
+  "overflow-hidden rounded-2xl border bg-card shadow-sm [&_td]:py-3 [&_th]:py-3 [&_thead]:bg-muted/40";
 
 export function OrdersTable({ orders }: { orders: Order[] }) {
   return (
@@ -57,8 +60,13 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
         <TableBody>
           {orders.map((order) => (
             <TableRow key={order.id}>
-              <TableCell className="text-muted-foreground font-mono text-xs">
-                {order.reference}
+              <TableCell className="font-mono text-xs">
+                <Link
+                  href={`/commandes/${order.id}`}
+                  className="text-foreground font-medium underline-offset-4 hover:underline focus-visible:underline"
+                >
+                  {order.reference}
+                </Link>
               </TableCell>
               <TableCell className="font-medium">
                 {order.customer.fullName}

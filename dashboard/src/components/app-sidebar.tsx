@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Carrot, CircleUser } from "lucide-react";
+import { Carrot, CircleUser, LogOut } from "lucide-react";
+import { logout } from "@/app/connexion/actions";
 import { NavMain } from "@/components/nav-main";
 import {
   Sidebar,
@@ -11,24 +12,27 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import type { CurrentUser } from "@/domain/auth/types";
 
 /*
- * Colonne de gauche : en-tête (logo + nom), navigation, pied (utilisateur).
+ * Colonne de gauche : en-tête (logo + nom), navigation, pied (utilisateur connecté
+ * et déconnexion). Composant serveur : il assemble ; Sidebar et NavMain sont
+ * clients en interne.
  *
- * Composant serveur : il ne fait qu'assembler. Sidebar est client en interne,
- * NavMain est client ; un composant serveur peut rendre des composants clients.
+ * variant="inset" : le contenu devient une carte flottante. collapsible="icon" :
+ * la barre se réduit à ses icônes.
  *
- * variant="inset" : la sidebar se fond dans le fond de page et le contenu devient
- * une carte flottante arrondie (voir SidebarInset). collapsible="icon" : la barre
- * se réduit à ses icônes au lieu de disparaître.
- *
- * Le « logo » est un carré au dégradé de marque avec l'icône Carrot en attendant
- * celui du client : remplacer <Carrot /> par une <Image /> ne touchera rien d'autre.
- *
- * Pied : render={<div />} et non un bouton, car un bouton focusable sans action est
- * un piège clavier. En A2 ce div deviendra le déclencheur d'un DropdownMenu.
+ * A7 : l'utilisateur vient de verifySession() via le layout. Le bouton de
+ * déconnexion est un formulaire dont l'action est la Server Action logout :
+ * fonctionne sans JavaScript, pas de "use client".
  */
-export function AppSidebar() {
+const ROLE_LABELS = {
+  admin: "Administrateur",
+  gestionnaire: "Gestionnaire",
+  lecture: "Lecture seule",
+} as const;
+
+export function AppSidebar({ user }: { user: CurrentUser }) {
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
@@ -62,13 +66,24 @@ export function AppSidebar() {
               <div className="bg-sidebar-accent text-sidebar-accent-foreground flex size-8 items-center justify-center rounded-full">
                 <CircleUser className="size-4" />
               </div>
-              <div className="flex flex-col leading-tight">
-                <span className="font-medium">Utilisateur démo</span>
+              <div className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate font-medium">{user.name}</span>
                 <span className="text-sidebar-foreground/70 text-xs">
-                  Gestionnaire
+                  {ROLE_LABELS[user.role]}
                 </span>
               </div>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <form action={logout}>
+              <SidebarMenuButton
+                render={<button type="submit" />}
+                tooltip="Se déconnecter"
+              >
+                <LogOut />
+                <span>Se déconnecter</span>
+              </SidebarMenuButton>
+            </form>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

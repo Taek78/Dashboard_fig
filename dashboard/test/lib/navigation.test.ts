@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, isNavActive } from "@/lib/navigation";
 
 describe("NAV_ITEMS", () => {
-  it("pointe vers les cinq sections du back-office, racine en premier", () => {
+  it("pointe vers les six sections du back-office, racine en premier", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
       "/",
       "/commandes",
+      "/livraisons",
       "/catalogue",
       "/clients",
       "/metriques",

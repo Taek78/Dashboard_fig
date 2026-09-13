@@ -5,6 +5,7 @@ import {
   formatOrdersCount,
   formatQuantity,
   formatSlot,
+  toTelHref,
 } from "@/lib/format";
 
 /* Intl insère des espaces insécables (U+202F, U+00A0) : on les normalise avant de comparer. */
@@ -78,5 +79,15 @@ describe("formatOrdersCount", () => {
     expect(formatOrdersCount(0)).toBe(`0${NBSP}commande`);
     expect(formatOrdersCount(1)).toBe(`1${NBSP}commande`);
     expect(formatOrdersCount(14)).toBe(`14${NBSP}commandes`);
+  });
+});
+
+describe("toTelHref", () => {
+  it("retire les espaces et remplace le 0 initial par +33", () => {
+    expect(toTelHref("06 39 98 00 01")).toBe("tel:+33639980001");
+  });
+
+  it("laisse un numéro déjà international tel quel", () => {
+    expect(toTelHref("+33 6 39 98 00 01")).toBe("tel:+33639980001");
   });
 });

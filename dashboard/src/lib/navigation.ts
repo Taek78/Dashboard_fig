@@ -3,6 +3,7 @@ import {
   ChartColumn,
   LayoutDashboard,
   ShoppingBasket,
+  Truck,
   Users,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ import {
 export const NAV_ITEMS = [
   { title: "Tableau de bord", href: "/", icon: LayoutDashboard },
   { title: "Commandes", href: "/commandes", icon: ShoppingBasket },
+  { title: "Livraisons", href: "/livraisons", icon: Truck },
   { title: "Catalogue", href: "/catalogue", icon: Carrot },
   { title: "Clients", href: "/clients", icon: Users },
   { title: "Métriques", href: "/metriques", icon: ChartColumn },
