@@ -4,7 +4,10 @@
  * Pourquoi un fichier à part : le tableau `as const` sert au type OrderStatus, aux
  * libellés, au futur z.enum() des Server Actions et aux <select>. Une seule liste à
  * modifier, tsc force le reste à suivre (Record<OrderStatus, …> refuse une clé
- * manquante). La machine d'états canTransition() (A2) vivra ici, à côté des statuts.
+ * manquante). La machine d'états vit ici aussi : ORDER_TRANSITIONS est une liste
+ * blanche (tout passage non listé est refusé, y compris rester sur place ou revenir
+ * en arrière), consultée par la Server Action changeOrderStatus (refus) et par la
+ * carte Statut du détail (options du <select>).
  *
  * Clés anglaises (identifiants de code), libellés français (interface). Vocabulaire
  * provisoire du front : à aligner sur celui du client (question Q9), puis traduit
@@ -17,7 +20,7 @@ export const ORDER_STATUSES = [
   "delivering",
   "delivered",
   "cancelled",
-] as const;
+] as const; //Avec as const, chaque élément garde son type littéral ("pending", "confirmed"…) et le tableau devient readonly
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -29,3 +32,24 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   delivered: "Livrée",
   cancelled: "Annulée",
 };
+
+const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["delivering", "cancelled"],
+  delivering: ["delivered"],
+  delivered: [],
+  cancelled: [],
+};
+
+/** Vrai si le passage from → to est dans la liste blanche. Renvoie, ne lève pas :
+ *  c'est l'action qui choisit le message. */
+export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return ORDER_TRANSITIONS[from].includes(to);
+}
+
+/** Statuts atteignables depuis `from`, en copie : le tableau de la matrice est
+ *  partagé par tout le serveur, personne ne doit pouvoir le modifier. */
+export function allowedTransitions(from: OrderStatus): OrderStatus[] {
+  return [...ORDER_TRANSITIONS[from]];
+}

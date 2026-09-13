@@ -69,7 +69,7 @@ export function filterOrders(orders: readonly Order[], filters: OrderFilters): O
 export function sortOrdersBySlot(orders: readonly Order[]): Order[];
 ```
 
-`filterOrders` : garde une commande si (`status` absent ou égal) et (`date` absente ou égale à `deliverySlot.date`). `sortOrdersBySlot` : tri par `deliverySlot.date`, puis `start`, puis `reference` (stabilité) ; sur une **copie** (`[...orders].sort(...)`) car `sort` mute son tableau. Les deux renvoient un nouveau tableau : le résultat se stocke.
+`filterOrders` : garde une commande si (`status` absent ou égal) et (`date` absente ou égale à `deliverySlot.date`). `sortOrdersBySlot` : tri par `deliverySlot.date`, puis `start`, puis `reference` (stabilité) ; via `toSorted` (ES2023, connu de `tsc` grâce à `lib: esnext` et de Node 20.9+ exigé par Next) : copie triée garantie, et accepte un `readonly Order[]` là où `sort` est refusé. Les deux renvoient un nouveau tableau : le résultat se stocke.
 
 ### 3. `src/domain/orders/schemas.ts` (nouveau)
 
@@ -306,7 +306,7 @@ curl -s "localhost:3000/commandes?statut=delivered&date=2026-09-08" | grep -c "A
 - **Gardes** : `if (!order) notFound()`, `if (!parsed.success)`, `if (!canChangeOrderStatus(user.role))`. Relire le sens de chaque `if`.
 - **Statut envoyé par le formulaire** : l'action ne lit que `orderId` et `nextStatus` ; le `from` de `updateOrderStatus` vient de `getOrder`, jamais d'un champ caché.
 - **`"use server"`** s'applique au fichier entier : rien d'autre que des actions dans `actions.ts`, et la première ligne de chaque action est `getCurrentUser()`.
-- **`sort()` mute** : toujours `[...orders].sort(...)`.
+- **`sort()` mute** : utiliser `toSorted`, jamais `sort` sur un paramètre.
 - **shadcn** : `npm run format` après `add`, relire le diff de `globals.css`.
 
 ## Parking

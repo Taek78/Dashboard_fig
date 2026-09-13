@@ -36,3 +36,11 @@ export type Order = {
   lines: OrderLine[];
   totalCents: number;
 };
+
+/*
+ * Filtres de la liste, déjà validés (sortie de parseOrderFilters, jamais l'URL brute).
+ * `date` est un jour de livraison "AAAA-MM-JJ" comparé à deliverySlot.date, pas à
+ * createdAt : le gestionnaire cherche « les commandes à livrer tel jour ».
+ * Chaque champ absent = pas de filtre sur ce critère.
+ */
+export type OrderFilters = { status?: OrderStatus; date?: string };
