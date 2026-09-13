@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDateFr,
+  formatDateTimeFr,
   formatEuros,
   formatOrdersCount,
   formatQuantity,
@@ -89,5 +90,13 @@ describe("toTelHref", () => {
 
   it("laisse un numéro déjà international tel quel", () => {
     expect(toTelHref("+33 6 39 98 00 01")).toBe("tel:+33639980001");
+  });
+});
+
+describe("formatDateTimeFr", () => {
+  it("donne le jour et l'heure de Paris (UTC+2 en septembre)", () => {
+    expect(plain(formatDateTimeFr("2026-09-07T08:15:00.000Z"))).toBe(
+      "lun. 7 sept., 10:15",
+    );
   });
 });

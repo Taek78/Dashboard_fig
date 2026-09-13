@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  CANCELLATION_DETAIL_MAX_LENGTH,
+  CANCELLATION_REASONS,
+} from "@/domain/orders/cancellation";
 import { ORDER_STATUSES } from "@/domain/orders/status";
 import type { OrderFilters } from "@/domain/orders/types";
 
@@ -17,10 +21,42 @@ import type { OrderFilters } from "@/domain/orders/types";
  */
 export const orderIdSchema = z.string().trim().min(1).max(64);
 
-export const changeStatusSchema = z.object({
-  orderId: orderIdSchema,
-  nextStatus: z.enum(ORDER_STATUSES),
-});
+/*
+ * Changement de statut. Annuler exige un motif (reason) ; « autre » exige une
+ * précision (detail, 100 caractères au plus). Pour tout autre statut, motif et
+ * précision sont ignorés. Sortie : { orderId, nextStatus, cancellation | null }.
+ */
+export const changeStatusSchema = z
+  .object({
+    orderId: orderIdSchema,
+    nextStatus: z.enum(ORDER_STATUSES),
+    reason: z.enum(CANCELLATION_REASONS).optional(),
+    detail: z.string().trim().max(CANCELLATION_DETAIL_MAX_LENGTH).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.nextStatus !== "cancelled") return;
+    if (!v.reason) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Motif d'annulation requis",
+      });
+    } else if (v.reason === "other" && !v.detail) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["detail"],
+        message: "Précisez le motif",
+      });
+    }
+  })
+  .transform(({ orderId, nextStatus, reason, detail }) => ({
+    orderId,
+    nextStatus,
+    cancellation:
+      nextStatus === "cancelled" && reason
+        ? { reason, detail: reason === "other" ? (detail ?? null) : null }
+        : null,
+  }));
 
 // Clés d'URL en français (?statut=…&date=…), clés de code en anglais : transform.
 // z.object ignore les clés inconnues (simuler…) ; un paramètre répété arrive en

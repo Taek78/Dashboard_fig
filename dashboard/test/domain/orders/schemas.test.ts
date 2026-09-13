@@ -40,6 +40,7 @@ describe("changeStatusSchema", () => {
       expect(result.data).toEqual({
         orderId: "cmd-0001",
         nextStatus: "confirmed",
+        cancellation: null,
       });
     }
   });
@@ -85,6 +86,44 @@ describe("changeStatusSchema", () => {
     if (result.success) {
       expect("role" in result.data).toBe(false);
     }
+  });
+
+  it("annulée : motif requis, précision requise et bornée pour « autre »", () => {
+    const base = { orderId: "cmd-0001", nextStatus: "cancelled" };
+    const missing = changeStatusSchema.safeParse(base);
+    expect(missing.success).toBe(false);
+    if (!missing.success) {
+      expect(missing.error.issues[0]?.path).toEqual(["reason"]);
+    }
+    expect(changeStatusSchema.parse({ ...base, reason: "stock" })).toEqual({
+      ...base,
+      cancellation: { reason: "stock", detail: null },
+    });
+    expect(
+      changeStatusSchema.parse({ ...base, reason: "stock", detail: "ignoré" })
+        .cancellation,
+    ).toEqual({ reason: "stock", detail: null });
+    expect(
+      changeStatusSchema.safeParse({ ...base, reason: "other" }).success,
+    ).toBe(false);
+    expect(
+      changeStatusSchema.safeParse({ ...base, reason: "other", detail: " " })
+        .success,
+    ).toBe(false);
+    expect(
+      changeStatusSchema.safeParse({
+        ...base,
+        reason: "other",
+        detail: "x".repeat(101),
+      }).success,
+    ).toBe(false);
+    expect(
+      changeStatusSchema.parse({ ...base, reason: "other", detail: " Absent " })
+        .cancellation,
+    ).toEqual({ reason: "other", detail: "Absent" });
+    expect(
+      changeStatusSchema.safeParse({ ...base, reason: "weather" }).success,
+    ).toBe(false);
   });
 
   it("refuse un statut envoyé en tableau (paramètre répété)", () => {

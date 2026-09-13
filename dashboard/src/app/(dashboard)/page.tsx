@@ -3,11 +3,13 @@ import { ArrowRight, Euro, ShoppingBasket, Truck, Wallet } from "lucide-react";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { PeriodForm } from "@/components/metrics/period-form";
 import { TaxModeSwitch } from "@/components/metrics/tax-mode-switch";
-import { OrdersTable } from "@/components/orders/orders-table";
+import { OrdersCards } from "@/components/orders/orders-cards";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOrders } from "@/data/orders";
+import { getCurrentUser } from "@/data/session";
+import { canChangeOrderStatus } from "@/domain/auth/roles";
 import { todayInParis } from "@/domain/deliveries/rules";
 import {
   applyTaxMode,
@@ -42,9 +44,10 @@ export default async function TableauDeBordPage({
     ? `du=${query.customRange.from}&au=${query.customRange.to}`
     : `periode=${query.period}`;
 
-  const [all, pending] = await Promise.all([
+  const [all, pending, user] = await Promise.all([
     getOrders(),
     getOrders({ status: "pending" }),
+    getCurrentUser(),
   ]);
   const orders = filterByRange(all, range);
   const kpis = computeKpis(orders);
@@ -129,7 +132,10 @@ export default async function TableauDeBordPage({
           Commandes à confirmer ({pending.length}, toutes dates)
         </h2>
         {pending.length > 0 ? (
-          <OrdersTable orders={pending} />
+          <OrdersCards
+            orders={pending}
+            canChangeStatus={canChangeOrderStatus(user.role)}
+          />
         ) : (
           <p className="text-muted-foreground text-sm">
             Aucune commande en attente de confirmation.

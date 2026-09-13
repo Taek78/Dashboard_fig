@@ -14,6 +14,10 @@ Mis à jour à la fin du jalon A1 (2026-09-08). À compléter à chaque jalon A 
 | `getOrder` | `id: string` | `Order \| null` | `find` par id + clone | `SELECT … WHERE id = $1` | `commandes/[id]/page.tsx`, `commandes/[id]/actions.ts` |
 | `updateOrderStatus` (A2) | `id, from: OrderStatus, to: OrderStatus` | `Order \| null` (`null` si absent ou statut ≠ `from`) | Map mutable | `UPDATE … SET statut = $3 WHERE id = $1 AND statut = $2 RETURNING …` | `commandes/[id]/actions.ts` (étape 7 du flux) |
 
+### Historique des statuts (`OrderEvent`, 2026-09-14)
+
+`updateOrderStatus(id, { from, to, actor, cancellation })` écrit le statut, le motif d'annulation (colonne à prévoir sur la commande : `reason` parmi stock | delivery | other, `detail` ≤ 100 caractères, à communiquer au client par l'application) et l'événement `{ orderId, from, to, actor { id, name }, at }` dans la MÊME transaction que le statut (table `dashboard_order_events`, propriété du dashboard, à créer sous accord écrit en B2) ; `getOrderEvents(orderId)` les relit du plus récent au plus ancien pour la fiche commande. Le mock horodate avec une constante, la base mettra `now()`.
+
 ### Session (`src/data/session.ts`)
 
 | Fonction | Entrées | Sortie | Implémentation actuelle | Cible (A7) | Consommateur |

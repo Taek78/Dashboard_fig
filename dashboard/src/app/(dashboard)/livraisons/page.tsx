@@ -27,8 +27,9 @@ import { formatDateFr } from "@/lib/format";
 
 /*
  * Tournée du jour : toutes les commandes livrées un jour donné (?date=, défaut :
- * aujourd'hui en Europe/Paris), en cartes horizontales avec le changement de
- * statut. Composant serveur : lectures via les façades, compteurs purs.
+ * aujourd'hui en Europe/Paris), en cartes de terrain (ordre de passage, appel,
+ * itinéraire, geste suivant en un bouton) avec la progression de la tournée.
+ * Composant serveur : lectures via les façades, compteurs purs.
  * L'attribution de livreur a été retirée (décision du 2026-09-13).
  */
 export const metadata: Metadata = { title: "Livraisons" };
@@ -92,12 +93,32 @@ export default async function LivraisonsPage({
           ))}
         </div>
 
-        <p role="status" className="text-muted-foreground text-sm">
-          {formatDateFr(date)} : {summary.total} commande{plural(summary.total)}
-          {summary.total > 0
-            ? ` · ${summary.toConfirm} à confirmer · ${summary.inProgress} en cours · ${summary.done} terminée${plural(summary.done)}`
-            : ""}
-        </p>
+        <div className="flex flex-col gap-2">
+          <p role="status" className="text-muted-foreground text-sm">
+            {formatDateFr(date)} : {summary.total} commande
+            {plural(summary.total)}
+            {summary.total > 0
+              ? ` · ${summary.toConfirm} à confirmer · ${summary.inProgress} en cours · ${summary.done} terminée${plural(summary.done)}`
+              : ""}
+          </p>
+          {summary.total > 0 ? (
+            <div
+              role="progressbar"
+              aria-label="Avancement de la tournée"
+              aria-valuemin={0}
+              aria-valuemax={summary.total}
+              aria-valuenow={summary.done}
+              className="bg-muted h-2 w-full max-w-md overflow-hidden rounded-full"
+            >
+              <div
+                className="bg-gradient-brand h-full rounded-full transition-[width]"
+                style={{
+                  width: `${Math.round((summary.done / summary.total) * 100)}%`,
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
 
         {orders.length > 0 ? (
           <TourCards

@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetOrdersMock, MOCK_LATENCY_MS } from "@/data/orders.mock";
+import {
+  MOCK_LATENCY_MS,
+  ordersMock,
+  resetOrdersMock,
+} from "@/data/orders.mock";
 
 /*
  * Session simulée : getCurrentUser() (Auth.js depuis A7) est remplacé par un
@@ -76,6 +80,16 @@ describe("changeOrderStatus", () => {
       message: "Statut mis à jour : Confirmée.",
     });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+
+    const history = ordersMock.getOrderEvents("cmd-0001");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect(await history).toMatchObject([
+      {
+        from: "pending",
+        to: "confirmed",
+        actor: { id: "usr-test", name: "Testeur" },
+      },
+    ]);
   });
 
   it("refuse une transition hors liste blanche avec un message français", async () => {
@@ -146,6 +160,63 @@ describe("changeOrderStatus", () => {
     expect(reopened.status).toBe("error");
   });
 
+  it("annuler exige un motif, et une précision pour « Autre »", async () => {
+    const noReason = await run({
+      orderId: "cmd-0001",
+      nextStatus: "cancelled",
+    });
+    expect(noReason.status).toBe("error");
+    if (noReason.status === "error") {
+      expect(noReason.message).toContain("motif d'annulation");
+    }
+    const noDetail = await run({
+      orderId: "cmd-0001",
+      nextStatus: "cancelled",
+      reason: "other",
+      detail: "  ",
+    });
+    expect(noDetail.status).toBe("error");
+    const tooLong = await run({
+      orderId: "cmd-0001",
+      nextStatus: "cancelled",
+      reason: "other",
+      detail: "x".repeat(101),
+    });
+    expect(tooLong.status).toBe("error");
+    expect(revalidatePath).not.toHaveBeenCalled();
+
+    const ok = await run({
+      orderId: "cmd-0001",
+      nextStatus: "cancelled",
+      reason: "other",
+      detail: " Client absent ",
+    });
+    expect(ok).toEqual({
+      status: "success",
+      message:
+        "Commande annulée. Motif communiqué au client : Autre : Client absent.",
+    });
+    const order = ordersMock.getOrder("cmd-0001");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect((await order)?.cancellation).toEqual({
+      reason: "other",
+      detail: "Client absent",
+    });
+  });
+
+  it("le motif est ignoré pour un statut autre qu'annulée", async () => {
+    const result = await run({
+      orderId: "cmd-0001",
+      nextStatus: "confirmed",
+      reason: "stock",
+      detail: "peu importe",
+    });
+    expect(result.status).toBe("success");
+    const order = ordersMock.getOrder("cmd-0001");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect((await order)?.cancellation).toBeNull();
+  });
+
   it("sur un champ répété, ne garde que la dernière valeur, elle aussi validée", async () => {
     // Object.fromEntries(formData) conserve la dernière occurrence d'une clé :
     // « cancelled » ici. Elle passe par zod et canTransition comme n'importe quelle
@@ -153,10 +224,12 @@ describe("changeOrderStatus", () => {
     const result = await run({
       orderId: "cmd-0001",
       nextStatus: ["confirmed", "cancelled"],
+      reason: "stock",
     });
     expect(result).toEqual({
       status: "success",
-      message: "Statut mis à jour : Annulée.",
+      message:
+        "Commande annulée. Motif communiqué au client : Stock insuffisant.",
     });
 
     resetOrdersMock();

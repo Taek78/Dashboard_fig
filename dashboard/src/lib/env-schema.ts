@@ -35,16 +35,35 @@ const commonFields = {
     .min(1)
     .max(80)
     .default("Administrateur"),
+  /* Second compte, rôle gestionnaire (2026-09-14) : les trois ensemble ou aucun. */
+  AUTH_MANAGER_EMAIL: z.email().optional(),
+  AUTH_MANAGER_PASSWORD: z.string().min(12).optional(),
+  AUTH_MANAGER_NAME: z.string().trim().min(1).max(80).optional(),
 };
 
-export const envSchema = z.discriminatedUnion("DATA_SOURCE", [
-  z.object({ DATA_SOURCE: z.literal("mock"), ...commonFields }),
-  z.object({
-    DATA_SOURCE: z.literal("db"),
-    DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
-    ...commonFields,
-  }),
-]);
+export const envSchema = z
+  .discriminatedUnion("DATA_SOURCE", [
+    z.object({ DATA_SOURCE: z.literal("mock"), ...commonFields }),
+    z.object({
+      DATA_SOURCE: z.literal("db"),
+      DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+      ...commonFields,
+    }),
+  ])
+  .refine(
+    (env) =>
+      [env.AUTH_MANAGER_EMAIL, env.AUTH_MANAGER_PASSWORD].every(
+        (v) => v === undefined,
+      ) ||
+      [env.AUTH_MANAGER_EMAIL, env.AUTH_MANAGER_PASSWORD].every(
+        (v) => v !== undefined,
+      ),
+    {
+      message:
+        "AUTH_MANAGER_EMAIL et AUTH_MANAGER_PASSWORD vont ensemble (compte gestionnaire).",
+      path: ["AUTH_MANAGER_PASSWORD"],
+    },
+  );
 
 export type Env = z.infer<typeof envSchema>;
 

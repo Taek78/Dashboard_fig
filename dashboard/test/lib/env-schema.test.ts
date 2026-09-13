@@ -126,3 +126,31 @@ describe("gardes de production", () => {
     ).not.toThrow();
   });
 });
+
+describe("compte gestionnaire", () => {
+  it("accepte les deux variables ensemble, refuse l'une sans l'autre", () => {
+    expect(() =>
+      parseEnv({
+        DATA_SOURCE: "mock",
+        ...auth,
+        AUTH_MANAGER_EMAIL: "gestion@example.invalid",
+        AUTH_MANAGER_PASSWORD: "y".repeat(12),
+      }),
+    ).not.toThrow();
+    expect(() =>
+      parseEnv({
+        DATA_SOURCE: "mock",
+        ...auth,
+        AUTH_MANAGER_EMAIL: "gestion@example.invalid",
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        DATA_SOURCE: "mock",
+        ...auth,
+        AUTH_MANAGER_EMAIL: "gestion@example.invalid",
+        AUTH_MANAGER_PASSWORD: "court",
+      }),
+    ).toThrow();
+  });
+});

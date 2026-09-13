@@ -1,8 +1,9 @@
 "use client";
 
 import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
-import { type FormEvent, useActionState } from "react";
+import { useActionState, useState } from "react";
 import { changeOrderStatus } from "@/app/(dashboard)/commandes/[id]/actions";
+import { CancellationFields } from "@/components/orders/cancellation-fields";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,17 +15,17 @@ import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 
 /*
- * Formulaire de changement de statut. Seul nouveau fichier "use client" de A2,
- * imposé par useActionState (hook). Il n'importe jamais @/data/* : il part dans le
- * navigateur.
+ * Formulaire de changement de statut de la fiche commande (client :
+ * useActionState). Il n'importe jamais @/data/* : il part dans le navigateur.
  *
  * - `allowed` vient de la page (règle pure côté serveur) : le client ne décide
  *   jamais des options, et l'action les recalcule de toute façon.
  * - Option vide + required : sans elle, le premier statut serait présélectionné et
  *   un clic réflexe changerait la commande.
- * - key={currentStatus} sur le SELECT, pas sur le form : après un succès la page se
- *   re-rend avec un nouveau statut, la key remet « Choisir un statut » sans
- *   remonter le hook (le message resterait effacé sinon).
+ * - key={currentStatus} sur le SELECT : après un succès la page se re-rend avec un
+ *   nouveau statut, la key remet « Choisir un statut » sans remonter le hook.
+ * - Choisir « Annulée » fait apparaître le motif à communiquer au client
+ *   (CancellationFields) : c'est la confirmation, exigée aussi par l'action.
  * - La région role="status" est rendue dès le premier rendu, même vide : un lecteur
  *   d'écran n'annonce que les changements d'une région live déjà dans le DOM.
  */
@@ -43,24 +44,10 @@ export function OrderStatusForm({
     changeOrderStatus,
     idleActionResult,
   );
-
-  // Annuler est destructif : confirmation avant l'envoi.
-  function confirmIfCancelling(event: FormEvent<HTMLFormElement>) {
-    const next = new FormData(event.currentTarget).get("nextStatus");
-    if (
-      next === "cancelled" &&
-      !window.confirm("Annuler cette commande ? Le client ne sera pas livré.")
-    ) {
-      event.preventDefault();
-    }
-  }
+  const [cancelling, setCancelling] = useState(false);
 
   return (
-    <form
-      action={formAction}
-      onSubmit={confirmIfCancelling}
-      className="flex flex-col gap-3"
-    >
+    <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="orderId" value={orderId} />
 
       <div className="grid gap-1.5">
@@ -71,6 +58,7 @@ export function OrderStatusForm({
           name="nextStatus"
           required
           defaultValue=""
+          onChange={(e) => setCancelling(e.target.value === "cancelled")}
           className="w-full"
         >
           <NativeSelectOption value="" disabled>
@@ -84,9 +72,20 @@ export function OrderStatusForm({
         </NativeSelect>
       </div>
 
+      {cancelling ? (
+        <div
+          role="group"
+          aria-label="Annulation de la commande"
+          className="border-destructive/40 bg-destructive/5 rounded-xl border p-3"
+        >
+          <CancellationFields />
+        </div>
+      ) : null}
+
       <Button
         type="submit"
         disabled={pending}
+        variant={cancelling ? "destructive" : "default"}
         className="w-full sm:w-auto sm:self-start"
       >
         {pending ? (
@@ -94,6 +93,8 @@ export function OrderStatusForm({
             <LoaderCircle className="animate-spin" />
             Enregistrement…
           </>
+        ) : cancelling ? (
+          "Confirmer l'annulation"
         ) : (
           "Changer le statut"
         )}

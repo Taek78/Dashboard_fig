@@ -1,3 +1,4 @@
+import type { Cancellation } from "@/domain/orders/cancellation";
 import type { OrderStatus } from "@/domain/orders/status";
 
 /*
@@ -35,6 +36,8 @@ export type Order = {
   deliveryPostalCode: string;
   lines: OrderLine[];
   totalCents: number;
+  /** Motif communiqué au client quand la commande est annulée, sinon null. */
+  cancellation: Cancellation | null;
 };
 
 /*
@@ -48,4 +51,33 @@ export type OrderFilters = {
   date?: string;
   /** Fiche client (A5) : commandes d'une personne. */
   customerId?: string;
+};
+
+/** Qui a fait le geste : l'utilisateur de la session, jamais un champ de formulaire. */
+export type OrderActor = { id: string; name: string };
+
+/*
+ * Trace métier durable d'un changement de statut (2026-09-14) : qui, quand, de
+ * quel statut à quel statut. Écrite par la source en même temps que le statut
+ * (une transaction en base), lue par la fiche commande. Jamais modifiée.
+ */
+export type OrderEvent = {
+  id: string;
+  orderId: string;
+  from: OrderStatus;
+  to: OrderStatus;
+  actor: OrderActor;
+  /** Motif, seulement pour un passage à « annulée ». */
+  cancellation: Cancellation | null;
+  /** ISO 8601 avec fuseau. */
+  at: string;
+};
+
+/** Ce que la Server Action transmet à la source pour changer un statut. */
+export type StatusChange = {
+  /** Statut RELU par l'action, jamais celui que le formulaire prétend. */
+  from: OrderStatus;
+  to: OrderStatus;
+  actor: OrderActor;
+  cancellation: Cancellation | null;
 };

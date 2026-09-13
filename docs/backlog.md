@@ -140,6 +140,7 @@ Arbitrages du tech lead entre les trois rapports :
 11. **Usage de l'appli** : d'où viendront téléchargements, inscriptions, réclamations et notes (App Store Connect, Google Play Console, outil de support) ? Export mensuel manuel ou accès API ? Le dashboard les attend par mois civil (`src/domain/engagement`).
 10. **TVA** : les montants stockés côté appli sont-ils TTC (hypothèse du dashboard) ou HT ? Quel taux (5,5 % alimentaire, 20 % sur certains produits transformés ?) ? Le dashboard déduit aujourd'hui le HT des TTC à 5,5 % (`src/domain/metrics/rules.ts`, `VAT_RATE`).
 9. **Vocabulaire** : captures d'écran de l'application FIG, liste des statuts et des créneaux tels que le client les nomme ?
+13. **Adresse de livraison** : la rue est-elle disponible (le lien « Itinéraire » de la tournée n'a aujourd'hui que code postal et ville) ? Coordonnées GPS ? Instructions d'accès (digicode, étage) ?
 12. **Articles « à lire »** : l'application affiche-t-elle déjà des articles (conseils, recettes, science, actualité) ? Format du texte (brut, Markdown, HTML), hébergement des images, planification de parution ? Le dashboard les gère aujourd'hui en texte brut avec une date de parution et un indicateur visible/masqué (`src/domain/articles`).
 
 ## Parking (ne pas rouvrir avant la fin du jalon en cours)

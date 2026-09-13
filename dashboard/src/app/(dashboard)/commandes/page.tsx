@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Inbox, SearchX } from "lucide-react";
 import { OrdersFilters } from "@/components/orders/orders-filters";
-import { OrdersTable } from "@/components/orders/orders-table";
+import { OrdersCards } from "@/components/orders/orders-cards";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { getOrders } from "@/data/orders";
+import { getCurrentUser } from "@/data/session";
+import { canChangeOrderStatus } from "@/domain/auth/roles";
 import { parseOrderFilters } from "@/domain/orders/schemas";
 import { formatOrdersCount } from "@/lib/format";
 import { readSimulationMode } from "@/lib/simulation";
@@ -21,8 +23,9 @@ import { readSimulationMode } from "@/lib/simulation";
 /*
  * Liste des commandes. Composant serveur async : lit l'URL une fois, en tire le
  * mode de simulation (dev seulement) et les filtres validés, charge via la façade
- * (@/data/orders, jamais le mock), rend la barre de filtres, le compteur et le
- * tableau ou l'un des deux états vides.
+ * (@/data/orders, jamais le mock), rend la barre de filtres, le compteur et les
+ * cartes (même présentation que la tournée, avec les actions) ou l'un des deux
+ * états vides.
  *
  * Deux états vides : « rien ne correspond aux filtres » (proposer de réinitialiser)
  * et « aucune commande du tout » n'appellent pas la même action.
@@ -45,7 +48,10 @@ export default async function CommandesPage({
 
   const filters = parseOrderFilters(raw);
   const isFiltered = filters.status !== undefined || filters.date !== undefined;
-  const orders = mode === "vide" ? [] : await getOrders(filters);
+  const [orders, user] = await Promise.all([
+    mode === "vide" ? Promise.resolve([]) : getOrders(filters),
+    getCurrentUser(),
+  ]);
 
   return (
     <>
@@ -59,7 +65,10 @@ export default async function CommandesPage({
           {formatOrdersCount(orders.length)}
         </p>
         {orders.length > 0 ? (
-          <OrdersTable orders={orders} />
+          <OrdersCards
+            orders={orders}
+            canChangeStatus={canChangeOrderStatus(user.role)}
+          />
         ) : isFiltered ? (
           <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
             <EmptyHeader>

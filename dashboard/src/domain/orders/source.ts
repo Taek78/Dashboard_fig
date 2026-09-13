@@ -1,5 +1,9 @@
-import type { OrderStatus } from "@/domain/orders/status";
-import type { Order, OrderFilters } from "@/domain/orders/types";
+import type {
+  Order,
+  OrderEvent,
+  OrderFilters,
+  StatusChange,
+} from "@/domain/orders/types";
 
 /*
  * CONTRAT que toute source de commandes doit respecter : le mock aujourd'hui
@@ -15,13 +19,15 @@ import type { Order, OrderFilters } from "@/domain/orders/types";
  * Choix : async dès maintenant (la vraie base le sera, on évite d'ajouter des await
  * partout plus tard) ; `null` pour « introuvable » (cas métier normal, pas une
  * panne, et `strict` force l'appelant à le traiter, ce qu'un throw ne fait pas).
+ *
+ * 2026-09-14 : updateOrderStatus reçoit un StatusChange (statut relu, statut visé,
+ * acteur, motif d'annulation éventuel) et ÉCRIT l'événement d'historique avec le
+ * statut (même transaction en base) ; getOrderEvents le relit, du plus récent au
+ * plus ancien. Mise à jour conditionnelle : null si `from` ne correspond plus.
  */
 export type OrdersSource = {
   getOrders(filters?: OrderFilters): Promise<Order[]>;
   getOrder(id: string): Promise<Order | null>;
-  updateOrderStatus(
-    id: string,
-    from: OrderStatus,
-    to: OrderStatus,
-  ): Promise<Order | null>;
+  updateOrderStatus(id: string, change: StatusChange): Promise<Order | null>;
+  getOrderEvents(orderId: string): Promise<OrderEvent[]>;
 };

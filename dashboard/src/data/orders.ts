@@ -35,6 +35,8 @@ export const getOrder: OrdersSource["getOrder"] = (id) => source.getOrder(id);
 // A2 : écriture conditionnelle. resetOrdersMock() du mock n'est PAS réexportée : hors contrat.
 export const updateOrderStatus: OrdersSource["updateOrderStatus"] = (
   id,
-  from,
-  to,
-) => source.updateOrderStatus(id, from, to);
+  change,
+) => source.updateOrderStatus(id, change);
+// 2026-09-14 : historique des changements de statut, du plus récent au plus ancien.
+export const getOrderEvents: OrdersSource["getOrderEvents"] = (orderId) =>
+  source.getOrderEvents(orderId);

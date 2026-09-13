@@ -150,4 +150,10 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Dependabot / CI** (outillage) : le robot GitHub qui ouvre des PR de mise à jour des dépendances, et le workflow qui rejoue `npm run check` et `npm audit` à chaque push.
 
+**Motif d'annulation** (métier) : raison communiquée au client quand l'équipe annule une commande : stock insuffisant, livraison indisponible, ou autre avec une précision libre de 100 caractères au plus. Exigé côté serveur par zod, stocké sur la commande et dans l'historique.
+
+**Événement de commande (OrderEvent)** (métier) : trace immuable d'un changement de statut, avec l'acteur et l'instant. Écrit en même temps que le statut (une seule transaction), jamais modifié, affiché en historique sur la fiche.
+
+**Test de bout en bout navigateur (Playwright)** (tests) : un vrai navigateur (Chromium) ouvre le site construit, remplit les formulaires et vérifie l'écran. Complète Vitest, qui ne rend aucun composant. Fichiers `e2e/*.spec.ts`, lancés par `npm run test:e2e` après un build.
+
 **vi.mock / vi.hoisted** (tests) : remplacer un module par une version simulée pour un fichier de test (`server-only`, `next/cache`, la session, l'env). `vi.hoisted` déclare une variable utilisable dans ce remplacement.

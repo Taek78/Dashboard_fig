@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getOrder, updateOrderStatus } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { canChangeOrderStatus } from "@/domain/auth/roles";
+import { formatCancellation } from "@/domain/orders/cancellation";
 import { changeStatusSchema } from "@/domain/orders/schemas";
 import { canTransition, ORDER_STATUS_LABELS } from "@/domain/orders/status";
 import type { ActionResult } from "@/lib/action-result";
@@ -23,6 +24,8 @@ const MESSAGES = {
   forbidden:
     "Vous n'avez pas les droits pour modifier le statut d'une commande.",
   invalid: "Le statut choisi n'est pas valide.",
+  reason:
+    "Indiquez le motif d'annulation (et une précision de 100 caractères au plus pour « Autre »).",
   notFound: "Cette commande n'existe plus.",
   alreadySet: "La commande est déjà à ce statut.",
   conflict: "Cette commande a changé entre-temps, la page a été actualisée.",
@@ -49,9 +52,15 @@ export async function changeOrderStatus(
   // 3. Validation : la source ne reçoit jamais une valeur non validée.
   const parsed = changeStatusSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
-    return { status: "error", message: MESSAGES.invalid };
+    const reasonIssue = parsed.error.issues.some(
+      (i) => i.path[0] === "reason" || i.path[0] === "detail",
+    );
+    return {
+      status: "error",
+      message: reasonIssue ? MESSAGES.reason : MESSAGES.invalid,
+    };
   }
-  const { orderId, nextStatus } = parsed.data;
+  const { orderId, nextStatus, cancellation } = parsed.data;
 
   try {
     // 4. Relecture : l'état réel, pas celui que le formulaire prétend.
@@ -74,8 +83,14 @@ export async function changeOrderStatus(
       };
     }
 
-    // 7. Écriture conditionnelle : `from` est le statut RELU, jamais une valeur du client.
-    const updated = await updateOrderStatus(order.id, order.status, nextStatus);
+    // 7. Écriture conditionnelle : `from` est le statut RELU, jamais une valeur du
+    //    client ; l'acteur vient de la session et entre dans l'historique.
+    const updated = await updateOrderStatus(order.id, {
+      from: order.status,
+      to: nextStatus,
+      actor: { id: user.id, name: user.name },
+      cancellation,
+    });
     if (!updated) {
       revalidatePath("/", "layout");
       return { status: "error", message: MESSAGES.conflict };
@@ -95,7 +110,9 @@ export async function changeOrderStatus(
     // 9.
     return {
       status: "success",
-      message: `Statut mis à jour : ${ORDER_STATUS_LABELS[nextStatus]}.`,
+      message: cancellation
+        ? `Commande annulée. Motif communiqué au client : ${formatCancellation(cancellation)}.`
+        : `Statut mis à jour : ${ORDER_STATUS_LABELS[nextStatus]}.`,
     };
   } catch (error) {
     // Côté serveur seulement, sans nom ni e-mail ; le client reçoit un message générique.

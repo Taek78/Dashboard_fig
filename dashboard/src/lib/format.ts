@@ -26,6 +26,15 @@ const dateFr = new Intl.DateTimeFormat("fr-FR", {
 
 const NBSP = "\u00A0";
 
+const dateTimeFr = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/Paris",
+});
+
 const kilos = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 /** Centimes entiers → montant en euros formaté. 2490 → "24,90 €" */
@@ -36,6 +45,11 @@ export function formatEuros(cents: number): string {
 /** Date ISO (courte ou complète) → jour abrégé, numéro, mois. "2026-09-08" → "mar. 8 sept." */
 export function formatDateFr(iso: string): string {
   return dateFr.format(new Date(iso));
+}
+
+/** Instant ISO → jour et heure de Paris. "2026-09-07T08:15:00.000Z" → "lun. 7 sept., 10:15" */
+export function formatDateTimeFr(iso: string): string {
+  return dateTimeFr.format(new Date(iso));
 }
 
 /** Créneau de livraison → date + plage horaire. { date, start: "09:00", end: "11:00" } → "mar. 8 sept., 09:00–11:00" */

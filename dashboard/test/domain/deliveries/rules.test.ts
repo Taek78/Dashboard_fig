@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   deliveryDates,
+  itineraryUrl,
+  nextDeliveryStep,
+  nextStopIndex,
   summarizeTour,
   todayInParis,
 } from "@/domain/deliveries/rules";
@@ -54,5 +57,34 @@ describe("summarizeTour", () => {
       inProgress: 0,
       done: 0,
     });
+  });
+});
+
+describe("nextDeliveryStep", () => {
+  it("suit le cycle nominal et s'arrête aux états terminaux", () => {
+    expect(nextDeliveryStep("pending")).toBe("confirmed");
+    expect(nextDeliveryStep("confirmed")).toBe("preparing");
+    expect(nextDeliveryStep("preparing")).toBe("delivering");
+    expect(nextDeliveryStep("delivering")).toBe("delivered");
+    expect(nextDeliveryStep("delivered")).toBeNull();
+    expect(nextDeliveryStep("cancelled")).toBeNull();
+  });
+});
+
+describe("nextStopIndex", () => {
+  it("désigne la première commande non terminée, -1 si tout est fait", () => {
+    const day6 = filterOrders(ordersFixtures, { date: "2026-09-06" });
+    expect(nextStopIndex(day6)).toBe(-1);
+    const day7 = filterOrders(ordersFixtures, { date: "2026-09-07" });
+    expect(nextStopIndex(day7)).toBe(0);
+    expect(nextStopIndex([])).toBe(-1);
+  });
+});
+
+describe("itineraryUrl", () => {
+  it("encode code postal et ville dans une recherche Google Maps", () => {
+    expect(itineraryUrl("75011", "Paris")).toBe(
+      "https://www.google.com/maps/search/?api=1&query=75011%20Paris",
+    );
   });
 });

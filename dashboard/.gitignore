@@ -46,3 +46,8 @@ dumps/
 *.sql
 *.sql.gz
 *.dump
+
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

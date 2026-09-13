@@ -11,10 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { allowedTransitions } from "@/domain/orders/status";
-import type { Order } from "@/domain/orders/types";
+import {
+  allowedTransitions,
+  ORDER_STATUS_LABELS,
+} from "@/domain/orders/status";
+import { formatCancellation } from "@/domain/orders/cancellation";
+import type { Order, OrderEvent } from "@/domain/orders/types";
 import {
   formatDateFr,
+  formatDateTimeFr,
   formatEuros,
   formatQuantity,
   toTelHref,
@@ -30,12 +35,17 @@ import {
  * - `allowed` est calculé ICI, côté serveur, par la règle pure : le formulaire
  *   client ne propose que ces options, et l'action les recalcule de toute façon.
  * - <dl> : « libellé → valeur » pour un lecteur d'écran, sans tableau.
+ * - Historique (2026-09-14) : les événements de statut, du plus récent au plus
+ *   ancien, sous le formulaire de la carte Statut : qui, quand, quel passage.
  */
 export function OrderDetail({
   order,
+  events,
   canEdit,
 }: {
   order: Order;
+  /** Historique des changements de statut, du plus récent au plus ancien. */
+  events: OrderEvent[];
   /** Rôle autorisé à changer le statut (A7). Confort d'affichage : l'action revérifie. */
   canEdit: boolean;
 }) {
@@ -106,8 +116,18 @@ export function OrderDetail({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div>
-            <OrderStatusBadge status={order.status} />
+          <div className="flex flex-col gap-1">
+            <div>
+              <OrderStatusBadge status={order.status} />
+            </div>
+            {order.cancellation ? (
+              <p className="text-sm">
+                Motif communiqué au client :{" "}
+                <span className="font-medium">
+                  {formatCancellation(order.cancellation)}
+                </span>
+              </p>
+            ) : null}
           </div>
           {allowed.length === 0 ? (
             <p className="text-muted-foreground text-sm">
@@ -125,6 +145,41 @@ export function OrderDetail({
               allowed={allowed}
             />
           )}
+          <section aria-labelledby="historique" className="border-t pt-4">
+            <h3 id="historique" className="mb-2 text-sm font-semibold">
+              Historique
+            </h3>
+            {events.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Aucun changement de statut pour l&apos;instant.
+              </p>
+            ) : (
+              <ol className="flex flex-col gap-3 text-sm">
+                {events.map((event) => (
+                  <li
+                    key={event.id}
+                    className="border-primary/40 flex flex-col gap-0.5 border-l-2 pl-3"
+                  >
+                    <span className="font-medium">
+                      {ORDER_STATUS_LABELS[event.to]}
+                      <span className="text-muted-foreground font-normal">
+                        {" "}
+                        (depuis {ORDER_STATUS_LABELS[event.from].toLowerCase()})
+                      </span>
+                    </span>
+                    {event.cancellation ? (
+                      <span className="text-xs">
+                        Motif : {formatCancellation(event.cancellation)}
+                      </span>
+                    ) : null}
+                    <span className="text-muted-foreground text-xs">
+                      {event.actor.name} · {formatDateTimeFr(event.at)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
         </CardContent>
       </Card>
 

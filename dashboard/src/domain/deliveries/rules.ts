@@ -1,3 +1,4 @@
+import type { OrderStatus } from "@/domain/orders/status";
 import type { Order } from "@/domain/orders/types";
 
 /*
@@ -41,4 +42,49 @@ export function summarizeTour(orders: readonly Order[]): TourSummary {
     else inProgress += 1;
   }
   return { total: orders.length, toConfirm, inProgress, done };
+}
+
+/* ---------- Écran de terrain (2026-09-14) ---------- */
+
+/** Le geste naturel suivant en tournée, ou null quand la commande est terminée. */
+export function nextDeliveryStep(status: OrderStatus): OrderStatus | null {
+  switch (status) {
+    case "pending":
+      return "confirmed";
+    case "confirmed":
+      return "preparing";
+    case "preparing":
+      return "delivering";
+    case "delivering":
+      return "delivered";
+    default:
+      return null;
+  }
+}
+
+/** Libellé du bouton d'action pour le statut visé. */
+export const DELIVERY_STEP_LABELS: Record<OrderStatus, string> = {
+  pending: "Remettre en attente",
+  confirmed: "Confirmer la commande",
+  preparing: "Passer en préparation",
+  delivering: "Démarrer la livraison",
+  delivered: "Marquer comme livrée",
+  cancelled: "Annuler la commande",
+};
+
+/** Indice de la prochaine livraison à faire (première non terminée), ou -1. */
+export function nextStopIndex(orders: readonly Order[]): number {
+  return orders.findIndex(
+    (o) => o.status !== "delivered" && o.status !== "cancelled",
+  );
+}
+
+/**
+ * Lien d'itinéraire vers l'adresse (Google Maps, ouvre l'application sur
+ * téléphone). Les fixtures n'ont que le code postal et la ville ; la rue
+ * viendra avec la base du client.
+ */
+export function itineraryUrl(postalCode: string, city: string): string {
+  const query = encodeURIComponent(`${postalCode} ${city}`);
+  return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }

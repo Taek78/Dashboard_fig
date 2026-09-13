@@ -53,3 +53,13 @@ export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
 export function allowedTransitions(from: OrderStatus): OrderStatus[] {
   return [...ORDER_TRANSITIONS[from]];
 }
+
+/**
+ * Chemin nominal de « en attente » jusqu'à `to`, bornes incluses : sert aux
+ * fixtures d'historique. Une annulation part toujours de « en attente ».
+ * ["pending", "confirmed", "preparing"] pour "preparing".
+ */
+export function statusPath(to: OrderStatus): OrderStatus[] {
+  if (to === "cancelled") return ["pending", "cancelled"];
+  return ORDER_STATUSES.slice(0, ORDER_STATUSES.indexOf(to) + 1);
+}

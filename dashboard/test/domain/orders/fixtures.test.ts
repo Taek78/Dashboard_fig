@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { FIXTURE_TODAY, ordersFixtures } from "@/domain/orders/fixtures";
+import {
+  FIXTURE_TODAY,
+  orderEventsFixtures,
+  ordersFixtures,
+} from "@/domain/orders/fixtures";
 import { computeOrderTotalCents } from "@/domain/orders/rules";
-import { ORDER_STATUSES } from "@/domain/orders/status";
+import { ORDER_STATUSES, statusPath } from "@/domain/orders/status";
 
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -67,5 +71,45 @@ describe("ordersFixtures", () => {
       if (seen !== undefined) expect(seen).toBe(customer.email);
       byId.set(customer.id, customer.email);
     }
+  });
+});
+
+describe("orderEventsFixtures", () => {
+  it("retrace pour chaque commande le chemin jusqu'à son statut actuel", () => {
+    for (const order of ordersFixtures) {
+      const mine = orderEventsFixtures.filter((e) => e.orderId === order.id);
+      const path = statusPath(order.status);
+      expect(mine.map((e) => e.to)).toEqual(path.slice(1));
+      expect(mine.map((e) => e.from)).toEqual(path.slice(0, -1));
+      for (const e of mine) {
+        expect(e.at > order.createdAt).toBe(true);
+        expect(e.at).toMatch(ISO_DATETIME);
+      }
+    }
+    expect(new Set(orderEventsFixtures.map((e) => e.id)).size).toBe(
+      orderEventsFixtures.length,
+    );
+  });
+});
+
+describe("ordersFixtures : annulations", () => {
+  it("les commandes annulées portent un motif, les autres non", () => {
+    for (const order of ordersFixtures) {
+      if (order.status === "cancelled") {
+        expect(order.cancellation).not.toBeNull();
+        expect(
+          order.cancellation?.reason === "other"
+            ? (order.cancellation.detail?.length ?? 0) > 0
+            : order.cancellation?.detail === null,
+        ).toBe(true);
+      } else {
+        expect(order.cancellation).toBeNull();
+      }
+    }
+    const cancelledEvents = orderEventsFixtures.filter(
+      (e) => e.to === "cancelled",
+    );
+    expect(cancelledEvents.length).toBeGreaterThan(0);
+    for (const e of cancelledEvents) expect(e.cancellation).not.toBeNull();
   });
 });

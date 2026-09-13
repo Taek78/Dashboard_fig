@@ -57,6 +57,9 @@ export default function CommandeLoading() {
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-40" />
+            <Skeleton className="mt-2 h-4 w-24" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </CardContent>
         </Card>
 

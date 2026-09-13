@@ -28,21 +28,25 @@ export default function LivraisonsLoading() {
               key={row}
               className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 md:flex-row"
             >
-              <div className="bg-muted/40 flex flex-col gap-2 border-b p-4 md:w-44 md:border-r md:border-b-0 md:p-5">
-                <Skeleton className="h-3 w-12" />
-                <Skeleton className="h-7 w-16" />
-                <Skeleton className="h-5 w-24 rounded-4xl" />
+              <div className="bg-muted/40 flex flex-row items-center gap-4 border-b p-4 md:w-48 md:flex-col md:items-start md:border-r md:border-b-0 md:p-5">
+                <Skeleton className="size-11 rounded-full" />
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-7 w-28" />
+                  <Skeleton className="h-5 w-24 rounded-4xl" />
+                </div>
               </div>
               <div className="flex flex-1 flex-col gap-3 p-4 md:p-5">
                 <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-4 w-32" />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Skeleton className="h-10 w-full sm:w-40" />
+                  <Skeleton className="h-10 w-full sm:w-32" />
+                </div>
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-4 w-44" />
               </div>
-              <div className="flex flex-col gap-2 border-t p-4 md:w-72 md:border-t-0 md:border-l md:p-5">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-36" />
+              <div className="flex flex-col justify-center gap-2 border-t p-4 md:w-72 md:border-t-0 md:border-l md:p-5">
+                <Skeleton className="h-11 w-full" />
+                <Skeleton className="h-7 w-36" />
               </div>
             </li>
           ))}

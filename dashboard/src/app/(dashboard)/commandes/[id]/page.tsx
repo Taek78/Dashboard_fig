@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { getOrder } from "@/data/orders";
+import { getOrder, getOrderEvents } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { canChangeOrderStatus } from "@/domain/auth/roles";
 import { orderIdSchema } from "@/domain/orders/schemas";
@@ -33,7 +33,10 @@ export default async function CommandePage({
 
   const order = await getOrder(parsed.data);
   if (!order) notFound();
-  const user = await getCurrentUser();
+  const [events, user] = await Promise.all([
+    getOrderEvents(order.id),
+    getCurrentUser(),
+  ]);
 
   return (
     <>
@@ -51,7 +54,11 @@ export default async function CommandePage({
           </Button>
         }
       />
-      <OrderDetail order={order} canEdit={canChangeOrderStatus(user.role)} />
+      <OrderDetail
+        order={order}
+        events={events}
+        canEdit={canChangeOrderStatus(user.role)}
+      />
     </>
   );
 }

@@ -1,4 +1,5 @@
-import type { Order } from "@/domain/orders/types";
+import { statusPath } from "@/domain/orders/status";
+import type { Order, OrderActor, OrderEvent } from "@/domain/orders/types";
 
 /*
  * Données factices des commandes.
@@ -21,6 +22,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-001",
     createdAt: "2026-09-07T08:15:00.000Z",
     status: "pending",
+    cancellation: null,
     customer: {
       id: "cli-0001",
       fullName: "Amel Benali",
@@ -60,6 +62,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-002",
     createdAt: "2026-09-07T08:42:00.000Z",
     status: "confirmed",
+    cancellation: null,
     customer: {
       id: "cli-0002",
       fullName: "Théo Marchand",
@@ -92,6 +95,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-003",
     createdAt: "2026-09-07T07:05:00.000Z",
     status: "preparing",
+    cancellation: null,
     customer: {
       id: "cli-0003",
       fullName: "Inès Rocher",
@@ -138,6 +142,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-004",
     createdAt: "2026-09-07T06:30:00.000Z",
     status: "delivering",
+    cancellation: null,
     customer: {
       id: "cli-0004",
       fullName: "Karim Lefèvre",
@@ -177,6 +182,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260906-001",
     createdAt: "2026-09-06T09:10:00.000Z",
     status: "delivered",
+    cancellation: null,
     customer: {
       id: "cli-0005",
       fullName: "Lucie Gauthier",
@@ -209,6 +215,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260906-002",
     createdAt: "2026-09-06T10:25:00.000Z",
     status: "cancelled",
+    cancellation: { reason: "stock", detail: null },
     customer: {
       id: "cli-0006",
       fullName: "Nadia Ferreira",
@@ -248,6 +255,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260906-003",
     createdAt: "2026-09-06T07:50:00.000Z",
     status: "delivered",
+    cancellation: null,
     customer: {
       id: "cli-0007",
       fullName: "Samuel Nkemelu",
@@ -301,6 +309,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260906-004",
     createdAt: "2026-09-06T11:40:00.000Z",
     status: "delivered",
+    cancellation: null,
     customer: {
       id: "cli-0005",
       fullName: "Lucie Gauthier",
@@ -333,6 +342,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-005",
     createdAt: "2026-09-07T12:05:00.000Z",
     status: "pending",
+    cancellation: null,
     customer: {
       id: "cli-0008",
       fullName: "Élise Moreau",
@@ -372,6 +382,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-006",
     createdAt: "2026-09-07T13:20:00.000Z",
     status: "pending",
+    cancellation: null,
     customer: {
       id: "cli-0009",
       fullName: "Yanis Cohen",
@@ -418,6 +429,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-007",
     createdAt: "2026-09-07T14:00:00.000Z",
     status: "confirmed",
+    cancellation: null,
     customer: {
       id: "cli-0010",
       fullName: "Chloé Da Silva",
@@ -450,6 +462,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-008",
     createdAt: "2026-09-07T15:35:00.000Z",
     status: "confirmed",
+    cancellation: null,
     customer: {
       id: "cli-0001",
       fullName: "Amel Benali",
@@ -503,6 +516,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-009",
     createdAt: "2026-09-07T09:55:00.000Z",
     status: "cancelled",
+    cancellation: { reason: "other", detail: "Client absent, injoignable" },
     customer: {
       id: "cli-0011",
       fullName: "Mathis Petit",
@@ -535,6 +549,7 @@ export const ordersFixtures: readonly Order[] = [
     reference: "FIG-260907-010",
     createdAt: "2026-09-07T05:45:00.000Z",
     status: "delivering",
+    cancellation: null,
     customer: {
       id: "cli-0012",
       fullName: "Sofia Haddad",
@@ -570,3 +585,28 @@ export const ordersFixtures: readonly Order[] = [
     totalCents: 970,
   },
 ];
+
+/*
+ * Historique factice : pour chaque commande déjà avancée, la suite des passages
+ * de statut qui mène à son statut actuel, à 30 minutes d'intervalle après la
+ * création, par un acteur d'équipe fictif. Déterministe, cohérent avec les
+ * commandes ci-dessus (vérifié par test/domain/orders/fixtures.test.ts).
+ */
+const FIXTURE_ACTOR: OrderActor = { id: "usr-0000", name: "Équipe FIG" };
+const STEP_MS = 30 * 60 * 1000;
+
+export const orderEventsFixtures: readonly OrderEvent[] =
+  ordersFixtures.flatMap((order) => {
+    const path = statusPath(order.status);
+    return path.slice(1).map((to, i) => ({
+      id: `evt-${order.id}-${i + 1}`,
+      orderId: order.id,
+      from: path[i]!,
+      to,
+      actor: FIXTURE_ACTOR,
+      cancellation: to === "cancelled" ? order.cancellation : null,
+      at: new Date(
+        Date.parse(order.createdAt) + (i + 1) * STEP_MS,
+      ).toISOString(),
+    }));
+  });

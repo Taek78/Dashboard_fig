@@ -5,6 +5,7 @@ import {
   allowedTransitions,
   canTransition,
   type OrderStatus,
+  statusPath,
 } from "@/domain/orders/status";
 
 /*
@@ -97,5 +98,24 @@ describe("ORDER_STATUS_LABELS", () => {
     for (const status of ORDER_STATUSES) {
       expect(ORDER_STATUS_LABELS[status].length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("statusPath", () => {
+  it("suit le cycle nominal jusqu'au statut, et pending → cancelled pour une annulation", () => {
+    expect(statusPath("pending")).toEqual(["pending"]);
+    expect(statusPath("preparing")).toEqual([
+      "pending",
+      "confirmed",
+      "preparing",
+    ]);
+    expect(statusPath("delivered")).toEqual([
+      "pending",
+      "confirmed",
+      "preparing",
+      "delivering",
+      "delivered",
+    ]);
+    expect(statusPath("cancelled")).toEqual(["pending", "cancelled"]);
   });
 });
