@@ -24,6 +24,10 @@ const dateFr = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "Europe/Paris",
 });
 
+const NBSP = "\u00A0";
+
+const kilos = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
+
 /** Centimes entiers → montant en euros formaté. 2490 → "24,90 €" */
 export function formatEuros(cents: number): string {
   return euros.format(cents / 100);
@@ -41,4 +45,28 @@ export function formatSlot(slot: {
   end: string;
 }): string {
   return `${formatDateFr(slot.date)}, ${slot.start}–${slot.end}`;
+}
+
+/**
+ * Quantité en unité de base → texte lisible. 500 g → "500 g", 1500 g → "1,5 kg",
+ * 1 pièce → "1 pièce", 3 → "3 pièces". Espace insécable pour ne jamais séparer le
+ * nombre de son unité en fin de ligne. Union inline plutôt qu'un import de
+ * OrderLine["unit"] : src/lib ne dépend pas du domaine.
+ */
+export function formatQuantity(quantity: number, unit: "piece" | "g"): string {
+  if (unit === "piece") {
+    const label = quantity > 1 ? "pièces" : "pièce";
+    return `${quantity}${NBSP}${label}`;
+  }
+  if (quantity < 1000) {
+    return `${quantity}${NBSP}g`;
+  }
+  return `${kilos.format(quantity / 1000)}${NBSP}kg`;
+}
+
+/** Compteur de la liste filtrée. 0 → "0 commande", 1 → "1 commande", 5 → "5 commandes" */
+export function formatOrdersCount(count: number): string {
+  const label = count > 1 ? "commandes" : "commande";
+
+  return `${count}${NBSP}${label}`;
 }

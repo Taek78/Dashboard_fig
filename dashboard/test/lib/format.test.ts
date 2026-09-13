@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatDateFr, formatEuros, formatSlot } from "@/lib/format";
+import {
+  formatDateFr,
+  formatEuros,
+  formatOrdersCount,
+  formatQuantity,
+  formatSlot,
+} from "@/lib/format";
 
 /* Intl insère des espaces insécables (U+202F, U+00A0) : on les normalise avant de comparer. */
 const plain = (s: string) => s.replace(/\s/g, " ");
@@ -38,5 +44,39 @@ describe("formatSlot", () => {
     expect(
       plain(formatSlot({ date: "2026-09-08", start: "09:00", end: "11:00" })),
     ).toBe("mar. 8 sept., 09:00–11:00");
+  });
+});
+
+const NBSP = "\u00A0";
+
+describe("formatQuantity", () => {
+  it("affiche les grammes tels quels sous 1000", () => {
+    expect(formatQuantity(500, "g")).toBe(`500${NBSP}g`);
+    expect(formatQuantity(999, "g")).toBe(`999${NBSP}g`);
+  });
+
+  it("passe en kilos à partir de 1000 g, sans décimale inutile", () => {
+    expect(formatQuantity(1000, "g")).toBe(`1${NBSP}kg`);
+    expect(formatQuantity(1500, "g")).toBe(`1,5${NBSP}kg`);
+    expect(formatQuantity(1250, "g")).toBe(`1,25${NBSP}kg`);
+  });
+
+  it("accorde « pièce » au pluriel seulement au-delà de 1", () => {
+    expect(formatQuantity(0, "piece")).toBe(`0${NBSP}pièce`);
+    expect(formatQuantity(1, "piece")).toBe(`1${NBSP}pièce`);
+    expect(formatQuantity(3, "piece")).toBe(`3${NBSP}pièces`);
+  });
+
+  it("utilise un espace insécable, jamais un espace simple", () => {
+    expect(formatQuantity(3, "piece")).not.toContain(" ");
+    expect(formatQuantity(1500, "g")).not.toContain(" ");
+  });
+});
+
+describe("formatOrdersCount", () => {
+  it("accorde « commande » selon le nombre", () => {
+    expect(formatOrdersCount(0)).toBe(`0${NBSP}commande`);
+    expect(formatOrdersCount(1)).toBe(`1${NBSP}commande`);
+    expect(formatOrdersCount(14)).toBe(`14${NBSP}commandes`);
   });
 });
