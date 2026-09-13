@@ -138,4 +138,16 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Article programmé** (articles) : article visible dont la date de parution est postérieure à aujourd'hui ; l'application ne l'affichera qu'à cette date. Calculé par `publicationState()`.
 
+**Limitation de débit (rate limiting)** (sécurité) : refuser une action répétée trop souvent depuis la même origine. Ici : cinq échecs de connexion rapprochés sur un e-mail verrouillent une minute, puis le verrou double à chaque échec jusqu'à une heure ; vingt par adresse IP. Règles pures dans `src/lib/rate-limit.ts`.
+
+**Énumération de comptes** (sécurité) : deviner quels e-mails existent en observant la réponse. Le message est identique dans les deux cas, et le temps aussi : un e-mail inconnu vérifie un hachage factice (`dummyPasswordHash`).
+
+**En-têtes de sécurité / CSP** (HTTP) : en-têtes envoyés avec chaque réponse pour brider le navigateur. La Content-Security-Policy dit d'où scripts, styles et images peuvent venir et interdit d'afficher le site dans un cadre (`frame-ancestors 'none'`, contre le détournement de clic). HSTS force le HTTPS. Posés dans `next.config.ts`.
+
+**Journal de sécurité** (exploitation) : une ligne JSON par événement sensible (connexion réussie ou échouée, verrou, refus, changement de statut, suppression) sur la sortie standard, sans secret. Sert à détecter une attaque et à comprendre un incident.
+
+**Matrice d'accès** (RBAC) : tableau rôle → sections lisibles (`SECTION_ACCESS`). L'authentification dit qui vous êtes, l'autorisation ce que vous pouvez voir et faire ; le proxy applique la lecture, les Server Actions l'écriture.
+
+**Dependabot / CI** (outillage) : le robot GitHub qui ouvre des PR de mise à jour des dépendances, et le workflow qui rejoue `npm run check` et `npm audit` à chaque push.
+
 **vi.mock / vi.hoisted** (tests) : remplacer un module par une version simulée pour un fichier de test (`server-only`, `next/cache`, la session, l'env). `vi.hoisted` déclare une variable utilisable dans ce remplacement.

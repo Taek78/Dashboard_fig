@@ -54,7 +54,7 @@ Architecture applicative (détail et justifications dans `docs/backlog.md`) :
 
 `dashboard/CLAUDE.md` importe `AGENTS.md`, un bloc regénéré par `next dev` à chaque lancement. Le commiter avec le travail en cours plutôt que d'essayer de le retirer.
 
-Git : la racine du dépôt est ce dossier (`Dashboard_fig/`), branche `main`, remote `origin` = `Taek78/Dashboard_fig`. Attention, le dossier utilisateur est lui aussi un dépôt git : une commande `git` lancée hors de ce dossier peut viser le mauvais dépôt.
+Git : la racine du dépôt est ce dossier (`Dashboard_fig/`), branche `main`, remote `origin` = `Taek78/Dashboard_fig`. CI : `.github/workflows/ci.yml` lance `npm run check` puis `npm audit --omit=dev` à chaque push et PR ; `.github/dependabot.yml` ouvre les PR de mise à jour hebdomadaires. Attention, le dossier utilisateur est lui aussi un dépôt git : une commande `git` lancée hors de ce dossier peut viser le mauvais dépôt.
 
 ## Commandes
 
@@ -131,6 +131,8 @@ Ne pas installer, supprimer ou mettre à jour une dépendance sans accord.
   l'autorisation côté serveur.
 - Ne jamais faire confiance aux identifiants, rôles, prix ou quantités reçus
   depuis le client.
+- **Audit du 2026-09-14, en place** : limitation de débit sur la connexion (`src/lib/rate-limit.ts` pur, état dans `src/data/login-attempts.ts`, par e-mail et par IP, verrou progressif), coût constant e-mail inconnu / mot de passe faux (`dummyPasswordHash`), journal de sécurité JSON (`src/lib/security-log.ts` : connexions, verrous, refus, changements de statut, suppressions ; jamais de secret), en-têtes HTTP et CSP dans `next.config.ts` (`frame-ancestors 'none'`, `form-action 'self'` ; nonce au backlog), matrice de lecture par rôle (`SECTION_ACCESS`, `canViewSection`) appliquée par `src/proxy.ts` et par la navigation, gardes de production dans `env-schema.ts` (`AUTH_URL` obligatoire, `ALLOW_MOCK_IN_PRODUCTION`, `AUTH_ALLOW_BOOTSTRAP`). Quatre rôles : admin, gestionnaire, lecture, livreur (provisoire, Q5).
+- Avec Drizzle (piste B) : toujours le constructeur de requêtes, jamais `sql.raw()` avec une entrée utilisateur ; utilisateur de base à privilèges réduits et TLS vers Postgres.
 
 ## Sources de vérité
 

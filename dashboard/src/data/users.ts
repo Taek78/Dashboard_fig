@@ -16,6 +16,12 @@ function ensureSeeded(): Promise<void> {
   if (!seeded) {
     seeded = (async () => {
       const env = getEnv();
+      // Déjà refusé au démarrage par env-schema ; on le revérifie ici au cas où.
+      if (env.NODE_ENV === "production" && env.AUTH_ALLOW_BOOTSTRAP !== "1") {
+        throw new Error(
+          "Compte d'amorçage désactivé en production (AUTH_ALLOW_BOOTSTRAP absent).",
+        );
+      }
       seedUsersMock([
         {
           id: "usr-0001",

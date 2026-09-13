@@ -9,6 +9,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { canViewSection, type Role } from "@/domain/auth/roles";
 import { isNavActive, NAV_ITEMS } from "@/lib/navigation";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,8 +20,10 @@ import { usePathname } from "next/navigation";
  * sur mobile) sont des hooks. Le <nav> donne le repère « navigation » aux
  * lecteurs d'écran, les composants shadcn rendant des div/ul/li.
  * La prop `render` de base-nova fait rendre le bouton sous forme de <Link>.
+ * Les sections interdites au rôle (matrice SECTION_ACCESS) ne sont pas listées ;
+ * le proxy les refuse de toute façon.
  */
-export function NavMain() {
+export function NavMain({ role }: { role: Role }) {
   const pathname = usePathname();
 
   const { setOpenMobile } = useSidebar();
@@ -31,27 +34,29 @@ export function NavMain() {
       <SidebarGroupContent>
         <nav aria-label="Navigation principale">
           <SidebarMenu>
-            {NAV_ITEMS.map((item) => {
-              const active = isNavActive(pathname, item.href);
-              return (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    isActive={active}
-                    tooltip={item.title}
-                    onClick={() => setOpenMobile(false)}
-                    render={
-                      <Link
-                        href={item.href}
-                        aria-current={active ? "page" : undefined}
-                      />
-                    }
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
+            {NAV_ITEMS.filter((item) => canViewSection(role, item.href)).map(
+              (item) => {
+                const active = isNavActive(pathname, item.href);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      isActive={active}
+                      tooltip={item.title}
+                      onClick={() => setOpenMobile(false)}
+                      render={
+                        <Link
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                        />
+                      }
+                    >
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              },
+            )}
           </SidebarMenu>
         </nav>
       </SidebarGroupContent>

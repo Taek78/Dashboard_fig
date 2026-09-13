@@ -1,0 +1,29 @@
+# Intégration continue : à chaque push et pull request, le rituel de
+# vérification du projet (typecheck, lint, format, tests) puis l'audit des
+# dépendances de production. Aucun secret requis : tout tourne sur fixtures.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm audit --omit=dev --audit-level=high

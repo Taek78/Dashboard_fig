@@ -55,7 +55,7 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain />
+        <NavMain role={user.role} />
       </SidebarContent>
 
       <SidebarFooter>

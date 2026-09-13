@@ -7,6 +7,7 @@ import { canChangeOrderStatus } from "@/domain/auth/roles";
 import { changeStatusSchema } from "@/domain/orders/schemas";
 import { canTransition, ORDER_STATUS_LABELS } from "@/domain/orders/status";
 import type { ActionResult } from "@/lib/action-result";
+import { logSecurity } from "@/lib/security-log";
 
 /*
  * Server Action de changement de statut : un POST public que n'importe qui peut
@@ -37,6 +38,11 @@ export async function changeOrderStatus(
 
   // 2. Rôle, avant zod : un appelant non autorisé n'obtient aucune information de validation.
   if (!canChangeOrderStatus(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "changeOrderStatus",
+    });
     return { status: "error", message: MESSAGES.forbidden };
   }
 
@@ -74,6 +80,14 @@ export async function changeOrderStatus(
       revalidatePath("/", "layout");
       return { status: "error", message: MESSAGES.conflict };
     }
+
+    logSecurity({
+      type: "order_status_changed",
+      userId: user.id,
+      orderId: order.id,
+      from: order.status,
+      to: nextStatus,
+    });
 
     // 8. Un seul appel couvre tout le back-office : liste, détail, tournée, accueil, métriques.
     revalidatePath("/", "layout");

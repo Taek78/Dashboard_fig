@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import {
+  dummyPasswordHash,
+  hashPassword,
+  verifyPassword,
+} from "@/lib/password";
 
 describe("hashPassword / verifyPassword", () => {
   it("vérifie le bon mot de passe et refuse un autre", async () => {
@@ -20,5 +24,15 @@ describe("hashPassword / verifyPassword", () => {
   it("refuse un format stocké inconnu sans lever", async () => {
     expect(await verifyPassword("x", "bcrypt$abc$def")).toBe(false);
     expect(await verifyPassword("x", "")).toBe(false);
+  });
+});
+
+describe("dummyPasswordHash", () => {
+  it("est un hachage scrypt stable par processus qu'aucun mot de passe ne vérifie", async () => {
+    const a = await dummyPasswordHash();
+    expect(a.startsWith("scrypt$")).toBe(true);
+    expect(await dummyPasswordHash()).toBe(a);
+    expect(await verifyPassword("", a)).toBe(false);
+    expect(await verifyPassword("Demo-FIG-2026-local", a)).toBe(false);
   });
 });

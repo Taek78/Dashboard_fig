@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/data/session";
 import { canAddCustomerNote } from "@/domain/auth/roles";
 import { addNoteSchema } from "@/domain/customers/schemas";
 import type { ActionResult } from "@/lib/action-result";
+import { logSecurity } from "@/lib/security-log";
 
 /*
  * Server Action d'ajout d'une note interne (A5). L'auteur et la date viennent du
@@ -24,6 +25,11 @@ export async function addCustomerNote(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canAddCustomerNote(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "addCustomerNote",
+    });
     return { status: "error", message: MESSAGES.forbidden };
   }
 

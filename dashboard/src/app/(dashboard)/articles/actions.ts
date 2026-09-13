@@ -17,6 +17,7 @@ import {
 } from "@/domain/articles/schemas";
 import { canEditArticle } from "@/domain/auth/roles";
 import type { ActionResult } from "@/lib/action-result";
+import { logSecurity } from "@/lib/security-log";
 
 /*
  * Server Actions des articles : rédiger, modifier, afficher/masquer, supprimer.
@@ -39,6 +40,7 @@ export async function addArticle(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditArticle(user.role)) {
+    logSecurity({ type: "forbidden", userId: user.id, action: "addArticle" });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const input = articleInputSchema.safeParse(Object.fromEntries(formData));
@@ -65,6 +67,7 @@ export async function saveArticle(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditArticle(user.role)) {
+    logSecurity({ type: "forbidden", userId: user.id, action: "saveArticle" });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const raw = Object.fromEntries(formData);
@@ -100,6 +103,11 @@ export async function setArticleVisibility(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditArticle(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "setArticleVisibility",
+    });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const parsed = articleVisibilitySchema.safeParse(
@@ -145,6 +153,11 @@ export async function removeArticle(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditArticle(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "removeArticle",
+    });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const parsed = deleteArticleSchema.safeParse(Object.fromEntries(formData));
@@ -155,6 +168,11 @@ export async function removeArticle(
   try {
     const deleted = await deleteArticle(parsed.data.articleId);
     if (!deleted) return { status: "error", message: MESSAGES.notFound };
+    logSecurity({
+      type: "article_deleted",
+      userId: user.id,
+      articleId: parsed.data.articleId,
+    });
     revalidatePath("/articles", "layout");
   } catch (error) {
     console.error(

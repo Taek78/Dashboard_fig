@@ -33,3 +33,16 @@ export async function verifyPassword(
   const actual = await scryptAsync(password, Buffer.from(saltB64, "base64"));
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
+
+/*
+ * Hachage factice contre l'énumération de comptes : quand l'e-mail est inconnu,
+ * authorize() vérifie quand même le mot de passe saisi contre ce hachage, pour
+ * que les deux cas coûtent le même temps de scrypt. Calculé une fois par
+ * processus à partir d'un secret aléatoire : aucun mot de passe ne le vérifie.
+ */
+let dummy: Promise<string> | null = null;
+
+export function dummyPasswordHash(): Promise<string> {
+  if (!dummy) dummy = hashPassword(randomBytes(32).toString("base64"));
+  return dummy;
+}

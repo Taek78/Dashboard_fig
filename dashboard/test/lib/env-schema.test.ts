@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv } from "@/lib/env-schema";
+import { parseEnv, productionProblems } from "@/lib/env-schema";
 
 const auth = {
   AUTH_SECRET: "a".repeat(32),
@@ -76,5 +76,53 @@ describe("parseEnv", () => {
     } catch (error) {
       expect(String(error)).not.toContain(secret);
     }
+  });
+});
+
+describe("gardes de production", () => {
+  const prod = { NODE_ENV: "production", DATA_SOURCE: "mock", ...auth };
+
+  it("hors production, aucune variable supplémentaire n'est exigée", () => {
+    expect(() =>
+      parseEnv({ NODE_ENV: "development", DATA_SOURCE: "mock", ...auth }),
+    ).not.toThrow();
+  });
+
+  it("en production, exige AUTH_URL et refuse fixtures et compte d'amorçage sans dérogation", () => {
+    expect(() => parseEnv(prod)).toThrow(
+      /AUTH_URL[\s\S]*fixtures[\s\S]*amorçage/,
+    );
+    expect(() => parseEnv(prod, { enforceProduction: false })).not.toThrow();
+    expect(
+      productionProblems(parseEnv(prod, { enforceProduction: false })),
+    ).toHaveLength(3);
+    expect(() =>
+      parseEnv({ ...prod, AUTH_URL: "https://fig.example.invalid" }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...prod,
+        AUTH_URL: "https://fig.example.invalid",
+        ALLOW_MOCK_IN_PRODUCTION: "1",
+      }),
+    ).toThrow();
+    expect(() =>
+      parseEnv({
+        ...prod,
+        AUTH_URL: "https://fig.example.invalid",
+        ALLOW_MOCK_IN_PRODUCTION: "1",
+        AUTH_ALLOW_BOOTSTRAP: "1",
+      }),
+    ).not.toThrow();
+    expect(() =>
+      parseEnv({
+        NODE_ENV: "production",
+        DATA_SOURCE: "db",
+        DATABASE_URL: "postgresql://u:p@h/db",
+        AUTH_URL: "https://fig.example.invalid",
+        AUTH_ALLOW_BOOTSTRAP: "1",
+        ...auth,
+      }),
+    ).not.toThrow();
   });
 });

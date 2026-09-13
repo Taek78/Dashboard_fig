@@ -16,6 +16,7 @@ import {
   updateProductSchema,
 } from "@/domain/products/schemas";
 import type { ActionResult } from "@/lib/action-result";
+import { logSecurity } from "@/lib/security-log";
 
 /*
  * Server Actions du catalogue : créer, modifier, supprimer. Même discipline que
@@ -37,6 +38,7 @@ export async function saveProduct(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditProduct(user.role)) {
+    logSecurity({ type: "forbidden", userId: user.id, action: "saveProduct" });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const raw = Object.fromEntries(formData);
@@ -72,6 +74,7 @@ export async function addProduct(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditProduct(user.role)) {
+    logSecurity({ type: "forbidden", userId: user.id, action: "addProduct" });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const input = productInputSchema.safeParse(Object.fromEntries(formData));
@@ -97,6 +100,11 @@ export async function removeProduct(
 ): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!canEditProduct(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "removeProduct",
+    });
     return { status: "error", message: MESSAGES.forbidden };
   }
   const parsed = deleteProductSchema.safeParse(Object.fromEntries(formData));
@@ -107,6 +115,11 @@ export async function removeProduct(
   try {
     const deleted = await deleteProduct(parsed.data.productId);
     if (!deleted) return { status: "error", message: MESSAGES.notFound };
+    logSecurity({
+      type: "product_deleted",
+      userId: user.id,
+      productId: parsed.data.productId,
+    });
     revalidatePath("/catalogue", "layout");
   } catch (error) {
     console.error(

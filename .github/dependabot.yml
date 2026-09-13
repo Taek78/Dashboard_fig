@@ -1,0 +1,14 @@
+# Mises à jour de dépendances hebdomadaires, groupées pour limiter le bruit.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /dashboard
+    schedule:
+      interval: weekly
+    groups:
+      dependances:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

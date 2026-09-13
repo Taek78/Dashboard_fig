@@ -1,10 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { findUserByEmail } from "@/data/users";
+import { authorizeCredentials } from "@/data/credentials";
 import type { Role } from "@/domain/auth/roles";
-import { loginSchema } from "@/domain/auth/schemas";
 import { getEnv } from "@/lib/env";
-import { verifyPassword } from "@/lib/password";
 
 /*
  * Configuration Auth.js v5 (A7) : fournisseur Credentials (e-mail + mot de
@@ -12,43 +10,30 @@ import { verifyPassword } from "@/lib/password";
  * connexion /connexion. La config est une fonction : elle n'est évaluée qu'à la
  * première requête, donc `next build` ne réclame pas l'environnement.
  *
- * authorize() renvoie null (jamais de détail) quand l'e-mail est inconnu OU le
- * mot de passe faux : un attaquant ne doit pas pouvoir distinguer les deux cas.
- * Le rôle est copié dans le jeton à la connexion (callback jwt) puis exposé à
- * l'app (callback session) : verifySession() le lit sans toucher à la source.
+ * authorize() délègue à authorizeCredentials (src/data/credentials.ts) :
+ * limitation de débit, coût constant, journal, et null sans détail quand
+ * l'e-mail est inconnu OU le mot de passe faux. Le rôle est copié dans le jeton
+ * à la connexion (callback jwt) puis exposé à l'app (callback session) :
+ * verifySession() le lit sans toucher à la source.
+ *
+ * trustHost n'est pas fixé : Auth.js le déduit lui-même (vrai en développement,
+ * vrai en production seulement si AUTH_URL est posée, et AUTH_URL devient alors
+ * l'origine canonique : l'en-tête Host du client n'est plus cru). env-schema
+ * exige AUTH_URL en production. La garde d'accès (anonymes, sections par rôle)
+ * vit dans src/proxy.ts.
  */
 export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   secret: getEnv().AUTH_SECRET,
-  trustHost: true,
   session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
   pages: { signIn: "/connexion" },
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
-      authorize: async (credentials) => {
-        const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) return null;
-        const user = await findUserByEmail(parsed.data.email);
-        if (!user) return null;
-        const ok = await verifyPassword(
-          parsed.data.password,
-          user.passwordHash,
-        );
-        if (!ok) return null;
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        };
-      },
+      authorize: (credentials, request) =>
+        authorizeCredentials(credentials, request.headers),
     }),
   ],
   callbacks: {
-    // Lu par le proxy : sans utilisateur en session, Auth.js redirige vers pages.signIn.
-    authorized({ auth }) {
-      return Boolean(auth?.user);
-    },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
