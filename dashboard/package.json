@@ -18,7 +18,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup.ps1",
     "db:restore": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore.ps1",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"
   },
   "dependencies": {

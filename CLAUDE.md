@@ -46,7 +46,7 @@ Git : racine du dépôt = ce dossier, branche `main`, remote `origin` = `Taek78/
 ```bash
 cd dashboard
 npm run dev           # next dev (Turbopack), http://localhost:3000 ; exige .env.local (copier .env.example)
-npm run check         # typecheck + lint + format:check + test, dans cet ordre
+npm run check         # typecheck (next typegen puis tsc) + lint + format:check + test, dans cet ordre
 npm run build && npm run start
 npm run test:e2e      # Playwright (Chromium) contre next start -p 3126 avec ses comptes de test ; build préalable
 E2E_DATA_SOURCE=db npm run test:e2e   # la même suite contre la base locale (seeder avec les comptes e2e avant, docs/base-de-donnees.md)

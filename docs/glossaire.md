@@ -66,7 +66,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **`searchParams`** : les paramètres d'URL (`?simuler=vide`). En Next 16, c'est une `Promise` : toujours `await`.
 
-**Route dynamique `[id]`** : dossier entre crochets dont le nom devient un paramètre d'URL : `/commandes/cmd-0001` rend `commandes/[id]/page.tsx` avec `params` = `{ id: "cmd-0001" }`. En Next 16, `params` est une `Promise` : `await`. Le type `PageProps<"/commandes/[id]">` est généré par `next dev` ou `npx next typegen`.
+**Route dynamique `[id]`** : dossier entre crochets dont le nom devient un paramètre d'URL : `/commandes/cmd-0001` rend `commandes/[id]/page.tsx` avec `params` = `{ id: "cmd-0001" }`. En Next 16, `params` est une `Promise` : `await`. Le type `PageProps<"/commandes/[id]">` est généré par `next dev`, `next build` ou `npx next typegen` dans `.next/` (ignoré par git) : sur un clone neuf, comme en CI, il n'existe pas encore, d'où `next typegen` en tête du script `typecheck`.
 
 **`notFound()` / `not-found.tsx`** : appeler `notFound()` interrompt le rendu et affiche le `not-found.tsx` le plus proche avec un code 404. Elle lève une exception spéciale : pas de `return` devant, et jamais dans un `try/catch`.
 
