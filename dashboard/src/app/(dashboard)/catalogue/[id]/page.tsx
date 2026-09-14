@@ -3,12 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CircleCheck } from "lucide-react";
 import { DeleteProductButton } from "@/components/products/delete-product-button";
+import { DuplicateProductButton } from "@/components/products/duplicate-product-button";
 import { ProductCard } from "@/components/products/product-card";
 import { ProductForm } from "@/components/products/product-form";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProduct } from "@/data/products";
+import { getCurrentUser } from "@/data/session";
+import { canEditProduct } from "@/domain/auth/roles";
 import { PRODUCT_CATEGORY_LABELS } from "@/domain/products/category";
 import { productIdSchema } from "@/domain/products/schemas";
 import { formatDateFr } from "@/lib/format";
@@ -16,8 +19,8 @@ import { formatDateFr } from "@/lib/format";
 /*
  * Fiche produit : à gauche l'aperçu (la carte telle
  * qu'elle apparaît dans la grille, mise à jour après chaque enregistrement), à
- * droite le formulaire complet, puis la zone de suppression. ?cree=1 confirme une
- * création (l'action de création redirige ici).
+ * droite le formulaire complet, puis dupliquer et supprimer. ?cree=1 confirme
+ * une création, ?duplique=1 une duplication (les actions redirigent ici).
  */
 export const metadata: Metadata = { title: "Fiche produit" };
 
@@ -29,9 +32,15 @@ export default async function ProduitPage({
   const parsed = productIdSchema.safeParse(id);
   if (!parsed.success) notFound();
 
-  const product = await getProduct(parsed.data);
+  const [product, user, raw] = await Promise.all([
+    getProduct(parsed.data),
+    getCurrentUser(),
+    searchParams,
+  ]);
   if (!product) notFound();
-  const justCreated = (await searchParams).cree === "1";
+  const justCreated = raw.cree === "1";
+  const justDuplicated = raw.duplique === "1";
+  const canEdit = canEditProduct(user.role);
 
   return (
     <>
@@ -49,13 +58,15 @@ export default async function ProduitPage({
           </Button>
         }
       />
-      {justCreated ? (
+      {justCreated || justDuplicated ? (
         <p
           role="status"
           className="text-success flex items-center gap-1.5 text-sm"
         >
           <CircleCheck className="size-4" aria-hidden="true" />
-          Produit créé. Vous pouvez encore ajuster sa fiche ci-dessous.
+          {justDuplicated
+            ? "Copie créée, masquée dans l'application : relisez la fiche, renommez-la, puis cochez « Visible »."
+            : "Produit créé. Vous pouvez encore ajuster sa fiche ci-dessous."}
         </p>
       ) : null}
       <div className="grid gap-6 lg:grid-cols-[minmax(16rem,20rem)_1fr]">
@@ -71,12 +82,15 @@ export default async function ProduitPage({
           </CardHeader>
           <CardContent className="flex flex-col gap-8">
             <ProductForm product={product} />
-            <div className="border-t pt-6">
-              <DeleteProductButton
-                productId={product.id}
-                productName={product.name}
-              />
-            </div>
+            {canEdit ? (
+              <div className="flex flex-wrap items-start gap-3 border-t pt-6">
+                <DuplicateProductButton productId={product.id} />
+                <DeleteProductButton
+                  productId={product.id}
+                  productName={product.name}
+                />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>

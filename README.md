@@ -59,16 +59,17 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 
 ## Ce que fait le back-office
 
-| Section         | Fonctions                                                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Tableau de bord | chiffres de la période choisie (aujourd'hui par défaut), montants HT ou TTC, commandes à confirmer                              |
-| Commandes       | liste filtrable en cartes, détail avec historique des statuts, changement de statut, annulation avec motif communiqué au client |
-| Livraisons      | tournée du jour : ordre de passage, prochaine livraison, appel et itinéraire en un geste, statut en un bouton                   |
-| Catalogue       | grille de produits (prix unitaire et au kilo, origine, calibre, saison, bio), fiche complète, création, suppression confirmée   |
-| Articles        | contenus « à lire » de l'application : rédaction, historique, visibilité, modification, suppression                             |
-| Clients         | recherche (nom, e-mail, téléphone), fiche avec historique et notes internes                                                     |
-| Métriques       | chiffre d'affaires, panier moyen, annulations, comparaison N-1 ou période précédente, usage de l'application                    |
-| Comptes         | gestion des comptes du back-office (administrateur) ; chacun change son mot de passe sur son profil                             |
+| Section         | Fonctions                                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Tableau de bord | chiffres de la période choisie (aujourd'hui par défaut), montants HT ou TTC, commandes à confirmer                            |
+| Commandes       | cartes filtrables et paginées, préparateur et livreur affectés en un choix, remises affichées, détail avec historique         |
+| Livraisons      | tournée du jour : ordre de passage, prochaine livraison, appel et itinéraire en un geste, statut en un bouton                 |
+| Catalogue       | grille de produits (prix unitaire et au kilo, origine, calibre, saison, bio), fiche complète, création, suppression confirmée |
+| Articles        | contenus « à lire » de l'application : rédaction, historique, visibilité, modification, suppression                           |
+| Clients         | particuliers (recherche, fiche, fidélité, notes internes) et communautés (point de retrait, remise, membres, commandes)       |
+| Personnel       | livreurs, préparateurs de commandes et gestionnaires : fiches complètes, disponibilité, historique de traitement              |
+| Métriques       | chiffre d'affaires, panier moyen, annulations, comparaison N-1 ou période précédente, usage de l'application                  |
+| Comptes         | gestion des comptes du back-office (administrateur) ; chacun change son mot de passe sur son profil                           |
 
 Quatre rôles : administrateur, gestionnaire, lecture seule, livreur (ne voit que la tournée et les commandes).
 

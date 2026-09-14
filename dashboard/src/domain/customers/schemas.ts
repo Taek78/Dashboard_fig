@@ -5,15 +5,24 @@ import { NOTE_MAX_LENGTH } from "@/domain/customers/types";
 export const customerIdSchema = z.string().trim().min(1).max(64);
 
 /**
- * ?q=texte : recherche ; ?tous=1 : tout afficher. Rien des deux : la page reste
+ * ?type=particuliers|communautes : l'onglet (particuliers par défaut) ;
+ * ?q=texte : recherche ; ?tous=1 : tout afficher. Ni q ni tous : la page reste
  * sur le moteur de recherche sans charger de liste.
  */
+export const CUSTOMER_TABS = ["particuliers", "communautes"] as const;
+export type CustomerTab = (typeof CUSTOMER_TABS)[number];
+
 const customerSearchSchema = z
   .object({
+    type: z.enum(CUSTOMER_TABS).optional().catch(undefined),
     q: z.string().trim().min(1).max(64).optional().catch(undefined),
     tous: z.literal("1").optional().catch(undefined),
   })
-  .transform(({ q, tous }) => ({ query: q, all: tous === "1" }));
+  .transform(({ type, q, tous }) => ({
+    tab: type ?? ("particuliers" as CustomerTab),
+    query: q,
+    all: tous === "1",
+  }));
 
 export type CustomerSearch = z.output<typeof customerSearchSchema>;
 

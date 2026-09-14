@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, Package, Phone, User } from "lucide-react";
 import { OrderActions } from "@/components/orders/order-actions";
+import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
   OrderStatusBadge,
   STATUS_ACCENT,
 } from "@/components/orders/order-status-badge";
+import {
+  OrderTeam,
+  type AssignmentOptions,
+} from "@/components/orders/order-team";
 import { Button } from "@/components/ui/button";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import type { Order } from "@/domain/orders/types";
@@ -12,21 +17,29 @@ import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Carte d'une commande (serveur), même silhouette que la carte de livraison :
- *   1. la référence, le jour et le créneau, le statut (et le motif si annulée) ;
- *   2. le client (fiche, téléphone), la ville, le contenu et le montant, le
- *      lien vers le détail ;
- *   3. les actions : geste suivant en un bouton, annulation avec motif.
+ * Carte d'une commande (serveur), même silhouette que la carte de livraison,
+ * en trois bandes (côte à côte sur écran large, empilées sur mobile) :
+ *   1. la référence, le jour et le créneau, le statut (et le motif si annulée),
+ *      la remise éventuelle (communauté, fidélité) ;
+ *   2. le client (fiche, téléphone), l'adresse ou le point de retrait, le
+ *      contenu et le montant (remise déduite), le lien vers le détail ;
+ *   3. le suivi : l'équipe (préparateur, livreur, en listes déroulantes qui
+ *      écrivent aussitôt), puis le geste suivant et l'annulation avec motif.
  * Aucun élément absolu : rien ne peut se chevaucher.
  */
 export function OrderCard({
   order,
   canChangeStatus,
+  canAssign,
+  options,
 }: {
   order: Order;
   canChangeStatus: boolean;
+  canAssign: boolean;
+  options: AssignmentOptions;
 }) {
   const done = order.status === "delivered" || order.status === "cancelled";
+  const subtotal = order.totalCents + (order.discount?.amountCents ?? 0);
 
   return (
     <article
@@ -34,11 +47,11 @@ export function OrderCard({
       className={cn(
         "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 md:flex-row",
         STATUS_ACCENT[order.status],
-        done && "opacity-70",
+        done && "opacity-80",
       )}
     >
-      {/* 1. Référence, créneau, statut */}
-      <div className="bg-muted/40 flex flex-row items-center justify-between gap-3 border-b p-4 md:w-52 md:shrink-0 md:flex-col md:items-start md:justify-start md:border-r md:border-b-0 md:p-5">
+      {/* 1. Référence, créneau, statut, remise */}
+      <div className="bg-muted/40 flex flex-row items-start justify-between gap-3 border-b p-4 md:w-52 md:shrink-0 md:flex-col md:justify-start md:border-r md:border-b-0 md:p-5">
         <div className="flex min-w-0 flex-col gap-1">
           <Link
             href={`/commandes/${order.id}`}
@@ -53,8 +66,9 @@ export function OrderCard({
             {order.deliverySlot.start} → {order.deliverySlot.end}
           </span>
         </div>
-        <div className="flex flex-col items-end gap-1 md:items-start">
+        <div className="flex min-w-0 flex-col items-end gap-1.5 md:items-start">
           <OrderStatusBadge status={order.status} />
+          <OrderDiscountBadge order={order} />
           {order.cancellation ? (
             <span className="text-muted-foreground text-xs">
               {formatCancellation(order.cancellation)}
@@ -88,10 +102,22 @@ export function OrderCard({
           </dd>
           <dt className="text-muted-foreground">
             <MapPin className="size-4" aria-hidden="true" />
-            <span className="sr-only">Adresse</span>
+            <span className="sr-only">
+              {order.community ? "Point de retrait" : "Adresse"}
+            </span>
           </dt>
           <dd>
-            {order.deliveryPostalCode} {order.deliveryCity}
+            {order.community ? (
+              <>
+                <span className="font-medium">{order.community.name}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  · retrait à {order.deliveryPostalCode} {order.deliveryCity}
+                </span>
+              </>
+            ) : (
+              `${order.deliveryPostalCode} ${order.deliveryCity}`
+            )}
           </dd>
           <dt className="text-muted-foreground">
             <Package className="size-4" aria-hidden="true" />
@@ -102,6 +128,13 @@ export function OrderCard({
             <span className="font-medium tabular-nums">
               {formatEuros(order.totalCents)}
             </span>
+            {order.discount ? (
+              <span className="text-muted-foreground tabular-nums">
+                {" "}
+                (au lieu de {formatEuros(subtotal)}, remise −
+                {formatEuros(order.discount.amountCents)})
+              </span>
+            ) : null}
           </dd>
           <dt className="text-muted-foreground">
             <User className="size-4" aria-hidden="true" />
@@ -122,19 +155,26 @@ export function OrderCard({
         </div>
       </div>
 
-      {/* 3. Actions */}
-      <div className="flex flex-col justify-center gap-2 border-t p-4 md:w-72 md:shrink-0 md:border-t-0 md:border-l md:p-5">
-        {done ? (
-          <p className="text-muted-foreground text-sm">
-            Terminée : {order.status === "delivered" ? "livrée" : "annulée"}.
-          </p>
-        ) : !canChangeStatus ? (
-          <p className="text-muted-foreground text-sm">
-            Compte en lecture seule.
-          </p>
-        ) : (
-          <OrderActions orderId={order.id} status={order.status} />
-        )}
+      {/* 3. Suivi : équipe puis actions */}
+      <div className="flex flex-col justify-center gap-3 border-t p-4 md:w-80 md:shrink-0 md:border-t-0 md:border-l md:p-5">
+        <OrderTeam
+          order={order}
+          options={options}
+          canAssign={canAssign && !done}
+        />
+        <div className="border-t pt-3">
+          {done ? (
+            <p className="text-muted-foreground text-sm">
+              Terminée : {order.status === "delivered" ? "livrée" : "annulée"}.
+            </p>
+          ) : !canChangeStatus ? (
+            <p className="text-muted-foreground text-sm">
+              Compte en lecture seule.
+            </p>
+          ) : (
+            <OrderActions orderId={order.id} status={order.status} />
+          )}
+        </div>
       </div>
     </article>
   );

@@ -171,3 +171,19 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Test de bout en bout navigateur (Playwright)** (tests) : un vrai navigateur (Chromium) ouvre le site construit, remplit les formulaires et vérifie l'écran. Complète Vitest, qui ne rend aucun composant. Fichiers `e2e/*.spec.ts`, lancés par `npm run test:e2e` après un build.
 
 **vi.mock / vi.hoisted** (tests) : remplacer un module par une version simulée pour un fichier de test (`server-only`, `next/cache`, la session, l'env). `vi.hoisted` déclare une variable utilisable dans ce remplacement.
+
+**Affectation (préparateur, livreur)** (métier) : rattacher une personne de l'équipe à une commande, dans l'un des deux rôles (`AssignmentRole`). Une liste déroulante par rôle sur les cartes et la fiche, qui écrit dès le choix (`staff-assign-field.tsx`) ; l'action `assignOrderStaff` relit la personne et vérifie son métier (`KIND_FOR_ROLE`).
+
+**Personnel (staff)** (métier) : l'équipe du client, trois métiers (livreur, préparateur de commandes, gestionnaire), avec coordonnées, créneau de travail, disponibilité, jours travaillés. Les gestionnaires listés sont des personnes ; leur accès au back-office se gère dans Comptes. Son historique de traitement se calcule à partir des commandes affectées (`summarizeStaffWork`).
+
+**Communauté** (métier) : groupe de clients qui commandent ensemble et récupèrent leurs produits à un même point de retrait à une heure convenue (crèche, école, entreprise). Créée par l'application FIG, qui applique sa remise sur chaque commande des membres ; le dashboard la lit (onglet Communautés, fiche) et affiche la remise sur les commandes.
+
+**Remise (OrderDiscount)** (métier) : réduction portée par une commande, appliquée par l'application : « communauté » (pourcentage de la communauté) ou « fidélité » (15 %). Le montant est conservé en centimes ; le total dû est le sous-total des lignes moins ce montant (`computeOrderTotalCents`).
+
+**Série de fidélité** (métier) : nombre de commandes d'affilée d'un particulier (`loyaltyStatus`). Une annulation remet à zéro, la commande qui porte la remise repart de zéro ; à huit, la prochaine commande est à −15 %. Affichée en jauge sur la fiche client et en badge dans la liste.
+
+**Duplication (produit)** (catalogue) : créer une copie complète d'une fiche, nommée « (copie) » (`duplicateName`), masquée dans l'application jusqu'à relecture. Depuis la carte de la grille ou la fiche.
+
+**`alias()` (Drizzle)** (base) : joindre deux fois la même table sous deux noms (`preparer`, `driver`) dans une requête, pour lire les deux personnes affectées à une commande en un seul `SELECT`.
+
+**Rafraîchissement de session (glissant)** (sécurité) : Auth.js re-signe le jeton et re-pose le cookie à chaque lecture de session, pour prolonger une session active. Effet de bord : une réponse de préchargement encore en vol après la déconnexion re-posait un cookie valide. Le proxy retire ce cookie des réponses de préchargement et tant que le jeton a moins de la moitié de sa vie (`src/lib/session-refresh.ts`).

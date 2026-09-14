@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
-import { canChangeOrderStatus } from "@/domain/auth/roles";
+import { listStaff } from "@/data/staff";
+import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import { todayInParis } from "@/domain/deliveries/rules";
 import {
   applyTaxMode,
@@ -20,6 +21,7 @@ import {
   TAX_MODE_LABELS,
 } from "@/domain/metrics/rules";
 import { parsePeriodQuery } from "@/domain/metrics/schemas";
+import { assignmentOptions } from "@/domain/staff/rules";
 import { formatDateFr, formatEuros } from "@/lib/format";
 
 /*
@@ -44,10 +46,11 @@ export default async function TableauDeBordPage({
     ? `du=${query.customRange.from}&au=${query.customRange.to}`
     : `periode=${query.period}`;
 
-  const [all, pending, user] = await Promise.all([
+  const [all, pending, user, staff] = await Promise.all([
     getOrders(),
     getOrders({ status: "pending" }),
     getCurrentUser(),
+    listStaff(),
   ]);
   const orders = filterByRange(all, range);
   const kpis = computeKpis(orders);
@@ -136,6 +139,8 @@ export default async function TableauDeBordPage({
           <OrdersCards
             orders={pending}
             canChangeStatus={canChangeOrderStatus(user.role)}
+            canAssign={canAssignStaff(user.role)}
+            options={assignmentOptions(staff)}
           />
         ) : (
           <p className="text-muted-foreground text-sm">

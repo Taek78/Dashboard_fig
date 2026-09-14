@@ -26,7 +26,7 @@ test.describe("connexion et accès", () => {
     await expect(page).toHaveURL(/\/connexion/);
   });
 
-  test("l'administrateur arrive sur le tableau de bord avec les sept sections", async ({
+  test("l'administrateur arrive sur le tableau de bord avec toutes ses sections", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.admin);
@@ -38,7 +38,9 @@ test.describe("connexion et accès", () => {
       "Catalogue",
       "Articles",
       "Clients",
+      "Personnel",
       "Métriques",
+      "Comptes",
     ]) {
       await expect(nav.getByRole("link", { name: section })).toBeVisible();
     }

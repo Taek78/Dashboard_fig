@@ -21,16 +21,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCustomers } from "@/data/customers";
+import { getOrders } from "@/data/orders";
+import { loyaltyStatus, type LoyaltyStatus } from "@/domain/customers/loyalty";
 import type { CustomerSearch } from "@/domain/customers/schemas";
+import { filterOrders } from "@/domain/orders/rules";
 import { cn } from "@/lib/utils";
 
 /*
- * Zone de résultats, composant serveur ASYNC rendu dans un <Suspense> par la
- * page : pendant la recherche, seul ce bloc affiche son squelette
- * (CustomersResultsSkeleton), le moteur de recherche au-dessus reste en place.
+ * Zone de résultats des particuliers, composant serveur ASYNC rendu dans un
+ * <Suspense> par la page : pendant la recherche, seul ce bloc affiche son
+ * squelette (CustomersResultsSkeleton), le moteur de recherche au-dessus reste
+ * en place. Les commandes sont chargées une fois pour calculer la série de
+ * fidélité de chaque client listé (règle pure loyaltyStatus).
  */
 export async function CustomersResults({ search }: { search: CustomerSearch }) {
-  const customers = await getCustomers(search.query);
+  const [customers, orders] = await Promise.all([
+    getCustomers({ query: search.query, membership: "individual" }),
+    getOrders(),
+  ]);
+  const loyalty = new Map<string, LoyaltyStatus>(
+    customers.map((c) => [
+      c.id,
+      loyaltyStatus(filterOrders(orders, { customerId: c.id })),
+    ]),
+  );
   const count = customers.length;
   const scope = search.query ? ` pour « ${search.query} »` : "";
 
@@ -47,12 +61,13 @@ export async function CustomersResults({ search }: { search: CustomerSearch }) {
           <EmptyTitle>Aucun client{scope}</EmptyTitle>
           <EmptyDescription>
             Essayez un autre nom, une partie de l&apos;e-mail ou les derniers
-            chiffres du téléphone.
+            chiffres du téléphone. Les membres d&apos;une communauté sont dans
+            l&apos;onglet Communautés.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Button variant="outline" render={<Link href="/clients?tous=1" />}>
-            Afficher tous les clients
+            Afficher tous les particuliers
           </Button>
         </EmptyContent>
       </Empty>
@@ -65,7 +80,11 @@ export async function CustomersResults({ search }: { search: CustomerSearch }) {
         {count} client{count > 1 ? "s" : ""}
         {scope}
       </p>
-      <CustomersTable customers={customers} />
+      <CustomersTable
+        customers={customers}
+        loyalty={loyalty}
+        showCommunity={false}
+      />
     </div>
   );
 }
@@ -101,6 +120,7 @@ export function CustomersResultsSkeleton() {
               <TableHead scope="col" className="hidden lg:table-cell">
                 Ville
               </TableHead>
+              <TableHead scope="col">Fidélité</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -117,6 +137,9 @@ export function CustomersResultsSkeleton() {
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
                   <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-24 rounded-4xl" />
                 </TableCell>
               </TableRow>
             ))}

@@ -7,8 +7,10 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getOrder, getOrderEvents } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
-import { canChangeOrderStatus } from "@/domain/auth/roles";
+import { listStaff } from "@/data/staff";
+import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import { orderIdSchema } from "@/domain/orders/schemas";
+import { assignmentOptions } from "@/domain/staff/rules";
 import { formatSlot } from "@/lib/format";
 
 /*
@@ -33,9 +35,10 @@ export default async function CommandePage({
 
   const order = await getOrder(parsed.data);
   if (!order) notFound();
-  const [events, user] = await Promise.all([
+  const [events, user, staff] = await Promise.all([
     getOrderEvents(order.id),
     getCurrentUser(),
+    listStaff(),
   ]);
 
   return (
@@ -58,6 +61,8 @@ export default async function CommandePage({
         order={order}
         events={events}
         canEdit={canChangeOrderStatus(user.role)}
+        canAssign={canAssignStaff(user.role)}
+        options={assignmentOptions(staff)}
       />
     </>
   );

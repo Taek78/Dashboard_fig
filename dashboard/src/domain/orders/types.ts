@@ -1,4 +1,7 @@
+import type { CommunityRef } from "@/domain/communities/types";
+import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
+import type { OrderDiscount } from "@/domain/orders/discount";
 import type { OrderStatus } from "@/domain/orders/status";
 
 /*
@@ -34,9 +37,18 @@ export type Order = {
   deliveryCity: string;
   deliveryPostalCode: string;
   lines: OrderLine[];
+  /** Total dû : sous-total des lignes moins la remise éventuelle. */
   totalCents: number;
   /** Motif communiqué au client quand la commande est annulée, sinon null. */
   cancellation: Cancellation | null;
+  /** Communauté dont le client est membre : livraison au point de retrait. */
+  community: CommunityRef | null;
+  /** Remise appliquée par l'application (communauté ou fidélité), sinon null. */
+  discount: OrderDiscount | null;
+  /** Préparateur affecté par l'équipe, sinon null. */
+  preparer: StaffRef | null;
+  /** Livreur affecté par l'équipe, sinon null. */
+  driver: StaffRef | null;
 };
 
 /*
@@ -50,6 +62,8 @@ export type OrderFilters = {
   date?: string;
   /** Fiche client : commandes d'une personne. */
   customerId?: string;
+  /** Fiche communauté : commandes livrées à son point de retrait. */
+  communityId?: string;
 };
 
 /** Qui a fait le geste : l'utilisateur de la session, jamais un champ de formulaire. */

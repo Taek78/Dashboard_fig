@@ -8,6 +8,9 @@ import {
   toOrder,
   toOrderEvent,
   toProduct,
+  toStaffMember,
+  toCommunity,
+  staffToRow,
   toUserAccount,
   type ArticleRow,
   type CustomerNoteRow,
@@ -18,9 +21,11 @@ import {
   type ProductRow,
 } from "@/db/mappers";
 import { articlesFixtures } from "@/domain/articles/fixtures";
+import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { productsFixtures } from "@/domain/products/fixtures";
+import { staffFixtures } from "@/domain/staff/fixtures";
 
 /** Retire id et updatedAt : ce que le formulaire fournit (ProductInput, ArticleInput). */
 function withoutMeta<T extends { id: string; updatedAt: string }>(
@@ -54,6 +59,12 @@ describe("toOrder / toOrderEvent", () => {
         totalCents: o.totalCents,
         cancellationReason: o.cancellation?.reason ?? null,
         cancellationDetail: o.cancellation?.detail ?? null,
+        communityId: o.community?.id ?? null,
+        discountKind: o.discount?.kind ?? null,
+        discountPercent: o.discount?.percent ?? null,
+        discountCents: o.discount?.amountCents ?? 0,
+        preparerId: o.preparer?.id ?? null,
+        driverId: o.driver?.id ?? null,
       };
       const customer: CustomerRow = {
         id: o.customer.id,
@@ -62,8 +73,17 @@ describe("toOrder / toOrderEvent", () => {
         phone: o.customer.phone,
         city: o.deliveryCity,
         postalCode: o.deliveryPostalCode,
+        communityId: o.community?.id ?? null,
         createdAt: new Date(o.createdAt),
       };
+      const person = (ref: { id: string; name: string } | null) =>
+        ref === null
+          ? null
+          : {
+              id: ref.id,
+              firstName: ref.name.split(" ")[0]!,
+              lastName: ref.name.split(" ").slice(1).join(" "),
+            };
       // Lignes fournies dans le désordre : le mapper remet l'ordre des positions.
       const lines: OrderLineRow[] = o.lines
         .map((l, position) => ({
@@ -76,7 +96,13 @@ describe("toOrder / toOrderEvent", () => {
           lineTotalCents: l.lineTotalCents,
         }))
         .toReversed();
-      expect(toOrder(row, customer, lines)).toEqual(o);
+      expect(
+        toOrder(row, customer, lines, {
+          community: o.community,
+          preparer: person(o.preparer),
+          driver: person(o.driver),
+        }),
+      ).toEqual(o);
     }
   });
 
@@ -139,6 +165,7 @@ describe("toCustomer", () => {
         phone: c.phone,
         city: c.city,
         postalCode: c.postalCode,
+        communityId: c.community?.id ?? null,
         createdAt: new Date(c.createdAt),
       };
       const notes: CustomerNoteRow[] = c.notes
@@ -150,7 +177,33 @@ describe("toCustomer", () => {
           createdAt: new Date(n.createdAt),
         }))
         .toReversed();
-      expect(toCustomer(row, notes)).toEqual(c);
+      expect(toCustomer(row, notes, c.community)).toEqual(c);
+    }
+  });
+});
+
+describe("toStaffMember / staffToRow / toCommunity", () => {
+  it("fait l'aller-retour sur chaque personne des fixtures", () => {
+    for (const m of staffFixtures) {
+      const { id, createdAt, ...input } = m;
+      const columns = staffToRow(input);
+      expect(
+        toStaffMember({
+          id,
+          createdAt: new Date(createdAt),
+          ...columns,
+          notes: columns.notes ?? null,
+          active: columns.active ?? true,
+        }),
+      ).toEqual(m);
+    }
+  });
+
+  it("reconstitue chaque communauté des fixtures", () => {
+    for (const c of communitiesFixtures) {
+      expect(toCommunity({ ...c, createdAt: new Date(c.createdAt) })).toEqual(
+        c,
+      );
     }
   });
 });

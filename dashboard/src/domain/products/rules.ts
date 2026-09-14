@@ -89,3 +89,15 @@ export function formatCaliber(caliber: Product["caliber"]): string | null {
     ? `${caliber.minMm} mm`
     : `${caliber.minMm}–${caliber.maxMm} mm`;
 }
+
+/**
+ * Nom d'une copie : « Pommes » → « Pommes (copie) », « Pommes (copie) » →
+ * « Pommes (copie 2) », borné à 80 caractères comme le formulaire.
+ */
+export function duplicateName(name: string): string {
+  const match = /^(.*?) \(copie(?: (\d+))?\)$/.exec(name);
+  const base = match ? match[1]! : name;
+  const n = match ? Number(match[2] ?? "1") + 1 : 1;
+  const suffix = n === 1 ? " (copie)" : ` (copie ${n})`;
+  return `${base.slice(0, 80 - suffix.length)}${suffix}`;
+}

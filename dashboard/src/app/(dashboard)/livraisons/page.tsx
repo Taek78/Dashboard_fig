@@ -16,21 +16,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
-import { canChangeOrderStatus } from "@/domain/auth/roles";
+import { listStaff } from "@/data/staff";
+import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import {
   deliveryDates,
   summarizeTour,
   todayInParis,
 } from "@/domain/deliveries/rules";
 import { parseTourDate } from "@/domain/deliveries/schemas";
+import { assignmentOptions } from "@/domain/staff/rules";
 import { formatDateFr } from "@/lib/format";
 
 /*
  * Tournée du jour : toutes les commandes livrées un jour donné (?date=, défaut :
  * aujourd'hui en Europe/Paris), en cartes de terrain (ordre de passage, appel,
  * itinéraire, geste suivant en un bouton) avec la progression de la tournée.
- * Composant serveur : lectures via les façades, compteurs purs.
- * Pas d'attribution de livreur (choix du client) : la tournée se pilote par le statut.
+ * Composant serveur : lectures via les façades, compteurs purs. Chaque carte
+ * porte le livreur et le préparateur affectés (listes déroulantes de l'équipe).
  */
 export const metadata: Metadata = { title: "Livraisons" };
 
@@ -40,11 +42,13 @@ export default async function LivraisonsPage({
   const raw = await searchParams;
   const date = parseTourDate(raw) ?? todayInParis(new Date());
 
-  const [orders, allOrders, user] = await Promise.all([
+  const [orders, allOrders, user, staff] = await Promise.all([
     getOrders({ date }),
     getOrders(),
     getCurrentUser(),
+    listStaff(),
   ]);
+  const options = assignmentOptions(staff);
   const summary = summarizeTour(orders);
   const dates = deliveryDates(allOrders);
   const plural = (n: number) => (n > 1 ? "s" : "");
@@ -124,6 +128,8 @@ export default async function LivraisonsPage({
           <TourCards
             orders={orders}
             canChangeStatus={canChangeOrderStatus(user.role)}
+            canAssign={canAssignStaff(user.role)}
+            options={options}
           />
         ) : (
           <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">

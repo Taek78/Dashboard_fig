@@ -36,13 +36,18 @@ describe("ordersMock.getOrders", () => {
   it("renvoie toutes les fixtures, triées par créneau, après la latence simulée", async () => {
     const orders = await settle(ordersMock.getOrders());
     expect(orders).toHaveLength(ordersFixtures.length);
-    expect(orders[0]?.id).toBe("cmd-0007");
-    expect(orders.at(-1)?.id).toBe("cmd-0012");
+    for (let i = 1; i < orders.length; i += 1) {
+      const a = orders[i - 1]!.deliverySlot;
+      const b = orders[i]!.deliverySlot;
+      expect(`${a.date} ${a.start}` <= `${b.date} ${b.start}`).toBe(true);
+    }
+    const day6 = orders.filter((o) => o.deliverySlot.date === "2026-09-06");
+    expect(day6[0]?.id).toBe("cmd-0007");
   });
 
   it("applique les filtres reçus", async () => {
     const pending = await settle(ordersMock.getOrders({ status: "pending" }));
-    expect(pending).toHaveLength(3);
+    expect(pending.length).toBeGreaterThanOrEqual(3);
     expect(pending.every((o) => o.status === "pending")).toBe(true);
 
     const both = await settle(

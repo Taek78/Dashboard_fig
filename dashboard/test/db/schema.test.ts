@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import * as schema from "@/db/schema";
 import { ARTICLE_CATEGORIES } from "@/domain/articles/category";
 import { ROLES } from "@/domain/auth/roles";
+import { COMMUNITY_KINDS } from "@/domain/communities/kind";
+import { DISCOUNT_KINDS } from "@/domain/orders/discount";
+import { AVAILABILITIES, SHIFTS, STAFF_KINDS } from "@/domain/staff/kind";
 import { CANCELLATION_REASONS } from "@/domain/orders/cancellation";
 import { ORDER_STATUSES } from "@/domain/orders/status";
 import { CONTAINERS, PRODUCT_CATEGORIES } from "@/domain/products/category";
@@ -32,6 +35,15 @@ describe("enums du schéma = constantes du domaine", () => {
       ARTICLE_CATEGORIES,
     ],
     ["user_role", schema.userRoleEnum.enumValues, ROLES],
+    ["staff_kind", schema.staffKindEnum.enumValues, STAFF_KINDS],
+    ["staff_shift", schema.staffShiftEnum.enumValues, SHIFTS],
+    [
+      "staff_availability",
+      schema.staffAvailabilityEnum.enumValues,
+      AVAILABILITIES,
+    ],
+    ["community_kind", schema.communityKindEnum.enumValues, COMMUNITY_KINDS],
+    ["discount_kind", schema.discountKindEnum.enumValues, DISCOUNT_KINDS],
   ])("%s", (_name, enumValues, domainValues) => {
     expect([...enumValues]).toEqual([...domainValues]);
   });
@@ -42,9 +54,11 @@ describe("enums du schéma = constantes du domaine", () => {
 });
 
 describe("tables", () => {
-  it("expose les dix tables du dashboard", () => {
+  it("expose les douze tables du dashboard", () => {
     const names = [
       schema.users,
+      schema.staff,
+      schema.communities,
       schema.customers,
       schema.customerNotes,
       schema.products,
@@ -57,6 +71,8 @@ describe("tables", () => {
     ].map(getTableName);
     expect(names).toEqual([
       "users",
+      "staff",
+      "communities",
       "customers",
       "customer_notes",
       "products",

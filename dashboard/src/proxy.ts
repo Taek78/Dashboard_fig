@@ -4,9 +4,17 @@ import {
   type NextRequest,
 } from "next/server";
 import type { Session } from "next-auth";
+import { getToken } from "next-auth/jwt";
 import { auth } from "@/auth";
 import { canViewSection, homeFor } from "@/domain/auth/roles";
 import { buildCsp } from "@/lib/csp";
+import { getEnv } from "@/lib/env";
+import {
+  isPrefetch,
+  refreshDue,
+  SESSION_COOKIE_NAMES,
+  stripSessionCookies,
+} from "@/lib/session-refresh";
 
 /*
  * Proxy (le middleware de Next 16, runtime Node.js) : première barrière, avant
@@ -16,7 +24,11 @@ import { buildCsp } from "@/lib/csp";
  *    script du thème ;
  * 2. hors chemins publics (connexion, routes Auth.js, santé) : anonyme →
  *    redirection vers /connexion?callbackUrl= ; rôle sans accès à la section
- *    (matrice SECTION_ACCESS) → redirection vers la page d'accueil du rôle.
+ *    (matrice SECTION_ACCESS) → redirection vers la page d'accueil du rôle ;
+ * 3. le cookie de session qu'Auth.js re-pose à chaque réponse est retiré
+ *    quand le rafraîchissement n'a pas lieu d'être (préchargement, jeton
+ *    récent) : sinon une réponse en vol après la déconnexion reconnecterait
+ *    la personne (src/lib/session-refresh.ts).
  * Les pages revérifient de toute façon via verifySession() et les Server
  * Actions relisent le rôle : le proxy évite juste de rendre quoi que ce soit.
  *
@@ -73,9 +85,35 @@ function guard(request: AuthedRequest): Response {
   return response;
 }
 
+/** Ne laisse Auth.js re-poser le cookie de session que si c'est utile. */
+async function limitSessionRefresh(
+  request: NextRequest,
+  response: Response,
+): Promise<void> {
+  const cookieName = SESSION_COOKIE_NAMES.find((name) =>
+    request.cookies.has(name),
+  );
+  if (!cookieName) return;
+  if (isPrefetch(request.headers)) {
+    stripSessionCookies(response.headers);
+    return;
+  }
+  const token = await getToken({
+    req: request,
+    secret: getEnv().AUTH_SECRET,
+    salt: cookieName,
+    cookieName,
+  }).catch(() => null);
+  if (!refreshDue(token?.exp, Date.now())) {
+    stripSessionCookies(response.headers);
+  }
+}
+
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const middleware = await withAuth(guard);
-  return middleware(request, event);
+  const response = await middleware(request, event);
+  await limitSessionRefresh(request, response);
+  return response;
 }
 
 export const config = {

@@ -1,5 +1,6 @@
 import type {
   articles,
+  communities,
   customerNotes,
   customers,
   engagementMonthly,
@@ -7,6 +8,7 @@ import type {
   orderLines,
   orders,
   products,
+  staff,
   users,
 } from "@/db/schema";
 import type {
@@ -15,12 +17,17 @@ import type {
 } from "@/domain/articles/category";
 import type { Article, ArticleInput } from "@/domain/articles/types";
 import type { ManagedUser, UserAccount } from "@/domain/auth/types";
+import type { Community, CommunityRef } from "@/domain/communities/types";
 import type { Customer, CustomerNote } from "@/domain/customers/types";
 import type { EngagementPoint } from "@/domain/engagement/types";
+import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
+import type { OrderDiscount } from "@/domain/orders/discount";
 import type { Order, OrderEvent, OrderLine } from "@/domain/orders/types";
 import type { Illustration, OriginCountry } from "@/domain/products/category";
 import type { Product, ProductInput } from "@/domain/products/types";
+import type { Weekday } from "@/domain/staff/kind";
+import type { StaffInput, StaffMember } from "@/domain/staff/types";
 
 /*
  * Mappers PURS entre les lignes Drizzle et les types métier du front (règle 1
@@ -38,6 +45,34 @@ export type ProductRow = typeof products.$inferSelect;
 export type ArticleRow = typeof articles.$inferSelect;
 export type EngagementRow = typeof engagementMonthly.$inferSelect;
 export type UserRow = typeof users.$inferSelect;
+export type StaffRow = typeof staff.$inferSelect;
+export type CommunityRow = typeof communities.$inferSelect;
+
+/** Ce qu'une commande ou un client portent d'une personne ou d'une communauté. */
+export type StaffRefRow = Pick<StaffRow, "id" | "firstName" | "lastName">;
+export type CommunityRefRow = Pick<CommunityRow, "id" | "name">;
+
+export function toStaffRef(row: StaffRefRow | null): StaffRef | null {
+  return row === null
+    ? null
+    : { id: row.id, name: `${row.firstName} ${row.lastName}`.trim() };
+}
+
+export function toCommunityRef(
+  row: CommunityRefRow | null,
+): CommunityRef | null {
+  return row === null ? null : { id: row.id, name: row.name };
+}
+
+function toDiscount(
+  kind: OrderRow["discountKind"],
+  percent: number | null,
+  amountCents: number,
+): OrderDiscount | null {
+  return kind === null || percent === null
+    ? null
+    : { kind, percent, amountCents };
+}
 
 function toCancellation(
   reason: OrderRow["cancellationReason"],
@@ -56,10 +91,18 @@ export function toOrderLine(row: OrderLineRow): OrderLine {
   };
 }
 
+/** Lignes jointes à la commande : communauté, préparateur, livreur (null si absents). */
+export type OrderJoins = {
+  community: CommunityRefRow | null;
+  preparer: StaffRefRow | null;
+  driver: StaffRefRow | null;
+};
+
 export function toOrder(
   row: OrderRow,
   customer: Pick<CustomerRow, "id" | "fullName" | "email" | "phone">,
   lines: readonly OrderLineRow[],
+  joins: OrderJoins,
 ): Order {
   return {
     id: row.id,
@@ -87,6 +130,14 @@ export function toOrder(
       row.cancellationReason,
       row.cancellationDetail,
     ),
+    community: toCommunityRef(joins.community),
+    discount: toDiscount(
+      row.discountKind,
+      row.discountPercent,
+      row.discountCents,
+    ),
+    preparer: toStaffRef(joins.preparer),
+    driver: toStaffRef(joins.driver),
   };
 }
 
@@ -117,6 +168,7 @@ export function toCustomerNote(row: CustomerNoteRow): CustomerNote {
 export function toCustomer(
   row: CustomerRow,
   notes: readonly CustomerNoteRow[],
+  community: CommunityRefRow | null,
 ): Customer {
   return {
     id: row.id,
@@ -126,6 +178,7 @@ export function toCustomer(
     city: row.city,
     postalCode: row.postalCode,
     createdAt: row.createdAt.toISOString(),
+    community: toCommunityRef(community),
     notes: [...notes]
       .toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
       .map(toCustomerNote),
@@ -223,6 +276,62 @@ export function toEngagementPoint(row: EngagementRow): EngagementPoint {
     // numeric arrive en chaîne depuis postgres.js : on retourne au nombre.
     rating: row.rating === null ? null : Number(row.rating),
     ratingCount: row.ratingCount,
+  };
+}
+
+export function toStaffMember(row: StaffRow): StaffMember {
+  return {
+    id: row.id,
+    kind: row.kind,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+    phone: row.phone,
+    shift: row.shift,
+    availability: row.availability,
+    // La colonne est un tableau de texte ; le domaine le type plus strictement.
+    workDays: row.workDays as Weekday[],
+    startedAt: row.startedAt,
+    notes: row.notes,
+    active: row.active,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** Colonnes à écrire pour une personne (l'id et created_at sont posés par l'appelant). */
+export function staffToRow(
+  input: StaffInput,
+): Omit<typeof staff.$inferInsert, "id" | "createdAt"> {
+  return {
+    kind: input.kind,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email,
+    phone: input.phone,
+    shift: input.shift,
+    availability: input.availability,
+    workDays: [...input.workDays],
+    startedAt: input.startedAt,
+    notes: input.notes,
+    active: input.active,
+  };
+}
+
+export function toCommunity(row: CommunityRow): Community {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    contactName: row.contactName,
+    contactEmail: row.contactEmail,
+    contactPhone: row.contactPhone,
+    pickupPlace: row.pickupPlace,
+    pickupCity: row.pickupCity,
+    pickupPostalCode: row.pickupPostalCode,
+    pickupTime: row.pickupTime,
+    discountPercent: row.discountPercent,
+    active: row.active,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

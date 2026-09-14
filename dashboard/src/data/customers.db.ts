@@ -3,10 +3,14 @@ import { randomUUID } from "node:crypto";
 import { asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { toCustomer, toCustomerNote } from "@/db/mappers";
-import { customerNotes, customers } from "@/db/schema";
-import { searchCustomers, sortCustomersByName } from "@/domain/customers/rules";
+import { communities, customerNotes, customers } from "@/db/schema";
+import { filterCustomers, sortCustomersByName } from "@/domain/customers/rules";
 import type { CustomersSource } from "@/domain/customers/source";
-import type { Customer, CustomerNote } from "@/domain/customers/types";
+import type {
+  Customer,
+  CustomerFilters,
+  CustomerNote,
+} from "@/domain/customers/types";
 
 /*
  * Implémentation Drizzle du contrat CustomersSource. La recherche (nom,
@@ -16,10 +20,17 @@ import type { Customer, CustomerNote } from "@/domain/customers/types";
  */
 async function loadCustomers(ids?: readonly string[]): Promise<Customer[]> {
   const db = getDb();
+  const base = db
+    .select({
+      customer: customers,
+      community: { id: communities.id, name: communities.name },
+    })
+    .from(customers)
+    .leftJoin(communities, eq(customers.communityId, communities.id));
   const rows =
     ids === undefined
-      ? await db.select().from(customers)
-      : await db.select().from(customers).where(inArray(customers.id, ids));
+      ? await base
+      : await base.where(inArray(customers.id, ids));
   if (rows.length === 0) return [];
   const notes = await db
     .select()
@@ -27,7 +38,7 @@ async function loadCustomers(ids?: readonly string[]): Promise<Customer[]> {
     .where(
       inArray(
         customerNotes.customerId,
-        rows.map((r) => r.id),
+        rows.map((r) => r.customer.id),
       ),
     )
     .orderBy(asc(customerNotes.createdAt));
@@ -37,12 +48,14 @@ async function loadCustomers(ids?: readonly string[]): Promise<Customer[]> {
     list.push(note);
     byCustomer.set(note.customerId, list);
   }
-  return rows.map((r) => toCustomer(r, byCustomer.get(r.id) ?? []));
+  return rows.map((r) =>
+    toCustomer(r.customer, byCustomer.get(r.customer.id) ?? [], r.community),
+  );
 }
 
 export const customersDb: CustomersSource = {
-  getCustomers: async (query?: string) =>
-    sortCustomersByName(searchCustomers(await loadCustomers(), query)),
+  getCustomers: async (filters: CustomerFilters = {}) =>
+    sortCustomersByName(filterCustomers(await loadCustomers(), filters)),
 
   getCustomer: async (id: string) => {
     const [customer] = await loadCustomers([id]);

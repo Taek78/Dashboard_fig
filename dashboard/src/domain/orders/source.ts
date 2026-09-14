@@ -1,3 +1,4 @@
+import type { StaffAssignment } from "@/domain/orders/assignment";
 import type {
   Order,
   OrderEvent,
@@ -24,10 +25,13 @@ import type {
  * acteur, motif d'annulation éventuel) et ÉCRIT l'événement d'historique avec le
  * statut (même transaction en base) ; getOrderEvents le relit, du plus récent au
  * plus ancien. Mise à jour conditionnelle : null si `from` ne correspond plus.
+ * assignStaff pose ou retire le préparateur ou le livreur (la personne a déjà
+ * été relue et vérifiée par l'action) ; null si la commande n'existe pas.
  */
 export type OrdersSource = {
   getOrders(filters?: OrderFilters): Promise<Order[]>;
   getOrder(id: string): Promise<Order | null>;
   updateOrderStatus(id: string, change: StatusChange): Promise<Order | null>;
   getOrderEvents(orderId: string): Promise<OrderEvent[]>;
+  assignStaff(id: string, assignment: StaffAssignment): Promise<Order | null>;
 };

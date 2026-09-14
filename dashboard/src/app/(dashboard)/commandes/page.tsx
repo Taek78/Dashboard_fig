@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Inbox, SearchX } from "lucide-react";
-import { OrdersFilters } from "@/components/orders/orders-filters";
 import { OrdersCards } from "@/components/orders/orders-cards";
+import { OrdersFilters } from "@/components/orders/orders-filters";
+import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,21 +16,24 @@ import {
 } from "@/components/ui/empty";
 import { getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
-import { canChangeOrderStatus } from "@/domain/auth/roles";
-import { parseOrderFilters } from "@/domain/orders/schemas";
+import { listStaff } from "@/data/staff";
+import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
+import { paginate, sortOrdersBySlot } from "@/domain/orders/rules";
+import { parseOrderFilters, parsePage } from "@/domain/orders/schemas";
+import { assignmentOptions } from "@/domain/staff/rules";
 import { formatOrdersCount } from "@/lib/format";
 import { readSimulationMode } from "@/lib/simulation";
 
 /*
  * Liste des commandes. Composant serveur async : lit l'URL une fois, en tire le
- * mode de simulation (dev seulement) et les filtres validés, charge via la façade
- * (@/data/orders, jamais le mock), rend la barre de filtres, le compteur et les
- * cartes (même présentation que la tournée, avec les actions) ou l'un des deux
- * états vides.
+ * mode de simulation (dev seulement), les filtres validés et la page, charge via
+ * la façade (@/data/orders, jamais le mock) avec l'équipe (pour les listes
+ * déroulantes d'affectation), puis rend la barre de filtres, le compteur, les
+ * cartes de la page (les plus récentes d'abord, 40 par page) et la pagination,
+ * ou l'un des deux états vides.
  *
  * Deux états vides : « rien ne correspond aux filtres » (proposer de réinitialiser)
  * et « aucune commande du tout » n'appellent pas la même action.
- * Un tableau vide est « vrai » en JS : on teste orders.length, pas orders.
  */
 export const metadata: Metadata = { title: "Commandes" };
 
@@ -48,10 +52,19 @@ export default async function CommandesPage({
 
   const filters = parseOrderFilters(raw);
   const isFiltered = filters.status !== undefined || filters.date !== undefined;
-  const [orders, user] = await Promise.all([
+  const [orders, user, staff] = await Promise.all([
     mode === "vide" ? Promise.resolve([]) : getOrders(filters),
     getCurrentUser(),
+    listStaff(),
   ]);
+  const options = assignmentOptions(staff);
+  const page = paginate(sortOrdersBySlot(orders, "desc"), parsePage(raw));
+  const baseParams = [
+    filters.status ? `statut=${filters.status}` : "",
+    filters.date ? `date=${filters.date}` : "",
+  ]
+    .filter(Boolean)
+    .join("&");
 
   return (
     <>
@@ -62,13 +75,21 @@ export default async function CommandesPage({
       <div className="flex flex-col gap-4">
         <OrdersFilters filters={filters} />
         <p role="status" className="text-muted-foreground text-sm">
-          {formatOrdersCount(orders.length)}
+          {formatOrdersCount(page.total)}
+          {page.pageCount > 1
+            ? ` · les plus récentes d'abord, page ${page.page} sur ${page.pageCount}`
+            : ""}
         </p>
         {orders.length > 0 ? (
-          <OrdersCards
-            orders={orders}
-            canChangeStatus={canChangeOrderStatus(user.role)}
-          />
+          <>
+            <OrdersCards
+              orders={page.items}
+              canChangeStatus={canChangeOrderStatus(user.role)}
+              canAssign={canAssignStaff(user.role)}
+              options={options}
+            />
+            <OrdersPagination page={page} baseParams={baseParams} />
+          </>
         ) : isFiltered ? (
           <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
             <EmptyHeader>

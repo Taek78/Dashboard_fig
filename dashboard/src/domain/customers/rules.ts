@@ -1,4 +1,4 @@
-import type { Customer } from "@/domain/customers/types";
+import type { Customer, CustomerFilters } from "@/domain/customers/types";
 import type { Order } from "@/domain/orders/types";
 import { digitsOnly, normalize } from "@/lib/text";
 
@@ -24,6 +24,28 @@ export function searchCustomers(
       normalize(c.email).includes(q) ||
       (qDigits.length >= 2 && digitsOnly(c.phone).includes(qDigits)),
   );
+}
+
+/**
+ * Applique tous les filtres présents : recherche (searchCustomers), puis
+ * particuliers / membres d'une communauté, puis une communauté précise. Un
+ * critère absent laisse tout passer.
+ */
+export function filterCustomers(
+  customers: readonly Customer[],
+  filters: CustomerFilters,
+): Customer[] {
+  return searchCustomers(customers, filters.query).filter((c) => {
+    const membershipOk =
+      filters.membership === undefined ||
+      (filters.membership === "individual"
+        ? c.community === null
+        : c.community !== null);
+    const communityOk =
+      filters.communityId === undefined ||
+      c.community?.id === filters.communityId;
+    return membershipOk && communityOk;
+  });
 }
 
 /** Copie triée par nom (ordre français). */

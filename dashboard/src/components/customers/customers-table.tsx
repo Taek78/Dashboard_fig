@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin, Phone, Users } from "lucide-react";
+import { LoyaltyBadge } from "@/components/customers/loyalty-badge";
 import { mobileCardFrame, tableFrame } from "@/components/orders/orders-table";
 import {
   Table,
@@ -10,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { LoyaltyStatus } from "@/domain/customers/loyalty";
 import type { Customer } from "@/domain/customers/types";
 import { toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -19,21 +21,36 @@ import { cn } from "@/lib/utils";
  * la fiche, l'e-mail et le téléphone sont des liens d'action (mailto:, tel:)
  * assez grands pour le doigt. À partir de 768 px, le tableau ; Téléphone et
  * Ville apparaissent dès 1024 px. Un seul des deux rendus est affiché.
+ * `loyalty` (par id de client) affiche la série de fidélité ; `showCommunity`
+ * ajoute la communauté d'appartenance (liste d'une communauté : inutile).
  */
 const hideUntilLg = "hidden lg:table-cell";
 
-export function CustomersTable({ customers }: { customers: Customer[] }) {
+export function CustomersTable({
+  customers,
+  loyalty,
+  showCommunity = true,
+}: {
+  customers: Customer[];
+  loyalty?: ReadonlyMap<string, LoyaltyStatus>;
+  showCommunity?: boolean;
+}) {
   return (
     <>
       <ul className="flex flex-col gap-3 md:hidden">
         {customers.map((customer) => (
           <li key={customer.id} className={mobileCardFrame}>
-            <Link
-              href={`/clients/${customer.id}`}
-              className="font-medium underline-offset-4 hover:underline focus-visible:underline"
-            >
-              {customer.fullName}
-            </Link>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Link
+                href={`/clients/${customer.id}`}
+                className="font-medium underline-offset-4 hover:underline focus-visible:underline"
+              >
+                {customer.fullName}
+              </Link>
+              {loyalty?.get(customer.id) ? (
+                <LoyaltyBadge status={loyalty.get(customer.id)!} />
+              ) : null}
+            </div>
             <ul className="flex flex-col gap-1.5 text-sm">
               <li className="flex items-center gap-2">
                 <Mail
@@ -71,6 +88,21 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
                   {customer.postalCode} {customer.city}
                 </span>
               </li>
+              {showCommunity && customer.community ? (
+                <li className="flex items-center gap-2">
+                  <Users
+                    className="text-muted-foreground size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <Link
+                    href={`/clients/communautes/${customer.community.id}`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    <span className="sr-only">Communauté : </span>
+                    {customer.community.name}
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </li>
         ))}
@@ -79,7 +111,7 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
       <div className={cn(tableFrame, "hidden md:block")}>
         <Table>
           <TableCaption className="sr-only">
-            Clients avec leurs coordonnées.
+            Clients avec leurs coordonnées et leur fidélité.
           </TableCaption>
           <TableHeader>
             <TableRow>
@@ -91,6 +123,12 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
               <TableHead scope="col" className={hideUntilLg}>
                 Ville
               </TableHead>
+              {showCommunity ? (
+                <TableHead scope="col" className={hideUntilLg}>
+                  Communauté
+                </TableHead>
+              ) : null}
+              {loyalty ? <TableHead scope="col">Fidélité</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -113,6 +151,27 @@ export function CustomersTable({ customers }: { customers: Customer[] }) {
                 <TableCell className={hideUntilLg}>
                   {customer.postalCode} {customer.city}
                 </TableCell>
+                {showCommunity ? (
+                  <TableCell className={hideUntilLg}>
+                    {customer.community ? (
+                      <Link
+                        href={`/clients/communautes/${customer.community.id}`}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {customer.community.name}
+                      </Link>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                ) : null}
+                {loyalty ? (
+                  <TableCell>
+                    {loyalty.get(customer.id) ? (
+                      <LoyaltyBadge status={loyalty.get(customer.id)!} />
+                    ) : null}
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>

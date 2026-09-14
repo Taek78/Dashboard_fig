@@ -25,7 +25,7 @@ const redirect = vi.hoisted(() =>
 );
 vi.mock("next/navigation", () => ({ redirect }));
 
-const { addProduct, removeProduct, saveProduct } =
+const { addProduct, duplicateProduct, removeProduct, saveProduct } =
   await import("@/app/(dashboard)/catalogue/actions");
 const { idleActionResult } = await import("@/lib/action-result");
 
@@ -156,6 +156,36 @@ describe("addProduct", () => {
   it("ne crée rien si la saisie est invalide", async () => {
     const { result } = await run(addProduct, { ...base, name: "" });
     expect(result?.status).toBe("error");
+    expect(await read("prd-m-1")).toBeNull();
+  });
+});
+
+describe("duplicateProduct", () => {
+  it("crée une copie masquée nommée « (copie) » et redirige vers sa fiche", async () => {
+    const { redirectedTo } = await run(duplicateProduct, {
+      productId: "prd-0001",
+    });
+    expect(redirectedTo).toBe("/catalogue/prd-m-1?duplique=1");
+    const copy = await read("prd-m-1");
+    expect(copy).toMatchObject({
+      name: "Carottes (copie)",
+      visible: false,
+      priceCents: 290,
+      category: "vegetable",
+    });
+    expect((await read("prd-0001"))?.name).toBe("Carottes");
+    expect(revalidatePath).toHaveBeenCalledWith("/catalogue", "layout");
+  });
+
+  it("refuse le rôle lecture et signale un produit inconnu", async () => {
+    session.role = "lecture";
+    expect(
+      (await run(duplicateProduct, { productId: "prd-0001" })).result,
+    ).toMatchObject({ status: "error" });
+    session.role = "admin";
+    expect(
+      (await run(duplicateProduct, { productId: "prd-9999" })).result,
+    ).toEqual({ status: "error", message: "Ce produit n'existe plus." });
     expect(await read("prd-m-1")).toBeNull();
   });
 });

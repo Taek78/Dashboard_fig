@@ -1,12 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOrder, updateOrderStatus } from "@/data/orders";
+import { assignStaff, getOrder, updateOrderStatus } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
-import { canChangeOrderStatus } from "@/domain/auth/roles";
+import { getStaff } from "@/data/staff";
+import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
+import { ASSIGNMENT_ROLE_LABELS } from "@/domain/orders/assignment";
 import { formatCancellation } from "@/domain/orders/cancellation";
-import { changeStatusSchema } from "@/domain/orders/schemas";
+import { assignStaffSchema, changeStatusSchema } from "@/domain/orders/schemas";
 import { canTransition, ORDER_STATUS_LABELS } from "@/domain/orders/status";
+import { canBeAssigned, staffFullName } from "@/domain/staff/rules";
 import type { ActionResult } from "@/lib/action-result";
 import { logSecurity } from "@/data/security-log";
 
@@ -118,5 +121,82 @@ export async function changeOrderStatus(
     // Côté serveur seulement, sans nom ni e-mail ; le client reçoit un message générique.
     console.error("[changeOrderStatus]", { userId: user.id, orderId }, error);
     return { status: "error", message: MESSAGES.failure };
+  }
+}
+
+/*
+ * Affectation d'un préparateur ou d'un livreur. Même discipline : session →
+ * rôle → zod → relecture de la commande ET de la personne → règle (bon métier,
+ * personne active, commande non terminée) → écriture → journal → revalidation.
+ * Le nom écrit sur la commande est celui relu en base, jamais un champ envoyé.
+ */
+const ASSIGN_MESSAGES = {
+  forbidden: "Vous n'avez pas les droits pour affecter l'équipe.",
+  invalid: "Affectation invalide.",
+  notFound: "Cette commande n'existe plus.",
+  staffNotFound: "Cette personne n'est plus dans l'équipe.",
+  wrongKind: "Cette personne n'a pas le bon métier pour ce rôle.",
+  finished: "Une commande terminée ne peut plus être affectée.",
+  failure: "Impossible d'enregistrer l'affectation. Réessayez dans un instant.",
+} as const;
+
+export async function assignOrderStaff(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canAssignStaff(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "assignOrderStaff",
+    });
+    return { status: "error", message: ASSIGN_MESSAGES.forbidden };
+  }
+  const parsed = assignStaffSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    return { status: "error", message: ASSIGN_MESSAGES.invalid };
+  }
+  const { orderId, role, staffId } = parsed.data;
+
+  try {
+    const order = await getOrder(orderId);
+    if (!order) return { status: "error", message: ASSIGN_MESSAGES.notFound };
+    if (order.status === "delivered" || order.status === "cancelled") {
+      return { status: "error", message: ASSIGN_MESSAGES.finished };
+    }
+
+    let staff: { id: string; name: string } | null = null;
+    if (staffId !== null) {
+      const member = await getStaff(staffId);
+      if (!member) {
+        return { status: "error", message: ASSIGN_MESSAGES.staffNotFound };
+      }
+      if (!canBeAssigned(member, role)) {
+        return { status: "error", message: ASSIGN_MESSAGES.wrongKind };
+      }
+      staff = { id: member.id, name: staffFullName(member) };
+    }
+
+    const updated = await assignStaff(order.id, { role, staff });
+    if (!updated) return { status: "error", message: ASSIGN_MESSAGES.notFound };
+
+    logSecurity({
+      type: "order_staff_assigned",
+      userId: user.id,
+      orderId: order.id,
+      role,
+      staffId: staff?.id ?? null,
+    });
+    revalidatePath("/", "layout");
+    return {
+      status: "success",
+      message: staff
+        ? `${ASSIGNMENT_ROLE_LABELS[role]} : ${staff.name}.`
+        : `${ASSIGNMENT_ROLE_LABELS[role]} retiré.`,
+    };
+  } catch (error) {
+    console.error("[assignOrderStaff]", { userId: user.id, orderId }, error);
+    return { status: "error", message: ASSIGN_MESSAGES.failure };
   }
 }

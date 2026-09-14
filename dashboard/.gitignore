@@ -46,6 +46,9 @@ dumps/
 *.sql
 *.sql.gz
 *.dump
+# … mais les migrations générées et le script de création locale en font partie
+!drizzle/*.sql
+!scripts/setup-local.sql
 
 # playwright
 /test-results/

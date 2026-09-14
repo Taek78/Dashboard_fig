@@ -19,6 +19,22 @@ export type SecurityEvent =
       to: string;
     }
   | { type: "product_deleted"; userId: string; productId: string }
+  | {
+      type: "product_duplicated";
+      userId: string;
+      productId: string;
+      copyId: string;
+    }
+  | {
+      type: "order_staff_assigned";
+      userId: string;
+      orderId: string;
+      role: string;
+      staffId: string | null;
+    }
+  | { type: "staff_created"; userId: string; staffId: string; kind: string }
+  | { type: "staff_updated"; userId: string; staffId: string; kind: string }
+  | { type: "staff_deleted"; userId: string; staffId: string }
   | { type: "article_deleted"; userId: string; articleId: string }
   | { type: "account_created"; userId: string; targetId: string; role: string }
   | { type: "account_updated"; userId: string; targetId: string; role: string }

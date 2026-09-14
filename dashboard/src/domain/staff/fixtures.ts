@@ -1,0 +1,143 @@
+import type { StaffMember } from "@/domain/staff/types";
+
+/*
+ * Équipe factice du client : quatre livreurs (dont une personne partie), trois
+ * préparateurs et deux gestionnaires. Déterministe (dates fixes), aucune
+ * personne réelle : e-mails en @fig-demo.invalid, téléphones dans la tranche de
+ * fiction 06 39 98 90 xx. L'historique généré (orders/history.ts) affecte ces
+ * personnes aux commandes passées à partir de leur date d'entrée.
+ */
+const s = (
+  n: number,
+  seed: Omit<StaffMember, "id" | "email" | "phone" | "createdAt"> & {
+    email: string;
+  },
+): StaffMember => ({
+  id: `stf-${String(n).padStart(4, "0")}`,
+  phone: `06 39 98 90 ${String(n).padStart(2, "0")}`,
+  createdAt: `${seed.startedAt}T09:00:00.000Z`,
+  ...seed,
+});
+
+export const staffFixtures: readonly StaffMember[] = [
+  s(1, {
+    kind: "livreur",
+    firstName: "Malik",
+    lastName: "Dembélé",
+    email: "malik.dembele@fig-demo.invalid",
+    shift: "matin",
+    availability: "disponible",
+    workDays: ["lun", "mar", "mer", "jeu", "ven", "sam"],
+    startedAt: "2024-11-04",
+    notes: "Vélo cargo, secteur Paris Est.",
+    active: true,
+  }),
+  s(2, {
+    kind: "livreur",
+    firstName: "Sophie",
+    lastName: "Renard",
+    email: "sophie.renard@fig-demo.invalid",
+    shift: "apres_midi",
+    availability: "disponible",
+    workDays: ["mar", "mer", "jeu", "ven", "sam"],
+    startedAt: "2025-02-10",
+    notes: "Utilitaire électrique, petite couronne.",
+    active: true,
+  }),
+  s(3, {
+    kind: "livreur",
+    firstName: "Ousmane",
+    lastName: "Diagne",
+    email: "ousmane.diagne@fig-demo.invalid",
+    shift: "journee",
+    availability: "conge",
+    workDays: ["lun", "mar", "mer", "jeu", "ven"],
+    startedAt: "2025-06-02",
+    notes: "Congé jusqu'au 21 septembre.",
+    active: true,
+  }),
+  s(4, {
+    kind: "livreur",
+    firstName: "Léna",
+    lastName: "Vasseur",
+    email: "lena.vasseur@fig-demo.invalid",
+    shift: "soir",
+    availability: "disponible",
+    workDays: ["jeu", "ven", "sam"],
+    startedAt: "2026-03-16",
+    notes: null,
+    active: true,
+  }),
+  s(5, {
+    kind: "preparateur",
+    firstName: "Julien",
+    lastName: "Carpentier",
+    email: "julien.carpentier@fig-demo.invalid",
+    shift: "matin",
+    availability: "disponible",
+    workDays: ["lun", "mar", "mer", "jeu", "ven", "sam"],
+    startedAt: "2024-11-04",
+    notes: "Référent chambre froide.",
+    active: true,
+  }),
+  s(6, {
+    kind: "preparateur",
+    firstName: "Fatou",
+    lastName: "Ndiaye",
+    email: "fatou.ndiaye@fig-demo.invalid",
+    shift: "matin",
+    availability: "disponible",
+    workDays: ["mer", "jeu", "ven", "sam"],
+    startedAt: "2025-04-14",
+    notes: null,
+    active: true,
+  }),
+  s(7, {
+    kind: "preparateur",
+    firstName: "Rémi",
+    lastName: "Lacroix",
+    email: "remi.lacroix@fig-demo.invalid",
+    shift: "apres_midi",
+    availability: "indisponible",
+    workDays: ["lun", "mar", "mer", "jeu", "ven"],
+    startedAt: "2025-09-01",
+    notes: "Arrêt de travail, retour à confirmer.",
+    active: true,
+  }),
+  s(8, {
+    kind: "gestionnaire",
+    firstName: "Claire",
+    lastName: "Morel",
+    email: "claire.morel@fig-demo.invalid",
+    shift: "journee",
+    availability: "disponible",
+    workDays: ["lun", "mar", "mer", "jeu", "ven"],
+    startedAt: "2024-10-01",
+    notes: "Responsable de l'exploitation.",
+    active: true,
+  }),
+  s(9, {
+    kind: "gestionnaire",
+    firstName: "Adil",
+    lastName: "Benkirane",
+    email: "adil.benkirane@fig-demo.invalid",
+    shift: "journee",
+    availability: "disponible",
+    workDays: ["lun", "mar", "jeu", "ven", "sam"],
+    startedAt: "2025-05-05",
+    notes: "Relation clients et communautés.",
+    active: true,
+  }),
+  s(10, {
+    kind: "livreur",
+    firstName: "Paul",
+    lastName: "Girard",
+    email: "paul.girard@fig-demo.invalid",
+    shift: "matin",
+    availability: "indisponible",
+    workDays: ["lun", "mar", "mer", "jeu", "ven"],
+    startedAt: "2025-01-06",
+    notes: "A quitté l'équipe en mars 2026 ; conservé pour l'historique.",
+    active: false,
+  }),
+];

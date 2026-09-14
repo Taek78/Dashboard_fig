@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignStaffSchema,
   changeStatusSchema,
   orderFiltersSchema,
   orderIdSchema,
   parseOrderFilters,
+  parsePage,
 } from "@/domain/orders/schemas";
 
 /*
@@ -189,5 +191,49 @@ describe("parseOrderFilters", () => {
       status: undefined,
       date: "2026-09-08",
     });
+  });
+});
+
+describe("parsePage", () => {
+  it("lit un entier positif, sinon 1", () => {
+    expect(parsePage({ page: "3" })).toBe(3);
+    expect(parsePage({})).toBe(1);
+    expect(parsePage({ page: "0" })).toBe(1);
+    expect(parsePage({ page: "-2" })).toBe(1);
+    expect(parsePage({ page: "abc" })).toBe(1);
+    expect(parsePage({ page: ["2", "3"] })).toBe(1);
+  });
+});
+
+describe("assignStaffSchema", () => {
+  it("accepte un rôle connu et un id, ou une chaîne vide pour retirer", () => {
+    expect(
+      assignStaffSchema.parse({
+        orderId: "cmd-0001",
+        role: "preparer",
+        staffId: " stf-0005 ",
+      }),
+    ).toEqual({ orderId: "cmd-0001", role: "preparer", staffId: "stf-0005" });
+    expect(
+      assignStaffSchema.parse({
+        orderId: "cmd-0001",
+        role: "driver",
+        staffId: "",
+      }).staffId,
+    ).toBeNull();
+  });
+
+  it("refuse un rôle inconnu ou un orderId vide", () => {
+    expect(
+      assignStaffSchema.safeParse({
+        orderId: "cmd-0001",
+        role: "manager",
+        staffId: "x",
+      }).success,
+    ).toBe(false);
+    expect(
+      assignStaffSchema.safeParse({ orderId: "", role: "driver", staffId: "x" })
+        .success,
+    ).toBe(false);
   });
 });

@@ -6,19 +6,29 @@ import {
 } from "@/domain/customers/schemas";
 
 describe("parseCustomerSearch", () => {
-  it("renvoie la requête trimée et le drapeau « tous »", () => {
+  it("renvoie l'onglet, la requête trimée et le drapeau « tous »", () => {
     expect(parseCustomerSearch({ q: " amel " })).toEqual({
+      tab: "particuliers",
       query: "amel",
       all: false,
     });
     expect(parseCustomerSearch({ tous: "1" })).toEqual({
+      tab: "particuliers",
       query: undefined,
       all: true,
     });
+    expect(parseCustomerSearch({ type: "communautes" }).tab).toBe(
+      "communautes",
+    );
+    expect(parseCustomerSearch({ type: "autre" }).tab).toBe("particuliers");
   });
 
   it("sans paramètre valide, ni requête ni liste : la page reste sur le moteur", () => {
-    expect(parseCustomerSearch({})).toEqual({ query: undefined, all: false });
+    expect(parseCustomerSearch({})).toEqual({
+      tab: "particuliers",
+      query: undefined,
+      all: false,
+    });
     expect(parseCustomerSearch({ q: "" }).query).toBeUndefined();
     expect(parseCustomerSearch({ q: ["a", "b"] }).query).toBeUndefined();
     expect(parseCustomerSearch({ q: "x".repeat(65) }).query).toBeUndefined();

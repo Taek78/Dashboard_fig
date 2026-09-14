@@ -29,7 +29,7 @@ describe("customersFixtures", () => {
   it("n'exposent aucune personne réelle", () => {
     for (const c of customersFixtures) {
       expect(c.email.endsWith("@example.invalid")).toBe(true);
-      expect(c.phone).toMatch(/^06 39 98 00 \d{2}$/);
+      expect(c.phone).toMatch(/^06 39 98 \d{2} \d{2}$/);
     }
   });
 

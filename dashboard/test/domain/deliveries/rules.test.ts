@@ -7,7 +7,7 @@ import {
   summarizeTour,
   todayInParis,
 } from "@/domain/deliveries/rules";
-import { ordersFixtures } from "@/domain/orders/fixtures";
+import { scenarioOrders } from "@/domain/orders/fixtures";
 import { filterOrders } from "@/domain/orders/rules";
 
 describe("todayInParis", () => {
@@ -23,7 +23,7 @@ describe("todayInParis", () => {
 
 describe("deliveryDates", () => {
   it("liste les jours distincts triés", () => {
-    expect(deliveryDates(ordersFixtures)).toEqual([
+    expect(deliveryDates(scenarioOrders)).toEqual([
       "2026-09-06",
       "2026-09-07",
       "2026-09-08",
@@ -33,7 +33,7 @@ describe("deliveryDates", () => {
 
 describe("summarizeTour", () => {
   it("compte à confirmer, en cours et terminées sur la tournée du 7", () => {
-    const day = filterOrders(ordersFixtures, { date: "2026-09-07" });
+    const day = filterOrders(scenarioOrders, { date: "2026-09-07" });
     // cmd-0001 pending ; 0002 confirmed, 0003 preparing, 0004 et 0014 delivering
     expect(summarizeTour(day)).toEqual({
       total: 5,
@@ -44,7 +44,7 @@ describe("summarizeTour", () => {
   });
 
   it("compte les livrées et annulées comme terminées", () => {
-    const day = filterOrders(ordersFixtures, { date: "2026-09-06" });
+    const day = filterOrders(scenarioOrders, { date: "2026-09-06" });
     expect(summarizeTour(day)).toEqual({
       total: 4,
       toConfirm: 0,
@@ -73,9 +73,9 @@ describe("nextDeliveryStep", () => {
 
 describe("nextStopIndex", () => {
   it("désigne la première commande non terminée, -1 si tout est fait", () => {
-    const day6 = filterOrders(ordersFixtures, { date: "2026-09-06" });
+    const day6 = filterOrders(scenarioOrders, { date: "2026-09-06" });
     expect(nextStopIndex(day6)).toBe(-1);
-    const day7 = filterOrders(ordersFixtures, { date: "2026-09-07" });
+    const day7 = filterOrders(scenarioOrders, { date: "2026-09-07" });
     expect(nextStopIndex(day7)).toBe(0);
     expect(nextStopIndex([])).toBe(-1);
   });

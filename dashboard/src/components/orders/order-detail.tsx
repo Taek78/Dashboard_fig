@@ -1,5 +1,10 @@
+import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderStatusForm } from "@/components/orders/order-status-form";
+import {
+  OrderTeam,
+  type AssignmentOptions,
+} from "@/components/orders/order-team";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -16,7 +21,9 @@ import {
   ORDER_STATUS_LABELS,
 } from "@/domain/orders/status";
 import { formatCancellation } from "@/domain/orders/cancellation";
+import { formatDiscount } from "@/domain/orders/discount";
 import type { Order, OrderEvent } from "@/domain/orders/types";
+import Link from "next/link";
 import {
   formatDateFr,
   formatDateTimeFr,
@@ -27,7 +34,8 @@ import {
 
 /*
  * Détail d'une commande. Composant serveur : il reçoit une Order déjà chargée par
- * la page et l'affiche en quatre cartes (Client, Livraison, Statut, Articles).
+ * la page et l'affiche en cinq cartes (Client, Livraison, Statut, Équipe,
+ * Articles avec la remise éventuelle).
  *
  * - Grille lg (pas md) : à 768 px avec la sidebar dépliée, trois colonnes seraient
  *   trop étroites. Ordre DOM = ordre visuel pour les lecteurs d'écran.
@@ -42,14 +50,21 @@ export function OrderDetail({
   order,
   events,
   canEdit,
+  canAssign,
+  options,
 }: {
   order: Order;
   /** Historique des changements de statut, du plus récent au plus ancien. */
   events: OrderEvent[];
   /** Rôle autorisé à changer le statut. Confort d'affichage : l'action revérifie. */
   canEdit: boolean;
+  /** Rôle autorisé à affecter l'équipe. */
+  canAssign: boolean;
+  options: AssignmentOptions;
 }) {
   const allowed = allowedTransitions(order.status);
+  const done = order.status === "delivered" || order.status === "cancelled";
+  const subtotal = order.totalCents + (order.discount?.amountCents ?? 0);
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -101,10 +116,26 @@ export function OrderDetail({
             <dd className="font-medium tabular-nums">
               {order.deliverySlot.start}–{order.deliverySlot.end}
             </dd>
-            <dt className="text-muted-foreground">Adresse</dt>
+            <dt className="text-muted-foreground">
+              {order.community ? "Point de retrait" : "Adresse"}
+            </dt>
             <dd className="font-medium">
+              {order.community ? `${order.community.name}, ` : ""}
               {order.deliveryPostalCode} {order.deliveryCity}
             </dd>
+            {order.community ? (
+              <>
+                <dt className="text-muted-foreground">Communauté</dt>
+                <dd>
+                  <Link
+                    href={`/clients/communautes/${order.community.id}`}
+                    className="font-medium underline-offset-4 hover:underline"
+                  >
+                    {order.community.name}
+                  </Link>
+                </dd>
+              </>
+            ) : null}
           </dl>
         </CardContent>
       </Card>
@@ -117,8 +148,9 @@ export function OrderDetail({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <div>
+            <div className="flex flex-wrap gap-1.5">
               <OrderStatusBadge status={order.status} />
+              <OrderDiscountBadge order={order} />
             </div>
             {order.cancellation ? (
               <p className="text-sm">
@@ -186,6 +218,27 @@ export function OrderDetail({
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle>
+            <h2>Équipe</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-muted-foreground text-sm">
+            Qui prépare et qui livre. Les personnes proposées sont celles de la
+            section Personnel, du bon métier et actives.
+          </p>
+          <div className="max-w-md">
+            <OrderTeam
+              order={order}
+              options={options}
+              canAssign={canAssign && !done}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>
             <h2>Articles</h2>
           </CardTitle>
         </CardHeader>
@@ -219,9 +272,28 @@ export function OrderDetail({
               ))}
             </TableBody>
             <TableFooter>
+              {order.discount ? (
+                <>
+                  <TableRow>
+                    <TableCell colSpan={2}>Sous-total</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatEuros(subtotal)}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell colSpan={2}>
+                      {formatDiscount(order.discount)}
+                      {order.community ? ` (${order.community.name})` : ""}
+                    </TableCell>
+                    <TableCell className="text-success text-right tabular-nums">
+                      −{formatEuros(order.discount.amountCents)}
+                    </TableCell>
+                  </TableRow>
+                </>
+              ) : null}
               <TableRow>
                 <TableCell colSpan={2} className="font-medium">
-                  Total
+                  Total dû
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
                   {formatEuros(order.totalCents)}

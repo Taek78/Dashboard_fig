@@ -48,7 +48,9 @@ export default function CommandesLoading() {
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-4 w-44" />
               </div>
-              <div className="flex flex-col justify-center gap-2 border-t p-4 md:w-72 md:border-t-0 md:border-l md:p-5">
+              <div className="flex flex-col justify-center gap-3 border-t p-4 md:w-80 md:border-t-0 md:border-l md:p-5">
+                <Skeleton className="h-7 w-full" />
+                <Skeleton className="h-7 w-full" />
                 <Skeleton className="h-11 w-full" />
                 <Skeleton className="h-7 w-36" />
               </div>

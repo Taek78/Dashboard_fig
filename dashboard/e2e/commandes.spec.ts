@@ -43,9 +43,9 @@ test.describe("commandes : cartes et annulation", () => {
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
-    // Liste complète : une fois annulée, la carte resterait absente d'une liste
-    // filtrée sur « en attente ».
-    await page.goto("/commandes");
+    // Le jour du scénario : une fois annulée, la carte resterait absente d'une
+    // liste filtrée sur « en attente », et la liste complète est paginée.
+    await page.goto("/commandes?date=2026-09-08");
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-006,/,
     });

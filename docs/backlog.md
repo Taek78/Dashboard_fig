@@ -4,10 +4,10 @@ Dernière mise à jour : 2026-09-14.
 
 ## Livré
 
-- **Écrans** : tableau de bord (période et HT/TTC), commandes (cartes, détail, historique des statuts, annulation avec motif), livraisons (tournée de terrain), catalogue (grille, fiche, création, suppression confirmée), articles, clients (recherche, fiche, notes), métriques (KPI, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
+- **Écrans** : tableau de bord (période et HT/TTC), commandes (cartes, détail, historique des statuts, annulation avec motif, affectation d'un préparateur et d'un livreur, remises affichées), livraisons (tournée de terrain, livreur affecté), catalogue (grille avec modifier / dupliquer / supprimer, fiche, création, suppression confirmée), articles, clients (particuliers avec série de fidélité, communautés avec remise, fiches, notes), personnel (livreurs, préparateurs, gestionnaires : fiches complètes, disponibilité, historique de traitement), métriques (KPI, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
 - **Données** : domaine pur par section, façades avec deux implémentations (fixtures en mémoire, PostgreSQL via Drizzle), schéma et migrations possédés par le dashboard, seed, sauvegardes.
 - **Sécurité** : Auth.js Credentials, rôles et matrice d'accès en lecture et en écriture, limitation de débit, CSP à nonce, journal de sécurité en base, gardes de production.
-- **Qualité** : 414 tests Vitest, 13 parcours Playwright, CI (check, audit, Playwright en mock puis contre PostgreSQL).
+- **Qualité** : 429 tests Vitest, 18 parcours Playwright, CI (check, audit, Playwright en mock puis contre PostgreSQL).
 
 ## Reste à faire
 
@@ -47,18 +47,24 @@ Dernière mise à jour : 2026-09-14.
 12. **Articles** : l'application affiche-t-elle déjà des articles ? Format du texte, images, planification ?
 13. **Adresse de livraison** : rue, coordonnées GPS, instructions d'accès ?
 14. **Branchement de l'application FIG** : API HTTP exposée par le dashboard (recommandé : un seul propriétaire du schéma) ou accès SQL direct avec un rôle dédié ?
+15. **Communautés** : l'application crée-t-elle les communautés et l'adhésion des clients (hypothèse actuelle : le dashboard les lit, ne les modifie pas) ? Faut-il pouvoir en créer ou en modifier la remise depuis le back-office ?
+16. **Fidélité** : « huit commandes d'affilée » se compte-t-il comme ici (une annulation remet à zéro, la commande remisée repart de zéro, une commande en cours compte) ? La remise fidélité se cumule-t-elle avec celle d'une communauté (hypothèse : non) ?
+17. **Personnel** : les gestionnaires du personnel doivent-ils être reliés aux comptes du back-office (même personne, même e-mail) ? Un livreur doit-il ne voir que ses propres livraisons ?
 
 ## Décisions prises
 
 - La base n'existe pas chez le client : le dashboard la crée et la possède (2026-09-14).
-- Pas d'attribution de livreur : la tournée se pilote par le statut des commandes (2026-09-13).
+- Affectation d'un préparateur et d'un livreur sur chaque commande, depuis les cartes et la fiche, par liste déroulante qui écrit aussitôt ; la tournée continue de se piloter par le statut (2026-09-14, remplace la décision du 2026-09-13).
+- Les remises (communauté, fidélité) sont décidées et appliquées par l'application FIG ; le dashboard les affiche et signale la fidélité à venir (2026-09-14).
+- Les communautés sont en lecture seule dans le dashboard tant que la question 15 est ouverte (2026-09-14).
+- Un produit dupliqué naît masqué, nommé « (copie) », pour être relu avant publication (2026-09-14).
 - HT par défaut sur toutes les pages qui affichent des montants (2026-09-14).
 - Motif d'annulation obligatoire, communiqué au client (2026-09-14).
+- Données de démonstration : historique généré sur deux ans (2025 et 2026 jusqu'au 14 septembre), déterministe, hors la fenêtre du scénario (2026-09-14).
 - Pas d'écran d'accueil animé ni de splash ; animations légères en CSS, sous `prefers-reduced-motion`.
 - Fixtures sans personne réelle ; aucune donnée personnelle sur un poste de développement.
 
 ## Points connus, sans action prévue
 
 - `notFound()` sous une frontière `loading.tsx` renvoie la page 404 avec un statut HTTP 200 (le début de la page est déjà envoyé). Sans effet pour un back-office.
-- Les fixtures n'ont pas de commandes en 2025 : la comparaison N-1 des métriques reste à zéro en démo.
 - La recherche catalogue et clients se fait en mémoire après chargement : identique au mock, suffisant pour quelques milliers de lignes.

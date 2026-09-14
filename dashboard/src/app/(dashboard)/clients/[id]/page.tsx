@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
+import { LoyaltyGauge } from "@/components/customers/loyalty-badge";
 import { OrdersTable } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomer } from "@/data/customers";
 import { getOrders } from "@/data/orders";
+import { loyaltyStatus } from "@/domain/customers/loyalty";
 import {
   computeCustomerStats,
   sortNotesNewestFirst,
@@ -17,8 +19,9 @@ import { customerIdSchema } from "@/domain/customers/schemas";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 
 /*
- * Fiche client : coordonnées, chiffres clés, historique des commandes
- * (croisement via OrderFilters.customerId), notes internes et formulaire d'ajout.
+ * Fiche client : coordonnées (et communauté), chiffres clés, fidélité (série
+ * de commandes d'affilée, règle pure), historique des commandes (croisement
+ * via OrderFilters.customerId), notes internes et formulaire d'ajout.
  */
 export const metadata: Metadata = { title: "Fiche client" };
 
@@ -34,6 +37,7 @@ export default async function ClientPage({
 
   const orders = await getOrders({ customerId: customer.id });
   const stats = computeCustomerStats(orders);
+  const loyalty = loyaltyStatus(orders);
   const notes = sortNotesNewestFirst(customer.notes);
 
   return (
@@ -79,6 +83,20 @@ export default async function ClientPage({
               <dd className="font-medium">
                 {customer.postalCode} {customer.city}
               </dd>
+              {customer.community ? (
+                <>
+                  <dt className="text-muted-foreground">Communauté</dt>
+                  <dd className="font-medium">
+                    <Link
+                      href={`/clients/communautes/${customer.community.id}`}
+                      className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+                    >
+                      <Users className="size-4" aria-hidden="true" />
+                      {customer.community.name}
+                    </Link>
+                  </dd>
+                </>
+              ) : null}
             </dl>
           </CardContent>
         </Card>
@@ -134,6 +152,25 @@ export default async function ClientPage({
               </ul>
             )}
             <CustomerNoteForm customerId={customer.id} />
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>
+              <h2>Fidélité</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {customer.community ? (
+              <p className="text-muted-foreground text-sm">
+                Membre d&apos;une communauté : la remise de la communauté
+                s&apos;applique à chaque commande, la fidélité individuelle ne
+                se cumule pas.
+              </p>
+            ) : (
+              <LoyaltyGauge status={loyalty} />
+            )}
           </CardContent>
         </Card>
 

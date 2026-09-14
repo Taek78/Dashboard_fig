@@ -30,3 +30,6 @@ export const updateOrderStatus: OrdersSource["updateOrderStatus"] = (
 /** Historique des changements de statut, du plus récent au plus ancien. */
 export const getOrderEvents: OrdersSource["getOrderEvents"] = (orderId) =>
   source.getOrderEvents(orderId);
+/** Pose ou retire le préparateur ou le livreur (personne déjà vérifiée par l'action). */
+export const assignStaff: OrdersSource["assignStaff"] = (id, assignment) =>
+  source.assignStaff(id, assignment);

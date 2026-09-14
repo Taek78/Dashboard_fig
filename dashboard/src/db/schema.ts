@@ -68,6 +68,33 @@ export const userRoleEnum = pgEnum("user_role", [
   "lecture",
   "livreur",
 ]);
+export const staffKindEnum = pgEnum("staff_kind", [
+  "livreur",
+  "preparateur",
+  "gestionnaire",
+]);
+export const staffShiftEnum = pgEnum("staff_shift", [
+  "matin",
+  "apres_midi",
+  "soir",
+  "journee",
+]);
+export const staffAvailabilityEnum = pgEnum("staff_availability", [
+  "disponible",
+  "indisponible",
+  "conge",
+]);
+export const communityKindEnum = pgEnum("community_kind", [
+  "creche",
+  "ecole",
+  "entreprise",
+  "association",
+  "autre",
+]);
+export const discountKindEnum = pgEnum("discount_kind", [
+  "community",
+  "loyalty",
+]);
 
 const timestampTz = (name: string) =>
   timestamp(name, { withTimezone: true, mode: "date" });
@@ -87,6 +114,48 @@ export const users = pgTable(
   (t) => [uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`)],
 );
 
+/* ---------- Équipe du client (personnel) ---------- */
+export const staff = pgTable(
+  "staff",
+  {
+    id: text("id").primaryKey(),
+    kind: staffKindEnum("kind").notNull(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(),
+    shift: staffShiftEnum("shift").notNull(),
+    availability: staffAvailabilityEnum("availability").notNull(),
+    /** Jours travaillés, clés "lun".."dim" du domaine. */
+    workDays: text("work_days").array().notNull(),
+    startedAt: date("started_at", { mode: "string" }).notNull(),
+    notes: text("notes"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("staff_email_lower_idx").on(sql`lower(${t.email})`),
+    index("staff_kind_idx").on(t.kind),
+  ],
+);
+
+/* ---------- Communautés (créées par l'application FIG) ---------- */
+export const communities = pgTable("communities", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  kind: communityKindEnum("kind").notNull(),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  contactPhone: text("contact_phone").notNull(),
+  pickupPlace: text("pickup_place").notNull(),
+  pickupCity: text("pickup_city").notNull(),
+  pickupPostalCode: text("pickup_postal_code").notNull(),
+  pickupTime: text("pickup_time").notNull(),
+  discountPercent: integer("discount_percent").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestampTz("created_at").notNull().defaultNow(),
+});
+
 /* ---------- Clients de l'application ---------- */
 export const customers = pgTable(
   "customers",
@@ -97,9 +166,16 @@ export const customers = pgTable(
     phone: text("phone").notNull(),
     city: text("city").notNull(),
     postalCode: text("postal_code").notNull(),
+    /** Adhésion gérée par l'application ; une communauté supprimée libère ses membres. */
+    communityId: text("community_id").references(() => communities.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("customers_email_lower_idx").on(sql`lower(${t.email})`)],
+  (t) => [
+    uniqueIndex("customers_email_lower_idx").on(sql`lower(${t.email})`),
+    index("customers_community_idx").on(t.communityId),
+  ],
 );
 
 export const customerNotes = pgTable(
@@ -167,15 +243,37 @@ export const orders = pgTable(
     deliveryEnd: text("delivery_end").notNull(),
     deliveryCity: text("delivery_city").notNull(),
     deliveryPostalCode: text("delivery_postal_code").notNull(),
+    /** Total dû : sous-total des lignes moins la remise. */
     totalCents: integer("total_cents").notNull(),
     cancellationReason: cancellationReasonEnum("cancellation_reason"),
     cancellationDetail: text("cancellation_detail"),
+    /** Communauté de retrait ; remise appliquée par l'application (jamais par le dashboard). */
+    communityId: text("community_id").references(() => communities.id, {
+      onDelete: "set null",
+    }),
+    discountKind: discountKindEnum("discount_kind"),
+    discountPercent: integer("discount_percent"),
+    discountCents: integer("discount_cents").notNull().default(0),
+    /** Affectations de l'équipe ; une personne supprimée libère ses commandes. */
+    preparerId: text("preparer_id").references(() => staff.id, {
+      onDelete: "set null",
+    }),
+    driverId: text("driver_id").references(() => staff.id, {
+      onDelete: "set null",
+    }),
   },
   (t) => [
     uniqueIndex("orders_reference_idx").on(t.reference),
     index("orders_delivery_date_idx").on(t.deliveryDate),
     index("orders_status_idx").on(t.status),
     index("orders_customer_idx").on(t.customerId),
+    index("orders_community_idx").on(t.communityId),
+    index("orders_preparer_idx").on(t.preparerId),
+    index("orders_driver_idx").on(t.driverId),
+    check(
+      "orders_discount_consistent",
+      sql`(${t.discountKind} IS NULL) = (${t.discountPercent} IS NULL) AND ${t.discountCents} >= 0`,
+    ),
     check(
       "orders_slot_format",
       sql`${t.deliveryStart} ~ '^[0-9]{2}:[0-9]{2}$' AND ${t.deliveryEnd} ~ '^[0-9]{2}:[0-9]{2}$'`,

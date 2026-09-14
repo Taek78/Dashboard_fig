@@ -1,6 +1,7 @@
 import {
   Carrot,
   ChartColumn,
+  Contact,
   LayoutDashboard,
   Newspaper,
   ShoppingBasket,
@@ -23,6 +24,7 @@ export const NAV_ITEMS = [
   { title: "Catalogue", href: "/catalogue", icon: Carrot },
   { title: "Articles", href: "/articles", icon: Newspaper },
   { title: "Clients", href: "/clients", icon: Users },
+  { title: "Personnel", href: "/personnel", icon: Contact },
   { title: "Métriques", href: "/metriques", icon: ChartColumn },
   { title: "Comptes", href: "/comptes", icon: UserCog },
 ] as const;

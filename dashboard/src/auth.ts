@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { authorizeCredentials } from "@/data/credentials";
 import type { Role } from "@/domain/auth/roles";
 import { getEnv } from "@/lib/env";
+import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-refresh";
 
 /*
  * Configuration Auth.js v5 : fournisseur Credentials (e-mail + mot de
@@ -24,7 +25,7 @@ import { getEnv } from "@/lib/env";
  */
 export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   secret: getEnv().AUTH_SECRET,
-  session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
   pages: { signIn: "/connexion" },
   providers: [
     Credentials({

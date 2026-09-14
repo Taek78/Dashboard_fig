@@ -31,10 +31,11 @@ vi.mock("@/data/session", () => ({
  */
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
+vi.mock("@/data/security-log", () => ({ logSecurity: vi.fn() }));
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 
-const { changeOrderStatus } =
+const { assignOrderStaff, changeOrderStatus } =
   await import("@/app/(dashboard)/commandes/[id]/actions");
 const { idleActionResult } = await import("@/lib/action-result");
 
@@ -238,5 +239,102 @@ describe("changeOrderStatus", () => {
       nextStatus: ["confirmed", "delivered"],
     });
     expect(forged.status).toBe("error");
+  });
+});
+
+describe("assignOrderStaff", () => {
+  async function assign(fields: Record<string, string>) {
+    const promise = assignOrderStaff(idleActionResult, form(fields));
+    // getOrder + getStaff + assignStaff : trois latences (commandes et personnel).
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS * 4);
+    return promise;
+  }
+
+  it("affecte un préparateur du bon métier et l'écrit sur la commande", async () => {
+    const result = await assign({
+      orderId: "cmd-0001",
+      role: "preparer",
+      staffId: "stf-0006",
+    });
+    expect(result).toEqual({
+      status: "success",
+      message: "Préparateur : Fatou Ndiaye.",
+    });
+    const order = ordersMock.getOrder("cmd-0001");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect((await order)?.preparer).toEqual({
+      id: "stf-0006",
+      name: "Fatou Ndiaye",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("retire l'affectation avec un id vide", async () => {
+    const result = await assign({
+      orderId: "cmd-0003",
+      role: "preparer",
+      staffId: "",
+    });
+    expect(result).toEqual({
+      status: "success",
+      message: "Préparateur retiré.",
+    });
+    const order = ordersMock.getOrder("cmd-0003");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect((await order)?.preparer).toBeNull();
+  });
+
+  it("refuse le mauvais métier, une personne partie, une commande terminée, le rôle livreur", async () => {
+    expect(
+      await assign({
+        orderId: "cmd-0001",
+        role: "driver",
+        staffId: "stf-0005",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Cette personne n'a pas le bon métier pour ce rôle.",
+    });
+    expect(
+      await assign({
+        orderId: "cmd-0001",
+        role: "driver",
+        staffId: "stf-0010",
+      }),
+    ).toMatchObject({ status: "error" });
+    expect(
+      await assign({
+        orderId: "cmd-0005",
+        role: "driver",
+        staffId: "stf-0001",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Une commande terminée ne peut plus être affectée.",
+    });
+    expect(
+      await assign({
+        orderId: "cmd-0001",
+        role: "driver",
+        staffId: "stf-9999",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Cette personne n'est plus dans l'équipe.",
+    });
+    session.role = "livreur";
+    expect(
+      await assign({
+        orderId: "cmd-0001",
+        role: "driver",
+        staffId: "stf-0001",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Vous n'avez pas les droits pour affecter l'équipe.",
+    });
+    const order = ordersMock.getOrder("cmd-0001");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect((await order)?.driver).toBeNull();
   });
 });

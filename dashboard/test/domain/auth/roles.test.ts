@@ -4,7 +4,9 @@ import {
   SECTION_ACCESS,
   SECTIONS,
   canAddCustomerNote,
+  canAssignStaff,
   canChangeOrderStatus,
+  canManageStaff,
   canEditArticle,
   canEditProduct,
   canManageUsers,
@@ -21,7 +23,13 @@ describe("ROLES", () => {
 });
 
 describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
-  const rules = { canEditProduct, canEditArticle, canAddCustomerNote };
+  const rules = {
+    canEditProduct,
+    canEditArticle,
+    canAddCustomerNote,
+    canManageStaff,
+    canAssignStaff,
+  };
   for (const [name, rule] of Object.entries(rules)) {
     it.each([
       ["admin", true],
@@ -70,6 +78,8 @@ describe("lecture des sections", () => {
     expect(canViewSection("livreur", "/")).toBe(false);
     expect(canViewSection("livreur", "/metriques")).toBe(false);
     expect(canViewSection("livreur", "/clients/cli-0001")).toBe(false);
+    expect(canViewSection("livreur", "/personnel")).toBe(false);
+    expect(canViewSection("lecture", "/personnel/stf-0001")).toBe(true);
     expect(canViewSection("livreur", "/inconnu")).toBe(true);
     for (const section of SECTIONS) {
       expect(canViewSection("admin", section)).toBe(true);

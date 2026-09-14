@@ -298,61 +298,147 @@ function nextBucket(start: string, bucket: Bucket): string {
   return addMonths(start, 1);
 }
 
-export type SeriesPoint = {
-  /** Premier jour du seau. */
-  key: string;
+/** Les mesures que le graphe d'évolution sait tracer. */
+export const CHART_METRICS = [
+  "revenue",
+  "orders",
+  "basket",
+  "cancelled",
+  "buyers",
+] as const;
+export type ChartMetric = (typeof CHART_METRICS)[number];
+export const CHART_METRIC_LABELS: Record<ChartMetric, string> = {
+  revenue: "Chiffre d'affaires",
+  orders: "Commandes",
+  basket: "Panier moyen",
+  cancelled: "Annulations",
+  buyers: "Acheteurs",
+};
+/** Montant (à formater en euros, soumis au mode HT/TTC) ou simple compte. */
+export const CHART_METRIC_KINDS: Record<ChartMetric, "money" | "count"> = {
+  revenue: "money",
+  orders: "count",
+  basket: "money",
+  cancelled: "count",
+  buyers: "count",
+};
+
+/** Ce qu'un seau de temps porte : les cinq mesures du graphe. */
+export type SeriesValues = {
+  /** CA hors annulées. */
   revenueCents: number;
   orderCount: number;
+  cancelledCount: number;
+  /** CA / commandes non annulées du seau, 0 sans commande. */
+  averageBasketCents: number;
+  /** Clients distincts ayant commandé (hors annulées) dans le seau. */
+  buyers: number;
+};
+
+export type SeriesPoint = SeriesValues & {
+  /** Premier jour du seau. */
+  key: string;
+};
+
+export const EMPTY_SERIES_VALUES: SeriesValues = {
+  revenueCents: 0,
+  orderCount: 0,
+  cancelledCount: 0,
+  averageBasketCents: 0,
+  buyers: 0,
 };
 
 /**
- * CA (hors annulées) et volume par seau sur TOUTE la plage, seaux vides compris :
- * deux plages de même longueur donnent deux séries alignées (comparaison N-1).
+ * Les cinq mesures par seau sur TOUTE la plage, seaux vides compris : deux
+ * plages de même longueur donnent deux séries alignées (comparaison N-1).
  */
 export function revenueSeries(
   orders: readonly Order[],
   range: DateRange,
   bucket: Bucket,
 ): SeriesPoint[] {
-  const points = new Map<string, SeriesPoint>();
+  const points = new Map<string, SeriesPoint & { customers: Set<string> }>();
   for (
     let start = bucketStart(range.from, bucket);
     start <= range.to;
     start = nextBucket(start, bucket)
   ) {
-    points.set(start, { key: start, revenueCents: 0, orderCount: 0 });
+    points.set(start, {
+      key: start,
+      ...EMPTY_SERIES_VALUES,
+      customers: new Set(),
+    });
   }
   for (const o of filterByRange(orders, range)) {
     const point = points.get(bucketStart(o.deliverySlot.date, bucket));
     if (!point) continue;
     point.orderCount += 1;
-    if (o.status !== "cancelled") point.revenueCents += o.totalCents;
+    if (o.status === "cancelled") {
+      point.cancelledCount += 1;
+    } else {
+      point.revenueCents += o.totalCents;
+      point.customers.add(o.customer.id);
+    }
   }
-  return [...points.values()];
+  return [...points.values()].map(({ customers, ...point }) => {
+    const active = point.orderCount - point.cancelledCount;
+    return {
+      ...point,
+      averageBasketCents:
+        active === 0 ? 0 : Math.round(point.revenueCents / active),
+      buyers: customers.size,
+    };
+  });
 }
 
 export type ComparisonPoint = {
   key: string;
   previousKey: string | null;
-  currentCents: number;
-  previousCents: number;
-  currentOrders: number;
-  previousOrders: number;
+  current: SeriesValues;
+  previous: SeriesValues;
 };
 
-/** Aligne la série courante et la série N-1 seau par seau (par position). */
+/** Aligne la série courante et la série de référence seau par seau (par position). */
 export function compareSeries(
   current: readonly SeriesPoint[],
   previous: readonly SeriesPoint[],
 ): ComparisonPoint[] {
-  return current.map((p, i) => ({
-    key: p.key,
-    previousKey: previous[i]?.key ?? null,
-    currentCents: p.revenueCents,
-    previousCents: previous[i]?.revenueCents ?? 0,
-    currentOrders: p.orderCount,
-    previousOrders: previous[i]?.orderCount ?? 0,
-  }));
+  return current.map(({ key, ...values }, i) => {
+    const ref = previous[i];
+    const { key: previousKey, ...previousValues } = ref ?? {
+      key: null,
+      ...EMPTY_SERIES_VALUES,
+    };
+    return { key, previousKey, current: values, previous: previousValues };
+  });
+}
+
+/** La valeur d'une mesure dans un seau. */
+export function seriesValue(values: SeriesValues, metric: ChartMetric): number {
+  switch (metric) {
+    case "revenue":
+      return values.revenueCents;
+    case "orders":
+      return values.orderCount;
+    case "basket":
+      return values.averageBasketCents;
+    case "cancelled":
+      return values.cancelledCount;
+    case "buyers":
+      return values.buyers;
+  }
+}
+
+/** Applique le mode HT/TTC aux seules mesures monétaires d'un seau. */
+export function applyTaxToValues(
+  values: SeriesValues,
+  mode: TaxMode,
+): SeriesValues {
+  return {
+    ...values,
+    revenueCents: applyTaxMode(values.revenueCents, mode),
+    averageBasketCents: applyTaxMode(values.averageBasketCents, mode),
+  };
 }
 
 /* ---------- Répartitions ---------- */

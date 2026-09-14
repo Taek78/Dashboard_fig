@@ -1,5 +1,6 @@
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { filterOrders, sortOrdersBySlot } from "@/domain/orders/rules";
+import type { StaffAssignment } from "@/domain/orders/assignment";
 import type { OrdersSource } from "@/domain/orders/source";
 import type {
   Order,
@@ -108,6 +109,14 @@ export const ordersMock: OrdersSource = {
     await sleep(MOCK_LATENCY_MS);
     const list = events.get(orderId) ?? [];
     return structuredClone(list.toSorted((a, b) => b.at.localeCompare(a.at)));
+  },
+
+  assignStaff: async (id: string, assignment: StaffAssignment) => {
+    await sleep(MOCK_LATENCY_MS);
+    const current = store.get(id);
+    if (!current) return null;
+    current[assignment.role] = structuredClone(assignment.staff);
+    return structuredClone(current);
   },
 };
 

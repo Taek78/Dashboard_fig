@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Leaf, Sun } from "lucide-react";
+import { Leaf, Pencil, Sun } from "lucide-react";
+import { DeleteProductButton } from "@/components/products/delete-product-button";
+import { DuplicateProductButton } from "@/components/products/duplicate-product-button";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   CONTAINER_LABELS,
   LOCAL_COUNTRY,
@@ -19,30 +22,43 @@ import { formatEuros, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Carte produit de la grille (serveur). Toute la carte est un lien vers la fiche.
- * Fond de l'illustration teinté par catégorie (orange = fruit, vert = légume),
- * badges Saison / Bio / drapeau France, état (masqué, indisponible, stock bas).
- * L'illustration est un emoji, ou l'image du client si imageUrl est renseignée.
- * Tous les signaux colorés ont un texte : la couleur n'est jamais seule.
+ * Carte produit de la grille (serveur). L'illustration et le nom mènent à la
+ * fiche ; la barre d'actions en pied (modifier, dupliquer, supprimer) agit
+ * directement depuis la grille pour un rôle qui peut modifier le catalogue.
+ * La carte est un <article> et non un lien : un lien ne peut pas contenir de
+ * boutons. Fond de l'illustration teinté par catégorie (orange = fruit,
+ * vert = légume), badges Saison / Bio / drapeau France, état (masqué,
+ * indisponible, stock bas). L'illustration est un emoji, ou l'image du client
+ * si imageUrl est renseignée. Tous les signaux colorés ont un texte.
  */
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  canEdit = false,
+}: {
+  product: Product;
+  /** Affiche la barre d'actions (grille). L'aperçu de la fiche la masque. */
+  canEdit?: boolean;
+}) {
   const perKg = pricePerKgCents(product);
   const perUnit = unitPriceCents(product);
   const caliber = formatCaliber(product.caliber);
   const isFruit = product.category === "fruit";
   const dimmed = !product.visible || !product.available;
+  const href = `/catalogue/${product.id}`;
 
   return (
-    <Link
-      href={`/catalogue/${product.id}`}
+    <article
+      aria-label={`Produit ${product.name}`}
       className={cn(
-        "group bg-card text-card-foreground ring-foreground/10 focus-visible:ring-ring card-lift flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 outline-none focus-visible:ring-2",
+        "group bg-card text-card-foreground ring-foreground/10 card-lift flex h-full flex-col overflow-hidden rounded-2xl shadow-sm ring-1",
         dimmed && "opacity-75",
       )}
     >
-      <div
+      <Link
+        href={href}
+        aria-label={`${product.name} : ouvrir la fiche`}
         className={cn(
-          "relative flex h-36 items-center justify-center",
+          "focus-visible:ring-ring relative flex h-36 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset",
           isFruit
             ? "bg-fruit text-fruit-foreground"
             : "bg-vegetable text-vegetable-foreground",
@@ -66,7 +82,7 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         )}
 
-        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+        <span className="absolute top-2 left-2 flex flex-wrap gap-1">
           {product.inSeason ? (
             <Badge variant="success">
               <Sun aria-hidden="true" /> Saison
@@ -77,18 +93,16 @@ export function ProductCard({ product }: { product: Product }) {
               <Leaf aria-hidden="true" /> Bio
             </Badge>
           ) : null}
-        </div>
+        </span>
 
-        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-          {product.originCountry === LOCAL_COUNTRY ? (
-            <span
-              role="img"
-              aria-label="Produit français"
-              title="Produit français"
-              className="flag-fr ring-border/60 block size-5 rounded-full ring-1"
-            />
-          ) : null}
-        </div>
+        {product.originCountry === LOCAL_COUNTRY ? (
+          <span
+            role="img"
+            aria-label="Produit français"
+            title="Produit français"
+            className="flag-fr ring-border/60 absolute top-2 right-2 block size-5 rounded-full ring-1"
+          />
+        ) : null}
 
         {!product.visible ? (
           <Badge variant="secondary" className="absolute bottom-2 left-2">
@@ -102,13 +116,18 @@ export function ProductCard({ product }: { product: Product }) {
             Indisponible
           </Badge>
         ) : null}
-      </div>
+      </Link>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate leading-tight font-semibold">
-              {product.name}
+              <Link
+                href={href}
+                className="underline-offset-4 hover:underline focus-visible:underline"
+              >
+                {product.name}
+              </Link>
             </h3>
             <p className="text-muted-foreground truncate text-xs">
               {product.variety ?? "—"} ·{" "}
@@ -158,6 +177,33 @@ export function ProductCard({ product }: { product: Product }) {
           ) : null}
         </div>
       </div>
-    </Link>
+
+      {canEdit ? (
+        <div
+          role="group"
+          aria-label={`Actions sur ${product.name}`}
+          className="bg-muted/40 flex flex-wrap items-center gap-1 border-t px-2 py-1.5"
+        >
+          <Link
+            href={href}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            <Pencil />
+            Modifier
+          </Link>
+          <DuplicateProductButton
+            productId={product.id}
+            size="icon-sm"
+            iconOnly
+          />
+          <span className="flex-1" />
+          <DeleteProductButton
+            productId={product.id}
+            productName={product.name}
+            compact
+          />
+        </div>
+      ) : null}
+    </article>
   );
 }

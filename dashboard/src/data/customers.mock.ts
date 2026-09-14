@@ -1,7 +1,11 @@
 import { customersFixtures } from "@/domain/customers/fixtures";
-import { searchCustomers, sortCustomersByName } from "@/domain/customers/rules";
+import { filterCustomers, sortCustomersByName } from "@/domain/customers/rules";
 import type { CustomersSource } from "@/domain/customers/source";
-import type { Customer, CustomerNote } from "@/domain/customers/types";
+import type {
+  Customer,
+  CustomerFilters,
+  CustomerNote,
+} from "@/domain/customers/types";
 
 /*
  * Implémentation FIXTURES du contrat CustomersSource : Map mutable seedée, clone
@@ -23,10 +27,10 @@ export const CUSTOMERS_MOCK_LATENCY_MS = 300;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const customersMock: CustomersSource = {
-  getCustomers: async (query?: string) => {
+  getCustomers: async (filters: CustomerFilters = {}) => {
     await sleep(CUSTOMERS_MOCK_LATENCY_MS);
     const result = sortCustomersByName(
-      searchCustomers([...store.values()], query),
+      filterCustomers([...store.values()], filters),
     );
     return structuredClone(result);
   },

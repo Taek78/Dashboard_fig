@@ -14,6 +14,7 @@ import {
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { MetricsControls } from "@/components/metrics/metrics-controls";
 import { ComparisonChart, StatusChart } from "@/components/metrics/charts-lazy";
+import { RatioDonut } from "@/components/metrics/ratio-donut";
 import { TrendBadge } from "@/components/metrics/trend-badge";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ import { todayInParis } from "@/domain/deliveries/rules";
 import { ratioPercent, summarizeEngagement } from "@/domain/engagement/rules";
 import {
   applyTaxMode,
+  applyTaxToValues,
   bucketFor,
   compareSeries,
   COMPARISON_LABELS,
@@ -81,8 +83,8 @@ export default async function MetriquesPage({
     revenueSeries(all, reference, bucket),
   ).map((p) => ({
     ...p,
-    currentCents: applyTaxMode(p.currentCents, query.tax),
-    previousCents: applyTaxMode(p.previousCents, query.tax),
+    current: applyTaxToValues(p.current, query.tax),
+    previous: applyTaxToValues(p.previous, query.tax),
   }));
   const statuses = ordersByStatus(orders);
   const top = topProducts(orders, 5);
@@ -154,6 +156,13 @@ export default async function MetriquesPage({
           hint="moins, c'est mieux"
           icon={<Ban />}
           trend={trend(kpis.cancelledCount, kpisRef.cancelledCount, true)}
+          visual={
+            <RatioDonut
+              percent={ratioPercent(kpis.cancelledCount, kpis.orderCount)}
+              label="part des commandes annulées"
+              tone="destructive"
+            />
+          }
         />
       </div>
 
@@ -161,7 +170,7 @@ export default async function MetriquesPage({
         <CardHeader>
           <CardTitle>
             <h2>
-              Chiffre d&apos;affaires {taxLabel} : {title.toLowerCase()} et{" "}
+              Évolution : {title.toLowerCase()} et{" "}
               {referenceLabel.toLowerCase()}
             </h2>
           </CardTitle>
@@ -204,6 +213,12 @@ export default async function MetriquesPage({
             value={signupRate === null ? "—" : `${signupRate} %`}
             hint={`${usage.signups.toLocaleString("fr-FR")} inscriptions`}
             icon={<UserPlus />}
+            visual={
+              <RatioDonut
+                percent={signupRate}
+                label="part des téléchargements devenus inscriptions"
+              />
+            }
             trend={trend(
               signupRate,
               signupRateRef,
@@ -216,6 +231,13 @@ export default async function MetriquesPage({
             value={buyerRate === null ? "—" : `${buyerRate} %`}
             hint={`${buyers} acheteur${buyers > 1 ? "s" : ""} distinct${buyers > 1 ? "s" : ""}`}
             icon={<UserCheck />}
+            visual={
+              <RatioDonut
+                percent={buyerRate}
+                label="part des inscrits ayant commandé"
+                tone="success"
+              />
+            }
             trend={trend(
               buyerRate,
               buyerRateRef,

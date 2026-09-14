@@ -20,10 +20,32 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
 describe("customersMock", () => {
   it("getCustomers trie par nom et applique la recherche", async () => {
     const all = await settle(customersMock.getCustomers());
-    expect(all).toHaveLength(12);
-    expect(all[0]?.fullName).toBe("Amel Benali");
-    const found = await settle(customersMock.getCustomers("rocher"));
+    expect(all).toHaveLength(customersFixtures.length);
+    for (let i = 1; i < all.length; i += 1) {
+      expect(
+        all[i - 1]!.fullName.localeCompare(all[i]!.fullName, "fr"),
+      ).toBeLessThanOrEqual(0);
+    }
+    const found = await settle(customersMock.getCustomers({ query: "rocher" }));
     expect(found.map((c) => c.id)).toEqual(["cli-0003"]);
+  });
+
+  it("getCustomers sépare particuliers et membres d'une communauté", async () => {
+    const individuals = await settle(
+      customersMock.getCustomers({ membership: "individual" }),
+    );
+    const members = await settle(
+      customersMock.getCustomers({ membership: "community" }),
+    );
+    expect(individuals.every((c) => c.community === null)).toBe(true);
+    expect(members.length).toBeGreaterThan(0);
+    expect(members.every((c) => c.community !== null)).toBe(true);
+    expect(individuals.length + members.length).toBe(customersFixtures.length);
+    const one = await settle(
+      customersMock.getCustomers({ communityId: "com-0001" }),
+    );
+    expect(one.every((c) => c.community?.id === "com-0001")).toBe(true);
+    expect(one.length).toBeGreaterThan(0);
   });
 
   it("getCustomer renvoie une copie ou null", async () => {

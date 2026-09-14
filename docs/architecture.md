@@ -60,7 +60,7 @@ Dashboard_fig/
 
 ### 3.1 `src/domain/<domaine>/` : le métier pur
 
-Un dossier par domaine : `orders` (commandes), `deliveries` (tournée), `products` (catalogue), `customers` (clients), `articles`, `metrics` (agrégations), `engagement` (usage de l'appli), `auth` (rôles et comptes). Chaque dossier suit le même patron :
+Un dossier par domaine : `orders` (commandes, avec `assignment.ts` pour l'affectation de l'équipe et `discount.ts` pour les remises), `deliveries` (tournée), `products` (catalogue), `customers` (clients, avec `loyalty.ts` pour la série de fidélité), `communities` (groupes de clients livrés à un même point de retrait), `staff` (personnel : livreurs, préparateurs, gestionnaires), `articles`, `metrics` (agrégations), `engagement` (usage de l'appli), `auth` (rôles et comptes). Chaque dossier suit le même patron :
 
 | Fichier                     | Rôle                                                               | Exemple                                        |
 | --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
@@ -109,14 +109,14 @@ Next associe un dossier à une URL. Le groupe `(dashboard)` regroupe toutes les 
 | `api/health/route.ts`             | `{ ok: true }` ou 503 si la base ne répond pas                                         |
 | `api/auth/[...nextauth]/route.ts` | points d'entrée d'Auth.js                                                              |
 
-Sections : `/` tableau de bord, `/commandes`, `/livraisons`, `/catalogue`, `/articles`, `/clients`, `/metriques`, `/comptes` (admin), `/profil`.
+Sections : `/` tableau de bord, `/commandes`, `/livraisons`, `/catalogue`, `/articles`, `/clients` (onglets particuliers et communautés, fiche `/clients/communautes/[id]`), `/personnel` (équipe, fiche `/personnel/[id]`), `/metriques`, `/comptes` (admin), `/profil`.
 
 ### 3.5 `src/components/` : les composants
 
 Par domaine, deux natures :
 
-- **serveur** (par défaut) : reçoivent des données déjà chargées et les rendent. Cartes (`order-card`, `delivery-card`, `product-card`, `article-card`), listes, tableaux, en-têtes, badges. Aucun hook.
-- **client** (`"use client"`, seulement quand un hook l'exige) : les formulaires branchés sur une Server Action avec `useActionState` (`order-actions`, `order-status-form`, `product-form`, `article-form`, `account-editor`…), le sélecteur de thème, le fil d'Ariane, la navigation.
+- **serveur** (par défaut) : reçoivent des données déjà chargées et les rendent. Cartes (`order-card`, `delivery-card`, `product-card`, `article-card`, `staff-card`, `communities-cards`), listes, tableaux, en-têtes, badges, onglets (`staff-tabs`, `customer-tabs`), le bloc « Équipe » d'une commande (`order-team`, qui choisit entre lecture et listes déroulantes), la jauge de fidélité. Aucun hook.
+- **client** (`"use client"`, seulement quand un hook l'exige) : les formulaires branchés sur une Server Action avec `useActionState` (`order-actions`, `order-status-form`, `staff-assign-field` qui écrit dès le choix dans la liste, `product-form`, `duplicate-product-button`, `staff-form`, `article-form`, `account-editor`…), le sélecteur de thème, le fil d'Ariane, la navigation.
 
 La coquille : `app-sidebar` (logo, navigation filtrée par rôle, utilisateur, déconnexion), `site-header` (bouton du menu, marque sur mobile, fil d'Ariane, thème, avatar vers le profil), `page-header` (le seul `h1` de chaque page).
 
@@ -161,15 +161,16 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 
 ## 6. Sécurité
 
-| Mesure                                                                                                | Où                                                 |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Server Actions comme frontière de confiance (session, rôle, zod, relecture)                           | `src/app/**/actions.ts`                            |
-| Limitation de débit progressive sur la connexion, coût constant e-mail inconnu / mot de passe faux    | `src/data/credentials.ts`, `src/lib/rate-limit.ts` |
-| Content-Security-Policy avec nonce par requête, HSTS, X-Frame-Options, nosniff                        | `src/proxy.ts`, `src/lib/csp.ts`, `next.config.ts` |
-| Journal de sécurité (sortie standard et table `security_events`)                                      | `src/data/security-log.ts`                         |
-| Gardes de production : `AUTH_URL` obligatoire, fixtures et amorçage refusés sans dérogation explicite | `src/lib/env-schema.ts`, `src/instrumentation.ts`  |
-| Mots de passe hachés par scrypt, jamais journalisés                                                   | `src/lib/password.ts`                              |
-| Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                            | schémas zod des domaines                           |
+| Mesure                                                                                                           | Où                                                 |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Server Actions comme frontière de confiance (session, rôle, zod, relecture)                                      | `src/app/**/actions.ts`                            |
+| Limitation de débit progressive sur la connexion, coût constant e-mail inconnu / mot de passe faux               | `src/data/credentials.ts`, `src/lib/rate-limit.ts` |
+| Content-Security-Policy avec nonce par requête, HSTS, X-Frame-Options, nosniff                                   | `src/proxy.ts`, `src/lib/csp.ts`, `next.config.ts` |
+| Déconnexion robuste : le cookie de session n'est re-posé ni sur un préchargement ni tant que le jeton est récent | `src/proxy.ts`, `src/lib/session-refresh.ts`       |
+| Journal de sécurité (sortie standard et table `security_events`)                                                 | `src/data/security-log.ts`                         |
+| Gardes de production : `AUTH_URL` obligatoire, fixtures et amorçage refusés sans dérogation explicite            | `src/lib/env-schema.ts`, `src/instrumentation.ts`  |
+| Mots de passe hachés par scrypt, jamais journalisés                                                              | `src/lib/password.ts`                              |
+| Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                       | schémas zod des domaines                           |
 
 ## 7. Tests
 

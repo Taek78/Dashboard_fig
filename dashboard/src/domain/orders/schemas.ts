@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ASSIGNMENT_ROLES } from "@/domain/orders/assignment";
 import {
   CANCELLATION_DETAIL_MAX_LENGTH,
   CANCELLATION_REASONS,
@@ -75,4 +76,28 @@ export function parseOrderFilters(
   raw: Record<string, string | string[] | undefined>,
 ): OrderFilters {
   return orderFiltersSchema.parse(raw);
+}
+
+/*
+ * Affectation d'une personne (préparateur ou livreur) : l'id de la personne,
+ * ou une chaîne vide pour retirer l'affectation. L'action relit la personne
+ * et vérifie son métier ; ici on ne valide que la forme.
+ */
+export const assignStaffSchema = z.object({
+  orderId: orderIdSchema,
+  role: z.enum(ASSIGNMENT_ROLES),
+  staffId: z
+    .string()
+    .trim()
+    .max(64)
+    .transform((v) => (v === "" ? null : v)),
+});
+
+/** ?page=n de la liste (lecture tolérante) : entier ≥ 1, sinon 1. */
+export function parsePage(
+  raw: Record<string, string | string[] | undefined>,
+): number {
+  const value = raw.page;
+  if (typeof value !== "string" || !/^\d{1,6}$/.test(value)) return 1;
+  return Math.max(1, Number(value));
 }

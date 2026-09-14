@@ -1,4 +1,5 @@
 import { DeliveryCard } from "@/components/deliveries/delivery-card";
+import type { AssignmentOptions } from "@/components/orders/order-team";
 import { nextStopIndex } from "@/domain/deliveries/rules";
 import type { Order } from "@/domain/orders/types";
 
@@ -10,9 +11,13 @@ import type { Order } from "@/domain/orders/types";
 export function TourCards({
   orders,
   canChangeStatus,
+  canAssign,
+  options,
 }: {
   orders: Order[];
   canChangeStatus: boolean;
+  canAssign: boolean;
+  options: AssignmentOptions;
 }) {
   const next = nextStopIndex(orders);
   return (
@@ -24,6 +29,8 @@ export function TourCards({
             position={index + 1}
             isNext={index === next}
             canChangeStatus={canChangeStatus}
+            canAssign={canAssign}
+            options={options}
           />
         </li>
       ))}

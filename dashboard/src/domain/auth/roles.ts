@@ -50,6 +50,16 @@ export function canAddCustomerNote(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
+/** Créer, modifier ou supprimer une personne de l'équipe (section Personnel). */
+export function canManageStaff(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
+/** Affecter un préparateur ou un livreur à une commande. */
+export function canAssignStaff(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
 /* ---------- Lecture : quelles sections chaque rôle peut ouvrir ---------- */
 
 /** Les sections du back-office, par préfixe d'URL (la racine n'est que "/"). */
@@ -60,6 +70,7 @@ export const SECTIONS = [
   "/catalogue",
   "/articles",
   "/clients",
+  "/personnel",
   "/metriques",
   "/comptes",
   "/profil",

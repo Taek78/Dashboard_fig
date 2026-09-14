@@ -10,6 +10,7 @@ import {
 } from "@/data/products";
 import { getCurrentUser } from "@/data/session";
 import { canEditProduct } from "@/domain/auth/roles";
+import { duplicateName } from "@/domain/products/rules";
 import {
   deleteProductSchema,
   productInputSchema,
@@ -19,9 +20,10 @@ import type { ActionResult } from "@/lib/action-result";
 import { logSecurity } from "@/data/security-log";
 
 /*
- * Server Actions du catalogue : créer, modifier, supprimer. Même discipline que
- * partout : session → rôle → zod → relecture → écriture → revalidation. Une
- * création ou une suppression réussie REDIRIGE (redirect() lève : rien après).
+ * Server Actions du catalogue : créer, modifier, dupliquer, supprimer. Même
+ * discipline que partout : session → rôle → zod → relecture → écriture →
+ * revalidation. Une création, une duplication ou une suppression réussie
+ * REDIRIGE (redirect() lève : rien après).
  */
 const MESSAGES = {
   forbidden: "Vous n'avez pas les droits pour modifier le catalogue.",
@@ -92,6 +94,59 @@ export async function addProduct(
     return { status: "error", message: MESSAGES.failure };
   }
   redirect(`/catalogue/${createdId}?cree=1`);
+}
+
+/**
+ * Duplique un produit : même fiche, nom suffixé « (copie) », MASQUÉ dans
+ * l'application tant que l'équipe ne l'a pas relu, puis redirection vers la
+ * copie pour l'ajuster.
+ */
+export async function duplicateProduct(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canEditProduct(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "duplicateProduct",
+    });
+    return { status: "error", message: MESSAGES.forbidden };
+  }
+  const parsed = updateProductSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: MESSAGES.invalid };
+
+  let copyId: string;
+  try {
+    const product = await getProduct(parsed.data.productId);
+    if (!product) return { status: "error", message: MESSAGES.notFound };
+    // Tout sauf l'id et la date : ce que le formulaire aurait fourni.
+    const { id, updatedAt, ...input } = product;
+    void id;
+    void updatedAt;
+    const copy = await createProduct({
+      ...input,
+      name: duplicateName(product.name),
+      visible: false,
+    });
+    copyId = copy.id;
+    logSecurity({
+      type: "product_duplicated",
+      userId: user.id,
+      productId: product.id,
+      copyId: copy.id,
+    });
+    revalidatePath("/catalogue", "layout");
+  } catch (error) {
+    console.error(
+      "[duplicateProduct]",
+      { userId: user.id, productId: parsed.data.productId },
+      error,
+    );
+    return { status: "error", message: MESSAGES.failure };
+  }
+  redirect(`/catalogue/${copyId}?duplique=1`);
 }
 
 export async function removeProduct(

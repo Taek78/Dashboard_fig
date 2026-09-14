@@ -1,28 +1,59 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getDb, type DbExecutor } from "@/db/client";
 import { toOrder, toOrderEvent } from "@/db/mappers";
-import { customers, orderEvents, orderLines, orders } from "@/db/schema";
+import {
+  communities,
+  customers,
+  orderEvents,
+  orderLines,
+  orders,
+  staff,
+} from "@/db/schema";
+import type { StaffAssignment } from "@/domain/orders/assignment";
 import type { OrdersSource } from "@/domain/orders/source";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
 
 /*
  * Implémentation Drizzle du contrat OrdersSource.
  * Les filtres deviennent des clauses WHERE, le tri par créneau un ORDER BY ;
- * les lignes sont chargées en une seconde requête (IN) puis rattachées.
+ * la communauté, le préparateur et le livreur sont joints (LEFT JOIN, la table
+ * staff deux fois sous alias) ; les lignes sont chargées en une seconde
+ * requête (IN) puis rattachées.
  * updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :
  * `UPDATE … WHERE id = $1 AND status = $2`, 0 ligne → null, sinon l'événement
  * d'historique est inséré dans la même transaction.
  */
+const preparer = alias(staff, "preparer");
+const driver = alias(staff, "driver");
+
 async function loadOrders(
   db: DbExecutor,
   where: SQL | undefined,
 ): Promise<Order[]> {
   const rows = await db
-    .select({ order: orders, customer: customers })
+    .select({
+      order: orders,
+      customer: customers,
+      community: { id: communities.id, name: communities.name },
+      preparer: {
+        id: preparer.id,
+        firstName: preparer.firstName,
+        lastName: preparer.lastName,
+      },
+      driver: {
+        id: driver.id,
+        firstName: driver.firstName,
+        lastName: driver.lastName,
+      },
+    })
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
+    .leftJoin(communities, eq(orders.communityId, communities.id))
+    .leftJoin(preparer, eq(orders.preparerId, preparer.id))
+    .leftJoin(driver, eq(orders.driverId, driver.id))
     .where(where)
     .orderBy(
       asc(orders.deliveryDate),
@@ -47,7 +78,11 @@ async function loadOrders(
     byOrder.set(line.orderId, list);
   }
   return rows.map((r) =>
-    toOrder(r.order, r.customer, byOrder.get(r.order.id) ?? []),
+    toOrder(r.order, r.customer, byOrder.get(r.order.id) ?? [], {
+      community: r.community,
+      preparer: r.preparer,
+      driver: r.driver,
+    }),
   );
 }
 
@@ -57,6 +92,9 @@ function whereFor(filters: OrderFilters): SQL | undefined {
   if (filters.date) clauses.push(eq(orders.deliveryDate, filters.date));
   if (filters.customerId) {
     clauses.push(eq(orders.customerId, filters.customerId));
+  }
+  if (filters.communityId) {
+    clauses.push(eq(orders.communityId, filters.communityId));
   }
   return clauses.length === 0 ? undefined : and(...clauses);
 }
@@ -111,5 +149,19 @@ export const ordersDb: OrdersSource = {
       .where(eq(orderEvents.orderId, orderId))
       .orderBy(desc(orderEvents.at), desc(orderEvents.id));
     return rows.map(toOrderEvent);
+  },
+
+  assignStaff: async (id: string, assignment: StaffAssignment) => {
+    const db = getDb();
+    const column =
+      assignment.role === "preparer" ? "preparerId" : ("driverId" as const);
+    const updated = await db
+      .update(orders)
+      .set({ [column]: assignment.staff?.id ?? null })
+      .where(eq(orders.id, id))
+      .returning({ id: orders.id });
+    if (updated.length === 0) return null;
+    const [order] = await loadOrders(db, eq(orders.id, id));
+    return order ?? null;
   },
 };

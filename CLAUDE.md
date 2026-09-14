@@ -30,7 +30,7 @@ Quatre sous-agents en lecture seule dans `.claude/agents/`, orchestrés par `/eq
 
 Une seule app Next.js dans `dashboard/` ; toutes les commandes npm s'y lancent. Détail complet dans `docs/architecture.md`. L'essentiel :
 
-- `src/domain/<domaine>/` : `types.ts`, `status.ts` ou `category.ts` (`as const` + libellés français), `rules.ts` (pur), `schemas.ts` (zod des **entrées** seulement), `fixtures.ts` (déterministes, sans personne réelle), `source.ts` (contrat). Domaines : `orders`, `deliveries`, `products`, `customers`, `articles`, `metrics`, `engagement`, `auth`.
+- `src/domain/<domaine>/` : `types.ts`, `status.ts` ou `category.ts` (`as const` + libellés français), `rules.ts` (pur), `schemas.ts` (zod des **entrées** seulement), `fixtures.ts` (déterministes, sans personne réelle ; pour les commandes et les clients, `scenario.ts` écrit à la main autour du 7 septembre 2026 et `orders/history.ts` génère deux ans d'historique réaliste à graine fixe, la fenêtre du 5 au 9 septembre 2026 restant au scénario ; les tests qui raisonnent sur des valeurs précises importent `scenarioOrders` / `scenarioCustomers`), `source.ts` (contrat). Domaines : `orders` (+ `assignment.ts`, `discount.ts`), `deliveries`, `products`, `customers` (+ `loyalty.ts`), `communities` (lecture seule), `staff` (personnel), `articles`, `metrics`, `engagement`, `auth`.
 - `src/data/<domaine>.ts` : façade `server-only`, `selectSource(domaine, mock, db)` par `DATA_SOURCE` ; `<domaine>.mock.ts` (Map seedée, `structuredClone`, latence, `resetXxxMock` hors contrat) ; `<domaine>.db.ts` (Drizzle). Transverses : `session.ts`, `credentials.ts`, `login-attempts.ts`, `security-log.ts`.
 - `src/db/` : `schema.ts` (n'importe pas le domaine ; `test/db/schema.test.ts` aligne les enums), `client.ts` (`getDb()`, types `Db`, `DbExecutor`), `mappers.ts` (purs, testés en aller-retour).
 - `src/app/(dashboard)/<section>/{page,loading,actions}.tsx` ; `src/components/<domaine>/` ; `src/components/ui/` = shadcn ; `src/lib/` = utilitaires purs.
@@ -81,6 +81,9 @@ ESLint doit rester en version 9 (la 10 casse le plugin React de `eslint-config-n
 - Listes de valeurs : `XXX as const` + `Record<Xxx, string>` de libellés français ; l'enum Postgres reprend les mêmes clés.
 - Responsive : mobile d'abord, priorité au desktop ; sous `md` les listes deviennent des cartes, les formulaires passent en colonne ; chaque écran complet à 400 px sans défilement horizontal.
 - Suppressions et annulations confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation).
+- Listes longues : la liste des commandes est triée des plus récentes aux plus anciennes et paginée (`paginate`, 40 par page, `?page=`).
+- Équipe et remises : chaque commande porte `preparer`, `driver` (affectés par `assignOrderStaff`, liste déroulante qui écrit dès le choix), `community` et `discount` (posés par l'application FIG, jamais par le dashboard ; `totalCents` = lignes − remise). Une personne supprimée libère ses commandes (`SET NULL`) ; préférer `active = false`. La fidélité (`loyaltyStatus`, 8 d'affilée → −15 %) se calcule à partir des commandes, rien n'est stocké.
+- Sections : `/personnel` (admin, gestionnaire, lecture), `/clients` en onglets `?type=particuliers|communautes`. Un champ répété (cases à cocher `workDays`) se lit avec `formData.getAll` avant zod.
 
 ## Déroulement d'une tâche
 

@@ -4,6 +4,10 @@ import {
   addMonths,
   applyTaxMode,
   bucketFor,
+  applyTaxToValues,
+  CHART_METRIC_KINDS,
+  CHART_METRIC_LABELS,
+  CHART_METRICS,
   compareSeries,
   computeKpis,
   computeTrend,
@@ -20,19 +24,21 @@ import {
   previousYearRange,
   referenceRange,
   revenueSeries,
+  seriesValue,
   startOfWeek,
   TAX_MODES,
   toExcludingTax,
   topProducts,
 } from "@/domain/metrics/rules";
-import { ordersFixtures } from "@/domain/orders/fixtures";
+import { scenarioOrders } from "@/domain/orders/fixtures";
+import { filterOrders } from "@/domain/orders/rules";
 
 /*
  * Les attendus sont recalculés ici de façon indépendante (boucles simples) sur les
  * fixtures : la page affiche exactement ces valeurs. TODAY est un dimanche.
  */
 const TODAY = "2026-09-13";
-const active = ordersFixtures.filter((o) => o.status !== "cancelled");
+const active = scenarioOrders.filter((o) => o.status !== "cancelled");
 const expectedRevenue = active.reduce((s, o) => s + o.totalCents, 0);
 
 describe("TVA", () => {
@@ -125,11 +131,11 @@ describe("previousPeriodRange et referenceRange", () => {
 describe("distinctBuyers", () => {
   it("compte les clients distincts hors commandes annulées", () => {
     const expected = new Set(
-      ordersFixtures
+      scenarioOrders
         .filter((o) => o.status !== "cancelled")
         .map((o) => o.customer.id),
     ).size;
-    expect(distinctBuyers(ordersFixtures)).toBe(expected);
+    expect(distinctBuyers(scenarioOrders)).toBe(expected);
     expect(distinctBuyers([])).toBe(0);
   });
 });
@@ -137,20 +143,20 @@ describe("distinctBuyers", () => {
 describe("filterByRange", () => {
   it("bornes incluses sur le jour de livraison", () => {
     expect(
-      filterByRange(ordersFixtures, { from: "2026-09-07", to: "2026-09-08" }),
+      filterByRange(scenarioOrders, { from: "2026-09-07", to: "2026-09-08" }),
     ).toHaveLength(10);
     expect(
-      filterByRange(ordersFixtures, { from: "2026-09-06", to: "2026-09-06" }),
+      filterByRange(scenarioOrders, { from: "2026-09-06", to: "2026-09-06" }),
     ).toHaveLength(4);
     expect(
-      filterByRange(ordersFixtures, { from: "2025-09-01", to: "2025-09-30" }),
+      filterByRange(scenarioOrders, { from: "2025-09-01", to: "2025-09-30" }),
     ).toHaveLength(0);
   });
 });
 
 describe("computeKpis et percentChange", () => {
   it("calcule CA hors annulées, panier moyen, annulées, en attente", () => {
-    const k = computeKpis(ordersFixtures);
+    const k = computeKpis(scenarioOrders);
     expect(k.orderCount).toBe(14);
     expect(k.cancelledCount).toBe(2);
     expect(k.pendingCount).toBe(3);
@@ -197,7 +203,7 @@ describe("séries", () => {
 
   it("revenueSeries couvre toute la plage, seaux vides compris, CA hors annulées", () => {
     const s = revenueSeries(
-      ordersFixtures,
+      scenarioOrders,
       { from: "2026-09-05", to: "2026-09-09" },
       "day",
     );
@@ -215,7 +221,7 @@ describe("séries", () => {
 
   it("revenueSeries par mois sur l'année : 12 seaux, septembre porte tout", () => {
     const s = revenueSeries(
-      ordersFixtures,
+      scenarioOrders,
       { from: "2026-01-01", to: "2026-12-31" },
       "month",
     );
@@ -227,20 +233,64 @@ describe("séries", () => {
   it("compareSeries aligne par position et met N-1 à zéro si absent", () => {
     const range = { from: "2026-09-06", to: "2026-09-08" };
     const c = compareSeries(
-      revenueSeries(ordersFixtures, range, "day"),
-      revenueSeries(ordersFixtures, previousYearRange(range), "day"),
+      revenueSeries(scenarioOrders, range, "day"),
+      revenueSeries(scenarioOrders, previousYearRange(range), "day"),
     );
     expect(c).toHaveLength(3);
     expect(c[0]?.previousKey).toBe("2025-09-06");
-    expect(c.every((p) => p.previousCents === 0)).toBe(true);
-    expect(c.reduce((s, p) => s + p.currentCents, 0)).toBe(expectedRevenue);
+    expect(c.every((p) => p.previous.revenueCents === 0)).toBe(true);
+    expect(c.reduce((s, p) => s + p.current.revenueCents, 0)).toBe(
+      expectedRevenue,
+    );
+  });
+
+  it("chaque seau porte annulations, panier moyen et acheteurs distincts", () => {
+    const [day7] = revenueSeries(
+      scenarioOrders,
+      { from: "2026-09-07", to: "2026-09-07" },
+      "day",
+    );
+    const day = filterOrders(scenarioOrders, { date: "2026-09-07" });
+    const active = day.filter((o) => o.status !== "cancelled");
+    expect(day7?.orderCount).toBe(day.length);
+    expect(day7?.cancelledCount).toBe(day.length - active.length);
+    expect(day7?.buyers).toBe(new Set(active.map((o) => o.customer.id)).size);
+    expect(day7?.averageBasketCents).toBe(
+      Math.round(active.reduce((s, o) => s + o.totalCents, 0) / active.length),
+    );
+    const values = day7!;
+    expect(seriesValue(values, "revenue")).toBe(values.revenueCents);
+    expect(seriesValue(values, "orders")).toBe(values.orderCount);
+    expect(seriesValue(values, "basket")).toBe(values.averageBasketCents);
+    expect(seriesValue(values, "cancelled")).toBe(values.cancelledCount);
+    expect(seriesValue(values, "buyers")).toBe(values.buyers);
+  });
+
+  it("applyTaxToValues ne touche que les montants", () => {
+    const values = {
+      revenueCents: 1055,
+      orderCount: 3,
+      cancelledCount: 1,
+      averageBasketCents: 1055,
+      buyers: 2,
+    };
+    expect(applyTaxToValues(values, "ht")).toEqual({
+      ...values,
+      revenueCents: 1000,
+      averageBasketCents: 1000,
+    });
+    expect(applyTaxToValues(values, "ttc")).toEqual(values);
+    for (const m of CHART_METRICS) {
+      expect(CHART_METRIC_LABELS[m].length).toBeGreaterThan(0);
+      expect(["money", "count"]).toContain(CHART_METRIC_KINDS[m]);
+    }
   });
 });
 
 describe("ordersByStatus et topProducts", () => {
   it("une entrée par statut dans l'ordre du cycle", () => {
     expect(
-      ordersByStatus(ordersFixtures).map((p) => [p.status, p.count]),
+      ordersByStatus(scenarioOrders).map((p) => [p.status, p.count]),
     ).toEqual([
       ["pending", 3],
       ["confirmed", 3],
@@ -252,7 +302,7 @@ describe("ordersByStatus et topProducts", () => {
   });
 
   it("topProducts classe par CA décroissant hors annulées", () => {
-    const top = topProducts(ordersFixtures, 3);
+    const top = topProducts(scenarioOrders, 3);
     expect(top).toHaveLength(3);
     for (let i = 1; i < top.length; i += 1) {
       expect(top[i - 1]!.revenueCents).toBeGreaterThanOrEqual(
