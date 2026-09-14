@@ -26,3 +26,6 @@ export type Customer = {
   createdAt: string;
   notes: CustomerNote[];
 };
+
+/** Longueur maximale d'une note interne (formulaire et zod). */
+export const NOTE_MAX_LENGTH = 500;

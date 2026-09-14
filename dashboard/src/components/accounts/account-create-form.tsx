@@ -11,7 +11,7 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { ROLE_LABELS, ROLES } from "@/domain/auth/roles";
-import { PASSWORD_MIN_LENGTH } from "@/domain/auth/schemas";
+import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 

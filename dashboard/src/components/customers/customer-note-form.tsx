@@ -5,7 +5,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { addCustomerNote } from "@/app/(dashboard)/clients/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { NOTE_MAX_LENGTH } from "@/domain/customers/schemas";
+import { NOTE_MAX_LENGTH } from "@/domain/customers/types";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 

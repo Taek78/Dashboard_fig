@@ -61,3 +61,6 @@ export type ProductFilters = {
   /** Par défaut, les produits masqués ne sont pas listés. */
   includeHidden?: boolean;
 };
+
+/** Mot à taper pour confirmer une suppression (formulaire et zod). */
+export const DELETE_CONFIRM_WORD = "SUPPRIMER";

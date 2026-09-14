@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { ROLES } from "@/domain/auth/roles";
+import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
 
 /*
  * Schémas zod des ENTRÉES liées aux comptes : connexion, gestion des comptes
  * (/comptes, admin) et changement de son propre mot de passe (/profil). Le mot de passe n'apparaît jamais dans un
  * message d'erreur : zod ne met pas la valeur d'entrée dans ses issues.
  */
-export const PASSWORD_MIN_LENGTH = 12;
+export { PASSWORD_MIN_LENGTH };
 
 const email = z
   .email()

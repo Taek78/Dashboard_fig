@@ -71,7 +71,9 @@ export default async function ArticlesPage({
 
       <section className="flex flex-col gap-3">
         <div>
-          <h2 className="text-base font-semibold">Historique des parutions</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Historique des parutions
+          </h2>
           <p role="status" className="text-muted-foreground text-sm">
             {articles.length} article{articles.length > 1 ? "s" : ""},{" "}
             {visibleCount} visible{visibleCount > 1 ? "s" : ""}, du plus récent

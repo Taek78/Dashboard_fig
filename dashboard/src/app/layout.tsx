@@ -15,9 +15,9 @@ import { THEME_INIT_SCRIPT } from "@/lib/theme";
  * Polices : Plus Jakarta Sans (texte et titres) et Geist Mono (références,
  * montants), servies depuis le projet par next/font.
  *
- * Mode d'affichage : le script inline (next/script, beforeInteractive) lit
- * localStorage et pose data-theme sur <html> AVANT le premier rendu, pour éviter
- * un flash clair sur un utilisateur en sombre. Un <script> brut dans du JSX
+ * Mode d'affichage : sombre par défaut (attribut posé dès le HTML), puis le
+ * script inline (next/script, beforeInteractive) lit localStorage et corrige
+ * data-theme AVANT le premier rendu pour respecter un choix mémorisé. Un <script> brut dans du JSX
  * déclenche un avertissement React ; next/script est la voie prévue. Le serveur ne connaît pas ce choix : suppressHydrationWarning limite
  * l'avertissement à cet attribut. Le nonce (posé par src/proxy.ts dans
  * l'en-tête x-nonce) autorise ce script inline sous la CSP sans 'unsafe-inline'.
@@ -45,6 +45,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
+      data-theme="dark"
       suppressHydrationWarning
       className={`${plusJakarta.variable} ${geistMono.variable} h-full antialiased`}
     >

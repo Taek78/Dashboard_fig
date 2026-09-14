@@ -86,6 +86,7 @@ export default async function TableauDeBordPage({
           value={money(kpis.revenueCents)}
           hint="hors annulées"
           icon={<Euro />}
+          tone="brand"
         />
         <KpiCard
           label={`Panier moyen ${taxLabel}`}
@@ -128,7 +129,7 @@ export default async function TableauDeBordPage({
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-base font-medium">
+        <h2 className="text-lg font-semibold tracking-tight">
           Commandes à confirmer ({pending.length}, toutes dates)
         </h2>
         {pending.length > 0 ? (

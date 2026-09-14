@@ -54,7 +54,9 @@ export default async function ComptesPage() {
 
       <section className="flex flex-col gap-3">
         <div>
-          <h2 className="text-base font-semibold">Comptes existants</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Comptes existants
+          </h2>
           <p role="status" className="text-muted-foreground text-sm">
             {accounts.length} compte{accounts.length > 1 ? "s" : ""},{" "}
             {activeCount} actif{activeCount > 1 ? "s" : ""}.

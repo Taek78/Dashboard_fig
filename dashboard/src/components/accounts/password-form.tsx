@@ -6,7 +6,7 @@ import { changeOwnPassword } from "@/app/(dashboard)/profil/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PASSWORD_MIN_LENGTH } from "@/domain/auth/schemas";
+import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 

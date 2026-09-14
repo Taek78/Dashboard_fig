@@ -6,7 +6,11 @@ import {
   PRODUCT_CATEGORIES,
 } from "@/domain/products/category";
 import { eurosToCents } from "@/domain/products/rules";
-import type { ProductFilters, ProductInput } from "@/domain/products/types";
+import {
+  DELETE_CONFIRM_WORD,
+  type ProductFilters,
+  type ProductInput,
+} from "@/domain/products/types";
 
 /*
  * Schémas zod des ENTRÉES du catalogue. Lecture tolérante (filtres), écriture
@@ -150,7 +154,7 @@ export const productInputSchema = z
 
 export const updateProductSchema = z.object({ productId: productIdSchema });
 
-export const DELETE_CONFIRM_WORD = "SUPPRIMER";
+export { DELETE_CONFIRM_WORD };
 export const deleteProductSchema = z.object({
   productId: productIdSchema,
   /** Le mot tapé par l'utilisateur : la confirmation est aussi vérifiée côté serveur. */

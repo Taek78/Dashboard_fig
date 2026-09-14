@@ -16,8 +16,11 @@ import {
   ARTICLE_ILLUSTRATIONS,
   DEFAULT_ARTICLE_ILLUSTRATION,
 } from "@/domain/articles/category";
-import { BODY_MAX_LENGTH, TITLE_MAX_LENGTH } from "@/domain/articles/schemas";
-import type { Article } from "@/domain/articles/types";
+import {
+  BODY_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  type Article,
+} from "@/domain/articles/types";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 

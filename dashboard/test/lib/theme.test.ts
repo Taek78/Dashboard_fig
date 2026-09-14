@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_THEME,
   isTheme,
   resolveTheme,
   THEME_INIT_SCRIPT,
@@ -9,15 +10,15 @@ import {
 
 describe("resolveTheme", () => {
   it("garde un choix mémorisé valide", () => {
-    expect(resolveTheme("fig", false)).toBe("fig");
-    expect(resolveTheme("dark", false)).toBe("dark");
-    expect(resolveTheme("light", true)).toBe("light");
+    expect(resolveTheme("fig")).toBe("fig");
+    expect(resolveTheme("light")).toBe("light");
   });
 
-  it("suit le système quand rien n'est mémorisé ou que la valeur est inconnue", () => {
-    expect(resolveTheme(null, true)).toBe("dark");
-    expect(resolveTheme(undefined, false)).toBe("light");
-    expect(resolveTheme("sepia", true)).toBe("dark");
+  it("revient au mode sombre quand rien n'est mémorisé ou que la valeur est inconnue", () => {
+    expect(DEFAULT_THEME).toBe("dark");
+    expect(resolveTheme(null)).toBe("dark");
+    expect(resolveTheme(undefined)).toBe("dark");
+    expect(resolveTheme("sepia")).toBe("dark");
   });
 });
 
@@ -30,9 +31,10 @@ describe("isTheme", () => {
 });
 
 describe("THEME_INIT_SCRIPT", () => {
-  it("reste aligné sur les modes et la clé de stockage", () => {
+  it("reste aligné sur les modes, la clé de stockage et le mode par défaut", () => {
     expect(THEME_INIT_SCRIPT).toContain(THEME_STORAGE_KEY);
     for (const t of THEMES) expect(THEME_INIT_SCRIPT).toContain(`"${t}"`);
-    expect(THEME_INIT_SCRIPT).toContain("prefers-color-scheme: dark");
+    expect(THEME_INIT_SCRIPT).toContain(`t="${DEFAULT_THEME}"`);
+    expect(THEME_INIT_SCRIPT).not.toContain("prefers-color-scheme");
   });
 });

@@ -26,3 +26,7 @@ export type Article = {
 
 /** Ce que le formulaire fournit : tout sauf l'identité et l'horodatage. */
 export type ArticleInput = Omit<Article, "id" | "updatedAt">;
+
+/** Bornes de saisie (formulaire et zod). */
+export const TITLE_MAX_LENGTH = 120;
+export const BODY_MAX_LENGTH = 8000;

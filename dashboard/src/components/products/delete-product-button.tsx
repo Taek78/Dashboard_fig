@@ -6,7 +6,7 @@ import { removeProduct } from "@/app/(dashboard)/catalogue/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DELETE_CONFIRM_WORD } from "@/domain/products/schemas";
+import { DELETE_CONFIRM_WORD } from "@/domain/products/types";
 import { idleActionResult } from "@/lib/action-result";
 
 /*

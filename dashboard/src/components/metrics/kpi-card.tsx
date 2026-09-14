@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 /*
  * Carte KPI (serveur) : un libellé, une valeur, un complément optionnel, une
  * icône au dégradé de marque et, en haut à droite, un badge de tendance
  * optionnel (TrendBadge). La valeur est déjà formatée par l'appelant.
+ * `tone="brand"` : carte au dégradé de marque pour le chiffre principal d'un écran.
  */
 export function KpiCard({
   label,
@@ -12,19 +14,33 @@ export function KpiCard({
   hint,
   icon,
   trend,
+  tone = "default",
 }: {
   label: string;
   value: string;
   hint?: string;
   icon: ReactNode;
   trend?: ReactNode;
+  tone?: "default" | "brand";
 }) {
+  const brand = tone === "brand";
   return (
-    <Card size="sm" className="glow-brand card-lift">
+    <Card
+      size="sm"
+      className={cn(
+        "card-lift",
+        brand
+          ? "bg-gradient-brand text-white ring-0 [&_.text-muted-foreground]:text-white/80"
+          : "glow-brand",
+      )}
+    >
       <CardContent className="relative flex items-start gap-3">
         <div
           aria-hidden="true"
-          className="bg-gradient-brand flex size-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm [&_svg]:size-5"
+          className={cn(
+            "flex size-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm [&_svg]:size-5",
+            brand ? "bg-white/20 ring-1 ring-white/30" : "bg-gradient-brand",
+          )}
         >
           {icon}
         </div>

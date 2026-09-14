@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NOTE_MAX_LENGTH } from "@/domain/customers/types";
 
 /* Schémas zod des ENTRÉES des clients : recherche tolérante, note stricte. */
 export const customerIdSchema = z.string().trim().min(1).max(64);
@@ -22,7 +23,7 @@ export function parseCustomerSearch(
   return customerSearchSchema.parse(raw);
 }
 
-export const NOTE_MAX_LENGTH = 500;
+export { NOTE_MAX_LENGTH };
 
 export const addNoteSchema = z.object({
   customerId: customerIdSchema,

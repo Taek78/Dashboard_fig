@@ -48,9 +48,7 @@ export function TaxModeSwitch({
           );
         })}
       </div>
-      <span className="text-muted-foreground text-sm">
-        TVA 5,5 % (taux réduit alimentaire), à confirmer avec le client.
-      </span>
+      <span className="text-muted-foreground text-sm">TVA 5,5 %.</span>
     </div>
   );
 }

@@ -3,10 +3,11 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Trois modes, choisis par l'attribut data-theme sur <html> (posé avant le premier
- * rendu par le script de src/app/layout.tsx, mémorisé dans localStorage) :
+ * Trois modes, choisis par l'attribut data-theme sur <html> (sombre par défaut,
+ * choix mémorisé dans localStorage et appliqué avant le premier rendu par le
+ * script de src/app/layout.tsx) :
  *   - light : clair, mauve discret, beaucoup de blanc.
- *   - dark  : sombre neutre, mauve adouci.
+ *   - dark  : sombre neutre, mauve adouci (défaut).
  *   - fig   : la « figue » : aubergine profond, rose figue, vert feuille. Sombre.
  * Le variant `dark:` de Tailwind s'applique en dark ET en fig.
  *
@@ -283,11 +284,21 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Fond : deux lueurs douces (haut droit, bas gauche), fixes au défilement. */
+  }
+  /*
+   * Fond : deux lueurs douces (haut droit, bas gauche) sur une couche fixe
+   * séparée. background-attachment: fixed sur body forcerait un nouveau rendu du
+   * fond à chaque défilement ; une couche fixe est composée une fois.
+   */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-image:
       radial-gradient(60rem 40rem at 105% -15%, var(--halo-1), transparent 65%),
       radial-gradient(50rem 35rem at -10% 110%, var(--halo-2), transparent 65%);
-    background-attachment: fixed;
   }
   /* Changement de thème en douceur, sauf si l'utilisateur refuse les animations. */
   @media (prefers-reduced-motion: no-preference) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Carrot, CircleUser, LogOut } from "lucide-react";
+import { Carrot, LogOut } from "lucide-react";
 import { logout } from "@/app/connexion/actions";
 import { NavMain } from "@/components/nav-main";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ROLE_LABELS } from "@/domain/auth/roles";
 import type { CurrentUser } from "@/domain/auth/types";
+import { initials } from "@/lib/text";
 
 /*
  * Colonne de gauche : en-tête (logo + nom), navigation, pied (utilisateur connecté
@@ -66,8 +67,8 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
               render={<div />}
               tooltip={`${user.name} · ${ROLE_LABELS[user.role]}`}
             >
-              <div className="bg-sidebar-accent text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-full">
-                <CircleUser className="size-4" />
+              <div className="bg-gradient-brand flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm">
+                {initials(user.name)}
               </div>
               <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">{user.name}</span>

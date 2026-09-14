@@ -45,3 +45,6 @@ export type UserPatch = {
   role?: Role;
   active?: boolean;
 };
+
+/** Longueur minimale d'un mot de passe (lue par les formulaires et par zod). */
+export const PASSWORD_MIN_LENGTH = 12;

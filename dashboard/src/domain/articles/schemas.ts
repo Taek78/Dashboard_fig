@@ -3,7 +3,11 @@ import {
   ARTICLE_CATEGORIES,
   ARTICLE_ILLUSTRATIONS,
 } from "@/domain/articles/category";
-import type { ArticleInput } from "@/domain/articles/types";
+import {
+  BODY_MAX_LENGTH,
+  TITLE_MAX_LENGTH,
+  type ArticleInput,
+} from "@/domain/articles/types";
 
 /*
  * Schémas zod des ENTRÉES des articles : écriture stricte (rédaction,
@@ -11,8 +15,7 @@ import type { ArticleInput } from "@/domain/articles/types";
  */
 export const articleIdSchema = z.string().trim().min(1).max(64);
 
-export const TITLE_MAX_LENGTH = 120;
-export const BODY_MAX_LENGTH = 8000;
+export { BODY_MAX_LENGTH, TITLE_MAX_LENGTH };
 
 /** Une case à cocher absente du FormData = décochée. */
 const checkbox = z

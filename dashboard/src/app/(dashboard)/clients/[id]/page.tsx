@@ -138,7 +138,9 @@ export default async function ClientPage({
         </Card>
 
         <div className="flex flex-col gap-2 lg:col-span-2">
-          <h2 className="text-base font-medium">Historique des commandes</h2>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Historique des commandes
+          </h2>
           {orders.length > 0 ? (
             <OrdersTable orders={orders} />
           ) : (

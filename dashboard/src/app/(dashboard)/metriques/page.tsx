@@ -11,10 +11,9 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
-import { ComparisonChart } from "@/components/metrics/comparison-chart";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { MetricsControls } from "@/components/metrics/metrics-controls";
-import { StatusChart } from "@/components/metrics/status-chart";
+import { ComparisonChart, StatusChart } from "@/components/metrics/charts-lazy";
 import { TrendBadge } from "@/components/metrics/trend-badge";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,6 +133,7 @@ export default async function MetriquesPage({
           hint="hors annulées"
           icon={<Euro />}
           trend={trend(kpis.revenueCents, kpisRef.revenueCents)}
+          tone="brand"
         />
         <KpiCard
           label="Commandes"
@@ -178,14 +178,13 @@ export default async function MetriquesPage({
 
       <section className="flex flex-col gap-3">
         <div>
-          <h2 className="text-base font-semibold">
+          <h2 className="text-lg font-semibold tracking-tight">
             Usage de l&apos;application en {year}
           </h2>
           <p className="text-muted-foreground text-sm">
             Année civile de la période choisie, variations par rapport à{" "}
             {Number(year) - 1}. Téléchargements, inscriptions, réclamations et
-            note viennent des stores et du support (données factices en
-            attendant le client).
+            note viennent des stores et du support.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
