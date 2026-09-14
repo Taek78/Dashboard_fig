@@ -79,7 +79,7 @@ Deux régimes de validation zod : **tolérant** pour la lecture (un paramètre d
 
 Pour chaque domaine, trois fichiers :
 
-- `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et choisit l'implémentation avec `selectSource()` selon `DATA_SOURCE`.
+- `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et choisit l'implémentation avec `selectSource()` selon `DATA_SOURCE`, au moment de chaque appel (`source()`) et non au chargement du module : `next build` importe les pages sans environnement (`test/app/facades.test.ts`).
 - `<domaine>.mock.ts` : une `Map` en mémoire seedée depuis les fixtures, avec une latence simulée (pour voir les états de chargement) et des copies à l'entrée et à la sortie (rien ne partage d'objet avec le store). Une fonction `resetXxxMock()` hors contrat sert aux tests.
 - `<domaine>.db.ts` : la même chose avec Drizzle. Les filtres deviennent des `WHERE`, les tris des `ORDER BY`, les écritures conditionnelles des `UPDATE … WHERE id = $1 AND status = $2`, les opérations couplées des transactions. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
 

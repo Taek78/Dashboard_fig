@@ -16,7 +16,7 @@ import { hashPassword } from "@/lib/password";
  * - DATA_SOURCE=db : la table `users` (créée par `npm run db:seed` avec ces
  *   mêmes comptes, puis gérée par /comptes) ; l'environnement n'est plus consulté.
  */
-const source: UsersSource = selectSource("comptes", usersMock, usersDb);
+const source = (): UsersSource => selectSource("comptes", usersMock, usersDb);
 let seeded: Promise<void> | null = null;
 
 function ensureSeeded(): Promise<void> {
@@ -55,7 +55,7 @@ function ensureSeeded(): Promise<void> {
 
 async function ready(): Promise<UsersSource> {
   if (getEnv().DATA_SOURCE === "mock") await ensureSeeded();
-  return source;
+  return source();
 }
 
 export const findUserByEmail: UsersSource["findUserByEmail"] = async (email) =>

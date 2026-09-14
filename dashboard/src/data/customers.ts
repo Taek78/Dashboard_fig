@@ -5,15 +5,12 @@ import { customersDb } from "@/data/customers.db";
 import { customersMock } from "@/data/customers.mock";
 
 /* FAÇADE des clients : seul module importé par le front ; DATA_SOURCE choisit fixtures ou Postgres. */
-const source: CustomersSource = selectSource(
-  "clients",
-  customersMock,
-  customersDb,
-);
+const source = (): CustomersSource =>
+  selectSource("clients", customersMock, customersDb);
 
 export const getCustomers: CustomersSource["getCustomers"] = (query) =>
-  source.getCustomers(query);
+  source().getCustomers(query);
 export const getCustomer: CustomersSource["getCustomer"] = (id) =>
-  source.getCustomer(id);
+  source().getCustomer(id);
 export const addNote: CustomersSource["addNote"] = (customerId, note) =>
-  source.addNote(customerId, note);
+  source().addNote(customerId, note);
