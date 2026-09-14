@@ -1,0 +1,228 @@
+import { describe, expect, it } from "vitest";
+import {
+  articleToRow,
+  productToRow,
+  toArticle,
+  toCustomer,
+  toEngagementPoint,
+  toOrder,
+  toOrderEvent,
+  toProduct,
+  toUserAccount,
+  type ArticleRow,
+  type CustomerNoteRow,
+  type CustomerRow,
+  type OrderEventRow,
+  type OrderLineRow,
+  type OrderRow,
+  type ProductRow,
+} from "@/db/mappers";
+import { articlesFixtures } from "@/domain/articles/fixtures";
+import { customersFixtures } from "@/domain/customers/fixtures";
+import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
+import { productsFixtures } from "@/domain/products/fixtures";
+
+/** Retire id et updatedAt : ce que le formulaire fournit (ProductInput, ArticleInput). */
+function withoutMeta<T extends { id: string; updatedAt: string }>(
+  entity: T,
+): Omit<T, "id" | "updatedAt"> {
+  const copy: Partial<T> = { ...entity };
+  delete copy.id;
+  delete copy.updatedAt;
+  return copy as Omit<T, "id" | "updatedAt">;
+}
+
+/*
+ * Aller-retour : une fixture transformée en lignes (comme le seed) puis
+ * remappée doit redonner la fixture. Garantit que l'écran ne change pas quand
+ * DATA_SOURCE passe de mock à db.
+ */
+describe("toOrder / toOrderEvent", () => {
+  it("reconstitue chaque commande des fixtures à partir de ses lignes", () => {
+    for (const o of ordersFixtures) {
+      const row: OrderRow = {
+        id: o.id,
+        reference: o.reference,
+        createdAt: new Date(o.createdAt),
+        status: o.status,
+        customerId: o.customer.id,
+        deliveryDate: o.deliverySlot.date,
+        deliveryStart: o.deliverySlot.start,
+        deliveryEnd: o.deliverySlot.end,
+        deliveryCity: o.deliveryCity,
+        deliveryPostalCode: o.deliveryPostalCode,
+        totalCents: o.totalCents,
+        cancellationReason: o.cancellation?.reason ?? null,
+        cancellationDetail: o.cancellation?.detail ?? null,
+      };
+      const customer: CustomerRow = {
+        id: o.customer.id,
+        fullName: o.customer.fullName,
+        email: o.customer.email,
+        phone: o.customer.phone,
+        city: o.deliveryCity,
+        postalCode: o.deliveryPostalCode,
+        createdAt: new Date(o.createdAt),
+      };
+      // Lignes fournies dans le désordre : le mapper remet l'ordre des positions.
+      const lines: OrderLineRow[] = o.lines
+        .map((l, position) => ({
+          orderId: o.id,
+          position,
+          productId: l.productId,
+          productName: l.productName,
+          quantity: l.quantity,
+          unit: l.unit,
+          lineTotalCents: l.lineTotalCents,
+        }))
+        .toReversed();
+      expect(toOrder(row, customer, lines)).toEqual(o);
+    }
+  });
+
+  it("reconstitue les événements", () => {
+    for (const e of orderEventsFixtures) {
+      const row: OrderEventRow = {
+        id: e.id,
+        orderId: e.orderId,
+        fromStatus: e.from,
+        toStatus: e.to,
+        actorId: e.actor.id,
+        actorName: e.actor.name,
+        cancellationReason: e.cancellation?.reason ?? null,
+        cancellationDetail: e.cancellation?.detail ?? null,
+        at: new Date(e.at),
+      };
+      expect(toOrderEvent(row)).toEqual(e);
+    }
+  });
+});
+
+describe("toProduct / productToRow", () => {
+  it("fait l'aller-retour sur chaque produit des fixtures", () => {
+    for (const p of productsFixtures) {
+      const columns = productToRow(withoutMeta(p));
+      const row: ProductRow = {
+        id: p.id,
+        updatedAt: new Date(p.updatedAt),
+        name: columns.name,
+        variety: columns.variety ?? null,
+        category: columns.category,
+        unit: columns.unit,
+        priceCents: columns.priceCents,
+        unitWeightGrams: columns.unitWeightGrams ?? null,
+        container: columns.container ?? "none",
+        originCountry: columns.originCountry ?? "FR",
+        originRegion: columns.originRegion ?? null,
+        caliberMinMm: columns.caliberMinMm ?? null,
+        caliberMaxMm: columns.caliberMaxMm ?? null,
+        organic: columns.organic ?? false,
+        inSeason: columns.inSeason ?? false,
+        available: columns.available ?? true,
+        visible: columns.visible ?? true,
+        stockQuantity: columns.stockQuantity ?? 0,
+        illustration: columns.illustration,
+        imageUrl: columns.imageUrl ?? null,
+      };
+      expect(toProduct(row)).toEqual(p);
+    }
+  });
+});
+
+describe("toCustomer", () => {
+  it("rattache les notes dans l'ordre chronologique", () => {
+    for (const c of customersFixtures) {
+      const row: CustomerRow = {
+        id: c.id,
+        fullName: c.fullName,
+        email: c.email,
+        phone: c.phone,
+        city: c.city,
+        postalCode: c.postalCode,
+        createdAt: new Date(c.createdAt),
+      };
+      const notes: CustomerNoteRow[] = c.notes
+        .map((n) => ({
+          id: n.id,
+          customerId: c.id,
+          text: n.text,
+          authorName: n.authorName,
+          createdAt: new Date(n.createdAt),
+        }))
+        .toReversed();
+      expect(toCustomer(row, notes)).toEqual(c);
+    }
+  });
+});
+
+describe("toArticle / articleToRow", () => {
+  it("fait l'aller-retour sur chaque article des fixtures", () => {
+    for (const a of articlesFixtures) {
+      const columns = articleToRow(withoutMeta(a));
+      const row: ArticleRow = {
+        id: a.id,
+        updatedAt: new Date(a.updatedAt),
+        title: columns.title,
+        body: columns.body,
+        category: columns.category,
+        illustration: columns.illustration,
+        imageUrl: columns.imageUrl ?? null,
+        publishedAt: columns.publishedAt,
+        visible: columns.visible ?? true,
+      };
+      expect(toArticle(row)).toEqual(a);
+    }
+  });
+});
+
+describe("toEngagementPoint / toUserAccount", () => {
+  it("convertit la note numeric (chaîne) en nombre, null conservé", () => {
+    expect(
+      toEngagementPoint({
+        month: "2026-09",
+        downloads: 10,
+        signups: 3,
+        complaints: 1,
+        rating: "4.35",
+        ratingCount: 12,
+      }),
+    ).toEqual({
+      month: "2026-09",
+      downloads: 10,
+      signups: 3,
+      complaints: 1,
+      rating: 4.35,
+      ratingCount: 12,
+    });
+    expect(
+      toEngagementPoint({
+        month: "2026-01",
+        downloads: 0,
+        signups: 0,
+        complaints: 0,
+        rating: null,
+        ratingCount: 0,
+      }).rating,
+    ).toBeNull();
+  });
+
+  it("ne garde d'un compte que ce que le contrat expose", () => {
+    expect(
+      toUserAccount({
+        id: "usr-1",
+        email: "a@b.invalid",
+        name: "A",
+        role: "admin",
+        passwordHash: "scrypt$x$y",
+        active: true,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+    ).toEqual({
+      id: "usr-1",
+      email: "a@b.invalid",
+      name: "A",
+      role: "admin",
+      passwordHash: "scrypt$x$y",
+    });
+  });
+});

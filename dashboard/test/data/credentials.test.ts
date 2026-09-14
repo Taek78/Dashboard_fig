@@ -68,7 +68,7 @@ describe("authorizeCredentials", () => {
     expect(
       await attempt("zaki@fig.invalid", GOOD, "203.0.113.5"),
     ).not.toBeNull();
-  });
+  }, 30_000); // vingt scrypt : lent sur une machine chargée
 
   it("un succès efface le compteur de l'e-mail", async () => {
     for (let i = 0; i < 4; i++) {

@@ -4,6 +4,8 @@ Contrat entre le front (piste A, sur fixtures) et la future couche Drizzle (pist
 
 Mis à jour à la fin du jalon A1 (2026-09-08). À compléter à chaque jalon A qui ajoute une fonction ou un champ.
 
+> **2026-09-14** : la base est conçue par le dashboard (revirement client). Chaque contrat ci-dessous a désormais son implémentation Drizzle `src/data/<domaine>.db.ts` ; les colonnes sont celles de `src/db/schema.ts` (guide : `docs/base-de-donnees.md`). Ce document garde son rôle : dire ce que le front consomme.
+
 ## Fonctions consommées par le front
 
 ### `OrdersSource` (`src/domain/orders/source.ts`, implémenté par `src/data/orders.mock.ts`, exposé par `src/data/orders.ts`)

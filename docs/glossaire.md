@@ -126,6 +126,16 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **instrumentation.ts** (B1) : fichier dont `register()` s'exécute une fois au démarrage du serveur, avant la première requête. Utilisé pour valider l'environnement tôt.
 
+**Migration** (base) : fichier SQL numéroté, généré depuis `src/db/schema.ts` par `npm run db:generate`, qui fait passer une base d'un état de schéma au suivant. Appliquée par `npm run db:migrate`, jamais modifiée après coup : on en écrit une nouvelle.
+
+**Seed** (base) : script qui remplit une base avec des données de départ (ici les fixtures du projet et les comptes de `.env.local`). Réservé à la base locale.
+
+**Transaction** (base) : groupe d'écritures qui réussissent ou échouent ensemble. `updateOrderStatus` change le statut ET insère l'événement dans la même transaction : jamais l'un sans l'autre.
+
+**Clé étrangère / ON DELETE** (base) : lien d'une table vers une autre. `CASCADE` : supprimer le parent supprime les enfants (notes d'un client) ; `RESTRICT` : interdit de supprimer un parent référencé (client avec des commandes). Les lignes de commande n'en ont pas vers les produits : instantané.
+
+**Enum Postgres** (base) : liste de valeurs fixée en base (`order_status`…). Doit rester identique à la constante `as const` du domaine ; un test le vérifie.
+
 **Docker Compose** (B1) : `compose.yaml` décrit les services locaux (ici Postgres) ; `docker compose up -d` les lance, `down` les arrête, `down -v` efface les données.
 
 **Fil d'Ariane (breadcrumb)** (coquille) : la ligne « Commandes › Détail » du bandeau qui situe la page dans la navigation. Calculé par `breadcrumbFor(pathname)` (pur, testé) et rendu par `site-breadcrumb.tsx` ; le dernier maillon porte `aria-current="page"`.

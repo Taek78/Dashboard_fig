@@ -114,13 +114,13 @@ describe("gardes de production", () => {
         AUTH_ALLOW_BOOTSTRAP: "1",
       }),
     ).not.toThrow();
+    // En mode db, les comptes sont en table : pas de dérogation d'amorçage requise.
     expect(() =>
       parseEnv({
         NODE_ENV: "production",
         DATA_SOURCE: "db",
         DATABASE_URL: "postgresql://u:p@h/db",
         AUTH_URL: "https://fig.example.invalid",
-        AUTH_ALLOW_BOOTSTRAP: "1",
         ...auth,
       }),
     ).not.toThrow();

@@ -1,4 +1,6 @@
 import "server-only";
+import { selectSource } from "@/data/select-source";
+import { usersDb } from "@/data/users.db";
 import { seedUsersMock, usersMock } from "@/data/users.mock";
 import type { UsersSource } from "@/domain/auth/source";
 import type { UserAccount } from "@/domain/auth/types";
@@ -6,12 +8,15 @@ import { getEnv } from "@/lib/env";
 import { hashPassword } from "@/lib/password";
 
 /*
- * FAÇADE des comptes. En A7 la seule source est le mock, seedé une fois avec le
- * compte d'amorçage de l'environnement (AUTH_BOOTSTRAP_*, admin) et, s'il est
- * renseigné, le compte gestionnaire (AUTH_MANAGER_*), mots de passe hachés à la
- * volée. En piste B, `source` deviendra la table des comptes du dashboard.
+ * FAÇADE des comptes du back-office.
+ * - DATA_SOURCE=mock : le store mémoire est seedé une fois avec le compte
+ *   d'amorçage de l'environnement (AUTH_BOOTSTRAP_*, admin) et, s'il est
+ *   renseigné, le compte gestionnaire (AUTH_MANAGER_*), mots de passe hachés à
+ *   la volée.
+ * - DATA_SOURCE=db : la table `users` (créée par `npm run db:seed` avec ces
+ *   mêmes comptes, puis gérée en base) ; l'environnement n'est plus consulté.
  */
-const source: UsersSource = usersMock;
+const source: UsersSource = selectSource("comptes", usersMock, usersDb);
 let seeded: Promise<void> | null = null;
 
 function ensureSeeded(): Promise<void> {
@@ -51,6 +56,6 @@ function ensureSeeded(): Promise<void> {
 export const findUserByEmail: UsersSource["findUserByEmail"] = async (
   email,
 ) => {
-  await ensureSeeded();
+  if (getEnv().DATA_SOURCE === "mock") await ensureSeeded();
   return source.findUserByEmail(email);
 };

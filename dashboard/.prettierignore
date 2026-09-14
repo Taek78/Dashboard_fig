@@ -6,3 +6,5 @@ coverage
 package-lock.json
 next-env.d.ts
 AGENTS.md
+# Fichiers générés par drizzle-kit : jamais reformatés à la main.
+drizzle/meta/

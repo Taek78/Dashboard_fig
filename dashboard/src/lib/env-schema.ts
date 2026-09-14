@@ -16,8 +16,8 @@ import { z } from "zod";
  * AUTH_URL est obligatoire (Auth.js en fait l'origine canonique au lieu de
  * croire l'en-tête Host), les fixtures sont
  * refusées sauf ALLOW_MOCK_IN_PRODUCTION=1 (démo assumée), et le compte
- * d'amorçage est refusé sauf AUTH_ALLOW_BOOTSTRAP=1, à retirer dès que les
- * comptes viendront d'une base (B2).
+ * d'amorçage (mode mock seulement : en mode db les comptes sont en table) est
+ * refusé sauf AUTH_ALLOW_BOOTSTRAP=1.
  */
 const flag = z.literal("1").optional();
 
@@ -80,7 +80,7 @@ export function productionProblems(env: Env): string[] {
       "DATA_SOURCE=mock en production : fixtures refusées (ALLOW_MOCK_IN_PRODUCTION=1 pour une démo assumée).",
     );
   }
-  if (env.AUTH_ALLOW_BOOTSTRAP !== "1") {
+  if (env.DATA_SOURCE === "mock" && env.AUTH_ALLOW_BOOTSTRAP !== "1") {
     problems.push(
       "Compte d'amorçage refusé en production tant que les comptes ne viennent pas d'une base (B2) ; AUTH_ALLOW_BOOTSTRAP=1 pour l'autoriser explicitement.",
     );

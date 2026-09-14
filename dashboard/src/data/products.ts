@@ -1,10 +1,15 @@
 import "server-only";
 import { selectSource } from "@/data/select-source";
 import type { ProductsSource } from "@/domain/products/source";
+import { productsDb } from "@/data/products.db";
 import { productsMock } from "@/data/products.mock";
 
 /* FAÇADE du catalogue : seul module importé par le front. Le null devient productsDb en B3. */
-const source: ProductsSource = selectSource("catalogue", productsMock, null);
+const source: ProductsSource = selectSource(
+  "catalogue",
+  productsMock,
+  productsDb,
+);
 
 export const getProducts: ProductsSource["getProducts"] = (filters) =>
   source.getProducts(filters);

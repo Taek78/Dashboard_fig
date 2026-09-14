@@ -1,6 +1,7 @@
 import "server-only";
 import { selectSource } from "@/data/select-source";
 import type { OrdersSource } from "@/domain/orders/source";
+import { ordersDb } from "@/data/orders.db";
 import { ordersMock } from "@/data/orders.mock";
 
 /*
@@ -26,8 +27,8 @@ import { ordersMock } from "@/data/orders.mock";
  * n'importent jamais ce fichier (Vitest ne résout pas server-only), ils importent
  * orders.mock.ts ou src/domain/**.
  */
-// B1 : choix par DATA_SOURCE. La version Drizzle (B3) remplacera le null.
-const source: OrdersSource = selectSource("commandes", ordersMock, null);
+// B3 (2026-09-14) : DATA_SOURCE choisit entre les fixtures et Postgres.
+const source: OrdersSource = selectSource("commandes", ordersMock, ordersDb);
 
 export const getOrders: OrdersSource["getOrders"] = (filters) =>
   source.getOrders(filters);

@@ -21,7 +21,9 @@ import { getEnv } from "@/lib/env";
  * naîtrait à chaque sauvegarde (« too many clients »). Jamais en production.
  */
 type Sql = ReturnType<typeof postgres>;
-type Db = ReturnType<typeof drizzle<typeof schema>>;
+export type Db = ReturnType<typeof drizzle<typeof schema>>;
+/** Le client ou une transaction en cours : ce que les sources passent à leurs helpers. */
+export type DbExecutor = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 const globalForDb = globalThis as unknown as { figSql?: Sql };
 let db: Db | null = null;
