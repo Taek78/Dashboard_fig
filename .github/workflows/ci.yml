@@ -34,6 +34,28 @@ jobs:
     defaults:
       run:
         working-directory: dashboard
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fig
+          POSTGRES_PASSWORD: fig
+          POSTGRES_DB: fig
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fig -d fig"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://fig:fig@localhost:5432/fig
+      # Comptes de test : les mêmes que playwright.config.ts (publics, sans valeur).
+      AUTH_BOOTSTRAP_EMAIL: e2e-admin@fig-demo.invalid
+      AUTH_BOOTSTRAP_PASSWORD: E2E-FIG-2026-admin
+      AUTH_BOOTSTRAP_NAME: Admin E2E
+      AUTH_MANAGER_EMAIL: e2e-gestion@fig-demo.invalid
+      AUTH_MANAGER_PASSWORD: E2E-FIG-2026-gestion
+      AUTH_MANAGER_NAME: Gestion E2E
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,7 +66,14 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run test:e2e
+      - name: Suite navigateur sur fixtures
+        run: npm run test:e2e
+      - name: Migration et seed de la base de CI
+        run: npm run db:migrate && npm run db:seed
+      - name: Suite navigateur sur Postgres
+        run: npm run test:e2e
+        env:
+          E2E_DATA_SOURCE: db
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

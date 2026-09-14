@@ -12,9 +12,9 @@ import { hashPassword } from "@/lib/password";
  * - DATA_SOURCE=mock : le store mémoire est seedé une fois avec le compte
  *   d'amorçage de l'environnement (AUTH_BOOTSTRAP_*, admin) et, s'il est
  *   renseigné, le compte gestionnaire (AUTH_MANAGER_*), mots de passe hachés à
- *   la volée.
+ *   la volée ; les comptes créés ensuite vivent en mémoire jusqu'au redémarrage.
  * - DATA_SOURCE=db : la table `users` (créée par `npm run db:seed` avec ces
- *   mêmes comptes, puis gérée en base) ; l'environnement n'est plus consulté.
+ *   mêmes comptes, puis gérée par /comptes) ; l'environnement n'est plus consulté.
  */
 const source: UsersSource = selectSource("comptes", usersMock, usersDb);
 let seeded: Promise<void> | null = null;
@@ -53,9 +53,22 @@ function ensureSeeded(): Promise<void> {
   return seeded;
 }
 
-export const findUserByEmail: UsersSource["findUserByEmail"] = async (
-  email,
-) => {
+async function ready(): Promise<UsersSource> {
   if (getEnv().DATA_SOURCE === "mock") await ensureSeeded();
-  return source.findUserByEmail(email);
-};
+  return source;
+}
+
+export const findUserByEmail: UsersSource["findUserByEmail"] = async (email) =>
+  (await ready()).findUserByEmail(email);
+export const findUserById: UsersSource["findUserById"] = async (id) =>
+  (await ready()).findUserById(id);
+export const listUsers: UsersSource["listUsers"] = async () =>
+  (await ready()).listUsers();
+export const getUser: UsersSource["getUser"] = async (id) =>
+  (await ready()).getUser(id);
+export const createUser: UsersSource["createUser"] = async (input) =>
+  (await ready()).createUser(input);
+export const updateUser: UsersSource["updateUser"] = async (id, patch) =>
+  (await ready()).updateUser(id, patch);
+export const setPassword: UsersSource["setPassword"] = async (id, hash) =>
+  (await ready()).setPassword(id, hash);

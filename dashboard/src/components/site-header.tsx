@@ -48,7 +48,11 @@ export function SiteHeader({ user }: { user: CurrentUser }) {
 
         <div className="ml-auto flex items-center gap-2 md:gap-3">
           <ThemeToggle />
-          <div className="flex items-center gap-2" title={who}>
+          <Link
+            href="/profil"
+            title={who}
+            className="hover:bg-muted flex items-center gap-2 rounded-full transition-colors lg:pr-3"
+          >
             <span
               aria-hidden="true"
               className="bg-gradient-brand flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm"
@@ -63,8 +67,8 @@ export function SiteHeader({ user }: { user: CurrentUser }) {
                 {ROLE_LABELS[user.role]}
               </span>
             </span>
-            <span className="sr-only lg:hidden">{who}</span>
-          </div>
+            <span className="sr-only">{who}, ouvrir mon profil</span>
+          </Link>
         </div>
       </div>
       <span

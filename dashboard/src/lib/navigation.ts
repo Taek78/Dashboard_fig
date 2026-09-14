@@ -5,6 +5,7 @@ import {
   Newspaper,
   ShoppingBasket,
   Truck,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -23,6 +24,7 @@ export const NAV_ITEMS = [
   { title: "Articles", href: "/articles", icon: Newspaper },
   { title: "Clients", href: "/clients", icon: Users },
   { title: "Métriques", href: "/metriques", icon: ChartColumn },
+  { title: "Comptes", href: "/comptes", icon: UserCog },
 ] as const;
 
 /** La racine n'est active que sur "/" ; une section reste active sur ses sous-pages. */

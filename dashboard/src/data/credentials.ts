@@ -9,7 +9,7 @@ import type { Role } from "@/domain/auth/roles";
 import { loginSchema } from "@/domain/auth/schemas";
 import { dummyPasswordHash, verifyPassword } from "@/lib/password";
 import { clientIpFrom } from "@/lib/rate-limit";
-import { logSecurity } from "@/lib/security-log";
+import { logSecurity } from "@/data/security-log";
 
 /*
  * Vérification d'un couple e-mail / mot de passe : le SEUL chemin, appelé par

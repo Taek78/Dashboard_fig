@@ -8,7 +8,7 @@ import { formatCancellation } from "@/domain/orders/cancellation";
 import { changeStatusSchema } from "@/domain/orders/schemas";
 import { canTransition, ORDER_STATUS_LABELS } from "@/domain/orders/status";
 import type { ActionResult } from "@/lib/action-result";
-import { logSecurity } from "@/lib/security-log";
+import { logSecurity } from "@/data/security-log";
 
 /*
  * Server Action de changement de statut : un POST public que n'importe qui peut

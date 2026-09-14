@@ -41,6 +41,11 @@ export function canEditArticle(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
+/** Créer, modifier, désactiver un compte, réinitialiser un mot de passe (2026-09-14). */
+export function canManageUsers(role: Role): boolean {
+  return role === "admin";
+}
+
 /** Ajouter une note interne sur un client (A5). */
 export function canAddCustomerNote(role: Role): boolean {
   return WRITERS.includes(role);
@@ -57,15 +62,25 @@ export const SECTIONS = [
   "/articles",
   "/clients",
   "/metriques",
+  "/comptes",
+  "/profil",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 
-/** Matrice de lecture : la première section est la page d'accueil du rôle. */
+const TEAM_SECTIONS: readonly Section[] = SECTIONS.filter(
+  (s) => s !== "/comptes",
+);
+
+/**
+ * Matrice de lecture : la première section est la page d'accueil du rôle.
+ * /comptes (gestion des comptes) est réservé à l'administrateur ; /profil
+ * (son propre mot de passe) est ouvert à tous.
+ */
 export const SECTION_ACCESS: Record<Role, readonly Section[]> = {
   admin: SECTIONS,
-  gestionnaire: SECTIONS,
-  lecture: SECTIONS,
-  livreur: ["/livraisons", "/commandes"],
+  gestionnaire: TEAM_SECTIONS,
+  lecture: TEAM_SECTIONS,
+  livreur: ["/livraisons", "/commandes", "/profil"],
 };
 
 /** Section d'un chemin : "/commandes/cmd-1" → "/commandes" ; inconnu → null. */

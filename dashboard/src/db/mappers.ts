@@ -14,7 +14,7 @@ import type {
   ArticleIllustration,
 } from "@/domain/articles/category";
 import type { Article, ArticleInput } from "@/domain/articles/types";
-import type { UserAccount } from "@/domain/auth/types";
+import type { ManagedUser, UserAccount } from "@/domain/auth/types";
 import type { Customer, CustomerNote } from "@/domain/customers/types";
 import type { EngagementPoint } from "@/domain/engagement/types";
 import type { Cancellation } from "@/domain/orders/cancellation";
@@ -223,6 +223,17 @@ export function toEngagementPoint(row: EngagementRow): EngagementPoint {
     // numeric arrive en chaîne depuis postgres.js : on retourne au nombre.
     rating: row.rating === null ? null : Number(row.rating),
     ratingCount: row.ratingCount,
+  };
+}
+
+export function toManagedUser(row: UserRow): ManagedUser {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role,
+    active: row.active,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

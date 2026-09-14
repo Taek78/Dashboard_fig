@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -240,6 +241,22 @@ export const articles = pgTable(
     updatedAt: timestampTz("updated_at").notNull().defaultNow(),
   },
   (t) => [index("articles_published_idx").on(t.publishedAt)],
+);
+
+/* ---------- Journal de sécurité (2026-09-14) ---------- */
+export const securityEvents = pgTable(
+  "security_events",
+  {
+    id: text("id").primaryKey(),
+    at: timestampTz("at").notNull().defaultNow(),
+    type: text("type").notNull(),
+    /** Le reste de l'événement (identifiants, adresse IP, cible) ; jamais de secret. */
+    details: jsonb("details").notNull().$type<Record<string, unknown>>(),
+  },
+  (t) => [
+    index("security_events_at_idx").on(t.at),
+    index("security_events_type_idx").on(t.type),
+  ],
 );
 
 /* ---------- Usage de l'application, par mois civil ---------- */

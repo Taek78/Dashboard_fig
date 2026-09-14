@@ -16,7 +16,7 @@ import {
   updateProductSchema,
 } from "@/domain/products/schemas";
 import type { ActionResult } from "@/lib/action-result";
-import { logSecurity } from "@/lib/security-log";
+import { logSecurity } from "@/data/security-log";
 
 /*
  * Server Actions du catalogue : créer, modifier, supprimer. Même discipline que

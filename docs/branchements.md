@@ -109,7 +109,11 @@ Champs (fiche complète depuis le 2026-09-13) : `name`, `variety`, `category` (f
 
 Les notes internes sont une donnée du dashboard, pas de l'appli : table préfixée `dashboard_*` à négocier (Q4). L'historique de commandes d'un client passe par `getOrders({ customerId })`.
 
-### Comptes (`UsersSource`, A7)
+### Comptes (`UsersSource`, A7, étendu le 2026-09-14)
+
+Ajouts : `findUserById`, `listUsers`, `getUser`, `createUser` (renvoie `"email_taken"` si l'e-mail existe, sans casse), `updateUser(id, { name?, role?, active? })`, `setPassword(id, hash)`. Un compte désactivé n'est plus renvoyé par `findUserByEmail` (connexion refusée) mais reste listé.
+
+### Comptes (`UsersSource`, A7, version initiale)
 
 | Fonction | Entrées | Sortie | Mock | SQL attendu | Consommateurs |
 |---|---|---|---|---|---|

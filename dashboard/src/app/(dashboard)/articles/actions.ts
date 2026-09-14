@@ -17,7 +17,7 @@ import {
 } from "@/domain/articles/schemas";
 import { canEditArticle } from "@/domain/auth/roles";
 import type { ActionResult } from "@/lib/action-result";
-import { logSecurity } from "@/lib/security-log";
+import { logSecurity } from "@/data/security-log";
 
 /*
  * Server Actions des articles : rédiger, modifier, afficher/masquer, supprimer.

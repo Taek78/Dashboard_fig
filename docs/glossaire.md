@@ -158,6 +158,10 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Matrice d'accès** (RBAC) : tableau rôle → sections lisibles (`SECTION_ACCESS`). L'authentification dit qui vous êtes, l'autorisation ce que vous pouvez voir et faire ; le proxy applique la lecture, les Server Actions l'écriture.
 
+**Nonce CSP** (sécurité) : valeur aléatoire tirée à chaque requête par le proxy, mise dans la Content-Security-Policy et sur les scripts légitimes de la page. Un script injecté ne la connaît pas : le navigateur refuse de l'exécuter, sans avoir besoin d'autoriser tout l'inline.
+
+**Sauvegarde custom (pg_dump -Fc)** (base) : export compressé d'une base, restaurable table par table avec `pg_restore`. Le format « custom » est plus souple qu'un `.sql` brut et se restaure sans rejouer de texte.
+
 **Dependabot / CI** (outillage) : le robot GitHub qui ouvre des PR de mise à jour des dépendances, et le workflow qui rejoue `npm run check` et `npm audit` à chaque push.
 
 **Motif d'annulation** (métier) : raison communiquée au client quand l'équipe annule une commande : stock insuffisant, livraison indisponible, ou autre avec une précision libre de 100 caractères au plus. Exigé côté serveur par zod, stocké sur la commande et dans l'historique.

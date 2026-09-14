@@ -7,6 +7,7 @@ import {
   canChangeOrderStatus,
   canEditArticle,
   canEditProduct,
+  canManageUsers,
   canViewSection,
   homeFor,
   sectionOf,
@@ -40,10 +41,8 @@ describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
 });
 
 describe("lecture des sections", () => {
-  it("les sections couvrent exactement la navigation", () => {
-    expect([...SECTIONS].toSorted()).toEqual(
-      NAV_ITEMS.map((i) => i.href).toSorted(),
-    );
+  it("chaque entrée de navigation est une section connue", () => {
+    for (const item of NAV_ITEMS) expect(SECTIONS).toContain(item.href);
   });
 
   it("sectionOf : racine exacte, préfixe pour les autres, null sinon", () => {
@@ -54,16 +53,29 @@ describe("lecture des sections", () => {
     expect(sectionOf("/inconnu")).toBeNull();
   });
 
-  it("le livreur ne voit que livraisons et commandes, les autres voient tout", () => {
+  it("seul l'admin ouvre /comptes, tout le monde ouvre /profil", () => {
+    expect(canViewSection("admin", "/comptes")).toBe(true);
+    expect(canViewSection("gestionnaire", "/comptes")).toBe(false);
+    expect(canViewSection("lecture", "/comptes")).toBe(false);
+    expect(canViewSection("livreur", "/comptes")).toBe(false);
+    for (const role of ROLES)
+      expect(canViewSection(role, "/profil")).toBe(true);
+    expect(canManageUsers("admin")).toBe(true);
+    expect(canManageUsers("gestionnaire")).toBe(false);
+  });
+
+  it("le livreur ne voit que livraisons, commandes et son profil ; les autres tout sauf /comptes", () => {
     expect(canViewSection("livreur", "/livraisons?date=2026-09-07")).toBe(true);
     expect(canViewSection("livreur", "/commandes/cmd-0001")).toBe(true);
     expect(canViewSection("livreur", "/")).toBe(false);
     expect(canViewSection("livreur", "/metriques")).toBe(false);
     expect(canViewSection("livreur", "/clients/cli-0001")).toBe(false);
     expect(canViewSection("livreur", "/inconnu")).toBe(true);
-    for (const role of ["admin", "gestionnaire", "lecture"] as const) {
-      for (const section of SECTIONS) {
-        expect(canViewSection(role, section)).toBe(true);
+    for (const section of SECTIONS) {
+      expect(canViewSection("admin", section)).toBe(true);
+      if (section !== "/comptes") {
+        expect(canViewSection("gestionnaire", section)).toBe(true);
+        expect(canViewSection("lecture", section)).toBe(true);
       }
     }
   });

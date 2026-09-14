@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, breadcrumbFor, isNavActive } from "@/lib/navigation";
 
 describe("NAV_ITEMS", () => {
-  it("pointe vers les sept sections du back-office, racine en premier", () => {
+  it("pointe vers les huit sections du back-office, racine en premier", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
       "/",
       "/commandes",
@@ -11,6 +11,7 @@ describe("NAV_ITEMS", () => {
       "/articles",
       "/clients",
       "/metriques",
+      "/comptes",
     ]);
   });
 

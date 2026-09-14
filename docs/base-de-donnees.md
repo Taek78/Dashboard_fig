@@ -49,6 +49,7 @@ Comptes en mode db : `db:seed` crée l'administrateur (`AUTH_BOOTSTRAP_*`) et le
 | `order_events` | historique des statuts (acteur, instant, motif) | écrit dans la même transaction que le statut |
 | `articles` | contenus « à lire » | date de parution, visible/masqué |
 | `engagement_monthly` | usage de l'appli par mois | `rating` en `numeric(3,2)`, converti en nombre par le mapper |
+| `security_events` | journal de sécurité (type, instant, détails JSON) | écrit sans bloquer l'action ; jamais de secret |
 
 Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `product_category`, `product_unit`, `container`, `article_category`, `user_role`), identiques aux constantes du domaine (vérifié par `test/db/schema.test.ts`). Ajouter une valeur = modifier le domaine ET le schéma, puis `db:generate`.
 
@@ -59,6 +60,12 @@ Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `prod
 - la recherche catalogue et la recherche clients se font **en mémoire** après chargement, avec les règles pures du domaine (mêmes résultats que le mock) ; à passer en SQL (`pg_trgm`) si les tables grossissent ;
 - `updateOrderStatus` est une mise à jour conditionnelle (`WHERE id = $1 AND status = $2`) dans une transaction avec l'insertion de l'événement : deux personnes ne peuvent pas écraser le même statut.
 
-## 6. Avant une mise en ligne
+## 6. Sauvegarder et restaurer
+
+`npm run db:backup` écrit un fichier `fig-AAAAMMJJ-HHmm.dump` (format custom de `pg_dump`, compressé) dans `%LOCALAPPDATA%\fig-backups`, hors OneDrive et hors dépôt. `npm run db:restore -- <chemin du .dump>` le rejoue dans la base de `DATABASE_URL` (contenu des tables remplacé ; base locale seulement sans `SEED_ALLOW_REMOTE=1`). À faire avant toute migration sur une base qui compte, et à automatiser chez l'hébergeur (une sauvegarde quotidienne conservée trente jours est un bon départ).
+
+Le journal de sécurité (`security_events`) est dans la sauvegarde ; il est en JSON (`details`) pour rester lisible en SQL : `select at, type, details->>'email' from security_events order by at desc limit 50;`.
+
+## 7. Avant une mise en ligne
 
 Rôle applicatif dédié aux droits d'écriture ciblés (pas `fig` propriétaire, jamais `postgres`), TLS vers la base, sauvegardes, `AUTH_URL` et secrets par l'hébergeur, journal de sécurité en base. Voir le backlog, section sécurité.

@@ -8,6 +8,13 @@
       "when": 1789343692391,
       "tag": "0000_base-fig",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789345782621,
+      "tag": "0001_journal-securite",
+      "breakpoints": true
     }
   ]
 }

@@ -6,25 +6,24 @@ import {
 import type { Session } from "next-auth";
 import { auth } from "@/auth";
 import { canViewSection, homeFor } from "@/domain/auth/roles";
+import { buildCsp } from "@/lib/csp";
 
 /*
  * Proxy (ex-middleware, Next 16, runtime Node.js) : première barrière, avant
- * toute page. Deux décisions, à partir de la session lue par Auth.js :
- * 1. anonyme → redirection vers /connexion?callbackUrl= ;
- * 2. rôle sans accès à la section demandée (matrice SECTION_ACCESS) →
- *    redirection vers la page d'accueil de ce rôle.
+ * toute page. Sur chaque requête (sauf assets) :
+ * 1. un nonce est tiré, posé dans la CSP de la réponse et transmis à la page
+ *    (en-tête x-nonce) ; Next applique ce nonce à ses scripts, le layout au
+ *    script du thème ;
+ * 2. hors chemins publics (connexion, routes Auth.js, santé) : anonyme →
+ *    redirection vers /connexion?callbackUrl= ; rôle sans accès à la section
+ *    (matrice SECTION_ACCESS) → redirection vers la page d'accueil du rôle.
  * Les pages revérifient de toute façon via verifySession() et les Server
  * Actions relisent le rôle : le proxy évite juste de rendre quoi que ce soit.
  *
  * Next exige un export nommé `proxy` qui soit une vraie fonction. Notre config
  * Auth.js est paresseuse : `auth(garde)` renvoie alors une promesse de
  * middleware, qu'on attend avant de l'appeler. Avec une garde fournie, Auth.js
- * ne redirige plus lui-même les anonymes : la garde s'en charge (cas 1).
- * Le type de `auth` est une union de toutes ses formes d'appel ; on fixe ici
- * celle de l'enveloppe de middleware.
- *
- * Exclus du matcher : les routes Auth.js, la santé, la page de connexion, les
- * assets Next.
+ * ne redirige plus lui-même les anonymes : la garde s'en charge.
  */
 type AuthedRequest = NextRequest & { auth: Session | null };
 type Guard = (
@@ -39,19 +38,39 @@ type AuthWrapper = (guard: Guard) => Middleware | Promise<Middleware>;
 
 const withAuth = auth as unknown as AuthWrapper;
 
-function guard(request: AuthedRequest): Response | undefined {
+const PUBLIC_PREFIXES = ["/api/auth", "/api/health", "/connexion"];
+
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
+
+function guard(request: AuthedRequest): Response {
+  const { pathname } = request.nextUrl;
   const role = request.auth?.user?.role;
-  if (!role) {
-    const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = "/connexion";
-    signInUrl.search = "";
-    signInUrl.searchParams.set("callbackUrl", request.nextUrl.href);
-    return NextResponse.redirect(signInUrl);
+
+  if (!isPublic(pathname)) {
+    if (!role) {
+      const signInUrl = request.nextUrl.clone();
+      signInUrl.pathname = "/connexion";
+      signInUrl.search = "";
+      signInUrl.searchParams.set("callbackUrl", request.nextUrl.href);
+      return NextResponse.redirect(signInUrl);
+    }
+    if (!canViewSection(role, pathname)) {
+      return NextResponse.redirect(new URL(homeFor(role), request.nextUrl));
+    }
   }
-  if (!canViewSection(role, request.nextUrl.pathname)) {
-    return NextResponse.redirect(new URL(homeFor(role), request.nextUrl));
-  }
-  return undefined;
+
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const csp = buildCsp(nonce, process.env.NODE_ENV === "development");
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("content-security-policy", csp);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", csp);
+  return response;
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
@@ -60,7 +79,5 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!api/auth|api/health|connexion|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

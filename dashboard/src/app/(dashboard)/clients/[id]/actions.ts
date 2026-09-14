@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/data/session";
 import { canAddCustomerNote } from "@/domain/auth/roles";
 import { addNoteSchema } from "@/domain/customers/schemas";
 import type { ActionResult } from "@/lib/action-result";
-import { logSecurity } from "@/lib/security-log";
+import { logSecurity } from "@/data/security-log";
 
 /*
  * Server Action d'ajout d'une note interne (A5). L'auteur et la date viennent du
