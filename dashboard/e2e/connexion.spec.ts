@@ -9,7 +9,7 @@ test.describe("connexion et accès", () => {
     await page.goto("/commandes");
     await expect(page).toHaveURL(/\/connexion\?callbackUrl=/);
     await expect(
-      page.getByRole("heading", { level: 1, name: "FIG Back-office" }),
+      page.getByRole("heading", { level: 1, name: "Bienvenue" }),
     ).toBeVisible();
   });
 

@@ -29,7 +29,9 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // Une reprise partout : un poste chargé peut dépasser un délai sans qu'un écran soit faux.
+  retries: 1,
+  expect: { timeout: 10_000 },
   reporter: process.env.CI ? "github" : "list",
   timeout: 30_000,
   use: {

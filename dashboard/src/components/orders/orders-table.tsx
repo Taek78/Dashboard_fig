@@ -34,7 +34,7 @@ export const hideUntilLg = "hidden lg:table-cell";
 const numeric = "text-right tabular-nums";
 
 export const tableFrame =
-  "overflow-x-auto rounded-2xl border bg-card shadow-sm [&_td]:py-3 [&_th]:py-3 [&_thead]:bg-muted/40";
+  "overflow-x-auto rounded-2xl border bg-card shadow-sm [&_td]:py-3 [&_th]:py-3 [&_thead]:bg-muted/40 [&_tbody_tr]:transition-colors [&_tbody_tr:nth-child(even)]:bg-muted/20 [&_tbody_tr:hover]:bg-accent/40";
 
 /** Cadre d'une carte de la pile mobile (partagé avec les squelettes). */
 export const mobileCardFrame =

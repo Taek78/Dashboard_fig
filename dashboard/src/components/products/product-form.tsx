@@ -359,6 +359,7 @@ export function ProductForm({ product }: ProductFormProps) {
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="submit"
+          variant="brand"
           disabled={pending}
           size="lg"
           className="w-full sm:w-auto"

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, Package, Phone, User } from "lucide-react";
 import { OrderActions } from "@/components/orders/order-actions";
-import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import {
+  OrderStatusBadge,
+  STATUS_ACCENT,
+} from "@/components/orders/order-status-badge";
 import { Button } from "@/components/ui/button";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import type { Order } from "@/domain/orders/types";
@@ -29,7 +32,8 @@ export function OrderCard({
     <article
       aria-label={`Commande ${order.reference}, ${order.customer.fullName}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 md:flex-row",
+        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 md:flex-row",
+        STATUS_ACCENT[order.status],
         done && "opacity-70",
       )}
     >

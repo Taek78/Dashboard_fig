@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, Navigation, Package, Phone } from "lucide-react";
 import { OrderActions } from "@/components/orders/order-actions";
-import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import {
+  OrderStatusBadge,
+  STATUS_ACCENT,
+} from "@/components/orders/order-status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { itineraryUrl } from "@/domain/deliveries/rules";
 import type { Order } from "@/domain/orders/types";
@@ -39,7 +42,8 @@ export function DeliveryCard({
     <article
       aria-label={`Livraison ${position}, ${order.reference}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 md:flex-row",
+        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 md:flex-row",
+        STATUS_ACCENT[order.status],
         isNext && "ring-primary ring-2",
         done && "opacity-70",
       )}

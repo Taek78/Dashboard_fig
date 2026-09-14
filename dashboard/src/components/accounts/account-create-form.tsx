@@ -83,7 +83,12 @@ export function AccountCreateForm() {
         </div>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+        <Button
+          type="submit"
+          variant="brand"
+          disabled={pending}
+          className="w-full sm:w-auto"
+        >
           {pending ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
           Créer le compte
         </Button>

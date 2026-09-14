@@ -50,6 +50,7 @@ export function OrderActions({
           type="submit"
           name="nextStatus"
           value={step}
+          variant="brand"
           size="lg"
           disabled={pending}
           className="h-11 w-full"

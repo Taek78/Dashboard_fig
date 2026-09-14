@@ -43,7 +43,7 @@ export function CustomersSearch({ query }: { query: string | undefined }) {
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <Button type="submit" size="lg" className="md:w-40">
+            <Button type="submit" variant="brand" size="lg" className="md:w-40">
               <Search />
               Rechercher
             </Button>

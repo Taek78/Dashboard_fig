@@ -35,7 +35,13 @@ export function LoginForm() {
           required
         />
       </div>
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button
+        type="submit"
+        variant="brand"
+        size="lg"
+        disabled={pending}
+        className="w-full"
+      >
         {pending ? (
           <>
             <LoaderCircle className="animate-spin" />

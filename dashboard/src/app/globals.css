@@ -74,12 +74,45 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Animations maison (utilisables en animate-shimmer, animate-page-in, animate-float). */
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+  --animate-page-in: page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float: float 7s ease-in-out infinite;
+
+  @keyframes shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-3deg);
+    }
+    50% {
+      transform: translateY(-10px) rotate(3deg);
+    }
+  }
 }
 
 /* ---------- light (défaut) ---------- */
 :root {
   color-scheme: light;
-  --radius: 0.875rem;
+  --radius: 1rem;
   --background: oklch(0.985 0.006 305);
   --foreground: oklch(0.22 0.03 300);
   --card: oklch(1 0 0);
@@ -267,5 +300,86 @@
         color 200ms ease,
         border-color 200ms ease;
     }
+  }
+}
+
+/*
+ * Surfaces et effets partagés. Tout reste exprimé en tokens : ces utilitaires
+ * suivent le mode d'affichage sans rien connaître des couleurs.
+ */
+
+/* Carte interactive : légère élévation au survol, sans mouvement si l'utilisateur le refuse. */
+@utility card-lift {
+  transition:
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms ease;
+  @media (prefers-reduced-motion: no-preference) {
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+  &:hover {
+    box-shadow:
+      0 10px 30px -12px color-mix(in oklch, var(--primary) 25%, transparent),
+      0 1px 2px color-mix(in oklch, var(--foreground) 6%, transparent);
+  }
+}
+
+/* Halo de marque très doux en coin de carte (KPI, connexion). */
+@utility glow-brand {
+  position: relative;
+  overflow: hidden;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: auto -20% -40% auto;
+    width: 60%;
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    background-image: linear-gradient(
+      135deg,
+      var(--brand-from),
+      var(--brand-to)
+    );
+    opacity: 0.1;
+    filter: blur(28px);
+    pointer-events: none;
+  }
+}
+
+/* Squelette avec reflet qui traverse : plus vivant qu'un simple clignotement. */
+@utility skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: color-mix(in oklch, var(--muted) 85%, transparent);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--foreground) 6%, transparent),
+      transparent
+    );
+    animation: var(--animate-shimmer);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &::after {
+      animation: none;
+    }
+  }
+}
+
+/* Entrée de page : fondu et léger glissement, uniquement si le mouvement est accepté. */
+@utility page-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-page-in);
+  }
+}
+
+@utility float-soft {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-float);
   }
 }

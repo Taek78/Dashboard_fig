@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: Product }) {
     <Link
       href={`/catalogue/${product.id}`}
       className={cn(
-        "group bg-card text-card-foreground ring-foreground/10 focus-visible:ring-ring flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 transition-shadow outline-none hover:shadow-md focus-visible:ring-2",
+        "group bg-card text-card-foreground ring-foreground/10 focus-visible:ring-ring card-lift flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 outline-none focus-visible:ring-2",
         dimmed && "opacity-75",
       )}
     >

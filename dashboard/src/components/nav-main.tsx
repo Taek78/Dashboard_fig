@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { canViewSection, type Role } from "@/domain/auth/roles";
 import { isNavActive, NAV_ITEMS } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -42,6 +43,11 @@ export function NavMain({ role }: { role: Role }) {
                     <SidebarMenuButton
                       isActive={active}
                       tooltip={item.title}
+                      className={cn(
+                        "h-9 rounded-xl transition-colors",
+                        active &&
+                          "bg-gradient-brand! text-white! shadow-sm hover:brightness-105",
+                      )}
                       onClick={() => setOpenMobile(false)}
                       render={
                         <Link

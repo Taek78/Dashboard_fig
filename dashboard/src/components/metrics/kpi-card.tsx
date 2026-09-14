@@ -20,8 +20,8 @@ export function KpiCard({
   trend?: ReactNode;
 }) {
   return (
-    <Card size="sm">
-      <CardContent className="flex items-start gap-3">
+    <Card size="sm" className="glow-brand card-lift">
+      <CardContent className="relative flex items-start gap-3">
         <div
           aria-hidden="true"
           className="bg-gradient-brand flex size-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm [&_svg]:size-5"
@@ -33,7 +33,7 @@ export function KpiCard({
             <span className="text-muted-foreground text-xs">{label}</span>
             {trend}
           </div>
-          <span className="text-xl font-semibold tracking-tight tabular-nums">
+          <span className="text-2xl font-semibold tracking-tight tabular-nums md:text-[1.75rem]">
             {value}
           </span>
           {hint ? (

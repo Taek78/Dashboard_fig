@@ -38,11 +38,11 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
               render={<Link href="/" />}
               tooltip="FIG Back-office"
             >
-              <div className="bg-gradient-brand flex size-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
+              <div className="bg-gradient-brand ring-primary/20 flex size-8 shrink-0 items-center justify-center rounded-xl text-white shadow-md ring-2">
                 <Carrot className="size-4" />
               </div>
               <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="font-semibold tracking-tight">
+                <span className="text-gradient-brand text-base font-bold tracking-tight">
                   FIG Back-office
                 </span>
                 <span className="text-sidebar-foreground/70 text-xs">
