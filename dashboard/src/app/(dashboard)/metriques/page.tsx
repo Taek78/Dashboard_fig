@@ -52,7 +52,7 @@ import { parseMetricsQuery } from "@/domain/metrics/schemas";
 import { formatDateFr, formatEuros, formatQuantity } from "@/lib/format";
 
 /*
- * Métriques (A6, étendues le 2026-09-13) : période prédéfinie ou plage libre,
+ * Métriques : période prédéfinie ou plage libre,
  * montants HT ou TTC, référence de comparaison (N-1 ou période précédente),
  * badge de tendance sur chaque KPI, graphe pleine largeur, statuts, produits
  * phares, et un bloc « usage de l'application » sur l'année civile de la période

@@ -1,19 +1,10 @@
-# FIG Back-office
+# FIG Back-office (application)
 
-Dashboard d'administration de l'application FIG (livraison de fruits et légumes), réalisé pour le client. Next.js 16 App Router, React 19, TypeScript, Tailwind v4, shadcn/ui.
-
-## Démarrer en local
+Le README principal, la mise en route et l'architecture sont à la racine du dépôt : [../README.md](../README.md) et [../docs/architecture.md](../docs/architecture.md).
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run check      # typecheck + lint + format:check + test
+cp .env.example .env.local   # remplir AUTH_SECRET et le compte d'amorçage
+npm run dev                  # http://localhost:3000
+npm run check                # typecheck + lint + format + tests
 ```
-
-Pendant la piste A (frontend sur données factices), aucune base de données ni `.env.local` n'est nécessaire. Ne jamais lancer `next dev` ailleurs que sur un poste de développement : à partir du jalon A1.3, la session est simulée en mode development.
-
-## Où lire la suite
-
-- `../CLAUDE.md` : conventions du projet.
-- `../docs/backlog.md` : plan de travail (pistes A et B), jalon en cours.
-- `../docs/a1-*.md` : spécifications et concepts du jalon A1.

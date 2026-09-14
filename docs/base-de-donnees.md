@@ -18,13 +18,13 @@ Le script crée le rôle `fig` (mot de passe `fig`, base locale uniquement) et l
 
 ## 2. À chaque changement de schéma
 
-| Étape | Commande | Ce qu'elle fait |
-|---|---|---|
-| Modifier | éditer `src/db/schema.ts` | seule source de vérité du schéma |
-| Générer | `npm run db:generate` | écrit un fichier SQL numéroté dans `drizzle/` (à lire, à commiter) |
-| Appliquer | `npm run db:migrate` | joue les fichiers SQL pas encore appliqués (table `drizzle.__drizzle_migrations`) |
-| Remplir | `npm run db:seed` | vide puis réinsère les fixtures et les comptes de `.env.local` (base locale seulement) |
-| Explorer | `npm run db:studio` | interface web sur les tables |
+| Étape     | Commande                  | Ce qu'elle fait                                                                        |
+| --------- | ------------------------- | -------------------------------------------------------------------------------------- |
+| Modifier  | éditer `src/db/schema.ts` | seule source de vérité du schéma                                                       |
+| Générer   | `npm run db:generate`     | écrit un fichier SQL numéroté dans `drizzle/` (à lire, à commiter)                     |
+| Appliquer | `npm run db:migrate`      | joue les fichiers SQL pas encore appliqués (table `drizzle.__drizzle_migrations`)      |
+| Remplir   | `npm run db:seed`         | vide puis réinsère les fixtures et les comptes de `.env.local` (base locale seulement) |
+| Explorer  | `npm run db:studio`       | interface web sur les tables                                                           |
 
 Ne jamais modifier une migration déjà appliquée ailleurs : en écrire une nouvelle. Ne jamais lancer `db:migrate` ou `db:seed` vers une base qui n'est pas la vôtre sans l'avoir dit.
 
@@ -38,18 +38,18 @@ Comptes en mode db : `db:seed` crée l'administrateur (`AUTH_BOOTSTRAP_*`) et le
 
 ## 4. Le schéma
 
-| Table | Contenu | Points d'attention |
-|---|---|---|
-| `users` | comptes du back-office (rôle, hachage scrypt, actif) | e-mail unique sans casse |
-| `customers` | clients de l'application | e-mail unique sans casse ; RGPD : données personnelles |
-| `customer_notes` | notes internes de l'équipe | supprimées avec le client (`ON DELETE CASCADE`) |
-| `products` | catalogue | contraintes : prix > 0, stock ≥ 0, calibre min et max ensemble ou aucun |
-| `orders` | commandes : statut, client, créneau, montant, motif d'annulation | référence unique ; un client avec des commandes ne peut pas être supprimé ; motif présent si et seulement si annulée |
-| `order_lines` | lignes : **instantané** du nom et du prix au moment de l'achat | pas de clé étrangère vers `products` : supprimer un produit ne touche pas aux commandes |
-| `order_events` | historique des statuts (acteur, instant, motif) | écrit dans la même transaction que le statut |
-| `articles` | contenus « à lire » | date de parution, visible/masqué |
-| `engagement_monthly` | usage de l'appli par mois | `rating` en `numeric(3,2)`, converti en nombre par le mapper |
-| `security_events` | journal de sécurité (type, instant, détails JSON) | écrit sans bloquer l'action ; jamais de secret |
+| Table                | Contenu                                                          | Points d'attention                                                                                                   |
+| -------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `users`              | comptes du back-office (rôle, hachage scrypt, actif)             | e-mail unique sans casse                                                                                             |
+| `customers`          | clients de l'application                                         | e-mail unique sans casse ; RGPD : données personnelles                                                               |
+| `customer_notes`     | notes internes de l'équipe                                       | supprimées avec le client (`ON DELETE CASCADE`)                                                                      |
+| `products`           | catalogue                                                        | contraintes : prix > 0, stock ≥ 0, calibre min et max ensemble ou aucun                                              |
+| `orders`             | commandes : statut, client, créneau, montant, motif d'annulation | référence unique ; un client avec des commandes ne peut pas être supprimé ; motif présent si et seulement si annulée |
+| `order_lines`        | lignes : **instantané** du nom et du prix au moment de l'achat   | pas de clé étrangère vers `products` : supprimer un produit ne touche pas aux commandes                              |
+| `order_events`       | historique des statuts (acteur, instant, motif)                  | écrit dans la même transaction que le statut                                                                         |
+| `articles`           | contenus « à lire »                                              | date de parution, visible/masqué                                                                                     |
+| `engagement_monthly` | usage de l'appli par mois                                        | `rating` en `numeric(3,2)`, converti en nombre par le mapper                                                         |
+| `security_events`    | journal de sécurité (type, instant, détails JSON)                | écrit sans bloquer l'action ; jamais de secret                                                                       |
 
 Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `product_category`, `product_unit`, `container`, `article_category`, `user_role`), identiques aux constantes du domaine (vérifié par `test/db/schema.test.ts`). Ajouter une valeur = modifier le domaine ET le schéma, puis `db:generate`.
 

@@ -1,7 +1,7 @@
 /*
  * Vocabulaire du catalogue : clés anglaises (code), libellés français (interface).
  * Même patron que ORDER_STATUSES : une seule liste par notion, tsc force le reste
- * à suivre. Vocabulaire provisoire, à aligner sur celui du client (question Q9).
+ * à suivre. Vocabulaire à confirmer avec le client (question 9).
  */
 export const PRODUCT_CATEGORIES = ["fruit", "vegetable"] as const;
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];

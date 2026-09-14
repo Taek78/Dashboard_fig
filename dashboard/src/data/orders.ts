@@ -5,39 +5,28 @@ import { ordersDb } from "@/data/orders.db";
 import { ordersMock } from "@/data/orders.mock";
 
 /*
- * FAÇADE des commandes : le seul module que le front importe pour lire des commandes.
+ * FAÇADE des commandes : le seul module que le front (pages, Server Actions)
+ * importe pour lire ou écrire des commandes.
  *
- * Pourquoi cette séparation (contrat dans src/domain, implémentations et façade ici) :
- *   1. Cacher l'implémentation. `source` n'est PAS exporté : le reste de l'app ne voit
- *      que des fonctions typées par le contrat (OrdersSource["getOrders"]). Personne ne
- *      peut atteindre ce qui n'est pas dans le contrat (resetOrdersMock() du mock, pool
- *      de connexions de la version Drizzle…).
- *   2. Une seule ligne change au branchement : le `null` passé à selectSource
- *      devient `ordersDb` (B3), et DATA_SOURCE=db active la base. Les exports ne
- *      bougent pas, donc aucune page n'est touchée.
- *   3. Un import lisible côté page : `import { getOrders } from "@/data/orders"` se lit
- *      comme une fonction métier, sans exposer un détail d'architecture.
- *
- * Les wrappers fléchés `() => source.getOrders()` (plutôt que `= source.getOrders`)
- * évitent de figer la référence au moment de l'import : si `source` devient choisie
- * dynamiquement, les exports pointent toujours vers la bonne implémentation.
- *
- * `import "server-only"` en ligne 1 : Next fait échouer le build si un composant
- * "use client" importe ce module. Rien à installer. Conséquence : les tests
- * n'importent jamais ce fichier (Vitest ne résout pas server-only), ils importent
- * orders.mock.ts ou src/domain/**.
+ * - `source` n'est pas exporté : le reste de l'app ne voit que des fonctions
+ *   typées par le contrat OrdersSource. Ce qui n'est pas dans le contrat
+ *   (resetOrdersMock, le pool Postgres) reste inaccessible.
+ * - selectSource choisit l'implémentation selon DATA_SOURCE : fixtures en
+ *   mémoire (orders.mock.ts) ou PostgreSQL (orders.db.ts). Les pages ne savent
+ *   pas laquelle est active.
+ * - `import "server-only"` : Next fait échouer le build si un composant client
+ *   importe ce module. Les tests importent le mock ou src/domain, jamais ceci.
  */
-// B3 (2026-09-14) : DATA_SOURCE choisit entre les fixtures et Postgres.
 const source: OrdersSource = selectSource("commandes", ordersMock, ordersDb);
 
 export const getOrders: OrdersSource["getOrders"] = (filters) =>
   source.getOrders(filters);
 export const getOrder: OrdersSource["getOrder"] = (id) => source.getOrder(id);
-// A2 : écriture conditionnelle. resetOrdersMock() du mock n'est PAS réexportée : hors contrat.
+/** Écriture conditionnelle (statut relu) qui ajoute aussi l'événement d'historique. */
 export const updateOrderStatus: OrdersSource["updateOrderStatus"] = (
   id,
   change,
 ) => source.updateOrderStatus(id, change);
-// 2026-09-14 : historique des changements de statut, du plus récent au plus ancien.
+/** Historique des changements de statut, du plus récent au plus ancien. */
 export const getOrderEvents: OrdersSource["getOrderEvents"] = (orderId) =>
   source.getOrderEvents(orderId);

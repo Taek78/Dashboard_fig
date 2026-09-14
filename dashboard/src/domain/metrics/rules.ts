@@ -3,7 +3,7 @@ import type { OrderStatus } from "@/domain/orders/status";
 import type { Order } from "@/domain/orders/types";
 
 /*
- * Agrégations pures des métriques (A6, étendues le 2026-09-13), testées dans
+ * Agrégations pures des métriques, testées dans
  * test/domain/metrics/rules.test.ts : les chiffres affichés sont ceux que ces
  * fonctions calculent. Aucune dépendance à Next ni à recharts.
  *
@@ -12,7 +12,7 @@ import type { Order } from "@/domain/orders/types";
  *   CA / nombre de commandes non annulées ;
  * - les montants des commandes sont TTC (prix affichés au client dans l'appli).
  *   Le HT se déduit avec la TVA réduite alimentaire (5,5 %). À confirmer avec le
- *   client (question Q9 : taux et base de ses montants) ;
+ *   client (question 10 : taux et base de ses montants) ;
  * - toutes les dates sont des jours civils "AAAA-MM-JJ", calculés en UTC.
  */
 
@@ -21,7 +21,7 @@ import type { Order } from "@/domain/orders/types";
 export const VAT_RATE = 0.055;
 export const TAX_MODES = ["ht", "ttc"] as const;
 export type TaxMode = (typeof TAX_MODES)[number];
-/** Mode par défaut de toute page qui affiche des montants (décision du 2026-09-14). */
+/** Mode par défaut de toute page qui affiche des montants. */
 export const DEFAULT_TAX_MODE: TaxMode = "ht";
 export const TAX_MODE_LABELS: Record<TaxMode, string> = {
   ttc: "TTC",
@@ -247,8 +247,8 @@ export type Trend = {
 };
 
 /**
- * Sens d'une variation pour un badge. Il y a toujours une réponse (décision du
- * 2026-09-13 : pas de tiret « sans référence ») :
+ * Sens d'une variation pour un badge. Il y a toujours une réponse (jamais de
+ * tiret « sans référence ») :
  * - flat : valeur manquante, rien vendu des deux côtés, ou variation dans la
  *   bande ±0,4 % ;
  * - up +100 % : référence nulle et valeur courante non nulle (partir de zéro) ;

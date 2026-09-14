@@ -9,7 +9,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { logSecurity } from "@/data/security-log";
 
 /*
- * Server Action d'ajout d'une note interne (A5). L'auteur et la date viennent du
+ * Server Action d'ajout d'une note interne. L'auteur et la date viennent du
  * serveur (session, horloge), jamais du formulaire. Le texte est borné par zod.
  */
 const MESSAGES = {

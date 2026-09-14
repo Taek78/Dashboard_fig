@@ -4,7 +4,7 @@ import type { ArticlesSource } from "@/domain/articles/source";
 import { articlesDb } from "@/data/articles.db";
 import { articlesMock } from "@/data/articles.mock";
 
-/* FAÇADE des articles : seul module importé par le front. Le null devient articlesDb en piste B. */
+/* FAÇADE des articles : seul module importé par le front ; DATA_SOURCE choisit fixtures ou Postgres. */
 const source: ArticlesSource = selectSource(
   "articles",
   articlesMock,

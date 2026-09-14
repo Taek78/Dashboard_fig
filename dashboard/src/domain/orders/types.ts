@@ -8,9 +8,8 @@ import type { OrderStatus } from "@/domain/orders/status";
  * commandes (types, statuts, règles, fixtures, contrat) vit dans un seul dossier ;
  * un dossier types/ global finit toujours en fourre-tout.
  *
- * Ces types ne sont PAS le schéma de la base du client : ils seront mappés dessus
- * dans toOrder() (piste B3), jamais migrés vers elle. Le front ne change donc pas
- * quand le schéma réel est découvert.
+ * Ces types sont le vocabulaire du front ; les lignes Postgres y sont converties
+ * par src/db/mappers.ts (toOrder), jamais renvoyées telles quelles.
  *
  * Conventions : dates en chaînes ISO (sérialisables, comparables par `<`, pas de
  * problème d'hydratation), montants en centimes entiers, quantités en unité de base.
@@ -49,7 +48,7 @@ export type Order = {
 export type OrderFilters = {
   status?: OrderStatus;
   date?: string;
-  /** Fiche client (A5) : commandes d'une personne. */
+  /** Fiche client : commandes d'une personne. */
   customerId?: string;
 };
 
@@ -57,7 +56,7 @@ export type OrderFilters = {
 export type OrderActor = { id: string; name: string };
 
 /*
- * Trace métier durable d'un changement de statut (2026-09-14) : qui, quand, de
+ * Trace métier durable d'un changement de statut : qui, quand, de
  * quel statut à quel statut. Écrite par la source en même temps que le statut
  * (une transaction en base), lue par la fiche commande. Jamais modifiée.
  */

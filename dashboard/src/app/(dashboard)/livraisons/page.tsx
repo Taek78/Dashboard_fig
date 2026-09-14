@@ -30,7 +30,7 @@ import { formatDateFr } from "@/lib/format";
  * aujourd'hui en Europe/Paris), en cartes de terrain (ordre de passage, appel,
  * itinéraire, geste suivant en un bouton) avec la progression de la tournée.
  * Composant serveur : lectures via les façades, compteurs purs.
- * L'attribution de livreur a été retirée (décision du 2026-09-13).
+ * Pas d'attribution de livreur (choix du client) : la tournée se pilote par le statut.
  */
 export const metadata: Metadata = { title: "Livraisons" };
 

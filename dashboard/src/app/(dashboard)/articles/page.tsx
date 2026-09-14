@@ -17,7 +17,7 @@ import { canEditArticle } from "@/domain/auth/roles";
 import { todayInParis } from "@/domain/deliveries/rules";
 
 /*
- * Articles « à lire » (2026-09-13) : la carte de rédaction en tête (titre,
+ * Articles « à lire » : la carte de rédaction en tête (titre,
  * texte, catégorie, date, illustration, visibilité), puis l'historique des
  * parutions du plus récent au plus ancien, en cartes horizontales. Modifier et
  * supprimer se font sur /articles/[id] ; afficher / masquer directement sur la

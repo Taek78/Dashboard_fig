@@ -5,8 +5,8 @@ import type {
 } from "@/domain/products/types";
 
 /*
- * CONTRAT du catalogue : mock aujourd'hui (src/data/products.mock.ts), Drizzle en
- * B3. Types seulement. updateProduct et deleteProduct renvoient null / false si
+ * CONTRAT du catalogue : fixtures (src/data/products.mock.ts) ou Drizzle
+ * (src/data/products.db.ts). Types seulement. updateProduct et deleteProduct renvoient null / false si
  * le produit n'existe pas ; createProduct attribue l'id et updatedAt.
  */
 export type ProductsSource = {

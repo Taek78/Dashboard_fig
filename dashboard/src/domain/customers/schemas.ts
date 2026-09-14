@@ -5,7 +5,7 @@ export const customerIdSchema = z.string().trim().min(1).max(64);
 
 /**
  * ?q=texte : recherche ; ?tous=1 : tout afficher. Rien des deux : la page reste
- * sur le moteur de recherche sans charger de liste (choix produit du 2026-09-13).
+ * sur le moteur de recherche sans charger de liste.
  */
 const customerSearchSchema = z
   .object({

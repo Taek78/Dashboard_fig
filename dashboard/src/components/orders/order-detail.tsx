@@ -35,7 +35,7 @@ import {
  * - `allowed` est calculé ICI, côté serveur, par la règle pure : le formulaire
  *   client ne propose que ces options, et l'action les recalcule de toute façon.
  * - <dl> : « libellé → valeur » pour un lecteur d'écran, sans tableau.
- * - Historique (2026-09-14) : les événements de statut, du plus récent au plus
+ * - Historique : les événements de statut, du plus récent au plus
  *   ancien, sous le formulaire de la carte Statut : qui, quand, quel passage.
  */
 export function OrderDetail({
@@ -46,7 +46,7 @@ export function OrderDetail({
   order: Order;
   /** Historique des changements de statut, du plus récent au plus ancien. */
   events: OrderEvent[];
-  /** Rôle autorisé à changer le statut (A7). Confort d'affichage : l'action revérifie. */
+  /** Rôle autorisé à changer le statut. Confort d'affichage : l'action revérifie. */
   canEdit: boolean;
 }) {
   const allowed = allowedTransitions(order.status);

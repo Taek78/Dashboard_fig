@@ -1,5 +1,5 @@
 /*
- * Motif d'annulation d'une commande (2026-09-14) : exigé par la Server Action
+ * Motif d'annulation d'une commande : exigé par la Server Action
  * dès que le statut visé est « annulée », stocké sur la commande (l'application
  * du client l'affichera) et dans l'événement d'historique. Clés anglaises,
  * libellés français ; « autre » demande une précision libre, bornée.

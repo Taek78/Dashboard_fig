@@ -11,7 +11,7 @@ import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Gestion des comptes (2026-09-14), administrateur seulement : le proxy refuse
+ * Gestion des comptes, administrateur seulement : le proxy refuse
  * déjà les autres rôles, la page revérifie. Création en tête, puis la liste
  * (actifs d'abord) avec, par compte, nom et rôle modifiables, activation et
  * nouveau mot de passe. Le compte courant est signalé et ne peut pas se

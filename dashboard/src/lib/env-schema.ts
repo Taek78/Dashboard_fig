@@ -5,14 +5,14 @@ import { z } from "zod";
  * donc testable. src/lib/env.ts l'applique au vrai process.env, côté serveur.
  *
  * Union discriminée sur DATA_SOURCE : en "mock", DATABASE_URL n'est pas requise ;
- * en "db" (piste B), elle l'est et doit être une URL postgres. Une variable
+ * en "db", elle l'est et doit être une URL postgres. Une variable
  * absente ou invalide fait échouer le démarrage, pas la première requête.
  *
- * A7 : compte d'amorçage (le seul compte tant que les utilisateurs ne viennent
- * pas d'une base, question Q5). Le mot de passe n'est jamais journalisé : zod ne
+ * Compte d'amorçage : le seul compte en mode mock (en mode db, les comptes sont
+ * dans la table users). Le mot de passe n'est jamais journalisé : zod ne
  * met pas la valeur d'entrée dans ses issues.
  *
- * Gardes de production (audit du 2026-09-14, productionProblems) : avec NODE_ENV=production,
+ * Gardes de production (productionProblems) : avec NODE_ENV=production,
  * AUTH_URL est obligatoire (Auth.js en fait l'origine canonique au lieu de
  * croire l'en-tête Host), les fixtures sont
  * refusées sauf ALLOW_MOCK_IN_PRODUCTION=1 (démo assumée), et le compte
@@ -35,7 +35,7 @@ const commonFields = {
     .min(1)
     .max(80)
     .default("Administrateur"),
-  /* Second compte, rôle gestionnaire (2026-09-14) : les trois ensemble ou aucun. */
+  /* Second compte, rôle gestionnaire : les trois ensemble ou aucun. */
   AUTH_MANAGER_EMAIL: z.email().optional(),
   AUTH_MANAGER_PASSWORD: z.string().min(12).optional(),
   AUTH_MANAGER_NAME: z.string().trim().min(1).max(80).optional(),
@@ -82,7 +82,7 @@ export function productionProblems(env: Env): string[] {
   }
   if (env.DATA_SOURCE === "mock" && env.AUTH_ALLOW_BOOTSTRAP !== "1") {
     problems.push(
-      "Compte d'amorçage refusé en production tant que les comptes ne viennent pas d'une base (B2) ; AUTH_ALLOW_BOOTSTRAP=1 pour l'autoriser explicitement.",
+      "Compte d'amorçage refusé en production en mode mock ; AUTH_ALLOW_BOOTSTRAP=1 pour l'autoriser explicitement.",
     );
   }
   return problems;

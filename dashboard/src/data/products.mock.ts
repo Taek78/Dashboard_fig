@@ -11,7 +11,7 @@ import type {
  * Implémentation FIXTURES du contrat ProductsSource : Map mutable seedée, clone à
  * l'entrée et à la sortie, latence simulée, resetProductsMock() hors contrat.
  * `updatedAt` reçoit une valeur fixe et non new Date() pour rester déterministe
- * sous Vitest ; la vraie base mettra un timestamp (B3). Les ids créés sont un
+ * sous Vitest ; la version Drizzle met l'horodatage réel. Les ids créés sont un
  * compteur local ("prd-m-1"…) : la vraie base en générera.
  */
 const store = new Map<string, Product>();

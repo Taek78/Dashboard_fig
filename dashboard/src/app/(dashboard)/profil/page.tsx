@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/data/session";
 import { ROLE_LABELS } from "@/domain/auth/roles";
 
-/* Profil (2026-09-14), ouvert à tous les rôles : qui je suis, changer mon mot de passe. */
+/* Profil, ouvert à tous les rôles : qui je suis, changer mon mot de passe. */
 export const metadata: Metadata = { title: "Profil" };
 
 export default async function ProfilPage() {

@@ -6,8 +6,8 @@ import type {
 } from "@/domain/products/category";
 
 /*
- * Types métier du catalogue (A4, étendu le 2026-09-13) : le vocabulaire du FRONT,
- * mappé sur le schéma du client en B3.
+ * Types métier du catalogue : le vocabulaire du FRONT, converti depuis les lignes
+ * Postgres par src/db/mappers.ts.
  *
  * Prix : `priceCents` est le prix de l'unité de vente : par kilo quand `unit`
  * vaut "g", par pièce sinon. Pour une pièce dont on connaît le poids moyen

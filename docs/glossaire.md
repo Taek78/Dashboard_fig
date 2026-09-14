@@ -6,7 +6,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Domaine (`src/domain/`)** : le métier du client, exprimé en TypeScript pur, sans dépendance à Next, à la base ni au navigateur. Types (`Order`), vocabulaire (`ORDER_STATUSES`), règles (`computeOrderTotalCents`), fixtures, contrats. C'est la partie du code qui resterait vraie si on changeait de framework.
 
-**Couche de données (`src/data/`)** : tout ce qui va chercher ou modifie des données. Aujourd'hui des fixtures, demain la base du client. Le domaine dit *quoi*, la couche de données dit *comment*.
+**Couche de données (`src/data/`)** : tout ce qui va chercher ou modifie des données. Aujourd'hui des fixtures, demain la base du client. Le domaine dit _quoi_, la couche de données dit _comment_.
 
 **Contrat (`OrdersSource`)** : un type TypeScript qui décrit ce qu'une source de données doit savoir faire (`getOrders`, `getOrder`), sans dire comment. Toute implémentation doit le respecter, et `tsc` refuse celle qui oublie une méthode. Dans le projet : `src/domain/orders/source.ts`.
 
@@ -18,15 +18,15 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Fixtures** : données de test écrites à la main, fixes, sans personne réelle. `ordersFixtures` : 14 commandes inventées, toujours identiques.
 
-**Stub** : une fonction qui a la vraie signature mais un corps factice qui renvoie une valeur fixe. `getCurrentUser()` renvoie toujours l'utilisateur démo jusqu'à l'arrivée de l'auth réelle (A7). Il existe pour que les appelants puissent être écrits maintenant.
+**Stub** : une fonction qui a la vraie signature mais un corps factice qui renvoie une valeur fixe. `getCurrentUser()` renvoie toujours l'utilisateur démo jusqu'à l'arrivée de l'auth réelle . Il existe pour que les appelants puissent être écrits maintenant.
 
 **Mapper** (piste B3) : une fonction qui convertit une ligne de la base du client (ses noms de colonnes, ses unités) en type métier `Order`. C'est l'unique endroit où les deux vocabulaires se rencontrent.
 
-**Machine d'états** (A2) : la liste des passages autorisés entre statuts (`pending → confirmed`, jamais `delivered → pending`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
+**Machine d'états** : la liste des passages autorisés entre statuts (`pending → confirmed`, jamais `delivered → pending`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
 
-**Idempotent** (A2) : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
+**Idempotent** : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
 
-**`Map`** (A2) : structure clé → valeur du langage (`set`, `get`, `values()`, `clear()`), typée `Map<string, Order>` dans le mock : la « table » en mémoire, un objet par id, modifiable.
+**`Map`** : structure clé → valeur du langage (`set`, `get`, `values()`, `clear()`), typée `Map<string, Order>` dans le mock : la « table » en mémoire, un objet par id, modifiable.
 
 **Logique pure / fonction pure** : une fonction dont le résultat dépend uniquement de ses arguments et qui ne modifie rien autour d'elle. Testable en isolation, réutilisable partout. `computeOrderTotalCents`, `readSimulationMode`, `assertMockSessionAllowed`.
 
@@ -58,7 +58,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Server Action (`"use server"`)** : fonction qui s'exécute sur le serveur mais qu'un formulaire ou un composant client peut appeler. Reçoit un `FormData`, valide, écrit, renvoie un résultat. C'est un POST public : on y revérifie session et rôle à chaque fois.
 
-**`useActionState`** (A2) : hook React qui relie un formulaire à une Server Action et expose son dernier résultat (`{ status, message }`) pour l'afficher.
+**`useActionState`** : hook React qui relie un formulaire à une Server Action et expose son dernier résultat (`{ status, message }`) pour l'afficher.
 
 **Groupe de routes `(dashboard)`** : dossier entre parenthèses qui n'apparaît pas dans l'URL. Sert à partager un layout (la sidebar) entre plusieurs pages sans changer leurs adresses.
 
@@ -66,13 +66,13 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **`searchParams`** : les paramètres d'URL (`?simuler=vide`). En Next 16, c'est une `Promise` : toujours `await`.
 
-**Route dynamique `[id]`** (A2) : dossier entre crochets dont le nom devient un paramètre d'URL : `/commandes/cmd-0001` rend `commandes/[id]/page.tsx` avec `params` = `{ id: "cmd-0001" }`. En Next 16, `params` est une `Promise` : `await`. Le type `PageProps<"/commandes/[id]">` est généré par `next dev` ou `npx next typegen`.
+**Route dynamique `[id]`** : dossier entre crochets dont le nom devient un paramètre d'URL : `/commandes/cmd-0001` rend `commandes/[id]/page.tsx` avec `params` = `{ id: "cmd-0001" }`. En Next 16, `params` est une `Promise` : `await`. Le type `PageProps<"/commandes/[id]">` est généré par `next dev` ou `npx next typegen`.
 
-**`notFound()` / `not-found.tsx`** (A2) : appeler `notFound()` interrompt le rendu et affiche le `not-found.tsx` le plus proche avec un code 404. Elle lève une exception spéciale : pas de `return` devant, et jamais dans un `try/catch`.
+**`notFound()` / `not-found.tsx`** : appeler `notFound()` interrompt le rendu et affiche le `not-found.tsx` le plus proche avec un code 404. Elle lève une exception spéciale : pas de `return` devant, et jamais dans un `try/catch`.
 
-**`revalidatePath(chemin, "layout")`** (A2) : après une écriture, dit à Next que les pages sous ce chemin sont périmées et doivent être rerendues à la prochaine requête. Avec `"layout"`, `/commandes` et toutes les pages dessous (`/commandes/[id]`) sont couvertes en un appel.
+**`revalidatePath(chemin, "layout")`** : après une écriture, dit à Next que les pages sous ce chemin sont périmées et doivent être rerendues à la prochaine requête. Avec `"layout"`, `/commandes` et toutes les pages dessous (`/commandes/[id]`) sont couvertes en un appel.
 
-**`next/form`** (A2) : le composant `Form` de Next. En GET, les champs deviennent les paramètres d'URL comme un `<form method="get">` classique, mais la navigation est faite côté client et `loading.tsx` s'affiche pendant le chargement. Composant serveur, aucun hook.
+**`next/form`** : le composant `Form` de Next. En GET, les champs deviennent les paramètres d'URL comme un `<form method="get">` classique, mais la navigation est faite côté client et `loading.tsx` s'affiche pendant le chargement. Composant serveur, aucun hook.
 
 **Hydratation** : après réception du HTML, React « réveille » la page dans le navigateur. Si le HTML serveur et le rendu client diffèrent (dates formatées dans deux fuseaux, par exemple), avertissement `Hydration failed`.
 
@@ -80,7 +80,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Tokens (design)** : variables CSS de couleur et d'espacement (`--primary`, `--muted`) définies une fois dans `globals.css`. On les utilise à la place de couleurs en dur pour que le mode sombre et un futur rebranding marchent sans retoucher les composants.
 
-## Base de données (piste B)
+## Base de données
 
 **ORM** (Drizzle) : bibliothèque qui traduit des appels TypeScript en SQL et les résultats en objets typés.
 
@@ -92,7 +92,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Dump anonymisé** : export de la base où les données personnelles ont été remplacées par des valeurs factices avant de sortir de chez le client.
 
-**Mise à jour conditionnelle / compare-and-set** (A2 mock, B5 base) : `UPDATE … WHERE id = $1 AND status = $2`. Si le statut a changé entre-temps, zéro ligne modifiée et on le sait. Évite d'écraser le travail d'un collègue.
+**Mise à jour conditionnelle / compare-and-set** : `UPDATE … WHERE id = $1 AND status = $2`. Si le statut a changé entre-temps, zéro ligne modifiée et on le sait. Évite d'écraser le travail d'un collègue.
 
 ## Méthode
 
@@ -102,29 +102,29 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Sous-traitant (RGPD)** : celui qui traite des données personnelles pour le compte d'un autre (le client, responsable du traitement). Il n'a le droit de faire que ce que le client a autorisé par écrit.
 
-## Ajouts A3 à B1 (2026-09-13)
+## Autres notions
 
-**Upsert** (A3) : écrire « en remplaçant si ça existe déjà ». `assignOrder` remplace l'attribution d'une commande au lieu d'en ajouter une seconde.
+**Upsert** : écrire « en remplaçant si ça existe déjà ». `assignOrder` remplace l'attribution d'une commande au lieu d'en ajouter une seconde.
 
-**DAL (Data Access Layer) de session** (A7) : `src/lib/dal.ts`, l'unique endroit qui lit la session Auth.js et la traduit en `CurrentUser`. Sans session valide, `verifySession()` redirige vers `/connexion`.
+**DAL (Data Access Layer) de session** : `src/lib/dal.ts`, l'unique endroit qui lit la session Auth.js et la traduit en `CurrentUser`. Sans session valide, `verifySession()` redirige vers `/connexion`.
 
-**JWT** (A7) : jeton signé (pas chiffré) qui porte l'identité et le rôle de l'utilisateur, stocké dans un cookie HttpOnly. Le serveur vérifie la signature avec `AUTH_SECRET` : impossible de forger un rôle sans le secret.
+**JWT** : jeton signé (pas chiffré) qui porte l'identité et le rôle de l'utilisateur, stocké dans un cookie HttpOnly. Le serveur vérifie la signature avec `AUTH_SECRET` : impossible de forger un rôle sans le secret.
 
-**Credentials (fournisseur)** (A7) : la méthode « e-mail + mot de passe » d'Auth.js. `authorize()` reçoit le formulaire, vérifie, et renvoie l'utilisateur ou `null`, sans jamais dire lequel des deux champs est faux.
+**Credentials (fournisseur)** : la méthode « e-mail + mot de passe » d'Auth.js. `authorize()` reçoit le formulaire, vérifie, et renvoie l'utilisateur ou `null`, sans jamais dire lequel des deux champs est faux.
 
-**scrypt / hachage salé** (A7) : on ne stocke jamais un mot de passe, seulement son hachage avec un sel aléatoire. Vérifier = rehacher la saisie et comparer en temps constant (`timingSafeEqual`).
+**scrypt / hachage salé** : on ne stocke jamais un mot de passe, seulement son hachage avec un sel aléatoire. Vérifier = rehacher la saisie et comparer en temps constant (`timingSafeEqual`).
 
-**Proxy (ex-middleware)** (A7) : `src/proxy.ts`, code exécuté avant toute page. Ici : redirige les anonymes vers la connexion. Runtime Node.js en Next 16.
+**Proxy (ex-middleware)** : `src/proxy.ts`, code exécuté avant toute page. Ici : redirige les anonymes vers la connexion. Runtime Node.js en Next 16.
 
-**Compte d'amorçage** (A7) : le premier compte, défini par variables d'environnement, qui permet d'entrer avant que les comptes existent en base.
+**Compte d'amorçage** : le premier compte, défini par variables d'environnement, qui permet d'entrer avant que les comptes existent en base.
 
-**Union discriminée** (B1) : un type `A | B` où un champ commun (`DATA_SOURCE`) dit lequel des deux on a. En mode `db`, `DATABASE_URL` devient obligatoire ; en `mock`, non.
+**Union discriminée** : un type `A | B` où un champ commun (`DATA_SOURCE`) dit lequel des deux on a. En mode `db`, `DATABASE_URL` devient obligatoire ; en `mock`, non.
 
-**Pool de connexions** (B1) : petit stock de connexions Postgres réutilisées (`max: 5`) au lieu d'en ouvrir une par requête.
+**Pool de connexions** : petit stock de connexions Postgres réutilisées (`max: 5`) au lieu d'en ouvrir une par requête.
 
-**Route Handler** (B1) : fichier `route.ts` qui répond à une requête HTTP brute (`GET`, `POST`) sans page. `/api/health` en est un.
+**Route Handler** : fichier `route.ts` qui répond à une requête HTTP brute (`GET`, `POST`) sans page. `/api/health` en est un.
 
-**instrumentation.ts** (B1) : fichier dont `register()` s'exécute une fois au démarrage du serveur, avant la première requête. Utilisé pour valider l'environnement tôt.
+**instrumentation.ts** : fichier dont `register()` s'exécute une fois au démarrage du serveur, avant la première requête. Utilisé pour valider l'environnement tôt.
 
 **Migration** (base) : fichier SQL numéroté, généré depuis `src/db/schema.ts` par `npm run db:generate`, qui fait passer une base d'un état de schéma au suivant. Appliquée par `npm run db:migrate`, jamais modifiée après coup : on en écrit une nouvelle.
 
@@ -136,7 +136,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Enum Postgres** (base) : liste de valeurs fixée en base (`order_status`…). Doit rester identique à la constante `as const` du domaine ; un test le vérifie.
 
-**Docker Compose** (B1) : `compose.yaml` décrit les services locaux (ici Postgres) ; `docker compose up -d` les lance, `down` les arrête, `down -v` efface les données.
+**Docker Compose** : `compose.yaml` décrit les services locaux (ici Postgres) ; `docker compose up -d` les lance, `down` les arrête, `down -v` efface les données.
 
 **Fil d'Ariane (breadcrumb)** (coquille) : la ligne « Commandes › Détail » du bandeau qui situe la page dans la navigation. Calculé par `breadcrumbFor(pathname)` (pur, testé) et rendu par `site-breadcrumb.tsx` ; le dernier maillon porte `aria-current="page"`.
 

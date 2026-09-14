@@ -16,8 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 /*
- * Schéma de la base FIG, conçue PAR le dashboard (décision client du 2026-09-14 :
- * la base n'existe pas, on la crée). Source de vérité des migrations :
+ * Schéma de la base FIG, conçue et possédée par le dashboard. Source de vérité des migrations :
  * `npm run db:generate` produit le SQL dans ./drizzle, `npm run db:migrate`
  * l'applique. Le schéma est modifié ICI, jamais à la main en base.
  *
@@ -243,7 +242,7 @@ export const articles = pgTable(
   (t) => [index("articles_published_idx").on(t.publishedAt)],
 );
 
-/* ---------- Journal de sécurité (2026-09-14) ---------- */
+/* ---------- Journal de sécurité ---------- */
 export const securityEvents = pgTable(
   "security_events",
   {

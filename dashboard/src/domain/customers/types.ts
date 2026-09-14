@@ -1,11 +1,11 @@
 /*
- * Types métier des clients (A5) : le vocabulaire du FRONT, mappé sur le schéma du
- * client en B3. Les commandes d'un client se retrouvent par `customer.id` dans les
- * Order (croisement fait par la page, via OrderFilters.customerId).
+ * Types métier des clients : le vocabulaire du FRONT (les lignes Postgres y sont
+ * converties par src/db/mappers.ts). Les commandes d'un client se retrouvent par
+ * `customer.id` dans les Order (croisement fait par la page, via
+ * OrderFilters.customerId).
  *
- * Les notes internes sont écrites par l'équipe du client et ne sont jamais
- * visibles de la personne concernée ; elles restent des données personnelles au
- * sens RGPD (question Q4 : où les stocker, tables `dashboard_*` ?).
+ * Les notes internes sont écrites par l'équipe et ne sont jamais visibles de la
+ * personne concernée ; elles restent des données personnelles au sens du RGPD.
  */
 export type CustomerNote = {
   id: string;

@@ -23,7 +23,7 @@ import { parsePeriodQuery } from "@/domain/metrics/schemas";
 import { formatDateFr, formatEuros } from "@/lib/format";
 
 /*
- * Tableau de bord, route « / » (A6, période ajoutée le 2026-09-13) : l'activité
+ * Tableau de bord, route « / » : l'activité
  * de la période choisie (défaut : aujourd'hui, mêmes périodes prédéfinies et
  * plage libre que les métriques) et ce qui attend une action, toutes dates.
  * Chiffres calculés par les fonctions pures de metrics ; montants HT par

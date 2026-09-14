@@ -8,7 +8,7 @@ import type { OrdersSource } from "@/domain/orders/source";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
 
 /*
- * Implémentation Drizzle du contrat OrdersSource (piste B3, 2026-09-14).
+ * Implémentation Drizzle du contrat OrdersSource.
  * Les filtres deviennent des clauses WHERE, le tri par créneau un ORDER BY ;
  * les lignes sont chargées en une seconde requête (IN) puis rattachées.
  * updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :

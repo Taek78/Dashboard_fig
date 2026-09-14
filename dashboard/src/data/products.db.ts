@@ -9,7 +9,7 @@ import type { ProductsSource } from "@/domain/products/source";
 import type { ProductFilters, ProductInput } from "@/domain/products/types";
 
 /*
- * Implémentation Drizzle du contrat ProductsSource (B3). Le catalogue est petit
+ * Implémentation Drizzle du contrat ProductsSource. Le catalogue est petit
  * (quelques dizaines de références) : on charge tout puis on applique les mêmes
  * règles pures que le mock (recherche sans accents, tri français), plutôt que
  * de réécrire la normalisation en SQL. À revoir si le catalogue dépasse

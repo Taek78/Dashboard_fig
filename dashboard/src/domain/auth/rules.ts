@@ -1,7 +1,7 @@
 import type { ManagedUser, UserPatch } from "@/domain/auth/types";
 
 /*
- * Règles pures de la gestion des comptes (2026-09-14), testées dans
+ * Règles pures de la gestion des comptes, testées dans
  * test/domain/auth/rules.test.ts. La Server Action les applique après avoir
  * relu la liste des comptes : le formulaire ne décide de rien.
  */

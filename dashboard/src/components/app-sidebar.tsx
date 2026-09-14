@@ -23,7 +23,7 @@ import type { CurrentUser } from "@/domain/auth/types";
  * variant="inset" : le contenu devient une carte flottante. collapsible="icon" :
  * la barre se réduit à ses icônes.
  *
- * A7 : l'utilisateur vient de verifySession() via le layout. Le bouton de
+ * L'utilisateur vient de verifySession() via le layout. Le bouton de
  * déconnexion est un formulaire dont l'action est la Server Action logout :
  * fonctionne sans JavaScript, pas de "use client".
  */

@@ -77,7 +77,7 @@ describe("filterOrders", () => {
     expect(ids(result)).toEqual(["cmd-0009", "cmd-0010"]);
   });
 
-  it("par client, renvoie les commandes de cette personne (A5)", () => {
+  it("par client, renvoie les commandes de cette personne", () => {
     const result = filterOrders(ordersFixtures, { customerId: "cli-0001" });
     expect(result.length).toBeGreaterThan(1);
     expect(result.every((o) => o.customer.id === "cli-0001")).toBe(true);

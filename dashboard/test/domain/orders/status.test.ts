@@ -12,7 +12,7 @@ import {
  * Teste src/domain/orders/status.ts : la machine d'états en liste blanche.
  * On énumère les passages autorisés ici, indépendamment de la matrice du code :
  * si quelqu'un modifie ORDER_TRANSITIONS, ce test le signale et force à relire
- * la décision (questions client Q4, Q7/Q9 dans docs/branchements.md).
+ * la décision (questions 7 et 9 au client, docs/backlog.md).
  */
 const ALLOWED: ReadonlyArray<[OrderStatus, OrderStatus]> = [
   ["pending", "confirmed"],

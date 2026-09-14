@@ -1,15 +1,14 @@
 /*
  * Rôles du back-office et règles d'autorisation pures.
  *
- * Pourquoi un domaine auth séparé des commandes : les rôles sont consultés par
- * toutes les Server Actions (commandes, catalogue, clients, articles) et, depuis
- * l'audit du 2026-09-14, par le proxy pour la LECTURE des sections. Les règles
- * `canXxx(role)` sont pures et testées ici ; les actions les appellent après
- * avoir relu la session côté serveur, jamais en faisant confiance au client.
+ * Les rôles sont consultés par toutes les Server Actions (écriture) et par le
+ * proxy et la navigation (lecture des sections). Les règles `canXxx(role)` sont
+ * pures et testées ici ; les actions les appellent après avoir relu la session
+ * côté serveur, jamais en faisant confiance au client.
  *
- * Vocabulaire provisoire (question Q5 au client) : « livreur » est ajouté comme
- * cas concret d'un rôle qui ne doit voir ni le chiffre d'affaires, ni les
- * clients, ni le catalogue.
+ * Rôles à confirmer avec le client (question 5) : « livreur » est le cas concret
+ * d'un rôle qui ne doit voir ni le chiffre d'affaires, ni les clients, ni le
+ * catalogue.
  */
 export const ROLES = ["admin", "gestionnaire", "lecture", "livreur"] as const;
 export type Role = (typeof ROLES)[number];
@@ -26,27 +25,27 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 const WRITERS: readonly Role[] = ["admin", "gestionnaire"];
 
-/** Changer le statut d'une commande (A2) : l'équipe, et le livreur en tournée. */
+/** Changer le statut d'une commande : l'équipe, et le livreur en tournée. */
 export function canChangeOrderStatus(role: Role): boolean {
   return WRITERS.includes(role) || role === "livreur";
 }
 
-/** Modifier prix, disponibilité et stock du catalogue (A4). */
+/** Créer, modifier ou supprimer un produit du catalogue. */
 export function canEditProduct(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
-/** Rédiger, modifier, masquer ou supprimer un article « à lire » (2026-09-13). */
+/** Rédiger, modifier, masquer ou supprimer un article « à lire ». */
 export function canEditArticle(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
-/** Créer, modifier, désactiver un compte, réinitialiser un mot de passe (2026-09-14). */
+/** Créer, modifier, désactiver un compte, réinitialiser un mot de passe. */
 export function canManageUsers(role: Role): boolean {
   return role === "admin";
 }
 
-/** Ajouter une note interne sur un client (A5). */
+/** Ajouter une note interne sur un client. */
 export function canAddCustomerNote(role: Role): boolean {
   return WRITERS.includes(role);
 }

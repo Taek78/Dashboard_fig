@@ -1,8 +1,8 @@
 /*
- * Statistiques d'usage de l'application FIG (A6, ajout du 2026-09-13) :
+ * Statistiques d'usage de l'application FIG :
  * téléchargements, inscriptions, réclamations et note, par mois civil. Elles ne
  * se déduisent pas des commandes : elles viendront des stores (App Store, Play)
- * et du support du client (question client à ajouter : source et fréquence).
+ * et du support du client (question 11 : source et fréquence).
  */
 export type EngagementPoint = {
   /** "AAAA-MM" */

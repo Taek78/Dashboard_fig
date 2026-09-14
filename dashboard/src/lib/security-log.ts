@@ -1,6 +1,6 @@
 /*
  * Journal de sécurité : une ligne JSON par événement sur la sortie standard,
- * à collecter par l'hébergeur (et en base en piste B2). Le type union liste
+ * à collecter par l'hébergeur (et en table security_events en mode db). Le type union liste
  * ce qui peut être écrit : jamais de mot de passe, de jeton ni de corps de
  * formulaire, seulement des identifiants et des adresses. formatSecurityEvent
  * est pur et testé ; l'écriture (sortie standard et table security_events)

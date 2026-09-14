@@ -17,7 +17,7 @@ import type { OrderFilters } from "@/domain/orders/types";
  *   - lecture (orderFiltersSchema) : TOLÉRANT, une valeur invalide est ignorée
  *     (.catch(undefined) = « pas de filtre »), la liste complète s'affiche.
  *
- * Pas de regex sur l'id : son format appartient à la base du client (piste B2).
+ * Pas de regex sur l'id : c'est un texte libre de 64 caractères au plus.
  */
 export const orderIdSchema = z.string().trim().min(1).max(64);
 

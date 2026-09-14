@@ -14,7 +14,7 @@ import { productIdSchema } from "@/domain/products/schemas";
 import { formatDateFr } from "@/lib/format";
 
 /*
- * Fiche produit (A4, revue le 2026-09-13) : à gauche l'aperçu (la carte telle
+ * Fiche produit : à gauche l'aperçu (la carte telle
  * qu'elle apparaît dans la grille, mise à jour après chaque enregistrement), à
  * droite le formulaire complet, puis la zone de suppression. ?cree=1 confirme une
  * création (l'action de création redirige ici).

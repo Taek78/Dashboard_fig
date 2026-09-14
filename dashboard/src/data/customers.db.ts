@@ -9,7 +9,7 @@ import type { CustomersSource } from "@/domain/customers/source";
 import type { Customer, CustomerNote } from "@/domain/customers/types";
 
 /*
- * Implémentation Drizzle du contrat CustomersSource (B3). La recherche (nom,
+ * Implémentation Drizzle du contrat CustomersSource. La recherche (nom,
  * e-mail, chiffres du téléphone, sans accents) reste la règle pure du domaine,
  * appliquée après chargement : identique au mock, donc identique à l'écran.
  * À passer en SQL (pg_trgm) si la table dépasse quelques milliers de clients.

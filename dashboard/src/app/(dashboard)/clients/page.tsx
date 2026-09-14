@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { parseCustomerSearch } from "@/domain/customers/schemas";
 
 /*
- * Clients et support (A5, revu le 2026-09-13) : la page s'ouvre sur le moteur de
+ * Clients et support : la page s'ouvre sur le moteur de
  * recherche, sans liste. Les résultats n'apparaissent qu'avec ?q= ou ?tous=1,
  * dans un <Suspense> propre : la page ne fait aucun await de données elle-même,
  * donc le moteur reste affiché pendant que la zone de résultats charge (pas de

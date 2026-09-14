@@ -2,9 +2,9 @@ import type { OrderStatus } from "@/domain/orders/status";
 import type { Order } from "@/domain/orders/types";
 
 /*
- * Règles pures des livraisons (A3, réduites le 2026-09-13 : l'attribution de
- * livreur a été retirée à la demande du client ; la tournée se lit et se pilote
- * par le statut des commandes). Testées dans test/domain/deliveries/rules.test.ts.
+ * Règles pures des livraisons : la tournée se lit et se pilote par le statut des
+ * commandes (pas d'attribution de livreur, choix du client). Testées dans
+ * test/domain/deliveries/rules.test.ts.
  */
 
 /** Jour courant en Europe/Paris au format AAAA-MM-JJ. `now` en paramètre : testable. */
@@ -44,7 +44,7 @@ export function summarizeTour(orders: readonly Order[]): TourSummary {
   return { total: orders.length, toConfirm, inProgress, done };
 }
 
-/* ---------- Écran de terrain (2026-09-14) ---------- */
+/* ---------- Écran de terrain ---------- */
 
 /** Le geste naturel suivant en tournée, ou null quand la commande est terminée. */
 export function nextDeliveryStep(status: OrderStatus): OrderStatus | null {

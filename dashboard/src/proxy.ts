@@ -9,7 +9,7 @@ import { canViewSection, homeFor } from "@/domain/auth/roles";
 import { buildCsp } from "@/lib/csp";
 
 /*
- * Proxy (ex-middleware, Next 16, runtime Node.js) : première barrière, avant
+ * Proxy (le middleware de Next 16, runtime Node.js) : première barrière, avant
  * toute page. Sur chaque requête (sauf assets) :
  * 1. un nonce est tiré, posé dans la CSP de la réponse et transmis à la page
  *    (en-tête x-nonce) ; Next applique ce nonce à ses scripts, le layout au

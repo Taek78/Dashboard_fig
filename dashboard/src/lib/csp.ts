@@ -1,5 +1,5 @@
 /*
- * Content-Security-Policy avec nonce (2026-09-14), pure et testée. Posée par
+ * Content-Security-Policy avec nonce, pure et testée. Posée par
  * le proxy sur chaque réponse ; le nonce, unique par requête, est aussi passé
  * au layout racine (en-tête x-nonce) pour le script inline du thème, et Next
  * l'applique à ses propres scripts.

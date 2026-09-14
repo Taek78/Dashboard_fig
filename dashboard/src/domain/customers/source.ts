@@ -1,7 +1,7 @@
 import type { Customer, CustomerNote } from "@/domain/customers/types";
 
 /*
- * CONTRAT des clients : mock aujourd'hui, Drizzle en B3. Types seulement.
+ * CONTRAT des clients (fixtures ou Drizzle). Types seulement.
  * addNote reçoit la note complète (id exclu) : la date vient de l'action, pas du
  * store, pour que le mock reste déterministe sous Vitest.
  */

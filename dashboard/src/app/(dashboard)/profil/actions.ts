@@ -11,7 +11,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
 /*
- * Changement de son propre mot de passe (2026-09-14), ouvert à tous les rôles :
+ * Changement de son propre mot de passe, ouvert à tous les rôles :
  * session → zod (nouveau ≥ 12 caractères, confirmé, différent) → vérification
  * du mot de passe actuel contre le hachage relu → nouveau hachage → journal.
  * Un mot de passe actuel faux renvoie un message générique.

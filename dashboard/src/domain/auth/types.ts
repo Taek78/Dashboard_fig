@@ -2,12 +2,11 @@ import type { Role } from "@/domain/auth/roles";
 
 /*
  * Utilisateur de la session courante : ce que verifySession() renvoie et ce que
- * toutes les Server Actions consomment. Inchangé depuis A1.3 : A7 a remplacé
- * l'implémentation (Auth.js), pas ce type.
+ * toutes les Server Actions consomment (identité et rôle, rien d'autre).
  */
 export type CurrentUser = { id: string; name: string; role: Role };
 
-/** Compte du back-office tel que stocké (mock A7, table `users` en base). */
+/** Compte du back-office tel que stocké (store mémoire ou table `users`). */
 export type UserAccount = {
   id: string;
   email: string;
@@ -18,7 +17,7 @@ export type UserAccount = {
 };
 
 /*
- * Gestion des comptes (2026-09-14) : ce que l'écran /comptes manipule. Jamais le
+ * Gestion des comptes : ce que l'écran /comptes manipule. Jamais le
  * hachage : il ne sort de la source que pour la vérification d'un mot de passe.
  */
 export type ManagedUser = {

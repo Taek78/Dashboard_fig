@@ -17,7 +17,7 @@ import { customerIdSchema } from "@/domain/customers/schemas";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 
 /*
- * Fiche client (A5) : coordonnées, chiffres clés, historique des commandes
+ * Fiche client : coordonnées, chiffres clés, historique des commandes
  * (croisement via OrderFilters.customerId), notes internes et formulaire d'ajout.
  */
 export const metadata: Metadata = { title: "Fiche client" };

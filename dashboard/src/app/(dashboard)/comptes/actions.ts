@@ -23,7 +23,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { hashPassword } from "@/lib/password";
 
 /*
- * Server Actions de la gestion des comptes (2026-09-14), réservées à
+ * Server Actions de la gestion des comptes, réservées à
  * l'administrateur. Même discipline : session → rôle → zod → relecture →
  * règles (jamais se désactiver soi-même, jamais retirer le dernier admin) →
  * écriture → journal → revalidation. Les mots de passe sont hachés ici et

@@ -33,8 +33,8 @@ import type {
  *     un objet reçu ne doit jamais toucher le store partagé par tout le serveur).
  *   - updateOrderStatus est une mise à jour CONDITIONNELLE : null si l'id est absent
  *     ou si le statut a changé entre la lecture et l'écriture (`from` ne correspond
- *     plus). C'est le `UPDATE … WHERE id = $1 AND status = $2` que fera la base en
- *     B5. Quand elle réussit, elle ajoute l'événement d'historique (en base : la
+ *     plus). C'est le `UPDATE … WHERE id = $1 AND status = $2` de la version
+ *     Drizzle. Quand elle réussit, elle ajoute l'événement d'historique (en base : la
  *     même transaction). La règle métier canTransition n'est PAS appliquée ici :
  *     elle appartient à la Server Action, seul endroit qui décide.
  *   - L'horodatage des nouveaux événements est fixe (MOCK_EVENT_AT) pour rester

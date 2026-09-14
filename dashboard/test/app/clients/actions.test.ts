@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { customersMock, resetCustomersMock } from "@/data/customers.mock";
 
 /*
- * Session simulée : getCurrentUser() (Auth.js depuis A7) est remplacé par un
+ * Session simulée : getCurrentUser() (Auth.js) est remplacé par un
  * utilisateur de test dont le rôle est pilotable par cas (session.role).
  */
 const session = vi.hoisted(() => ({ role: "gestionnaire" }));

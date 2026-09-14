@@ -5,7 +5,7 @@ import type { Role } from "@/domain/auth/roles";
 import { getEnv } from "@/lib/env";
 
 /*
- * Configuration Auth.js v5 (A7) : fournisseur Credentials (e-mail + mot de
+ * Configuration Auth.js v5 : fournisseur Credentials (e-mail + mot de
  * passe), session en JWT signé par AUTH_SECRET dans un cookie HttpOnly, page de
  * connexion /connexion. La config est une fonction : elle n'est évaluée qu'à la
  * première requête, donc `next build` ne réclame pas l'environnement.

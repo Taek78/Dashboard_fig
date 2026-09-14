@@ -9,9 +9,9 @@ import type { UsersSource } from "@/domain/auth/source";
 import type { NewUser, UserPatch } from "@/domain/auth/types";
 
 /*
- * Implémentation Drizzle du contrat UsersSource (B3, étendue le 2026-09-14 à
- * la gestion des comptes) : table `users`, e-mail comparé sans casse (index
- * unique sur lower(email)), comptes désactivés exclus de la connexion.
+ * Implémentation Drizzle du contrat UsersSource : table `users`, e-mail comparé
+ * sans casse (index unique sur lower(email)), comptes désactivés exclus de la
+ * connexion.
  * Le mot de passe n'est jamais lu autrement que par son hachage.
  */
 const lowerEmail = (email: string) => email.trim().toLowerCase();

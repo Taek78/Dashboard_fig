@@ -6,12 +6,12 @@ import { getEnv } from "@/lib/env";
 import { formatSecurityEvent, type SecurityEvent } from "@/lib/security-log";
 
 /*
- * Journal de sécurité côté serveur (2026-09-14) : chaque événement part sur la
+ * Journal de sécurité côté serveur : chaque événement part sur la
  * sortie standard (ligne JSON, pour l'hébergeur) ET, en mode db, dans la table
  * `security_events` (pour l'analyse d'un incident depuis la base). L'écriture en
  * base ne bloque jamais l'action qui journalise : elle est lancée sans attente
  * et un échec est seulement signalé sur la sortie d'erreur.
- * Silencieux sous Vitest (NODE_ENV=test), comme avant.
+ * Silencieux sous Vitest (NODE_ENV=test).
  */
 export function logSecurity(event: SecurityEvent): void {
   if (process.env.NODE_ENV === "test") return;

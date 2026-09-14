@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { parseProductFilters } from "@/domain/products/schemas";
 
 /*
- * Catalogue (A4, revu le 2026-09-13) : moteur de recherche en tête (même
+ * Catalogue : moteur de recherche en tête (même
  * présentation que les clients), grille complète affichée d'emblée. La page ne
  * fait aucun await de données elle-même : la grille charge dans son propre
  * <Suspense>, le moteur reste en place pendant la recherche (pas de loading.tsx

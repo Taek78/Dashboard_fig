@@ -10,8 +10,8 @@
  * carte Statut du détail (options du <select>).
  *
  * Clés anglaises (identifiants de code), libellés français (interface). Vocabulaire
- * provisoire du front : à aligner sur celui du client (question Q9), puis traduit
- * dans le mapper toOrder() au moment du branchement (piste B3).
+ * à confirmer avec le client (question 9) ; l'enum Postgres order_status reprend
+ * ces clés à l'identique.
  */
 export const ORDER_STATUSES = [
   "pending",

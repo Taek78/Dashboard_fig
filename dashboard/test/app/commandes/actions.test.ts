@@ -6,7 +6,7 @@ import {
 } from "@/data/orders.mock";
 
 /*
- * Session simulée : getCurrentUser() (Auth.js depuis A7) est remplacé par un
+ * Session simulée : getCurrentUser() (Auth.js) est remplacé par un
  * utilisateur de test dont le rôle est pilotable par cas (session.role).
  */
 const session = vi.hoisted(() => ({ role: "gestionnaire" }));
@@ -62,7 +62,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("changeOrderStatus", () => {
-  it("refuse le rôle lecture avant même de valider l'entrée (A7)", async () => {
+  it("refuse le rôle lecture avant même de valider l'entrée", async () => {
     session.role = "lecture";
     const result = await run({ orderId: "cmd-0001", nextStatus: "confirmed" });
     expect(result).toEqual({

@@ -3,15 +3,15 @@ import { getDb } from "@/db/client";
 import { getEnv } from "@/lib/env";
 
 /*
- * Route de santé (B1). Corps strictement { ok: boolean } : jamais error.message,
+ * Route de santé. Corps strictement { ok: boolean } : jamais error.message,
  * la pile, l'hôte, la version de Postgres ni la latence. no-store : un proxy ou un
  * navigateur ne doit pas resservir un 200 pendant une panne.
  *
  * - DATA_SOURCE=mock : l'app est vivante, il n'y a pas de base à sonder → 200.
  * - DATA_SOURCE=db : `select 1` sur le pool → 200, ou 503 si la base est injoignable.
  *
- * Risque en production (spec B1) : route publique, chaque appel occupe une
- * connexion du pool de 5. À protéger en B6 (jeton, reverse proxy, limitation).
+ * Risque en production : route publique, chaque appel occupe une
+ * connexion du pool de 5. À protéger avant la mise en ligne (jeton, reverse proxy, limitation).
  * Le proxy d'authentification l'exclut volontairement : un moniteur n'a pas de session.
  */
 export const dynamic = "force-dynamic";

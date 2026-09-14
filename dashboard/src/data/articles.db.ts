@@ -7,7 +7,7 @@ import { articles } from "@/db/schema";
 import type { ArticlesSource } from "@/domain/articles/source";
 import type { ArticleInput } from "@/domain/articles/types";
 
-/* Implémentation Drizzle du contrat ArticlesSource (B3) : du plus récent au plus ancien. */
+/* Implémentation Drizzle du contrat ArticlesSource : du plus récent au plus ancien. */
 export const articlesDb: ArticlesSource = {
   getArticles: async () => {
     const rows = await getDb()

@@ -10,7 +10,7 @@ import { verifySession } from "@/lib/dal";
  * Il vit ici et non dans src/app/layout.tsx : le layout racine pose <html>/<body>,
  * les polices et les métadonnées ; /connexion en hérite sans la sidebar.
  *
- * A7 : verifySession() en tête. Sans session, redirection vers /connexion avant
+ * verifySession() en tête. Sans session, redirection vers /connexion avant
  * de rendre quoi que ce soit (le proxy le fait déjà, ceinture et bretelles). Le
  * nom et le rôle affichés dans la sidebar et le bandeau viennent de la session,
  * jamais d'un paramètre.

@@ -18,7 +18,7 @@ import { formatSlot } from "@/lib/format";
  * - `params.id` est une entrée hostile comme un FormData : validé par orderIdSchema.
  * - notFound() lève et affiche not-found.tsx (404) : pas de return devant, jamais
  *   dans un try/catch.
- * - A7 : la session réelle permet de masquer le formulaire au rôle lecture ;
+ * - La session permet de masquer le formulaire au rôle lecture ;
  *   ce n'est qu'un confort, l'action revérifie le rôle.
  * - Titre statique : un titre avec la référence exigerait un second getOrder (parking).
  */
