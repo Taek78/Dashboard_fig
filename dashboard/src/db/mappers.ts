@@ -36,10 +36,14 @@ import type { StaffInput, StaffMember } from "@/domain/staff/types";
  * fonction déclare son type de retour et construit un objet littéral.
  * Sans server-only ni client : testés dans test/db/mappers.test.ts.
  */
-export type OrderRow = typeof orders.$inferSelect;
+// Sans les colonnes de recherche calculées par la base : jamais lues, jamais mappées.
+export type OrderRow = Omit<typeof orders.$inferSelect, "searchText">;
 export type OrderLineRow = typeof orderLines.$inferSelect;
 export type OrderEventRow = typeof orderEvents.$inferSelect;
-export type CustomerRow = typeof customers.$inferSelect;
+export type CustomerRow = Omit<
+  typeof customers.$inferSelect,
+  "searchText" | "phoneDigits"
+>;
 export type CustomerNoteRow = typeof customerNotes.$inferSelect;
 export type ProductRow = typeof products.$inferSelect;
 export type ArticleRow = typeof articles.$inferSelect;

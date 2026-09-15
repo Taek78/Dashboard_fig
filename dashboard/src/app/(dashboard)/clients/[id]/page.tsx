@@ -5,40 +5,53 @@ import { ArrowLeft, Users } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
 import { LoyaltyGauge } from "@/components/customers/loyalty-badge";
+import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { OrdersTable } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomer } from "@/data/customers";
-import { getOrders } from "@/data/orders";
-import { loyaltyStatus } from "@/domain/customers/loyalty";
+import { getDirectoryStats, getOrdersPage } from "@/data/orders";
+import { loyaltyFromStreak } from "@/domain/customers/loyalty";
 import {
   computeCustomerStats,
   sortNotesNewestFirst,
 } from "@/domain/customers/rules";
 import { customerIdSchema } from "@/domain/customers/schemas";
+import { parsePage } from "@/domain/orders/schemas";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 
 /*
  * Fiche client : coordonnées (et communauté), chiffres clés, fidélité (série
- * de commandes d'affilée, règle pure), historique des commandes (croisement
- * via OrderFilters.customerId), notes internes et formulaire d'ajout.
+ * de commandes d'affilée), historique des commandes (croisement via
+ * OrderFilters.customerId), notes internes et formulaire d'ajout.
+ * Chiffres et série de fidélité agrégés par la base (getDirectoryStats
+ * restreint au client, mêmes règles que l'annuaire) ; l'historique est lu page
+ * par page (?page=, les plus récentes d'abord), jamais en entier.
  */
 export const metadata: Metadata = { title: "Fiche client" };
 
+const NO_STATS = computeCustomerStats([]);
+
 export default async function ClientPage({
   params,
+  searchParams,
 }: PageProps<"/clients/[id]">) {
   const { id } = await params;
   const parsed = customerIdSchema.safeParse(id);
   if (!parsed.success) notFound();
 
-  const customer = await getCustomer(parsed.data);
+  const [customer, directory, history] = await Promise.all([
+    getCustomer(parsed.data),
+    getDirectoryStats({ customerId: parsed.data }),
+    getOrdersPage({ customerId: parsed.data }, parsePage(await searchParams)),
+  ]);
   if (!customer) notFound();
 
-  const orders = await getOrders({ customerId: customer.id });
-  const stats = computeCustomerStats(orders);
-  const loyalty = loyaltyStatus(orders);
+  const stats = directory.customers.get(customer.id) ?? NO_STATS;
+  const loyalty = loyaltyFromStreak(
+    directory.loyaltyStreaks.get(customer.id) ?? 0,
+  );
   const notes = sortNotesNewestFirst(customer.notes);
 
   return (
@@ -176,12 +189,30 @@ export default async function ClientPage({
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-2 @4xl/main:col-span-2">
+        <div
+          id="historique"
+          className="flex scroll-mt-20 flex-col gap-2 @4xl/main:col-span-2"
+        >
           <h2 className="text-lg font-semibold tracking-tight">
             Historique des commandes
           </h2>
-          {orders.length > 0 ? (
-            <OrdersTable orders={orders} />
+          {history.total > 0 ? (
+            <>
+              <p className="text-muted-foreground text-sm">
+                {history.total} commande{history.total > 1 ? "s" : ""}, les plus
+                récentes d&apos;abord
+                {history.pageCount > 1
+                  ? ` · page ${history.page} sur ${history.pageCount}`
+                  : ""}
+              </p>
+              <OrdersTable orders={history.items} />
+              <OrdersPagination
+                page={history}
+                baseParams=""
+                path={`/clients/${customer.id}`}
+                hash="historique"
+              />
+            </>
           ) : (
             <p className="text-muted-foreground text-sm">
               Aucune commande pour ce client.

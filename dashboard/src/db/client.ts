@@ -11,7 +11,8 @@ import { getEnv } from "@/lib/env";
  *
  * server-only en ligne 1 : DATABASE_URL ne doit jamais approcher un bundle client.
  *
- * Options du pool : max 5 (back-office, un processus), idle_timeout 20 s
+ * Options du pool : max 10 (back-office, un processus ; la page Métriques lance
+ * huit agrégats en parallèle, une page de liste deux lectures), idle_timeout 20 s
  * (le dashboard dort la nuit), connect_timeout 10 s (la route santé répond 503 en
  * 10 s au lieu de pendre). `prepare: false` seulement si le client met PgBouncer
  * en mode transaction devant la base (à décider au déploiement).
@@ -35,7 +36,7 @@ export function getDb(): Db {
   const sql =
     globalForDb.figSql ??
     postgres(env.DATABASE_URL, {
-      max: 5,
+      max: 10,
       idle_timeout: 20,
       connect_timeout: 10,
     });

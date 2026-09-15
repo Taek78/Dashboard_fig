@@ -27,16 +27,20 @@ import type { StaffWorkSummary } from "@/domain/staff/rules";
  * Choix : async ; `null` pour « introuvable » (cas métier normal, pas une panne,
  * et `strict` force l'appelant à le traiter, ce qu'un throw ne fait pas).
  *
- * Lectures :
+ * Lectures (aucun écran ne charge un historique non borné) :
  * - getOrders : commandes complètes filtrées (recherche comprise), triées par
- *   créneau ; pour des listes bornées (une tournée, un client, une personne).
+ *   créneau ; pour des listes bornées par nature (une tournée de 7 jours au
+ *   plus) ou par `limit` (les plus proches d'abord).
+ * - countOrders : le nombre de commandes qui passent les filtres.
  * - getOrdersPage : une page de la liste, les plus récentes d'abord ; filtre,
  *   recherche, compte et découpage faits par la base (pageWindow).
  * - getOrderStats, getOrderSeries, getTopProducts : les chiffres d'une période,
  *   agrégés par la base ; les arrondis restent ceux des règles pures
- *   (statsFromTotals, fillSeries, rankProducts).
- * - getStaffWorkSummaries, getDirectoryStats : compteurs du personnel et
- *   chiffres de l'annuaire clients, agrégés par la base.
+ *   (statsFromTotals, fillSeries, rankProducts). getDeliveryDayCounts : le
+ *   nombre de livraisons de chaque jour d'une période.
+ * - getStaffWorkSummaries, getStaffWorkSummary, getDirectoryStats : compteurs
+ *   du personnel (toute l'équipe ou une personne) et chiffres de l'annuaire
+ *   clients (tout l'annuaire, ou restreints à un client ou à une communauté).
  *
  * Écritures (conditionnelles) :
  * - updateOrderStatus reçoit un StatusChange (statut relu, statut visé, acteur,
@@ -48,7 +52,11 @@ import type { StaffWorkSummary } from "@/domain/staff/rules";
  *   `expectedStaffId`.
  */
 export type OrdersSource = {
-  getOrders(filters?: OrderFilters): Promise<Order[]>;
+  getOrders(
+    filters?: OrderFilters,
+    options?: { limit?: number },
+  ): Promise<Order[]>;
+  countOrders(filters: OrderFilters): Promise<number>;
   getOrdersPage(
     filters: OrderFilters,
     page: number,
@@ -60,7 +68,11 @@ export type OrdersSource = {
   assignStaff(id: string, assignment: StaffAssignment): Promise<Order | null>;
   getOrderStats(range: DateRange): Promise<OrderStats>;
   getOrderSeries(range: DateRange, bucket: Bucket): Promise<SeriesPoint[]>;
+  getDeliveryDayCounts(range: DateRange): Promise<ReadonlyMap<string, number>>;
   getTopProducts(range: DateRange, limit: number): Promise<ProductPoint[]>;
   getStaffWorkSummaries(): Promise<ReadonlyMap<string, StaffWorkSummary>>;
-  getDirectoryStats(): Promise<DirectoryStats>;
+  getStaffWorkSummary(staffId: string): Promise<StaffWorkSummary>;
+  getDirectoryStats(
+    scope?: Pick<OrderFilters, "customerId" | "communityId">,
+  ): Promise<DirectoryStats>;
 };

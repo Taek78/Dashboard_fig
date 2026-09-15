@@ -11,6 +11,7 @@ import type { OrdersSource } from "@/domain/orders/source";
  */
 export const {
   getOrders,
+  countOrders,
   getOrdersPage,
   getOrder,
   updateOrderStatus,
@@ -18,7 +19,9 @@ export const {
   assignStaff,
   getOrderStats,
   getOrderSeries,
+  getDeliveryDayCounts,
   getTopProducts,
   getStaffWorkSummaries,
+  getStaffWorkSummary,
   getDirectoryStats,
 }: OrdersSource = ordersDb;

@@ -24,6 +24,14 @@ export function digitsOnly(text: string): string {
 }
 
 /**
+ * Motif SQL LIKE « contient » : "100%" → "%100\%%". Les caractères spéciaux de
+ * LIKE (%, _ et l'échappement \) saisis restent du texte.
+ */
+export function containsPattern(text: string): string {
+  return `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/**
  * Initiales d'un nom pour un avatar : "Zaki Affane" → "ZA", "admin" → "A",
  * "  " → "?". Première lettre du premier et du dernier mot, en majuscules.
  */

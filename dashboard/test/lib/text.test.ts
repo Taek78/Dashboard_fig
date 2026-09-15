@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { digitsOnly, initials, normalize, isPhoneLike } from "@/lib/text";
+import {
+  containsPattern,
+  digitsOnly,
+  initials,
+  normalize,
+  isPhoneLike,
+} from "@/lib/text";
 
 describe("normalize", () => {
   it("retire accents, ligatures, majuscules et espaces autour", () => {
@@ -13,6 +19,15 @@ describe("digitsOnly", () => {
   it("ne garde que les chiffres", () => {
     expect(digitsOnly("06 39 98 00 01")).toBe("0639980001");
     expect(digitsOnly("+33 (0)6")).toBe("3306");
+  });
+});
+
+describe("containsPattern", () => {
+  it("entoure de % et échappe les caractères spéciaux de LIKE", () => {
+    expect(containsPattern("benali")).toBe("%benali%");
+    expect(containsPattern("100%")).toBe("%100\\%%");
+    expect(containsPattern("a_b")).toBe("%a\\_b%");
+    expect(containsPattern("c:\\x")).toBe("%c:\\\\x%");
   });
 });
 

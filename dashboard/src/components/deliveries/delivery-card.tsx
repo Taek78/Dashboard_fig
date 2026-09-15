@@ -63,7 +63,7 @@ export function DeliveryCard({
     <article
       aria-label={`Livraison ${position}, ${order.reference}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
+        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
         STATUS_ACCENT[order.status],
         isNext && "ring-primary ring-2",
         done && "opacity-80",

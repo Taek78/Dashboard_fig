@@ -60,6 +60,15 @@ export function recentDeliveryDays(
   for (const o of orders) {
     perDay.set(o.deliverySlot.date, (perDay.get(o.deliverySlot.date) ?? 0) + 1);
   }
+  return recentDeliveryDaysFromCounts(perDay, today, count);
+}
+
+/** Les mêmes raccourcis à partir du nombre de livraisons par jour (compté par la base). */
+export function recentDeliveryDaysFromCounts(
+  perDay: ReadonlyMap<string, number>,
+  today: string,
+  count = TOUR_MAX_DAYS,
+): DayCount[] {
   return Array.from({ length: count }, (_, i) => {
     const date = addDays(today, i - count + 1);
     return { date, count: perDay.get(date) ?? 0 };

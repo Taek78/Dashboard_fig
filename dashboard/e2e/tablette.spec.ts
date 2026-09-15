@@ -86,9 +86,11 @@ test("un clic sur le graphe ne déclenche pas l'avertissement aria-hidden", asyn
   });
   await login(page, E2E_ACCOUNTS.admin);
   await page.goto("/metriques?periode=ce-mois");
-  const chart = page.locator(".recharts-surface").first();
+  const chart = page.locator('[data-slot="evolution-chart"]');
   await chart.scrollIntoViewIfNeeded();
   await chart.click();
-  await expect(page.locator(".recharts-surface:focus")).toHaveCount(0);
+  // Le toucher affiche la valeur de la période, sans rien focaliser sous aria-hidden.
+  await expect(chart.getByText("Période", { exact: true })).toBeVisible();
+  await expect(page.locator('[aria-hidden="true"] :focus')).toHaveCount(0);
   expect(warnings).toEqual([]);
 });

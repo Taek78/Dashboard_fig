@@ -55,7 +55,7 @@ export function OrderCard({
     <article
       aria-label={`Commande ${order.reference}, ${order.customer.fullName}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
+        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
         STATUS_ACCENT[order.status],
         done && "opacity-80",
       )}

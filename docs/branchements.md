@@ -8,13 +8,16 @@ Conventions communes : montants en centimes entiers, quantités en grammes ou pi
 
 | Fonction                        | Entrées                                               | Sortie                                               | Notes                                                                                                                                                                         |
 | ------------------------------- | ----------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getOrders(filters?)`           | `query?`, `status?`, `from?`, `to?`, `preparerId?`, `driverId?`, `customerId?`, `communityId?`, `staffId?` | `Order[]` triées par jour, heure de début, référence | filtres et recherche sans accents en `WHERE`, tri en `ORDER BY` ; lignes chargées en une seconde requête ; pour des listes bornées (tournée, fiche) |
+| `getOrders(filters?, options?)` | `query?`, `status?`, `from?`, `to?`, `preparerId?`, `driverId?`, `customerId?`, `communityId?`, `staffId?` ; `{ limit? }` | `Order[]` triées par jour, heure de début, référence | une requête (lignes en JSON) ; pour une liste bornée (tournée) ou les `limit` premières |
+| `countOrders(filters)` | mêmes filtres | `number` | `COUNT(*)` |
 | `getOrdersPage(filters, page, size?)` | mêmes filtres, numéro de page | `Page<Order>` (`items`, `page`, `pageCount`, `total`), les plus récentes d'abord | `COUNT` puis `LIMIT/OFFSET` ; numéro ramené dans les bornes (`pageWindow`) |
 | `getOrderStats(range)` | `{ from, to }` | `OrderStats` : KPI, nombre par statut, part des communautés, acheteurs distincts | une requête agrégée ; arrondis de `statsFromTotals` |
 | `getOrderSeries(range, bucket)` | plage, `day \| week \| month` | `SeriesPoint[]`, seaux vides compris | `GROUP BY` du premier jour du seau ; `fillSeries` |
 | `getTopProducts(range, limit)` | plage, nombre | `ProductPoint[]` | lignes des commandes non annulées groupées par produit ; `rankProducts` |
-| `getStaffWorkSummaries()` | | `Map<staffId, StaffWorkSummary>` | préparées, livrées, en cours, dernière activité |
-| `getDirectoryStats()` | | `DirectoryStats` : chiffres par client, par communauté, série de fidélité | trois requêtes agrégées ; `loyaltyFromStreak` |
+| `getStaffWorkSummaries()` | | `Map<staffId, StaffWorkSummary>` | affectées, préparées, livrées, en cours, dernière activité |
+| `getStaffWorkSummary(staffId)` | identifiant | `StaffWorkSummary` (zéros sans commande) | index préparateur et livreur |
+| `getDeliveryDayCounts(range)` | `{ from, to }` | `Map<jour, nombre>` | raccourcis de la tournée |
+| `getDirectoryStats(scope?)` | `{ customerId? , communityId? }` | `DirectoryStats` : chiffres par client, par communauté, série de fidélité | trois requêtes agrégées, tout l'annuaire ou une fiche ; `loyaltyFromStreak` |
 | `getOrder(id)`                  | `id`                                                  | `Order \| null`                                      |                                                                                                                                                                               |
 | `updateOrderStatus(id, change)` | `{ from, to, actor, cancellation }`                   | `Order \| null`                                      | conditionnelle : `null` si le statut n'est plus `from` ; écrit l'événement d'historique dans la même transaction ; `cancellation` posé sur la commande quand `to = cancelled` |
 | `getOrderEvents(orderId)`       | `orderId`                                             | `OrderEvent[]` du plus récent au plus ancien         |                                                                                                                                                                               |
@@ -31,7 +34,7 @@ Sources de vérité côté application FIG, à respecter au branchement :
 
 ## Livraisons
 
-Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure. L'adresse de rue n'existe pas encore (question 13).
+Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure ; les raccourcis des 7 derniers jours viennent de `getDeliveryDayCounts`. Les colonnes `search_text` et `phone_digits` sont calculées par la base : l'application FIG ne les écrit jamais. L'adresse de rue n'existe pas encore (question 13).
 
 ## Catalogue (`ProductsSource`)
 

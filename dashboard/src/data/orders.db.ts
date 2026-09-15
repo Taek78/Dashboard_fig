@@ -7,7 +7,6 @@ import {
   desc,
   eq,
   gte,
-  inArray,
   isNull,
   lte,
   notInArray,
@@ -18,12 +17,11 @@ import {
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ordersAggregatesDb } from "@/data/orders-aggregates.db";
 import { getDb, type DbExecutor } from "@/db/client";
-import { toOrder, toOrderEvent } from "@/db/mappers";
+import { toOrder, toOrderEvent, type OrderLineRow } from "@/db/mappers";
 import {
   communities,
   customers,
   orderEvents,
-  orderLines,
   orders,
   staff,
 } from "@/db/schema";
@@ -32,20 +30,27 @@ import { ORDERS_PAGE_SIZE, pageWindow } from "@/domain/orders/rules";
 import { FINISHED_STATUSES } from "@/domain/orders/status";
 import type { OrdersSource } from "@/domain/orders/source";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
-import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
+import {
+  containsPattern,
+  digitsOnly,
+  isPhoneLike,
+  normalize,
+} from "@/lib/text";
 
 /*
  * Implémentation Drizzle du contrat OrdersSource (lectures et écritures des
  * commandes ; les chiffres agrégés sont dans orders-aggregates.db.ts).
  * - Filtres ET recherche libre deviennent des clauses WHERE : la base ne
- *   renvoie que les commandes utiles, et getOrdersPage découpe la page (LIMIT,
- *   OFFSET) après un COUNT. La recherche reproduit la règle pure
- *   matchesOrderQuery (référence, nom, e-mail, ville, code postal sans accents
- *   ni majuscules ; téléphone chiffres seuls quand la saisie ressemble à un
- *   numéro) ; test/data/orders.db.test.ts compare les deux.
- * - La communauté, le préparateur et le livreur sont joints (LEFT JOIN, la table
- *   staff deux fois sous alias) ; les lignes sont chargées en une seconde
- *   requête (IN) puis rattachées.
+ *   renvoie que les commandes utiles. La recherche lit des colonnes calculées
+ *   par la base (search_text, phone_digits, migration 0006) : référence, ville
+ *   et code postal normalisés côté commande (index trigramme), nom et e-mail
+ *   côté client ; test/data/orders.db.test.ts la compare à matchesOrderQuery.
+ * - Une commande se lit en UNE requête : client, communauté, préparateur et
+ *   livreur joints (staff deux fois sous alias), lignes agrégées en JSON par une
+ *   sous-requête (clé primaire order_id, position). Pour une page, les
+ *   identifiants sont choisis d'abord (tri + LIMIT sur orders seule) : jointures
+ *   et lignes ne sont calculées que pour les commandes affichées.
+ * - getOrdersPage lit la page et le total EN PARALLÈLE (deux connexions du pool).
  * - updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :
  *   `UPDATE … WHERE id = $1 AND status = $2`, 0 ligne → null, sinon l'événement
  *   d'historique est inséré dans la même transaction.
@@ -56,6 +61,17 @@ import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
  */
 const preparer = alias(staff, "preparer");
 const driver = alias(staff, "driver");
+
+/** Lignes de la commande courante, dans l'ordre, au format OrderLineRow. */
+const linesJson = sql<OrderLineRow[]>`(
+  select coalesce(json_agg(json_build_object(
+    'orderId', l.order_id, 'position', l.position, 'productId', l.product_id,
+    'productName', l.product_name, 'quantity', l.quantity, 'unit', l.unit,
+    'lineTotalCents', l.line_total_cents
+  ) order by l.position), '[]'::json)
+  from order_lines l
+  where l.order_id = ${orders.id}
+)`;
 
 type LoadOptions = {
   direction?: "asc" | "desc";
@@ -69,6 +85,11 @@ async function loadOrders(
   { direction = "asc", limit, offset = 0 }: LoadOptions = {},
 ): Promise<Order[]> {
   const by = direction === "desc" ? desc : asc;
+  const slotOrder = [
+    by(orders.deliveryDate),
+    by(orders.deliveryStart),
+    by(orders.reference),
+  ];
   let query = db
     .select({
       order: orders,
@@ -84,45 +105,43 @@ async function loadOrders(
         firstName: driver.firstName,
         lastName: driver.lastName,
       },
+      lines: linesJson,
     })
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
     .leftJoin(communities, eq(orders.communityId, communities.id))
     .leftJoin(preparer, eq(orders.preparerId, preparer.id))
     .leftJoin(driver, eq(orders.driverId, driver.id))
-    .where(where)
-    .orderBy(
-      by(orders.deliveryDate),
-      by(orders.deliveryStart),
-      by(orders.reference),
-    )
     .$dynamic();
-  if (limit !== undefined) query = query.limit(limit).offset(offset);
-  const rows = await query;
-  if (rows.length === 0) return [];
-
-  const lines = await db
-    .select()
-    .from(orderLines)
-    .where(
-      inArray(
-        orderLines.orderId,
-        rows.map((r) => r.order.id),
-      ),
-    );
-  const byOrder = new Map<string, typeof lines>();
-  for (const line of lines) {
-    const list = byOrder.get(line.orderId) ?? [];
-    list.push(line);
-    byOrder.set(line.orderId, list);
+  if (limit === undefined) {
+    query = query.where(where);
+  } else {
+    const page = db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(where)
+      .orderBy(...slotOrder)
+      .limit(limit)
+      .offset(offset)
+      .as("page");
+    query = query.innerJoin(page, eq(orders.id, page.id));
   }
+  const rows = await query.orderBy(...slotOrder);
   return rows.map((r) =>
-    toOrder(r.order, r.customer, byOrder.get(r.order.id) ?? [], {
+    toOrder(r.order, r.customer, r.lines, {
       community: r.community,
       preparer: r.preparer,
       driver: r.driver,
     }),
   );
+}
+
+async function countWhere(
+  db: DbExecutor,
+  where: SQL | undefined,
+): Promise<number> {
+  const [row] = await db.select({ total: count() }).from(orders).where(where);
+  return row?.total ?? 0;
 }
 
 /** Filtre d'équipe : absent = pas de clause, null = IS NULL, sinon l'égalité. */
@@ -135,38 +154,22 @@ function staffClause(
 }
 
 /*
- * normalize() de src/lib/text.ts en SQL : ligatures œ et æ dépliées, lettres
- * accentuées françaises ramenées à leur base, minuscules. Les deux alphabets
- * ont la même longueur (translate remplace caractère pour caractère).
+ * matchesOrderQuery en SQL, sur les colonnes normalisées par la base. LIKE
+ * « contient » avec un motif échappé (containsPattern : « % » ou « _ » saisis
+ * restent du texte). Le client est cherché par une sous-requête transformée en
+ * liste (= ANY(ARRAY(…))) : PostgreSQL combine alors l'index trigramme et
+ * l'index customer_id au lieu de parcourir la table.
  */
-const ACCENTED = "ÀÁÂÃÄÅàáâãäåÇçÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖòóôõöÙÚÛÜùúûüÝýÿ";
-const PLAIN = "AAAAAAaaaaaaCcEEEEeeeeIIIIiiiiNnOOOOOoooooUUUUuuuuYyy";
-
-function normalized(column: AnyPgColumn): SQL {
-  return sql`lower(translate(replace(replace(replace(replace(${column}, 'œ', 'oe'), 'Œ', 'OE'), 'æ', 'ae'), 'Æ', 'AE'), ${ACCENTED}, ${PLAIN}))`;
-}
-
-/** matchesOrderQuery en SQL ; strpos plutôt que LIKE : « % » ou « _ » saisis restent du texte. */
 function queryClause(query: string | undefined): SQL | undefined {
   const q = normalize(query ?? "");
   if (q === "") return undefined;
-  const fields = [
-    orders.reference,
-    customers.fullName,
-    customers.email,
-    orders.deliveryCity,
-    orders.deliveryPostalCode,
-  ];
-  const clauses = fields.map(
-    (field) => sql`strpos(${normalized(field)}, ${q}) > 0`,
-  );
+  const pattern = containsPattern(q);
   const digits = digitsOnly(q);
-  if (isPhoneLike(q) && digits.length >= 2) {
-    clauses.push(
-      sql`strpos(regexp_replace(${customers.phone}, '[^0-9]', '', 'g'), ${digits}) > 0`,
-    );
-  }
-  return or(...clauses);
+  const customerMatch =
+    isPhoneLike(q) && digits.length >= 2
+      ? sql`${customers.searchText} like ${pattern} or ${customers.phoneDigits} like ${containsPattern(digits)}`
+      : sql`${customers.searchText} like ${pattern}`;
+  return sql`(${orders.searchText} like ${pattern} or ${orders.customerId} = any(array(select ${customers.id} from ${customers} where ${customerMatch})))`;
 }
 
 function whereFor(filters: OrderFilters): SQL | undefined {
@@ -192,8 +195,11 @@ function whereFor(filters: OrderFilters): SQL | undefined {
 }
 
 const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
-  getOrders: (filters: OrderFilters = {}) =>
-    loadOrders(getDb(), whereFor(filters)),
+  getOrders: (filters: OrderFilters = {}, options = {}) =>
+    loadOrders(getDb(), whereFor(filters), { limit: options.limit }),
+
+  countOrders: (filters: OrderFilters) =>
+    countWhere(getDb(), whereFor(filters)),
 
   getOrdersPage: async (
     filters: OrderFilters,
@@ -202,22 +208,23 @@ const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
   ) => {
     const db = getDb();
     const where = whereFor(filters);
-    const [row] = await db
-      .select({ total: count() })
-      .from(orders)
-      .innerJoin(customers, eq(orders.customerId, customers.id))
-      .where(where);
-    const total = row?.total ?? 0;
+    // La page demandée et le total en parallèle. Un numéro au-delà de la
+    // dernière page (URL modifiée à la main) coûte une relecture, ramenée
+    // dans les bornes par pageWindow.
+    const asked = pageWindow(Number.MAX_SAFE_INTEGER, page, size);
+    const read = (offset: number) =>
+      loadOrders(db, where, { direction: "desc", limit: size, offset });
+    const [total, items] = await Promise.all([
+      countWhere(db, where),
+      read(asked.offset),
+    ]);
     const window = pageWindow(total, page, size);
-    const items =
-      total === 0
-        ? []
-        : await loadOrders(db, where, {
-            direction: "desc",
-            limit: size,
-            offset: window.offset,
-          });
-    return { items, page: window.page, pageCount: window.pageCount, total };
+    return {
+      items: window.offset === asked.offset ? items : await read(window.offset),
+      page: window.page,
+      pageCount: window.pageCount,
+      total,
+    };
   },
 
   getOrder: async (id: string) => {

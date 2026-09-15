@@ -13,17 +13,17 @@ import { StaffHistory } from "@/components/staff/staff-history";
 import { StaffHistoryFilters } from "@/components/staff/staff-history-filters";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getOrders } from "@/data/orders";
+import { getOrdersPage, getStaffWorkSummary } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { getStaff } from "@/data/staff";
 import { canManageStaff } from "@/domain/auth/roles";
+import { parsePage } from "@/domain/orders/schemas";
 import { STAFF_KIND_LABELS } from "@/domain/staff/kind";
 import {
-  filterStaffHistory,
   hasStaffHistoryFilters,
   staffFullName,
-  staffOrders,
-  summarizeStaffWork,
+  staffHistoryOrderFilters,
+  staffHistoryQuery,
 } from "@/domain/staff/rules";
 import {
   parseStaffHistoryFilters,
@@ -37,6 +37,9 @@ import { formatDateFr } from "@/lib/format";
  * selon le rôle) et la suppression, ensuite l'historique de traitement
  * (compteurs, recherche ?q=&role=&statut=&du=&au=, commandes). « Dupliquer »
  * ouvre une nouvelle fiche préremplie. ?cree=1 confirme une création.
+ * La base fait tout le travail de l'historique : les compteurs de la personne
+ * (un agrégat) et UNE page de ses commandes filtrées (?page=), jamais tout
+ * son historique.
  */
 export const metadata: Metadata = { title: "Fiche personnel" };
 
@@ -47,21 +50,21 @@ export default async function PersonnePage({
   const { id } = await params;
   const parsed = staffIdSchema.safeParse(id);
   if (!parsed.success) notFound();
+  const raw = await searchParams;
+  const filters = parseStaffHistoryFilters(raw);
 
-  // Seulement les commandes de la personne (préparateur ou livreur), filtrées par la base.
-  const [member, orders, user, raw] = await Promise.all([
+  const [member, history, summary, user] = await Promise.all([
     getStaff(parsed.data),
-    getOrders({ staffId: parsed.data }),
+    getOrdersPage(
+      staffHistoryOrderFilters(parsed.data, filters),
+      parsePage(raw),
+    ),
+    getStaffWorkSummary(parsed.data),
     getCurrentUser(),
-    searchParams,
   ]);
   if (!member) notFound();
   const name = staffFullName(member);
-  const filters = parseStaffHistoryFilters(raw);
   const filtered = hasStaffHistoryFilters(filters);
-  const total = staffOrders(orders, member.id).length;
-  const history = filterStaffHistory(orders, member.id, filters);
-  const summary = summarizeStaffWork(orders, member.id);
   const canManage = canManageStaff(user.role);
 
   return (
@@ -144,10 +147,11 @@ export default async function PersonnePage({
         <CardContent>
           <StaffHistory
             staffId={member.id}
-            orders={history}
-            totalCount={total}
+            page={history}
+            totalCount={summary.assigned}
             summary={summary}
             filtered={filtered}
+            baseParams={staffHistoryQuery(filters)}
             filters={
               <StaffHistoryFilters
                 staffId={member.id}

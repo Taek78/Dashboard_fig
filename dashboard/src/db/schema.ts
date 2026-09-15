@@ -168,6 +168,19 @@ export const customers = pgTable(
       onDelete: "set null",
     }),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
+    /**
+     * Recherche des commandes, calculée par la base à chaque écriture : nom et
+     * e-mail normalisés (fig_normalize, migration 0006), séparés par chr(1)
+     * qu'aucune saisie ne contient ; chiffres du téléphone à part.
+     */
+    searchText: text("search_text")
+      .notNull()
+      .generatedAlwaysAs(
+        sql`fig_normalize(full_name) || chr(1) || fig_normalize(email)`,
+      ),
+    phoneDigits: text("phone_digits")
+      .notNull()
+      .generatedAlwaysAs(sql`regexp_replace(phone, '[^0-9]', '', 'g')`),
   },
   (t) => [
     uniqueIndex("customers_email_lower_idx").on(sql`lower(${t.email})`),
@@ -258,9 +271,22 @@ export const orders = pgTable(
     driverId: text("driver_id").references(() => staff.id, {
       onDelete: "set null",
     }),
+    /**
+     * Recherche libre, calculée par la base : référence, ville et code postal
+     * normalisés. Index trigramme (pg_trgm) : « contient » sans parcourir la table.
+     */
+    searchText: text("search_text")
+      .notNull()
+      .generatedAlwaysAs(
+        sql`fig_normalize(reference) || chr(1) || fig_normalize(delivery_city) || chr(1) || fig_normalize(delivery_postal_code)`,
+      ),
   },
   (t) => [
     uniqueIndex("orders_reference_idx").on(t.reference),
+    index("orders_search_trgm_idx").using(
+      "gin",
+      t.searchText.op("gin_trgm_ops"),
+    ),
     index("orders_delivery_date_idx").on(t.deliveryDate),
     index("orders_status_idx").on(t.status),
     index("orders_customer_idx").on(t.customerId),

@@ -120,7 +120,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Union discriminée** : un type `A | B` où un champ commun dit lequel des deux on a. `DirectoryEntry` : `kind: "customer"` ou `kind: "community"`, et TypeScript sait alors quels champs existent.
 
-**Pool de connexions** : petit stock de connexions Postgres réutilisées (`max: 5`) au lieu d'en ouvrir une par requête.
+**Pool de connexions** : petit stock de connexions Postgres réutilisées (`max: 10`) au lieu d'en ouvrir une par requête.
 
 **Route Handler** : fichier `route.ts` qui répond à une requête HTTP brute (`GET`, `POST`) sans page. `/api/health` en est un.
 
@@ -234,3 +234,19 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Test de parité SQL** (tests) : exécuter une requête filtrée ou agrégée sur la base de test seedée et exiger exactement le résultat de la règle pure appliquée à toutes les commandes (`test/data/orders.db.test.ts`). Détecte qu'un filtre, un arrondi ou un seau de semaine ne dit plus la même chose que le domaine.
 
 **Expédiée** (commandes) : libellé du statut `delivering` : la commande a quitté l'atelier et est en cours de livraison. Parcours : en préparation → expédiée → livrée ; l'annulation n'est possible qu'en préparation.
+
+**Colonne générée (calculée)** (base) : une colonne que PostgreSQL calcule lui-même à chaque écriture de la ligne (`GENERATED ALWAYS AS (…) STORED`) ; personne ne l'écrit. `orders.search_text` contient la référence, la ville et le code postal déjà normalisés : la recherche n'a plus à les recalculer ligne par ligne.
+
+**Index trigramme (`pg_trgm`)** (base) : index qui découpe un texte en groupes de trois caractères. Il sert les recherches « contient » (`LIKE '%benali%'`) qu'un index ordinaire ne sait pas servir. Stocké dans un index GIN (index « inversé » : pour chaque trigramme, les lignes qui le contiennent).
+
+**Fonction IMMUTABLE** (base) : fonction SQL qui renvoie toujours le même résultat pour les mêmes arguments. Seules ces fonctions peuvent calculer une colonne générée ou un index (`fig_normalize`).
+
+**`json_agg`** (base) : agrégat qui rassemble des lignes en un tableau JSON. Les lignes d'une commande arrivent ainsi avec la commande, dans la même requête, au lieu d'une seconde requête.
+
+**`cache()` de React** (serveur) : mémorise le résultat d'une fonction le temps d'UNE requête. `verifySession` appelée par le layout et par la page ne déchiffre le jeton de session qu'une fois ; rien n'est partagé entre deux requêtes ni deux personnes.
+
+**Chargement à la demande (`next/dynamic`)** (Next.js) : un composant client sorti du JavaScript initial, téléchargé seulement quand il s'affiche. Le panneau mobile de la sidebar n'est chargé que sur petit écran.
+
+**`content-visibility: auto`** (CSS) : le navigateur saute la mise en page et le dessin d'un élément tant qu'il est hors de l'écran, en gardant sa taille réservée. Utilitaire `cv-auto` sur les cartes des longues listes.
+
+**Motif LIKE échappé** (base) : dans `LIKE`, `%` et `_` sont des jokers. `containsPattern` les échappe (`\%`, `\_`) pour qu'une saisie « 100% » cherche vraiment « 100% ».

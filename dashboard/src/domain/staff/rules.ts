@@ -1,5 +1,9 @@
 import type { AssignmentRole } from "@/domain/orders/assignment";
-import { filterOrders } from "@/domain/orders/rules";
+import {
+  filterOrders,
+  orderFiltersQuery,
+  sortOrdersBySlot,
+} from "@/domain/orders/rules";
 import type { Order, OrderFilters } from "@/domain/orders/types";
 import {
   STAFF_KINDS,
@@ -172,6 +176,8 @@ export function staffOrders(
 }
 
 export type StaffWorkSummary = {
+  /** Commandes affectées (préparateur ou livreur, chacune une fois). */
+  assigned: number;
   /** Commandes préparées (préparateur, hors annulées). */
   prepared: number;
   /** Livraisons terminées (livreur, statut livrée). */
@@ -187,6 +193,7 @@ export function summarizeStaffWork(
   orders: readonly Order[],
   staffId: string,
 ): StaffWorkSummary {
+  let assigned = 0;
   let prepared = 0;
   let delivered = 0;
   let inProgress = 0;
@@ -195,6 +202,7 @@ export function summarizeStaffWork(
     const isPreparer = o.preparer?.id === staffId;
     const isDriver = o.driver?.id === staffId;
     if (!isPreparer && !isDriver) continue;
+    assigned += 1;
     if (isPreparer && o.status !== "cancelled") prepared += 1;
     if (isDriver && o.status === "delivered") delivered += 1;
     if (o.status === "preparing" || o.status === "delivering") inProgress += 1;
@@ -202,7 +210,7 @@ export function summarizeStaffWork(
       lastActivityDate = o.deliverySlot.date;
     }
   }
-  return { prepared, delivered, inProgress, lastActivityDate };
+  return { assigned, prepared, delivered, inProgress, lastActivityDate };
 }
 
 /** Ce qu'une liste déroulante d'affectation a besoin de savoir d'une personne. */
@@ -286,23 +294,41 @@ export type StaffHistoryFilters = Pick<
 > & { role?: StaffHistoryRole };
 
 /**
- * Commandes de la personne qui passent la recherche (règle filterOrders des
- * commandes) et, si demandé, celles où elle a tenu ce rôle. Les plus récentes
- * d'abord, comme staffOrders.
+ * La recherche dans l'historique exprimée en filtres de commandes : la personne
+ * (préparateur OU livreur) ou, si un rôle est demandé, la personne à ce rôle,
+ * plus la recherche commune. Une seule définition pour la mémoire
+ * (filterStaffHistory) et pour la base (getOrdersPage de la fiche).
  */
+export function staffHistoryOrderFilters(
+  staffId: string,
+  filters: StaffHistoryFilters,
+): OrderFilters {
+  const { role, ...orderFilters } = filters;
+  return {
+    ...orderFilters,
+    staffId,
+    ...(role === "preparation" ? { preparerId: staffId } : {}),
+    ...(role === "livraison" ? { driverId: staffId } : {}),
+  };
+}
+
+/** Commandes de la personne qui passent la recherche, les plus récentes d'abord (comme staffOrders). */
 export function filterStaffHistory(
   orders: readonly Order[],
   staffId: string,
   filters: StaffHistoryFilters,
 ): Order[] {
-  const { role, ...orderFilters } = filters;
-  return staffOrders(filterOrders(orders, orderFilters), staffId).filter(
-    (o) =>
-      role === undefined ||
-      (role === "preparation"
-        ? o.preparer?.id === staffId
-        : o.driver?.id === staffId),
+  return sortOrdersBySlot(
+    filterOrders(orders, staffHistoryOrderFilters(staffId, filters)),
+    "desc",
   );
+}
+
+/** Recherche de l'historique → paramètres d'URL (?q=&statut=&du=&au=&role=), pour la pagination. */
+export function staffHistoryQuery(filters: StaffHistoryFilters): string {
+  const params = new URLSearchParams(orderFiltersQuery(filters));
+  if (filters.role) params.set("role", filters.role);
+  return params.toString();
 }
 
 /** Vrai si une recherche est active sur l'historique. */

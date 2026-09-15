@@ -17,6 +17,8 @@ import {
   hasStaffSearch,
   matchesStaffQuery,
   searchStaff,
+  staffHistoryOrderFilters,
+  staffHistoryQuery,
   staffTemplate,
 } from "@/domain/staff/rules";
 import type { StaffMember } from "@/domain/staff/types";
@@ -167,18 +169,21 @@ describe("staffOrders / summarizeStaffWork", () => {
 
   it("compte préparées, livrées, en cours et la dernière activité", () => {
     expect(summarizeStaffWork(scenarioOrders, "stf-0001")).toEqual({
+      assigned: 4,
       prepared: 0,
       delivered: 2,
       inProgress: 2,
       lastActivityDate: "2026-09-07",
     });
     expect(summarizeStaffWork(scenarioOrders, "stf-0005")).toEqual({
+      assigned: staffOrders(scenarioOrders, "stf-0005").length,
       prepared: 4,
       delivered: 0,
       inProgress: 2,
       lastActivityDate: "2026-09-07",
     });
     expect(summarizeStaffWork(scenarioOrders, "stf-9999")).toEqual({
+      assigned: 0,
       prepared: 0,
       delivered: 0,
       inProgress: 0,
@@ -271,5 +276,39 @@ describe("filterStaffHistory / hasStaffHistoryFilters", () => {
         }),
       ),
     ).toEqual(["cmd-0003", "cmd-0014"]);
+  });
+});
+
+describe("staffHistoryOrderFilters / staffHistoryQuery", () => {
+  it("traduit le rôle en filtre d'équipe et garde la recherche commune", () => {
+    expect(staffHistoryOrderFilters("stf-0001", {})).toEqual({
+      staffId: "stf-0001",
+    });
+    expect(
+      staffHistoryOrderFilters("stf-0005", {
+        role: "preparation",
+        query: "FIG",
+        status: "delivered",
+      }),
+    ).toEqual({
+      staffId: "stf-0005",
+      preparerId: "stf-0005",
+      query: "FIG",
+      status: "delivered",
+    });
+    expect(staffHistoryOrderFilters("stf-0001", { role: "livraison" })).toEqual(
+      { staffId: "stf-0001", driverId: "stf-0001" },
+    );
+  });
+
+  it("réécrit la recherche en URL pour la pagination", () => {
+    expect(staffHistoryQuery({})).toBe("");
+    expect(
+      staffHistoryQuery({
+        query: "FIG-2609",
+        role: "livraison",
+        from: "2026-09-01",
+      }),
+    ).toBe("q=FIG-2609&du=2026-09-01&role=livraison");
   });
 });

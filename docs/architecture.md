@@ -80,14 +80,14 @@ Deux régimes de validation zod : **tolérant** pour la lecture (un paramètre d
 Pour chaque domaine, trois fichiers :
 
 - `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et réexporte l'implémentation typée par le contrat ; aucun module ne lit l'environnement à son chargement : `next build` importe les pages sans `.env` (`test/app/facades.test.ts`).
-- `<domaine>.db.ts` : l'implémentation Drizzle. Les filtres et la recherche deviennent des `WHERE`, les tris des `ORDER BY`, la pagination un `COUNT` puis `LIMIT/OFFSET`, les écritures conditionnelles des `UPDATE … WHERE id = $1 AND status = $2` (statut) ou `… AND driver_id IS NOT DISTINCT FROM $2` (affectation), les opérations couplées des transactions. Les chiffres (KPI, séries, produits phares, compteurs du personnel, annuaire) sont agrégés par la base dans `orders-aggregates.db.ts` et mis en forme par les règles pures. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
+- `<domaine>.db.ts` : l'implémentation Drizzle. Les filtres deviennent des `WHERE`, la recherche lit des colonnes calculées par la base et indexées (trigrammes), les tris des `ORDER BY`. Une liste se lit en une requête : les identifiants de la page d'abord (tri + `LIMIT/OFFSET` sur la seule table), puis les jointures et les lignes agrégées en JSON pour ces commandes-là ; le total est compté en parallèle. Les écritures conditionnelles sont des `UPDATE … WHERE id = $1 AND status = $2` (statut) ou `… AND driver_id IS NOT DISTINCT FROM $2` (affectation), les opérations couplées des transactions. Les chiffres (KPI, séries, jours de tournée, produits phares, compteurs du personnel, annuaire) sont agrégés par la base dans `orders-aggregates.db.ts` et mis en forme par les règles pures. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
 
 Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation, table `login_attempts`, partagée entre instances), `security-log.ts` (journal).
 
 ### 3.3 `src/db/` : PostgreSQL
 
 - `schema.ts` : les tables, enums et contraintes, source de vérité des migrations. Le schéma n'importe pas le domaine (drizzle-kit doit pouvoir le charger seul) ; un test vérifie que ses enums restent identiques aux constantes du domaine.
-- `client.ts` : `getDb()`, client paresseux (aucune connexion avant le premier appel), pool de cinq connexions.
+- `client.ts` : `getDb()`, client paresseux (aucune connexion avant le premier appel), pool de dix connexions (la page Métriques lance huit agrégats en parallèle).
 - `mappers.ts` : fonctions pures ligne → type métier et entrée → colonnes, testées en aller-retour sur toutes les fixtures.
 
 Le détail des tables, des migrations, du seed et des sauvegardes est dans [base-de-donnees.md](base-de-donnees.md).
@@ -131,7 +131,7 @@ La coquille : le layout `(dashboard)` pose `@container/main` sur le conteneur de
 
 1. Le proxy laisse passer la requête (session valide, section permise) et pose un nonce.
 2. `commandes/page.tsx` attend `searchParams`, les passe à `parseOrderFilters` (tolérant : recherche, statut, période, préparateur, livreur), et appelle `getOrdersPage(filters, page)` de la façade.
-3. La base filtre, cherche (règle `matchesOrderQuery` reproduite en SQL), compte et renvoie les 40 commandes de la page, les plus récentes d'abord.
+3. La base filtre, cherche (règle `matchesOrderQuery` reproduite sur des colonnes indexées), renvoie les 40 commandes de la page, les plus récentes d'abord, avec leurs lignes, et compte le total dans une seconde requête lancée en même temps.
 4. La page rend `OrdersCards`, qui rend une `OrderCard` par commande, avec `OrderActions` si le rôle peut écrire.
 5. Pendant l'attente, Next affiche `loading.tsx`.
 
@@ -174,14 +174,26 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 
 ## 7. Tests
 
-- **Vitest** (`test/`, miroir de `src/`), deux projets : `unit` (règles pures, schémas, fixtures, mappers, sans base) et `db` (couche données et Server Actions de bout en bout sur la base de test Docker, migrée et seedée une fois, chaque test dans une transaction annulée ; `server-only`, `next/cache` et la session neutralisés par `vi.mock`). Chaque requête SQL filtrée ou agrégée est comparée à sa règle pure sur toutes les commandes seedées.
+- **Vitest** (`test/`, miroir de `src/`), deux projets : `unit` (règles pures, schémas, fixtures, mappers, sans base) et `db` (couche données et Server Actions de bout en bout sur la base de test Docker, migrée et seedée une fois, chaque test dans une transaction annulée ; `server-only`, `next/cache` et la session neutralisés par `vi.mock`). Chaque requête SQL filtrée ou agrégée est comparée à sa règle pure sur toutes les commandes seedées (recherche avec caractères spéciaux comprise). La géométrie des graphiques (`src/lib/chart.ts`) est testée à part.
 - **Playwright** (`e2e/`) : parcours réels dans Chromium contre le serveur construit, sur la base de test (migrée et seedée avant la suite, comptes de test) ; rejoués en CI contre un PostgreSQL de service.
 
-## 8. Ajouter une fonctionnalité : la checklist
+## 8. Performances
+
+Mesurées le 2026-09-15 sur la base de démonstration et sur dix fois plus de commandes (36 830) : la base répond en quelques millisecondes, le serveur rend une page en 30 à 110 ms. Les règles qui tiennent ces chiffres quand l'activité grandit :
+
+- **La base travaille, pas le serveur Node** : filtres, recherche, tris, pagination et totaux en SQL. Aucune page ne lit un historique entier (listes paginées, « les N plus proches », agrégats).
+- **Recherche indexée** : colonnes `search_text` et `phone_digits` calculées par la base à chaque écriture (fonction `fig_normalize`), index trigramme `pg_trgm` : 465 ms → 1 ms sur 36 830 commandes.
+- **Peu d'allers-retours** : une commande et ses lignes en une requête (JSON), page et total en parallèle, session déchiffrée une fois par requête (`cache()` de React).
+- **Peu de JavaScript** : graphiques en SVG et HTML sans bibliothèque (plus de recharts, une centaine de Ko compressés en moins sur Métriques), panneau mobile de la sidebar chargé seulement sur petit écran (`next/dynamic`).
+- **Rendu du navigateur** : `content-visibility: auto` (`cv-auto`) sur les cartes des longues listes, ignorées tant qu'elles sont hors de l'écran.
+
+Pour vérifier une requête : `EXPLAIN ANALYZE` sur une base de test grossie ; pour le JavaScript : `npx next experimental-analyze`. En production : `log_min_duration_statement` et `pg_stat_statements` (voir `docs/base-de-donnees.md`).
+
+## 9. Ajouter une fonctionnalité : la checklist
 
 1. Types et règles pures dans `src/domain/<domaine>/`, avec leurs tests.
 2. Schéma zod de l'entrée (`schemas.ts`), testé.
-3. Contrat `source.ts` étendu ; implémentation db (agrégat SQL plutôt que calcul en mémoire, testé contre la règle pure) ; mapper si nouvelle table ; migration (`npm run db:generate`) ; seed si nouvelle donnée de démonstration.
+3. Contrat `source.ts` étendu ; implémentation db (agrégat ou page SQL, jamais un historique entier chargé en mémoire ; testée contre la règle pure) ; mapper si nouvelle table ; migration (`npm run db:generate`) ; seed si nouvelle donnée de démonstration.
 4. Façade `src/data/<domaine>.ts` : réexporter la fonction.
 5. Server Action dans `src/app/<section>/actions.ts`, dans l'ordre des neuf étapes ; test de bout en bout.
 6. Composants : serveur pour l'affichage, client seulement pour le formulaire.

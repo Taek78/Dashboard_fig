@@ -21,7 +21,7 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
   return (
     <article
       aria-label={`Client ${customer.fullName}`}
-      className="bg-card text-card-foreground ring-foreground/10 card-lift flex h-full flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5"
+      className="bg-card text-card-foreground ring-foreground/10 card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5"
     >
       <div className="flex items-start gap-3">
         <span

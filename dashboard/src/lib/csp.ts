@@ -6,7 +6,8 @@
  * - script-src : seuls les scripts portant le nonce, et ceux qu'ils chargent
  *   ('strict-dynamic') ; plus d''unsafe-inline'. En développement, Turbopack a
  *   besoin d''unsafe-eval'.
- * - style-src garde 'unsafe-inline' (recharts et Next injectent des styles).
+ * - style-src garde 'unsafe-inline' (Next injecte des styles ; graphiques et
+ *   barres placent leurs points et longueurs par des attributs style).
  * - frame-ancestors 'none' : jamais dans un cadre (détournement de clic).
  * - form-action 'self' : aucun formulaire ne peut poster ailleurs.
  */

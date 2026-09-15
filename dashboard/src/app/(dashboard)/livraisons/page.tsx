@@ -15,13 +15,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { getOrders } from "@/data/orders";
+import { getDeliveryDayCounts, getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import {
   groupOrdersByDay,
-  recentDeliveryDays,
+  recentDeliveryDaysFromCounts,
   TOUR_MAX_DAYS,
   todayInParis,
   tourProgress,
@@ -42,8 +42,8 @@ import { cn } from "@/lib/utils";
  * Composant serveur :
  * - même recherche et mêmes filtres que les commandes (parseOrderFilters) ; la
  *   période effective vient de tourRange, qui signale une période ramenée ;
- * - raccourcis sur les 7 derniers jours, chacun avec son nombre de livraisons,
- *   qui gardent la recherche en cours ;
+ * - raccourcis sur les 7 derniers jours, chacun avec son nombre de livraisons
+ *   (compté par la base, getDeliveryDayCounts), qui gardent la recherche en cours ;
  * - avancement détaillé par statut pour la période, puis pour chaque jour.
  */
 export const metadata: Metadata = { title: "Livraisons" };
@@ -63,14 +63,14 @@ export default async function LivraisonsPage({
   };
   const weekStart = addDays(today, -(TOUR_MAX_DAYS - 1));
 
-  const [orders, recentOrders, user, staff] = await Promise.all([
+  const [orders, dayCounts, user, staff] = await Promise.all([
     getOrders(effective),
-    getOrders({ from: weekStart, to: today }),
+    getDeliveryDayCounts({ from: weekStart, to: today }),
     getCurrentUser(),
     listStaff(),
   ]);
   const groups = groupOrdersByDay(orders);
-  const days = recentDeliveryDays(recentOrders, today);
+  const days = recentDeliveryDaysFromCounts(dayCounts, today);
   const singleDay = range.from === range.to;
   const isWeek = range.from === weekStart && range.to === today;
   const shortcut = (from: string, to: string) =>

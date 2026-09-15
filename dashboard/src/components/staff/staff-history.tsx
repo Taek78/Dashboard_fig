@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
+import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { mobileCardFrame, tableFrame } from "@/components/orders/orders-table";
 import {
   Table,
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { Page } from "@/domain/orders/rules";
 import type { Order } from "@/domain/orders/types";
 import type { StaffWorkSummary } from "@/domain/staff/rules";
 import { formatDateFr, formatEuros, formatSlot } from "@/lib/format";
@@ -19,12 +21,12 @@ import { cn } from "@/lib/utils";
 
 /*
  * Historique d'une personne (serveur) : ses compteurs (sur toutes ses
- * commandes), la recherche (emplacement `filters`), puis les commandes qui
- * correspondent, les plus récentes d'abord, bornées à LIMIT pour ne pas noyer
- * la fiche. Sous 768 px une pile de cartes, au-dessus le tableau. Le rôle
- * tenu (préparation, livraison, les deux) et le type de client sont explicités.
+ * commandes, agrégés par la base), la recherche (emplacement `filters`), puis
+ * UNE page des commandes qui correspondent, les plus récentes d'abord, et la
+ * pagination (ancre #historique : la liste est sous le formulaire de la fiche).
+ * Sous 768 px une pile de cartes, au-dessus le tableau. Le rôle tenu
+ * (préparation, livraison, les deux) et le type de client sont explicités.
  */
-const LIMIT = 60;
 const plural = (n: number) => (n > 1 ? "s" : "");
 
 function roleOn(order: Order, staffId: string): string {
@@ -39,24 +41,27 @@ function roleOn(order: Order, staffId: string): string {
 
 export function StaffHistory({
   staffId,
-  orders,
+  page,
   totalCount,
   summary,
   filtered,
+  baseParams,
   filters,
 }: {
   staffId: string;
-  /** Commandes de la personne qui passent la recherche, déjà triées. */
-  orders: Order[];
+  /** La page des commandes de la personne qui passent la recherche. */
+  page: Page<Order>;
   /** Nombre de commandes affectées, sans recherche. */
   totalCount: number;
   summary: StaffWorkSummary;
   /** Une recherche est active. */
   filtered: boolean;
+  /** Recherche en cours en paramètres d'URL, gardée par la pagination. */
+  baseParams: string;
   /** Formulaire de recherche, rendu sous les compteurs. */
   filters?: ReactNode;
 }) {
-  const shown = orders.slice(0, LIMIT);
+  const orders = page.items;
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,11 +96,11 @@ export function StaffHistory({
           {filters}
           <p role="status" className="text-base font-semibold">
             {filtered
-              ? `${orders.length} commande${plural(orders.length)} sur ${totalCount} correspond${orders.length > 1 ? "ent" : ""} à la recherche`
+              ? `${page.total} commande${plural(page.total)} sur ${totalCount} correspond${page.total > 1 ? "ent" : ""} à la recherche`
               : `${totalCount} commande${plural(totalCount)} affectée${plural(totalCount)}`}
-            {orders.length > LIMIT ? (
+            {page.pageCount > 1 ? (
               <span className="text-muted-foreground text-sm font-normal">
-                {`, les ${LIMIT} plus récentes affichées`}
+                {` · les plus récentes d'abord, page ${page.page} sur ${page.pageCount}`}
               </span>
             ) : null}
           </p>
@@ -107,7 +112,7 @@ export function StaffHistory({
           ) : (
             <>
               <ul className="flex flex-col gap-3 @2xl/main:hidden">
-                {shown.map((order) => (
+                {orders.map((order) => (
                   <li key={order.id} className={mobileCardFrame}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -153,7 +158,7 @@ export function StaffHistory({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {shown.map((order) => (
+                    {orders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono text-xs">
                           <Link
@@ -185,6 +190,12 @@ export function StaffHistory({
                   </TableBody>
                 </Table>
               </div>
+              <OrdersPagination
+                page={page}
+                baseParams={baseParams}
+                path={`/personnel/${staffId}`}
+                hash="historique"
+              />
             </>
           )}
         </>

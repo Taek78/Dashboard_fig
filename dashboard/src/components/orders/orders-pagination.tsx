@@ -13,16 +13,19 @@ export function OrdersPagination({
   page,
   baseParams,
   path = "/commandes",
+  hash,
 }: {
   page: Page<unknown>;
-  /** Paramètres d'URL à conserver, sans « page » (ex. "statut=pending"). */
+  /** Paramètres d'URL à conserver, sans « page » (ex. "statut=preparing"). */
   baseParams: string;
-  /** Liste paginée (les commandes par défaut, les clients aussi). */
+  /** Liste paginée (les commandes par défaut, les clients, une fiche). */
   path?: string;
+  /** Ancre de la liste dans la page (une fiche : la liste est sous le formulaire). */
+  hash?: string;
 }) {
   if (page.pageCount <= 1) return null;
   const href = (n: number) =>
-    `${path}?${baseParams ? `${baseParams}&` : ""}page=${n}`;
+    `${path}?${baseParams ? `${baseParams}&` : ""}page=${n}${hash ? `#${hash}` : ""}`;
   const disabled = cn(
     buttonVariants({ variant: "outline", size: "sm" }),
     "pointer-events-none opacity-50",

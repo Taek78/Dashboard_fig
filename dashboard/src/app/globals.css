@@ -430,6 +430,18 @@
   }
 }
 
+/*
+ * Carte d'une longue liste (commandes, tournée, clients, équipe) : hors de
+ * l'écran, le navigateur n'en calcule ni la mise en page ni le dessin
+ * (content-visibility) et réserve sa dernière hauteur connue (auto) pour que
+ * le défilement ne saute pas. Contenu toujours lu par la recherche de la page
+ * et les lecteurs d'écran.
+ */
+@utility cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 16rem;
+}
+
 /* Halo de marque très doux en coin de carte (KPI, connexion). */
 @utility glow-brand {
   position: relative;

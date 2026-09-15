@@ -8,7 +8,7 @@ import { OrdersCards } from "@/components/orders/orders-cards";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getOrderStats, getOrders } from "@/data/orders";
+import { countOrders, getOrderStats, getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
@@ -35,7 +35,12 @@ import { formatDateFr, formatEuros } from "@/lib/format";
  * HT par défaut, TTC par l'interrupteur (même URL ?tva= que les métriques).
  * Sous les KPI, la barre d'avancement des commandes de la période
  * (TourProgress, la même que la tournée : segments par statut, légende chiffrée).
+ * En bas, les commandes en préparation toutes dates : le nombre (compté par la
+ * base) et les PREPARING_SHOWN créneaux les plus proches, jamais la liste
+ * entière (elle grandit avec l'activité) ; le lien mène à la liste complète.
  */
+const PREPARING_SHOWN = 10;
+
 export default async function TableauDeBordPage({
   searchParams,
 }: PageProps<"/">) {
@@ -51,9 +56,10 @@ export default async function TableauDeBordPage({
     ? `du=${query.customRange.from}&au=${query.customRange.to}`
     : `periode=${query.period}`;
 
-  const [stats, preparing, user, staff] = await Promise.all([
+  const [stats, preparing, preparingCount, user, staff] = await Promise.all([
     getOrderStats(range),
-    getOrders({ status: "preparing" }),
+    getOrders({ status: "preparing" }, { limit: PREPARING_SHOWN }),
+    countOrders({ status: "preparing" }),
     getCurrentUser(),
     listStaff(),
   ]);
@@ -156,8 +162,19 @@ export default async function TableauDeBordPage({
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">
-          Commandes en préparation ({preparing.length}, toutes dates)
+          Commandes en préparation ({preparingCount}, toutes dates)
         </h2>
+        {preparingCount > preparing.length ? (
+          <p className="text-muted-foreground text-sm">
+            Les {preparing.length} créneaux les plus proches.{" "}
+            <Link
+              href="/commandes?statut=preparing"
+              className="text-foreground font-medium underline-offset-4 hover:underline"
+            >
+              Voir les {preparingCount} commandes en préparation
+            </Link>
+          </p>
+        ) : null}
         {preparing.length > 0 ? (
           <OrdersCards
             orders={preparing}

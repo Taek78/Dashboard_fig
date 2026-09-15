@@ -5,6 +5,7 @@ import {
   nextDeliveryStep,
   nextStopIndex,
   recentDeliveryDays,
+  recentDeliveryDaysFromCounts,
   todayInParis,
   TOUR_MAX_DAYS,
   tourProgress,
@@ -73,6 +74,22 @@ describe("recentDeliveryDays", () => {
       { date: "2026-09-06", count: 4 },
       { date: "2026-09-07", count: 5 },
       { date: "2026-09-08", count: 5 },
+    ]);
+  });
+
+  it("donne les mêmes raccourcis à partir de totaux par jour (base)", () => {
+    const perDay = new Map([
+      ["2026-09-06", 4],
+      ["2026-09-07", 5],
+      ["2026-09-08", 5],
+      ["2026-08-20", 9],
+    ]);
+    expect(recentDeliveryDaysFromCounts(perDay, "2026-09-08")).toEqual(
+      recentDeliveryDays(scenarioOrders, "2026-09-08"),
+    );
+    expect(recentDeliveryDaysFromCounts(new Map(), "2026-09-08", 2)).toEqual([
+      { date: "2026-09-07", count: 0 },
+      { date: "2026-09-08", count: 0 },
     ]);
   });
 });

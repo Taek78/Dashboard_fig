@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { MetricsControls } from "@/components/metrics/metrics-controls";
-import { ComparisonChart, StatusChart } from "@/components/metrics/charts-lazy";
+import { ComparisonChart } from "@/components/metrics/comparison-chart";
 import { MetricsSection } from "@/components/metrics/metrics-section";
 import { RatioPie } from "@/components/metrics/ratio-pie";
+import { StatusChart } from "@/components/metrics/status-chart";
 import { TrendBadge } from "@/components/metrics/trend-badge";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

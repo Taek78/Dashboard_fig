@@ -21,7 +21,7 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
     <article
       aria-label={`Communauté ${community.name}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift flex h-full flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
+        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
         !community.active && "opacity-70",
       )}
     >

@@ -13,7 +13,12 @@ import {
   sortOrdersBySlot,
 } from "@/domain/orders/rules";
 import { staffFixtures } from "@/domain/staff/fixtures";
-import { summarizeStaffWork } from "@/domain/staff/rules";
+import {
+  filterStaffHistory,
+  staffHistoryOrderFilters,
+  summarizeStaffWork,
+  type StaffHistoryFilters,
+} from "@/domain/staff/rules";
 import type { OrderStatus } from "@/domain/orders/status";
 import type { OrderFilters } from "@/domain/orders/types";
 
@@ -185,6 +190,107 @@ describe("pagination et agrégats SQL = règles pures", () => {
     expect(Object.fromEntries(fromDb.loyaltyStreaks)).toEqual(
       Object.fromEntries(expected.loyaltyStreaks),
     );
+  });
+});
+
+describe("lectures bornées et agrégats ciblés = règles pures", () => {
+  it("getOrders avec limit : les premières par créneau ; countOrders : le total filtré", async () => {
+    const all = await ordersDb.getOrders();
+    const preparing = sortOrdersBySlot(
+      filterOrders(all, { status: "preparing" }),
+    );
+    expect(
+      ids(await ordersDb.getOrders({ status: "preparing" }, { limit: 3 })),
+    ).toEqual(ids(preparing.slice(0, 3)));
+    expect(await ordersDb.countOrders({ status: "preparing" })).toBe(
+      preparing.length,
+    );
+    expect(await ordersDb.countOrders({ query: "benali" })).toBe(
+      filterOrders(all, { query: "benali" }).length,
+    );
+    expect(await ordersDb.countOrders({})).toBe(all.length);
+  });
+
+  it("recherche : caractères spéciaux de LIKE, ligatures, casse et téléphone comme la règle pure", async () => {
+    const all = await ordersDb.getOrders();
+    for (const query of [
+      "100%",
+      "a_b",
+      "%",
+      "_",
+      "\\",
+      "fig-2609",
+      "PARIS",
+      "06 39",
+      "œ",
+      "é",
+    ]) {
+      expect(ids(await ordersDb.getOrders({ query }))).toEqual(
+        ids(sortOrdersBySlot(filterOrders(all, { query }))),
+      );
+    }
+  });
+
+  it("getDeliveryDayCounts : le nombre de livraisons de chaque jour", async () => {
+    const all = await ordersDb.getOrders();
+    const range = { from: "2026-09-01", to: "2026-09-15" };
+    const expected = new Map<string, number>();
+    for (const o of filterByRange(all, range)) {
+      const date = o.deliverySlot.date;
+      expected.set(date, (expected.get(date) ?? 0) + 1);
+    }
+    expect(
+      Object.fromEntries(await ordersDb.getDeliveryDayCounts(range)),
+    ).toEqual(Object.fromEntries(expected));
+  });
+
+  it("getStaffWorkSummary et l'historique paginé d'une personne", async () => {
+    const all = await ordersDb.getOrders();
+    for (const member of staffFixtures) {
+      expect(await ordersDb.getStaffWorkSummary(member.id)).toEqual(
+        summarizeStaffWork(all, member.id),
+      );
+    }
+    const cases: StaffHistoryFilters[] = [
+      {},
+      { role: "livraison" },
+      { role: "preparation", query: "FIG-260906" },
+      { status: "delivered", from: "2026-01-01", to: "2026-06-30" },
+    ];
+    for (const staffId of ["stf-0001", "stf-0005"]) {
+      for (const filters of cases) {
+        const expected = paginate(filterStaffHistory(all, staffId, filters), 2);
+        const page = await ordersDb.getOrdersPage(
+          staffHistoryOrderFilters(staffId, filters),
+          2,
+        );
+        expect({ ...page, items: ids(page.items) }).toEqual({
+          ...expected,
+          items: ids(expected.items),
+        });
+      }
+    }
+  });
+
+  it("getDirectoryStats restreint à un client ou à une communauté", async () => {
+    const all = await ordersDb.getOrders();
+    for (const scope of [
+      { customerId: "cli-0001" },
+      { communityId: "com-0001" },
+      { customerId: "cli-9999" },
+    ]) {
+      const fromDb = await ordersDb.getDirectoryStats(scope);
+      const expected = directoryStatsFromOrders(filterOrders(all, scope));
+      expect(Object.fromEntries(fromDb.customers)).toEqual(
+        Object.fromEntries(expected.customers),
+      );
+      expect(Object.fromEntries(fromDb.communities)).toEqual(
+        Object.fromEntries(expected.communities),
+      );
+      expect(Object.fromEntries(fromDb.loyaltyStreaks)).toEqual(
+        Object.fromEntries(expected.loyaltyStreaks),
+      );
+    }
   });
 });
 

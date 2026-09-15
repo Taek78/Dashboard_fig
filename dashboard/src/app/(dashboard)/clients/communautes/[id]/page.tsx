@@ -11,24 +11,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCommunity } from "@/data/communities";
 import { getCustomers } from "@/data/customers";
-import { getOrders } from "@/data/orders";
+import { getDirectoryStats, getOrdersPage } from "@/data/orders";
 import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
 import { summarizeCommunity } from "@/domain/communities/rules";
-import {
-  buildCustomerEntries,
-  directoryStatsFromOrders,
-} from "@/domain/customers/directory";
+import { buildCustomerEntries } from "@/domain/customers/directory";
 import { customerIdSchema } from "@/domain/customers/schemas";
-import { sortOrdersBySlot } from "@/domain/orders/rules";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 
 /*
  * Fiche d'une communauté (lecture) : point de retrait, remise, contact,
  * chiffres, ses membres (liste de clients) et ses commandes récentes
- * (croisement par OrderFilters.communityId).
+ * (croisement par OrderFilters.communityId). Chiffres de la communauté et de
+ * ses membres agrégés par la base (getDirectoryStats restreint à la
+ * communauté) ; seules les RECENT dernières commandes sont lues.
  */
 export const metadata: Metadata = { title: "Fiche communauté" };
 const RECENT = 30;
+const NO_SUMMARY = summarizeCommunity([]);
 
 export default async function CommunautePage({
   params,
@@ -39,12 +38,13 @@ export default async function CommunautePage({
 
   const community = await getCommunity(parsed.data);
   if (!community) notFound();
-  const [members, orders] = await Promise.all([
+  const [members, directory, latest] = await Promise.all([
     getCustomers({ communityId: community.id }),
-    getOrders({ communityId: community.id }),
+    getDirectoryStats({ communityId: community.id }),
+    getOrdersPage({ communityId: community.id }, 1, RECENT),
   ]);
-  const summary = summarizeCommunity(orders);
-  const recent = sortOrdersBySlot(orders, "desc").slice(0, RECENT);
+  const summary = directory.communities.get(community.id) ?? NO_SUMMARY;
+  const recent = latest.items;
 
   return (
     <>
@@ -166,10 +166,7 @@ export default async function CommunautePage({
         <h2 className="text-lg font-semibold tracking-tight">Membres</h2>
         {members.length > 0 ? (
           <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-            {buildCustomerEntries(
-              members,
-              directoryStatsFromOrders(orders),
-            ).map((entry) => (
+            {buildCustomerEntries(members, directory).map((entry) => (
               <li key={entry.id}>
                 <CustomerCard entry={entry} />
               </li>
@@ -189,9 +186,9 @@ export default async function CommunautePage({
         {recent.length > 0 ? (
           <>
             <p className="text-muted-foreground text-sm">
-              {orders.length > RECENT
-                ? `Les ${RECENT} plus récentes sur ${orders.length}.`
-                : `${orders.length} commande${orders.length > 1 ? "s" : ""}.`}
+              {latest.total > RECENT
+                ? `Les ${RECENT} plus récentes sur ${latest.total}.`
+                : `${latest.total} commande${latest.total > 1 ? "s" : ""}.`}
             </p>
             <OrdersTable orders={recent} />
           </>

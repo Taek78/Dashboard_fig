@@ -12,7 +12,7 @@ import {
 /*
  * Agrégations pures des métriques, testées dans
  * test/domain/metrics/rules.test.ts : les chiffres affichés sont ceux que ces
- * fonctions calculent. Aucune dépendance à Next ni à recharts.
+ * fonctions calculent. Aucune dépendance à Next ni au rendu des graphiques.
  *
  * Conventions :
  * - le chiffre d'affaires exclut les commandes annulées ; le panier moyen est

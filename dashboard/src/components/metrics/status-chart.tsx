@@ -1,22 +1,10 @@
-"use client";
-
-import {
-  Bar,
-  BarChart,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import type { StatusPoint } from "@/domain/metrics/rules";
 
 /*
- * Répartition des commandes par statut : barres horizontales, une couleur de
- * thème par statut. Le graphe est masqué aux lecteurs d'écran (la liste
- * sr-only le double) : accessibilityLayer={false} l'empêche aussi de prendre
- * le focus, sinon Chrome refuse un élément focalisé sous aria-hidden.
+ * Répartition des commandes par statut : barres horizontales en HTML, rendues
+ * par le serveur (aucun JavaScript), une couleur de thème par statut, le
+ * nombre au bout de la barre. La plus grande valeur occupe toute la piste.
+ * Les barres sont masquées aux lecteurs d'écran : la liste sr-only les double.
  */
 const COLORS = [
   "var(--chart-1)",
@@ -28,49 +16,33 @@ const COLORS = [
 ];
 
 export function StatusChart({ points }: { points: StatusPoint[] }) {
+  const max = Math.max(0, ...points.map((p) => p.count));
+
   return (
     <div>
-      <div className="h-64 w-full" aria-hidden="true">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={points}
-            layout="vertical"
-            accessibilityLayer={false}
-            margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+      <ul aria-hidden="true" className="flex flex-col gap-3 py-1">
+        {points.map((p, i) => (
+          <li
+            key={p.status}
+            className="grid grid-cols-[6.5rem_minmax(0,1fr)_2.5rem] items-center gap-3 text-xs @xl/main:text-sm"
           >
-            <XAxis type="number" hide allowDecimals={false} />
-            <YAxis
-              type="category"
-              dataKey="label"
-              width={104}
-              tickLine={false}
-              axisLine={false}
-              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
-            />
-            <Tooltip
-              cursor={{ fill: "var(--muted)" }}
-              contentStyle={{
-                background: "var(--popover)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                color: "var(--popover-foreground)",
-                fontSize: 12,
-              }}
-              formatter={(value) => [String(value), "Commandes"]}
-            />
-            <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={22}>
-              {points.map((p, i) => (
-                <Cell key={p.status} fill={COLORS[i % COLORS.length]} />
-              ))}
-              <LabelList
-                dataKey="count"
-                position="right"
-                style={{ fill: "var(--foreground)", fontSize: 12 }}
+            <span className="text-muted-foreground truncate text-right">
+              {p.label}
+            </span>
+            <span className="block h-5">
+              <span
+                className="block h-full rounded-r-md"
+                style={{
+                  width: max === 0 ? 0 : `${(p.count / max) * 100}%`,
+                  minWidth: p.count > 0 ? 4 : 0,
+                  background: COLORS[i % COLORS.length],
+                }}
               />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+            </span>
+            <span className="text-foreground tabular-nums">{p.count}</span>
+          </li>
+        ))}
+      </ul>
       <ul className="sr-only">
         {points.map((p) => (
           <li key={p.status}>
