@@ -245,8 +245,8 @@ describe("changeOrderStatus", () => {
 describe("assignOrderStaff", () => {
   async function assign(fields: Record<string, string>) {
     const promise = assignOrderStaff(idleActionResult, form(fields));
-    // getOrder + getStaff + assignStaff : trois latences (commandes et personnel).
-    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS * 4);
+    // getOrder + getStaff + assignStaff (+ relecture en cas de refus) : on avance large.
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS * 6);
     return promise;
   }
 
@@ -267,6 +267,41 @@ describe("assignOrderStaff", () => {
       name: "Fatou Ndiaye",
     });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("précondition : si l'affectation a changé depuis l'affichage, rien n'est écrasé", async () => {
+    // L'écran montrait « Non affecté » ; entre-temps quelqu'un a choisi Julien.
+    await assign({
+      orderId: "cmd-0001",
+      role: "preparer",
+      staffId: "stf-0005",
+    });
+    revalidatePath.mockClear();
+    const result = await assign({
+      orderId: "cmd-0001",
+      role: "preparer",
+      staffId: "stf-0006",
+      expectedStaffId: "",
+    });
+    expect(result).toEqual({
+      status: "error",
+      message:
+        "L'affectation a été modifiée entre-temps par quelqu'un d'autre : la liste a été actualisée.",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+    const order = ordersMock.getOrder("cmd-0001");
+    await vi.advanceTimersByTimeAsync(MOCK_LATENCY_MS);
+    expect((await order)?.preparer?.id).toBe("stf-0005");
+
+    // La précondition tenue (l'écran montre bien Julien), l'écriture passe.
+    expect(
+      await assign({
+        orderId: "cmd-0001",
+        role: "preparer",
+        staffId: "stf-0006",
+        expectedStaffId: "stf-0005",
+      }),
+    ).toEqual({ status: "success", message: "Préparateur : Fatou Ndiaye." });
   });
 
   it("retire l'affectation avec un id vide", async () => {

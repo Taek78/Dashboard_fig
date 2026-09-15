@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * (l'e-mail inconnu passe aussi par scrypt) et la remise à zéro après succès.
  */
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
 const accounts = vi.hoisted(() => ({ passwordHash: "" }));
 vi.mock("@/data/users", () => ({
   findUserByEmail: async (email: string) =>
@@ -22,7 +23,7 @@ vi.mock("@/data/users", () => ({
 }));
 
 const { authorizeCredentials } = await import("@/data/credentials");
-const { resetLoginAttempts } = await import("@/data/login-attempts");
+const { resetLoginAttemptsMock } = await import("@/data/login-attempts.mock");
 const { hashPassword } = await import("@/lib/password");
 
 const GOOD = "Demo-FIG-2026-local";
@@ -33,7 +34,7 @@ const attempt = (email: string, password: string, ip?: string) =>
 beforeEach(async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-14T08:00:00.000Z"));
-  resetLoginAttempts();
+  resetLoginAttemptsMock();
   accounts.passwordHash = await hashPassword(GOOD);
 });
 afterEach(() => vi.useRealTimers());

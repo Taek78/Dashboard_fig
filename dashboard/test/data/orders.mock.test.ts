@@ -32,6 +32,44 @@ async function settle<T>(promise: Promise<T>): Promise<T> {
   return promise;
 }
 
+describe("ordersMock.assignStaff (conditionnelle)", () => {
+  const malik = { id: "stf-0001", name: "Malik Dembélé" };
+
+  it("n'écrit rien sur une commande terminée ou absente", async () => {
+    expect(
+      await settle(
+        ordersMock.assignStaff("cmd-0005", { role: "driver", staff: malik }),
+      ),
+    ).toBeNull();
+    expect(
+      await settle(
+        ordersMock.assignStaff("cmd-9999", { role: "driver", staff: malik }),
+      ),
+    ).toBeNull();
+  });
+
+  it("n'écrit rien si la personne affectée n'est plus celle attendue", async () => {
+    const before = await settle(ordersMock.getOrder("cmd-0001"));
+    expect(
+      await settle(
+        ordersMock.assignStaff("cmd-0001", {
+          role: "driver",
+          staff: malik,
+          expectedStaffId: "stf-9999",
+        }),
+      ),
+    ).toBeNull();
+    const after = await settle(
+      ordersMock.assignStaff("cmd-0001", {
+        role: "driver",
+        staff: malik,
+        expectedStaffId: before?.driver?.id ?? null,
+      }),
+    );
+    expect(after?.driver).toEqual(malik);
+  });
+});
+
 describe("ordersMock.getOrders", () => {
   it("renvoie toutes les fixtures, triées par créneau, après la latence simulée", async () => {
     const orders = await settle(ordersMock.getOrders());

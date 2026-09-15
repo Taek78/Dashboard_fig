@@ -1,7 +1,8 @@
 /*
  * Limitation de débit des tentatives de connexion : règles PURES (aucun état,
- * aucune dépendance), testées. L'état par clé (e-mail, adresse IP) vit dans
- * src/data/login-attempts.ts ; l'action de connexion orchestre.
+ * aucune dépendance), testées. L'état par clé (e-mail, adresse IP) est stocké
+ * par src/data/login-attempts.ts (mémoire ou table login_attempts selon
+ * DATA_SOURCE) ; src/data/credentials.ts orchestre.
  *
  * Verrouillage progressif : à partir de `maxFailures` échecs rapprochés (moins
  * de `windowMs` entre deux échecs), chaque nouvel échec double la durée du
@@ -43,6 +44,28 @@ export type AttemptState = {
 
 export type LimitDecision =
   { allowed: true } | { allowed: false; retryAfterMs: number };
+
+/** Plus longue fenêtre des politiques : au-delà, un état sans verrou actif ne sert plus. */
+export const LONGEST_WINDOW_MS = Math.max(
+  EMAIL_POLICY.windowMs,
+  IP_POLICY.windowMs,
+);
+
+/** Une clé surveillée (« email:… », « ip:… ») et la politique qui s'y applique. */
+export type AttemptKey = { key: string; policy: RateLimitPolicy };
+
+/**
+ * Contrat du stockage des tentatives (src/data/login-attempts.{mock,db}.ts) :
+ * en mémoire pour les fixtures, en base pour que plusieurs instances partagent
+ * le même compteur. Le stockage lit et écrit ; les règles restent ici.
+ * recordFailure applique recordFailure() à chaque clé de façon ATOMIQUE : deux
+ * échecs simultanés comptent pour deux.
+ */
+export type LoginAttemptsSource = {
+  read(keys: readonly string[]): Promise<Map<string, AttemptState>>;
+  recordFailure(entries: readonly AttemptKey[], now: number): Promise<void>;
+  clear(keys: readonly string[]): Promise<void>;
+};
 
 /** Le verrou est-il actif ? Sans état connu, tout est permis. */
 export function checkAttempt(

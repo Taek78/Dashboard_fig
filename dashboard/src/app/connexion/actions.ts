@@ -35,7 +35,7 @@ export async function login(
     return { status: "error", message: MESSAGES.invalid };
   }
 
-  const decision = checkLoginAllowed(
+  const decision = await checkLoginAllowed(
     { email: parsed.data.email, ip: clientIpFrom(await headers()) },
     Date.now(),
   );

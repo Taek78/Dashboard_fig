@@ -354,6 +354,23 @@ export const securityEvents = pgTable(
   ],
 );
 
+/*
+ * ---------- Tentatives de connexion (limitation de débit) ----------
+ * Une ligne par clé surveillée (« email:… » ou « ip:… ») : l'état partagé par
+ * toutes les instances du dashboard. Les règles (seuils, verrous) restent dans
+ * src/lib/rate-limit.ts ; les lignes expirées sont purgées à chaque échec.
+ */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    key: text("key").primaryKey(),
+    failures: integer("failures").notNull(),
+    lastFailureAt: timestampTz("last_failure_at").notNull(),
+    lockedUntil: timestampTz("locked_until"),
+  },
+  (t) => [index("login_attempts_last_failure_idx").on(t.lastFailureAt)],
+);
+
 /* ---------- Usage de l'application, par mois civil ---------- */
 export const engagementMonthly = pgTable(
   "engagement_monthly",

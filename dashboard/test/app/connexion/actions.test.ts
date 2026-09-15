@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  */
 const signIn = vi.hoisted(() => vi.fn());
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
 vi.mock("@/auth", () => ({ signIn, signOut: vi.fn() }));
 vi.mock("next-auth", () => ({ AuthError: class AuthError extends Error {} }));
 vi.mock("next/headers", () => ({
@@ -16,8 +17,8 @@ vi.mock("next/headers", () => ({
 
 const { login } = await import("@/app/connexion/actions");
 const { AuthError } = await import("next-auth");
-const { recordLoginFailure, resetLoginAttempts } =
-  await import("@/data/login-attempts");
+const { recordLoginFailure } = await import("@/data/login-attempts");
+const { resetLoginAttemptsMock } = await import("@/data/login-attempts.mock");
 const { idleActionResult } = await import("@/lib/action-result");
 
 function attempt(email: string, password = "Mauvais-mot-de-passe-1") {
@@ -30,7 +31,7 @@ function attempt(email: string, password = "Mauvais-mot-de-passe-1") {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-14T08:00:00.000Z"));
-  resetLoginAttempts();
+  resetLoginAttemptsMock();
   signIn.mockReset();
   signIn.mockRejectedValue(new AuthError("CredentialsSignin"));
 });
@@ -48,7 +49,10 @@ describe("login", () => {
   it("un e-mail verrouillé reçoit le délai d'attente et n'atteint pas Auth.js", async () => {
     const now = Date.now();
     for (let i = 0; i < 5; i++) {
-      recordLoginFailure({ email: "zaki@fig.invalid", ip: "203.0.113.5" }, now);
+      await recordLoginFailure(
+        { email: "zaki@fig.invalid", ip: "203.0.113.5" },
+        now,
+      );
     }
     const result = await attempt("Zaki@fig.invalid");
     expect(result).toEqual({

@@ -26,7 +26,9 @@ import type {
  * statut (même transaction en base) ; getOrderEvents le relit, du plus récent au
  * plus ancien. Mise à jour conditionnelle : null si `from` ne correspond plus.
  * assignStaff pose ou retire le préparateur ou le livreur (la personne a déjà
- * été relue et vérifiée par l'action) ; null si la commande n'existe pas.
+ * été relue et vérifiée par l'action). Mise à jour conditionnelle elle aussi :
+ * null (rien d'écrit) si la commande n'existe pas, si elle est terminée
+ * (livrée ou annulée) ou si la personne affectée n'est plus `expectedStaffId`.
  */
 export type OrdersSource = {
   getOrders(filters?: OrderFilters): Promise<Order[]>;

@@ -43,6 +43,16 @@ const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   cancelled: [],
 };
 
+/** Statuts terminaux : plus rien à faire sur la commande, plus aucune affectation. */
+export const FINISHED_STATUSES = [
+  "delivered",
+  "cancelled",
+] as const satisfies readonly OrderStatus[];
+
+export function isFinished(status: OrderStatus): boolean {
+  return (FINISHED_STATUSES as readonly OrderStatus[]).includes(status);
+}
+
 /** Vrai si le passage from → to est dans la liste blanche. Renvoie, ne lève pas :
  *  c'est l'action qui choisit le message. */
 export function canTransition(from: OrderStatus, to: OrderStatus): boolean {

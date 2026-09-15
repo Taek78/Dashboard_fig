@@ -9,6 +9,7 @@ import {
   inArray,
   isNull,
   lte,
+  notInArray,
   type SQL,
 } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
@@ -24,6 +25,7 @@ import {
 } from "@/db/schema";
 import type { StaffAssignment } from "@/domain/orders/assignment";
 import { filterOrders } from "@/domain/orders/rules";
+import { FINISHED_STATUSES } from "@/domain/orders/status";
 import type { OrdersSource } from "@/domain/orders/source";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
 
@@ -39,6 +41,10 @@ import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
  * updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :
  * `UPDATE … WHERE id = $1 AND status = $2`, 0 ligne → null, sinon l'événement
  * d'historique est inséré dans la même transaction.
+ * assignStaff aussi : `UPDATE … WHERE id = $1 AND status NOT IN ('delivered',
+ * 'cancelled') AND driver_id IS NOT DISTINCT FROM $2` (colonne du rôle, la
+ * personne que l'écran affichait) : une commande terminée entre la relecture et
+ * l'écriture, ou réaffectée par quelqu'un d'autre, n'est pas écrasée.
  */
 const preparer = alias(staff, "preparer");
 const driver = alias(staff, "driver");
@@ -182,12 +188,18 @@ export const ordersDb: OrdersSource = {
 
   assignStaff: async (id: string, assignment: StaffAssignment) => {
     const db = getDb();
-    const column =
+    const key =
       assignment.role === "preparer" ? "preparerId" : ("driverId" as const);
     const updated = await db
       .update(orders)
-      .set({ [column]: assignment.staff?.id ?? null })
-      .where(eq(orders.id, id))
+      .set({ [key]: assignment.staff?.id ?? null })
+      .where(
+        and(
+          eq(orders.id, id),
+          notInArray(orders.status, [...FINISHED_STATUSES]),
+          staffClause(orders[key], assignment.expectedStaffId),
+        ),
+      )
       .returning({ id: orders.id });
     if (updated.length === 0) return null;
     const [order] = await loadOrders(db, eq(orders.id, id));

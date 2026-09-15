@@ -1,70 +1,59 @@
 import "server-only";
+import { loginAttemptsDb } from "@/data/login-attempts.db";
+import { loginAttemptsMock } from "@/data/login-attempts.mock";
+import { selectSource } from "@/data/select-source";
 import {
   checkAttempt,
   EMAIL_POLICY,
   IP_POLICY,
-  recordFailure,
   strictest,
-  type AttemptState,
   type LimitDecision,
 } from "@/lib/rate-limit";
 
 /*
- * État des tentatives de connexion, en mémoire du processus : suffisant pour
- * un serveur unique (le cas prévu) ; à porter en base ou dans un cache partagé
- * si le dashboard tourne un jour sur plusieurs instances. Conservé sur
- * globalThis en développement pour survivre au rechargement à chaud.
- * Les règles (seuils, verrous) sont dans src/lib/rate-limit.ts.
+ * Façade des tentatives de connexion : clés (e-mail, adresse IP) et décision.
+ * Le stockage suit DATA_SOURCE comme les autres domaines : en mémoire en mode
+ * mock (serveur unique), dans la table login_attempts en mode db (partagé entre
+ * instances, conservé au redémarrage). Choisi au moment de l'appel, jamais au
+ * chargement du module. Les règles sont dans src/lib/rate-limit.ts.
  */
 type LoginKey = { email: string; ip: string };
 
-declare global {
-  var __figLoginAttempts: Map<string, AttemptState> | undefined;
-}
+const source = () =>
+  selectSource("tentatives de connexion", loginAttemptsMock, loginAttemptsDb);
 
-const store: Map<string, AttemptState> = (globalThis.__figLoginAttempts ??=
-  new Map());
-
-const MAX_ENTRIES = 10_000;
-
-const keys = ({ email, ip }: LoginKey) => ({
+const keysOf = ({ email, ip }: LoginKey) => ({
   email: `email:${email.toLowerCase()}`,
   ip: `ip:${ip}`,
 });
 
-export function checkLoginAllowed(key: LoginKey, now: number): LimitDecision {
-  const k = keys(key);
+export async function checkLoginAllowed(
+  key: LoginKey,
+  now: number,
+): Promise<LimitDecision> {
+  const k = keysOf(key);
+  const states = await source().read([k.email, k.ip]);
   return strictest([
-    checkAttempt(store.get(k.email), now),
-    checkAttempt(store.get(k.ip), now),
+    checkAttempt(states.get(k.email), now),
+    checkAttempt(states.get(k.ip), now),
   ]);
 }
 
-export function recordLoginFailure(key: LoginKey, now: number): void {
-  const k = keys(key);
-  store.set(k.email, recordFailure(store.get(k.email), now, EMAIL_POLICY));
-  store.set(k.ip, recordFailure(store.get(k.ip), now, IP_POLICY));
-  prune(now);
+export async function recordLoginFailure(
+  key: LoginKey,
+  now: number,
+): Promise<void> {
+  const k = keysOf(key);
+  await source().recordFailure(
+    [
+      { key: k.email, policy: EMAIL_POLICY },
+      { key: k.ip, policy: IP_POLICY },
+    ],
+    now,
+  );
 }
 
-export function clearLoginAttempts(key: LoginKey): void {
-  const k = keys(key);
-  store.delete(k.email);
-  store.delete(k.ip);
-}
-
-/** Oublie les entrées anciennes et non verrouillées quand le store grossit. */
-function prune(now: number): void {
-  if (store.size <= MAX_ENTRIES) return;
-  for (const [key, state] of store) {
-    const lockExpired = state.lockedUntil === null || state.lockedUntil <= now;
-    if (lockExpired && now - state.lastFailureAt > EMAIL_POLICY.windowMs) {
-      store.delete(key);
-    }
-  }
-}
-
-/** Hors contrat : tests uniquement. */
-export function resetLoginAttempts(): void {
-  store.clear();
+export async function clearLoginAttempts(key: LoginKey): Promise<void> {
+  const k = keysOf(key);
+  await source().clear([k.email, k.ip]);
 }

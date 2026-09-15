@@ -8,7 +8,11 @@ import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import { ASSIGNMENT_ROLE_LABELS } from "@/domain/orders/assignment";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { assignStaffSchema, changeStatusSchema } from "@/domain/orders/schemas";
-import { canTransition, ORDER_STATUS_LABELS } from "@/domain/orders/status";
+import {
+  canTransition,
+  isFinished,
+  ORDER_STATUS_LABELS,
+} from "@/domain/orders/status";
 import { canBeAssigned, staffFullName } from "@/domain/staff/rules";
 import type { ActionResult } from "@/lib/action-result";
 import { logSecurity } from "@/data/security-log";
@@ -127,8 +131,11 @@ export async function changeOrderStatus(
 /*
  * Affectation d'un préparateur ou d'un livreur. Même discipline : session →
  * rôle → zod → relecture de la commande ET de la personne → règle (bon métier,
- * personne active, commande non terminée) → écriture → journal → revalidation.
- * Le nom écrit sur la commande est celui relu en base, jamais un champ envoyé.
+ * personne active, commande non terminée, affectation inchangée depuis
+ * l'affichage) → écriture conditionnelle → journal → revalidation.
+ * Le nom écrit sur la commande est celui relu en base, jamais un champ envoyé ;
+ * `expectedStaffId` (la personne que l'écran montrait) ne sert que de
+ * précondition : un faux ne peut qu'empêcher l'écriture.
  */
 const ASSIGN_MESSAGES = {
   forbidden: "Vous n'avez pas les droits pour affecter l'équipe.",
@@ -137,6 +144,8 @@ const ASSIGN_MESSAGES = {
   staffNotFound: "Cette personne n'est plus dans l'équipe.",
   wrongKind: "Cette personne n'a pas le bon métier pour ce rôle.",
   finished: "Une commande terminée ne peut plus être affectée.",
+  conflict:
+    "L'affectation a été modifiée entre-temps par quelqu'un d'autre : la liste a été actualisée.",
   failure: "Impossible d'enregistrer l'affectation. Réessayez dans un instant.",
 } as const;
 
@@ -157,13 +166,20 @@ export async function assignOrderStaff(
   if (!parsed.success) {
     return { status: "error", message: ASSIGN_MESSAGES.invalid };
   }
-  const { orderId, role, staffId } = parsed.data;
+  const { orderId, role, staffId, expectedStaffId } = parsed.data;
 
   try {
     const order = await getOrder(orderId);
     if (!order) return { status: "error", message: ASSIGN_MESSAGES.notFound };
-    if (order.status === "delivered" || order.status === "cancelled") {
+    if (isFinished(order.status)) {
       return { status: "error", message: ASSIGN_MESSAGES.finished };
+    }
+    if (
+      expectedStaffId !== undefined &&
+      (order[role]?.id ?? null) !== expectedStaffId
+    ) {
+      revalidatePath("/", "layout");
+      return { status: "error", message: ASSIGN_MESSAGES.conflict };
     }
 
     let staff: { id: string; name: string } | null = null;
@@ -178,8 +194,25 @@ export async function assignOrderStaff(
       staff = { id: member.id, name: staffFullName(member) };
     }
 
-    const updated = await assignStaff(order.id, { role, staff });
-    if (!updated) return { status: "error", message: ASSIGN_MESSAGES.notFound };
+    // Écriture conditionnelle : rien n'est écrit si la commande a disparu, s'est
+    // terminée ou a été réaffectée entre la relecture et l'écriture.
+    const updated = await assignStaff(order.id, {
+      role,
+      staff,
+      expectedStaffId,
+    });
+    if (!updated) {
+      const latest = await getOrder(order.id);
+      revalidatePath("/", "layout");
+      return {
+        status: "error",
+        message: !latest
+          ? ASSIGN_MESSAGES.notFound
+          : isFinished(latest.status)
+            ? ASSIGN_MESSAGES.finished
+            : ASSIGN_MESSAGES.conflict,
+      };
+    }
 
     logSecurity({
       type: "order_staff_assigned",

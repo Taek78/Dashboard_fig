@@ -57,6 +57,8 @@ export function StaffAssignField({
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="role" value={role} />
+      {/* Précondition : si quelqu'un a changé l'affectation depuis l'affichage, rien n'est écrasé. */}
+      <input type="hidden" name="expectedStaffId" value={current?.id ?? ""} />
       <label
         htmlFor={id}
         className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium"

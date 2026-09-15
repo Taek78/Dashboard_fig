@@ -148,7 +148,13 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Article programmé** (articles) : article visible dont la date de parution est postérieure à aujourd'hui ; l'application ne l'affichera qu'à cette date. Calculé par `publicationState()`.
 
-**Limitation de débit (rate limiting)** (sécurité) : refuser une action répétée trop souvent depuis la même origine. Ici : cinq échecs de connexion rapprochés sur un e-mail verrouillent une minute, puis le verrou double à chaque échec jusqu'à une heure ; vingt par adresse IP. Règles pures dans `src/lib/rate-limit.ts`.
+**Limitation de débit (rate limiting)** (sécurité) : refuser une action répétée trop souvent depuis la même origine. Ici : cinq échecs de connexion rapprochés sur un e-mail verrouillent une minute, puis le verrou double à chaque échec jusqu'à une heure ; vingt par adresse IP. Règles pures dans `src/lib/rate-limit.ts` ; état en mémoire en mode mock, dans la table `login_attempts` en mode db (partagé entre plusieurs instances du dashboard, conservé au redémarrage).
+
+**Verrou de ligne (`SELECT … FOR UPDATE`)** (base) : dans une transaction, réserve les lignes lues jusqu'à la fin de la transaction ; une autre transaction qui veut les mêmes lignes attend. Sert à compter les échecs de connexion simultanés sans en perdre : sans verrou, deux requêtes liraient « 3 échecs » en même temps et écriraient toutes deux « 4 ». `SKIP LOCKED` fait l'inverse : ignorer les lignes déjà réservées au lieu d'attendre (purge).
+
+**Précondition d'écriture (verrouillage optimiste)** (concurrence) : l'écriture ne passe que si la donnée est encore celle que l'écran affichait (`WHERE status = $2`, `WHERE driver_id IS NOT DISTINCT FROM $2`). Sinon rien n'est écrit et l'utilisateur voit « modifié entre-temps ». Pas de verrou tenu pendant qu'on réfléchit : on vérifie au moment d'écrire. `expectedStaffId` est la précondition de l'affectation.
+
+**Test de contrat** (tests) : poser la même question à deux implémentations d'un même contrat (le mock et PostgreSQL) et exiger la même réponse. Détecte qu'un filtre SQL et la règle pure ne disent plus la même chose (`test/contract/`, en CI après le seed).
 
 **Énumération de comptes** (sécurité) : deviner quels e-mails existent en observant la réponse. Le message est identique dans les deux cas, et le temps aussi : un e-mail inconnu vérifie un hachage factice (`dummyPasswordHash`).
 

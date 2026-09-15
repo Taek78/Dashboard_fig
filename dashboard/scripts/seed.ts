@@ -86,6 +86,7 @@ async function main(): Promise<void> {
       await tx.delete(schema.articles);
       await tx.delete(schema.engagementMonthly);
       await tx.delete(schema.users);
+      await tx.delete(schema.loginAttempts);
 
       await tx.insert(schema.users).values(accounts);
 

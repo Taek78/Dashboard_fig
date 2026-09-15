@@ -70,6 +70,11 @@ jobs:
         run: npm run test:e2e
       - name: Migration et seed de la base de CI
         run: npm run db:migrate && npm run db:seed
+      # Juste après le seed : la comparaison mock = base exige les fixtures d'origine.
+      - name: Contrat des sources (mock et Postgres donnent les mêmes réponses)
+        run: npx vitest run test/contract
+        env:
+          TEST_DATABASE_URL: postgresql://fig:fig@localhost:5432/fig
       - name: Suite navigateur sur Postgres
         run: npm run test:e2e
         env:

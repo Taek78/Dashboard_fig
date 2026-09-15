@@ -1,5 +1,6 @@
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { filterOrders, sortOrdersBySlot } from "@/domain/orders/rules";
+import { isFinished } from "@/domain/orders/status";
 import type { StaffAssignment } from "@/domain/orders/assignment";
 import type { OrdersSource } from "@/domain/orders/source";
 import type {
@@ -38,6 +39,10 @@ import type {
  *     Drizzle. Quand elle réussit, elle ajoute l'événement d'historique (en base : la
  *     même transaction). La règle métier canTransition n'est PAS appliquée ici :
  *     elle appartient à la Server Action, seul endroit qui décide.
+ *   - assignStaff est conditionnelle de la même façon : null si la commande est
+ *     absente, terminée, ou si la personne affectée n'est plus celle attendue
+ *     (`expectedStaffId`) ; c'est le `WHERE status NOT IN (…) AND driver_id = $3`
+ *     de la version Drizzle.
  *   - L'horodatage des nouveaux événements est fixe (MOCK_EVENT_AT) pour rester
  *     déterministe sous Vitest ; la vraie base mettra now().
  *   - resetOrdersMock() est HORS contrat : réservée aux tests, jamais réexportée
@@ -114,7 +119,13 @@ export const ordersMock: OrdersSource = {
   assignStaff: async (id: string, assignment: StaffAssignment) => {
     await sleep(MOCK_LATENCY_MS);
     const current = store.get(id);
-    if (!current) return null;
+    if (!current || isFinished(current.status)) return null;
+    if (
+      assignment.expectedStaffId !== undefined &&
+      (current[assignment.role]?.id ?? null) !== assignment.expectedStaffId
+    ) {
+      return null;
+    }
     current[assignment.role] = structuredClone(assignment.staff);
     return structuredClone(current);
   },

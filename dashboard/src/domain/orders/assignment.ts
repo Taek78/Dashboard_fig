@@ -16,5 +16,14 @@ export const ASSIGNMENT_ROLE_LABELS: Record<AssignmentRole, string> = {
 /** Référence légère à une personne, telle que portée par une commande. */
 export type StaffRef = { id: string; name: string };
 
-/** Ce que la Server Action transmet à la source : le rôle et la personne (ou rien). */
-export type StaffAssignment = { role: AssignmentRole; staff: StaffRef | null };
+/**
+ * Ce que la Server Action transmet à la source : le rôle, la personne (ou
+ * rien) et, en précondition, l'identifiant de la personne que l'écran
+ * affichait au moment du choix (`null` = personne ; absent = pas de
+ * précondition). Si l'affectation a changé entre-temps, la source n'écrit rien.
+ */
+export type StaffAssignment = {
+  role: AssignmentRole;
+  staff: StaffRef | null;
+  expectedStaffId?: string | null;
+};

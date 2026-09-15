@@ -244,6 +244,22 @@ describe("assignStaffSchema", () => {
     expect(
       assignStaffSchema.parse({
         orderId: "cmd-0001",
+        role: "preparer",
+        staffId: "stf-0005",
+        expectedStaffId: "",
+      }).expectedStaffId,
+    ).toBeNull();
+    expect(
+      assignStaffSchema.parse({
+        orderId: "cmd-0001",
+        role: "preparer",
+        staffId: "",
+        expectedStaffId: " stf-0006 ",
+      }).expectedStaffId,
+    ).toBe("stf-0006");
+    expect(
+      assignStaffSchema.parse({
+        orderId: "cmd-0001",
         role: "driver",
         staffId: "",
       }).staffId,

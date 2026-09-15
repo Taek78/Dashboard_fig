@@ -42,7 +42,7 @@ export async function authorizeCredentials(
   };
   const now = Date.now();
 
-  const decision = checkLoginAllowed(key, now);
+  const decision = await checkLoginAllowed(key, now);
   if (!decision.allowed) {
     logSecurity({
       type: "login_locked",
@@ -58,12 +58,12 @@ export async function authorizeCredentials(
     user?.passwordHash ?? (await dummyPasswordHash()),
   );
   if (!user || !ok) {
-    recordLoginFailure(key, now);
+    await recordLoginFailure(key, now);
     logSecurity({ type: "login_failure", ...key });
     return null;
   }
 
-  clearLoginAttempts(key);
+  await clearLoginAttempts(key);
   logSecurity({ type: "login_success", ...key });
   return { id: user.id, name: user.name, email: user.email, role: user.role };
 }

@@ -137,6 +137,13 @@ export const assignStaffSchema = z.object({
     .trim()
     .max(64)
     .transform((v) => (v === "" ? null : v)),
+  /** Personne affichée au moment du choix : une précondition, jamais une donnée écrite. */
+  expectedStaffId: z
+    .string()
+    .trim()
+    .max(64)
+    .transform((v) => (v === "" ? null : v))
+    .optional(),
 });
 
 /** ?page=n de la liste (lecture tolérante) : entier ≥ 1, sinon 1. */

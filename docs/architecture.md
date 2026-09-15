@@ -81,9 +81,9 @@ Pour chaque domaine, trois fichiers :
 
 - `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et choisit l'implémentation avec `selectSource()` selon `DATA_SOURCE`, au moment de chaque appel (`source()`) et non au chargement du module : `next build` importe les pages sans environnement (`test/app/facades.test.ts`).
 - `<domaine>.mock.ts` : une `Map` en mémoire seedée depuis les fixtures, avec une latence simulée (pour voir les états de chargement) et des copies à l'entrée et à la sortie (rien ne partage d'objet avec le store). Une fonction `resetXxxMock()` hors contrat sert aux tests.
-- `<domaine>.db.ts` : la même chose avec Drizzle. Les filtres deviennent des `WHERE`, les tris des `ORDER BY`, les écritures conditionnelles des `UPDATE … WHERE id = $1 AND status = $2`, les opérations couplées des transactions. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
+- `<domaine>.db.ts` : la même chose avec Drizzle. Les filtres deviennent des `WHERE`, les tris des `ORDER BY`, les écritures conditionnelles des `UPDATE … WHERE id = $1 AND status = $2` (statut) ou `… AND driver_id IS NOT DISTINCT FROM $2` (affectation), les opérations couplées des transactions. `test/contract/sources.pg.test.ts` vérifie que le mock et la base répondent pareil. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
 
-Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation), `security-log.ts` (journal), `select-source.ts` (le choix mock / db).
+Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation : en mémoire en mode mock, table `login_attempts` en mode db, partagée entre instances), `security-log.ts` (journal), `select-source.ts` (le choix mock / db).
 
 ### 3.3 `src/db/` : PostgreSQL
 
@@ -164,7 +164,8 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 | Mesure                                                                                                           | Où                                                 |
 | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | Server Actions comme frontière de confiance (session, rôle, zod, relecture)                                      | `src/app/**/actions.ts`                            |
-| Limitation de débit progressive sur la connexion, coût constant e-mail inconnu / mot de passe faux               | `src/data/credentials.ts`, `src/lib/rate-limit.ts` |
+| Limitation de débit progressive sur la connexion, partagée en base, coût constant e-mail inconnu / mot de passe faux | `src/data/credentials.ts`, `src/data/login-attempts.db.ts`, `src/lib/rate-limit.ts` |
+| Écritures concurrentes conditionnelles (statut, affectation) : rien n'est écrasé en silence                     | `src/data/orders.db.ts`                            |
 | Content-Security-Policy avec nonce par requête, HSTS, X-Frame-Options, nosniff                                   | `src/proxy.ts`, `src/lib/csp.ts`, `next.config.ts` |
 | Déconnexion robuste : le cookie de session n'est re-posé ni sur un préchargement ni tant que le jeton est récent | `src/proxy.ts`, `src/lib/session-refresh.ts`       |
 | Journal de sécurité (sortie standard et table `security_events`)                                                 | `src/data/security-log.ts`                         |
