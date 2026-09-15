@@ -64,6 +64,23 @@ export function formatDateTimeFr(iso: string): string {
   return dateTimeFr.format(new Date(iso));
 }
 
+/**
+ * Période de jours "AAAA-MM-JJ", bornes facultatives → texte.
+ * ("2026-09-05", "2026-09-09") → "du sam. 5 sept. au mer. 9 sept." ;
+ * même jour → "le lun. 7 sept." ; début seul → "depuis le …" ; fin seule →
+ * "jusqu'au …" ; aucune borne → "".
+ */
+export function formatPeriodFr(from?: string, to?: string): string {
+  if (from && to) {
+    return from === to
+      ? `le ${formatDateFr(from)}`
+      : `du ${formatDateFr(from)} au ${formatDateFr(to)}`;
+  }
+  if (from) return `depuis le ${formatDateFr(from)}`;
+  if (to) return `jusqu'au ${formatDateFr(to)}`;
+  return "";
+}
+
 /** Créneau de livraison → date + plage horaire. { date, start: "09:00", end: "11:00" } → "mar. 8 sept., 09:00–11:00" */
 export function formatSlot(slot: {
   date: string;

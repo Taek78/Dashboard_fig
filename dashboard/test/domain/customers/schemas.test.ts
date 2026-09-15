@@ -3,7 +3,43 @@ import {
   NOTE_MAX_LENGTH,
   addNoteSchema,
   parseClientsSearch,
+  parseCustomerHistoryPeriod,
 } from "@/domain/customers/schemas";
+
+describe("parseCustomerHistoryPeriod", () => {
+  it("lit les deux bornes, ou une seule", () => {
+    expect(
+      parseCustomerHistoryPeriod({ du: "2026-09-05", au: "2026-09-09" }),
+    ).toEqual({ from: "2026-09-05", to: "2026-09-09" });
+    expect(parseCustomerHistoryPeriod({ du: "2026-09-05" })).toEqual({
+      from: "2026-09-05",
+      to: undefined,
+    });
+    expect(parseCustomerHistoryPeriod({ au: "2026-09-09" })).toEqual({
+      from: undefined,
+      to: "2026-09-09",
+    });
+  });
+
+  it("remet dans l'ordre des bornes inversées", () => {
+    expect(
+      parseCustomerHistoryPeriod({ du: "2026-09-09", au: "2026-09-05" }),
+    ).toEqual({ from: "2026-09-05", to: "2026-09-09" });
+  });
+
+  it("ignore les dates invalides, répétées et les autres clés", () => {
+    const none = { from: undefined, to: undefined };
+    expect(parseCustomerHistoryPeriod({})).toEqual(none);
+    expect(parseCustomerHistoryPeriod({ du: "", au: "hier" })).toEqual(none);
+    expect(parseCustomerHistoryPeriod({ du: "2026-02-30" })).toEqual(none);
+    expect(
+      parseCustomerHistoryPeriod({ du: ["2026-09-05", "2026-09-06"] }),
+    ).toEqual(none);
+    expect(
+      parseCustomerHistoryPeriod({ q: "benali", statut: "delivered" }),
+    ).toEqual(none);
+  });
+});
 
 describe("parseClientsSearch", () => {
   it("lit recherche, type, tri et page", () => {

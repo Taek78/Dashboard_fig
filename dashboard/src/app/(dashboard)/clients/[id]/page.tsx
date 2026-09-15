@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CustomerHistoryFilters } from "@/components/customers/customer-history-filters";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
 import { LoyaltyGauge } from "@/components/customers/loyalty-badge";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
@@ -17,21 +18,33 @@ import {
   computeCustomerStats,
   sortNotesNewestFirst,
 } from "@/domain/customers/rules";
-import { customerIdSchema } from "@/domain/customers/schemas";
+import {
+  customerIdSchema,
+  parseCustomerHistoryPeriod,
+} from "@/domain/customers/schemas";
+import { orderFiltersQuery } from "@/domain/orders/rules";
 import { parsePage } from "@/domain/orders/schemas";
-import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
+import {
+  formatDateFr,
+  formatEuros,
+  formatPeriodFr,
+  toTelHref,
+} from "@/lib/format";
 
 /*
  * Fiche client : coordonnées (et communauté), chiffres clés, fidélité (série
  * de commandes d'affilée), historique des commandes (croisement via
  * OrderFilters.customerId), notes internes et formulaire d'ajout.
  * Chiffres et série de fidélité agrégés par la base (getDirectoryStats
- * restreint au client, mêmes règles que l'annuaire) ; l'historique est lu page
- * par page (?page=, les plus récentes d'abord), jamais en entier.
+ * restreint au client, mêmes règles que l'annuaire, toujours sur TOUTES ses
+ * commandes) ; l'historique est lu page par page (?page=, les plus récentes
+ * d'abord), jamais en entier, et se restreint à une période de livraison
+ * (?du=&au=, filtrée par la base) que la pagination garde.
  */
 export const metadata: Metadata = { title: "Fiche client" };
 
 const NO_STATS = computeCustomerStats([]);
+const plural = (n: number) => (n > 1 ? "s" : "");
 
 export default async function ClientPage({
   params,
@@ -41,14 +54,18 @@ export default async function ClientPage({
   const parsed = customerIdSchema.safeParse(id);
   if (!parsed.success) notFound();
 
+  const raw = await searchParams;
+  const period = parseCustomerHistoryPeriod(raw);
+
   const [customer, directory, history] = await Promise.all([
     getCustomer(parsed.data),
     getDirectoryStats({ customerId: parsed.data }),
-    getOrdersPage({ customerId: parsed.data }, parsePage(await searchParams)),
+    getOrdersPage({ customerId: parsed.data, ...period }, parsePage(raw)),
   ]);
   if (!customer) notFound();
 
   const stats = directory.customers.get(customer.id) ?? NO_STATS;
+  const periodText = formatPeriodFr(period.from, period.to);
   const loyalty = loyaltyFromStreak(
     directory.loyaltyStreaks.get(customer.id) ?? 0,
   );
@@ -196,22 +213,36 @@ export default async function ClientPage({
           <h2 className="text-lg font-semibold tracking-tight">
             Historique des commandes
           </h2>
-          {history.total > 0 ? (
+          {stats.orderCount > 0 || periodText !== "" ? (
             <>
-              <p className="text-muted-foreground text-sm">
-                {history.total} commande{history.total > 1 ? "s" : ""}, les plus
-                récentes d&apos;abord
+              <CustomerHistoryFilters
+                customerId={customer.id}
+                period={period}
+              />
+              <p role="status" className="text-muted-foreground text-sm">
+                {periodText === ""
+                  ? `${history.total} commande${plural(history.total)}, les plus récentes d'abord`
+                  : `${history.total} commande${plural(history.total)} sur ${stats.orderCount}, livraison ${periodText}`}
                 {history.pageCount > 1
                   ? ` · page ${history.page} sur ${history.pageCount}`
                   : ""}
               </p>
-              <OrdersTable orders={history.items} />
-              <OrdersPagination
-                page={history}
-                baseParams=""
-                path={`/clients/${customer.id}`}
-                hash="historique"
-              />
+              {history.total > 0 ? (
+                <>
+                  <OrdersTable orders={history.items} />
+                  <OrdersPagination
+                    page={history}
+                    baseParams={orderFiltersQuery(period)}
+                    path={`/clients/${customer.id}`}
+                    hash="historique"
+                  />
+                </>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Aucune commande livrée sur cette période : élargissez-la ou
+                  affichez toutes les dates.
+                </p>
+              )}
             </>
           ) : (
             <p className="text-muted-foreground text-sm">

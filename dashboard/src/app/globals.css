@@ -170,10 +170,10 @@
   /* Type de client : bleu canard = particulier, rose framboise = communauté. */
   --individual: oklch(0.52 0.1 215);
   --community: oklch(0.56 0.18 355);
-  --halo-1: color-mix(in oklch, var(--primary) 7%, transparent);
-  --halo-2: color-mix(in oklch, var(--brand-to) 6%, transparent);
-  --halo-3: color-mix(in oklch, var(--individual) 5%, transparent);
-  --decor-art-opacity: 0.13;
+  --halo-1: color-mix(in oklch, var(--primary) 12%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 10%, transparent);
+  --halo-3: color-mix(in oklch, var(--individual) 7%, transparent);
+  --decor-art-opacity: 0.2;
   /* Catalogue : fond de carte par catégorie (orange = fruit, vert = légume). */
   --fruit: oklch(0.95 0.06 65);
   --fruit-foreground: oklch(0.45 0.14 55);
@@ -222,10 +222,10 @@
   --sidebar-ring: oklch(0.6 0.18 302);
   --individual: oklch(0.78 0.1 210);
   --community: oklch(0.76 0.15 355);
-  --halo-1: color-mix(in oklch, var(--primary) 10%, transparent);
-  --halo-2: color-mix(in oklch, var(--brand-to) 7%, transparent);
-  --halo-3: color-mix(in oklch, var(--individual) 5%, transparent);
-  --decor-art-opacity: 0.15;
+  --halo-1: color-mix(in oklch, var(--primary) 16%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 12%, transparent);
+  --halo-3: color-mix(in oklch, var(--individual) 8%, transparent);
+  --decor-art-opacity: 0.23;
   --fruit: oklch(0.32 0.07 60);
   --fruit-foreground: oklch(0.88 0.1 70);
   --vegetable: oklch(0.3 0.06 145);
@@ -280,10 +280,10 @@
   /* Type de client : bleu lagon = particulier, pêche = communauté. */
   --individual: oklch(0.8 0.08 205);
   --community: oklch(0.82 0.1 50);
-  --halo-1: color-mix(in oklch, var(--brand-from) 13%, transparent);
-  --halo-2: color-mix(in oklch, var(--brand-to) 9%, transparent);
-  --halo-3: color-mix(in oklch, var(--individual) 7%, transparent);
-  --decor-art-opacity: 0.17;
+  --halo-1: color-mix(in oklch, var(--brand-from) 20%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 15%, transparent);
+  --halo-3: color-mix(in oklch, var(--individual) 10%, transparent);
+  --decor-art-opacity: 0.26;
   --fruit: oklch(0.34 0.06 45);
   --fruit-foreground: oklch(0.9 0.09 60);
   --vegetable: oklch(0.32 0.05 170);
@@ -356,7 +356,9 @@
    * Fond de la fenêtre entière, statique : deux couches fixes derrière tout
    * (sidebar, contenu, connexion), composées une fois et jamais redessinées au
    * défilement (background-attachment: fixed sur body le forcerait).
-   * - ::before : un dégradé diagonal très léger (teintes --halo-*).
+   * - ::before : un dégradé léger et continu, de la marque en haut à gauche à
+   *   sa seconde teinte en bas à droite, sans plateau neutre au milieu, plus
+   *   deux lueurs de coin et une au centre (teintes --halo-*).
    * - ::after  : le motif public/fond/verger.svg utilisé comme MASQUE : le
    *   fichier ne donne que la forme, la couleur est le dégradé de marque du
    *   thème, à l'opacité --decor-art-opacity. mask-size: cover le fait couvrir
@@ -372,14 +374,10 @@
   }
   body::before {
     background-image:
-      linear-gradient(
-        155deg,
-        var(--halo-1) 0%,
-        transparent 38%,
-        transparent 62%,
-        var(--halo-2) 100%
-      ),
-      radial-gradient(60rem 42rem at 50% 50%, var(--halo-3), transparent 70%);
+      radial-gradient(48rem 36rem at 0% 0%, var(--halo-1), transparent 70%),
+      radial-gradient(52rem 40rem at 100% 100%, var(--halo-2), transparent 70%),
+      radial-gradient(60rem 42rem at 50% 50%, var(--halo-3), transparent 70%),
+      linear-gradient(155deg, var(--halo-1), var(--halo-3) 50%, var(--halo-2));
   }
   body::after {
     background-image: linear-gradient(

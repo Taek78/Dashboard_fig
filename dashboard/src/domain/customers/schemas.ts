@@ -5,6 +5,8 @@ import {
   type DirectorySearch,
 } from "@/domain/customers/directory";
 import { NOTE_MAX_LENGTH } from "@/domain/customers/types";
+import { parseOrderFilters } from "@/domain/orders/schemas";
+import type { OrderFilters } from "@/domain/orders/types";
 
 /* Schémas zod des ENTRÉES des clients : recherche tolérante, note stricte. */
 export const customerIdSchema = z.string().trim().min(1).max(64);
@@ -39,6 +41,21 @@ export function parseClientsSearch(
   raw: Record<string, string | string[] | undefined>,
 ): ClientsSearch {
   return clientsSearchSchema.parse(raw);
+}
+
+/**
+ * Période de l'historique d'une fiche client (lecture tolérante) : ?du= et ?au=,
+ * jours de livraison, lus par la même règle que la liste des commandes (date
+ * invalide ignorée, bornes inversées remises dans l'ordre). Les autres clés
+ * (q, statut…) ne s'appliquent pas à la fiche.
+ */
+export type CustomerHistoryPeriod = Pick<OrderFilters, "from" | "to">;
+
+export function parseCustomerHistoryPeriod(
+  raw: Record<string, string | string[] | undefined>,
+): CustomerHistoryPeriod {
+  const { from, to } = parseOrderFilters(raw);
+  return { from, to };
 }
 
 export { NOTE_MAX_LENGTH };

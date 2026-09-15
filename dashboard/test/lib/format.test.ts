@@ -5,10 +5,27 @@ import {
   formatDayLongFr,
   formatEuros,
   formatOrdersCount,
+  formatPeriodFr,
   formatQuantity,
   formatSlot,
   toTelHref,
 } from "@/lib/format";
+
+describe("formatPeriodFr", () => {
+  it("deux bornes, un seul jour, une borne ou aucune", () => {
+    expect(plain(formatPeriodFr("2026-09-05", "2026-09-09"))).toBe(
+      "du sam. 5 sept. au mer. 9 sept.",
+    );
+    expect(plain(formatPeriodFr("2026-09-07", "2026-09-07"))).toBe(
+      "le lun. 7 sept.",
+    );
+    expect(plain(formatPeriodFr("2026-09-05"))).toBe("depuis le sam. 5 sept.");
+    expect(plain(formatPeriodFr(undefined, "2026-09-09"))).toBe(
+      "jusqu'au mer. 9 sept.",
+    );
+    expect(formatPeriodFr()).toBe("");
+  });
+});
 
 /* Intl insère des espaces insécables (U+202F, U+00A0) : on les normalise avant de comparer. */
 const plain = (s: string) => s.replace(/\s/g, " ");

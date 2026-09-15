@@ -24,6 +24,27 @@ test.describe("clients", () => {
     await expect(page.getByText(/d'affilée/).first()).toBeVisible();
   });
 
+  test("l'historique d'une fiche client se restreint à une période de livraison", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/clients/cli-0001");
+    const period = page.getByRole("form", { name: "Période de l'historique" });
+    await period.getByLabel("Livraison du").fill("2026-09-05");
+    await period.getByLabel("Livraison au").fill("2026-09-09");
+
+    await expect(page).toHaveURL(/du=2026-09-05/);
+    await expect(page).toHaveURL(/au=2026-09-09/);
+    const status = page.getByRole("status").filter({ hasText: "livraison" });
+    await expect(status).toContainText("2 commandes sur");
+    await expect(status).toContainText("du sam. 5 sept. au mer. 9 sept.");
+    await expect(page.getByRole("link", { name: /FIG-/ })).toHaveCount(2);
+
+    await period.getByRole("link", { name: "Toutes les dates" }).click();
+    await expect(page).not.toHaveURL(/du=/);
+    await expect(period.getByLabel("Livraison du")).toHaveValue("");
+  });
+
   test("le filtre communautés et le tri gardent les communautés et leur remise", async ({
     page,
   }) => {

@@ -67,6 +67,8 @@ describe("ordersDb.getOrders", () => {
       { ...WEEK, preparerId: "stf-0005" },
       { ...WEEK, driverId: null },
       { customerId: "cli-0001" },
+      { customerId: "cli-0001", ...WEEK },
+      { customerId: "cli-0001", from: "2026-09-08" },
       { communityId: "com-0001" },
       { query: "benali" },
       { query: "00 07" },
