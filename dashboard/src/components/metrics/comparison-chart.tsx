@@ -30,8 +30,16 @@ import { cn } from "@/lib/utils";
  * (aucun rechargement : toutes les mesures sont déjà dans `points`). Les
  * montants arrivent déjà convertis dans le mode HT/TTC. Les libellés d'axe
  * dépendent de la granularité (jour, semaine, mois). Un tableau sr-only double
- * le graphe pour les lecteurs d'écran.
+ * le graphe pour les lecteurs d'écran : le graphe est aria-hidden, et
+ * accessibilityLayer={false} l'empêche de prendre le focus (Chrome refuse un
+ * élément focalisé sous aria-hidden).
+ * Mode compact décidé par la LARGEUR DU GRAPHE (onResize), pas par celle de la
+ * fenêtre : sur tablette, sidebar ouverte, le graphe est aussi étroit que sur un
+ * téléphone. Compact = libellés d'axe courts, traits plus épais, points masqués
+ * au-delà de 14 valeurs. Sélecteur en grille tant que la page est étroite.
  */
+const COMPACT_WIDTH = 560;
+
 function bucketLabel(key: string, bucket: Bucket): string {
   if (bucket === "month") {
     return new Intl.DateTimeFormat("fr-FR", {
@@ -44,12 +52,28 @@ function bucketLabel(key: string, bucket: Bucket): string {
   return formatDateFr(key);
 }
 
-const compact = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
+const shortDay = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
+/** Libellé court pour un graphe étroit : « 8 sept. », « sept. 26 ». */
+function bucketShortLabel(key: string, bucket: Bucket): string {
+  if (bucket === "month") return bucketLabel(key, bucket);
+  return shortDay.format(new Date(`${key}T00:00:00.000Z`));
+}
+
+const compactNumber = new Intl.NumberFormat("fr-FR", {
+  maximumFractionDigits: 1,
+});
 
 /** Graduation de l'axe : « 1,2 k€ » ou « 850 € » pour un montant, entier sinon. */
 function axisLabel(value: number, kind: "money" | "count"): string {
   if (kind === "count") return String(value);
-  return value >= 1000 ? `${compact.format(value / 1000)} k€` : `${value} €`;
+  return value >= 1000
+    ? `${compactNumber.format(value / 1000)} k€`
+    : `${value} €`;
 }
 
 function formatValue(cents: number, kind: "money" | "count"): string {
@@ -59,6 +83,8 @@ function formatValue(cents: number, kind: "money" | "count"): string {
 type Row = {
   key: string;
   label: string;
+  /** Libellé d'axe court, en mode compact. */
+  shortLabel: string;
   current: number;
   previous: number;
   /** Valeurs brutes (centimes ou compte) pour le tableau et l'infobulle. */
@@ -135,6 +161,9 @@ export function ComparisonChart({
   referenceLabel: string;
 }) {
   const [metric, setMetric] = useState<ChartMetric>("revenue");
+  // Première peinture en compact (le cas le plus contraint), corrigé dès la
+  // première mesure ; un setState à valeur identique ne rend pas deux fois.
+  const [compact, setCompact] = useState(true);
   const kind = CHART_METRIC_KINDS[metric];
   const scale = kind === "money" ? 100 : 1;
   const rows: Row[] = points.map((p) => {
@@ -143,6 +172,7 @@ export function ComparisonChart({
     return {
       key: p.key,
       label: bucketLabel(p.key, bucket),
+      shortLabel: bucketShortLabel(p.key, bucket),
       current: currentRaw / scale,
       previous: previousRaw / scale,
       currentRaw,
@@ -157,11 +187,11 @@ export function ComparisonChart({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 @3xl/main:flex-row @3xl/main:items-center @3xl/main:justify-between">
         <div
           role="group"
           aria-label="Mesure affichée"
-          className="bg-muted/60 -mx-1 flex gap-0.5 overflow-x-auto rounded-full border p-0.5 md:mx-0"
+          className="bg-muted/60 grid grid-cols-2 gap-1 rounded-2xl border p-1 @xl/main:grid-cols-3 @3xl/main:flex @3xl/main:gap-0.5 @3xl/main:rounded-full @3xl/main:p-0.5"
         >
           {CHART_METRICS.map((m) => {
             const active = m === metric;
@@ -172,7 +202,8 @@ export function ComparisonChart({
                 aria-pressed={active}
                 onClick={() => setMetric(m)}
                 className={cn(
-                  "focus-visible:ring-ring/50 shrink-0 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3",
+                  "focus-visible:ring-ring/50 shrink-0 rounded-full px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 @3xl/main:py-1.5",
+                  m === "revenue" && "col-span-2 @xl/main:col-span-1",
                   active
                     ? "bg-gradient-brand text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
@@ -195,11 +226,20 @@ export function ComparisonChart({
         </ul>
       </div>
 
-      <div className="h-72 w-full sm:h-96" aria-hidden="true">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-80 w-full @xl/main:h-96" aria-hidden="true">
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          onResize={(width) => setCompact(width < COMPACT_WIDTH)}
+        >
           <ComposedChart
             data={rows}
-            margin={{ top: 12, right: 12, left: 0, bottom: 0 }}
+            accessibilityLayer={false}
+            margin={
+              compact
+                ? { top: 16, right: 6, left: -8, bottom: 4 }
+                : { top: 12, right: 12, left: 0, bottom: 0 }
+            }
           >
             <defs>
               <linearGradient id="evolution-fill" x1="0" y1="0" x2="0" y2="1">
@@ -225,18 +265,25 @@ export function ComparisonChart({
               strokeDasharray="3 6"
             />
             <XAxis
-              dataKey="label"
+              dataKey={compact ? "shortLabel" : "label"}
               tickLine={false}
               axisLine={false}
-              minTickGap={24}
-              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              tickMargin={8}
+              minTickGap={compact ? 32 : 24}
+              tick={{
+                fill: "var(--muted-foreground)",
+                fontSize: compact ? 11 : 12,
+              }}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={56}
+              width={compact ? 56 : 60}
               allowDecimals={kind === "money"}
-              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              tick={{
+                fill: "var(--muted-foreground)",
+                fontSize: compact ? 11 : 12,
+              }}
               tickFormatter={(v: number) => axisLabel(v, kind)}
             />
             <Tooltip
@@ -249,10 +296,10 @@ export function ComparisonChart({
               type="monotone"
               dataKey="current"
               stroke="url(#evolution-stroke)"
-              strokeWidth={2.5}
+              strokeWidth={compact ? 3 : 2.5}
               fill="url(#evolution-fill)"
               dot={
-                rows.length <= 31
+                rows.length <= (compact ? 14 : 31)
                   ? { r: 3, strokeWidth: 0, fill: "var(--brand-from)" }
                   : false
               }
@@ -263,7 +310,7 @@ export function ComparisonChart({
               type="monotone"
               dataKey="previous"
               stroke="var(--muted-foreground)"
-              strokeWidth={1.5}
+              strokeWidth={compact ? 2 : 1.5}
               strokeDasharray="6 4"
               dot={false}
               activeDot={{
@@ -277,6 +324,10 @@ export function ComparisonChart({
         </ResponsiveContainer>
       </div>
 
+      <p className="text-muted-foreground text-xs @3xl/main:hidden">
+        Touchez le graphe pour lire la valeur d&apos;une période.
+      </p>
+
       {!hasPrevious ? (
         <p className="text-muted-foreground text-xs">
           Aucune donnée sur la période de référence (
@@ -285,27 +336,31 @@ export function ComparisonChart({
         </p>
       ) : null}
 
-      <table className="sr-only">
-        <caption>
-          {metricLabel} par période, comparé à : {referenceLabel.toLowerCase()}
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Période</th>
-            <th scope="col">{metricLabel}</th>
-            <th scope="col">{metricLabel} (référence)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.key}>
-              <td>{r.label}</td>
-              <td>{formatValue(r.currentRaw, kind)}</td>
-              <td>{formatValue(r.previousRaw, kind)}</td>
+      {/* Enveloppe sr-only : un <table> garde sa largeur même masqué et ferait défiler la page sur mobile. */}
+      <div className="sr-only">
+        <table>
+          <caption>
+            {metricLabel} par période, comparé à :{" "}
+            {referenceLabel.toLowerCase()}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Période</th>
+              <th scope="col">{metricLabel}</th>
+              <th scope="col">{metricLabel} (référence)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key}>
+                <td>{r.label}</td>
+                <td>{formatValue(r.currentRaw, kind)}</td>
+                <td>{formatValue(r.previousRaw, kind)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

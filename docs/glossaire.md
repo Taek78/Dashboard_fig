@@ -22,7 +22,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Mapper** (piste B3) : une fonction qui convertit une ligne de la base du client (ses noms de colonnes, ses unités) en type métier `Order`. C'est l'unique endroit où les deux vocabulaires se rencontrent.
 
-**Machine d'états** : la liste des passages autorisés entre statuts (`pending → confirmed`, jamais `delivered → pending`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
+**Machine d'états** : la liste des passages autorisés entre statuts (`pending → preparing`, jamais `delivered → pending`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
 
 **Idempotent** : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
 
@@ -72,7 +72,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **`revalidatePath(chemin, "layout")`** : après une écriture, dit à Next que les pages sous ce chemin sont périmées et doivent être rerendues à la prochaine requête. Avec `"layout"`, `/commandes` et toutes les pages dessous (`/commandes/[id]`) sont couvertes en un appel.
 
-**`next/form`** : le composant `Form` de Next. En GET, les champs deviennent les paramètres d'URL comme un `<form method="get">` classique, mais la navigation est faite côté client et `loading.tsx` s'affiche pendant le chargement. Composant serveur, aucun hook.
+**`next/form`** : le composant `Form` de Next. En GET, les champs deviennent les paramètres d'URL comme un `<form method="get">` classique, mais la navigation est faite côté client et `loading.tsx` s'affiche pendant le chargement. Composant serveur, aucun hook. Les recherches utilisent désormais `AutoSubmitForm`, qui se lance sans bouton.
 
 **Hydratation** : après réception du HTML, React « réveille » la page dans le navigateur. Si le HTML serveur et le rendu client diffèrent (dates formatées dans deux fuseaux, par exemple), avertissement `Hydration failed`.
 
@@ -176,9 +176,9 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Personnel (staff)** (métier) : l'équipe du client, trois métiers (livreur, préparateur de commandes, gestionnaire), avec coordonnées, créneau de travail, disponibilité, jours travaillés. Les gestionnaires listés sont des personnes ; leur accès au back-office se gère dans Comptes. Son historique de traitement se calcule à partir des commandes affectées (`summarizeStaffWork`).
 
-**Communauté** (métier) : groupe de clients qui commandent ensemble et récupèrent leurs produits à un même point de retrait à une heure convenue (crèche, école, entreprise). Créée par l'application FIG, qui applique sa remise sur chaque commande des membres ; le dashboard la lit (onglet Communautés, fiche) et affiche la remise sur les commandes.
+**Communauté** (métier) : groupe de clients qui commandent ensemble et récupèrent leurs produits à un même point de retrait, à l'horaire que chacun choisit en commandant dans l'application (crèche, école, entreprise). Créée par l'application FIG, qui applique sa remise sur chaque commande des membres ; le dashboard la lit (recherche commune de la section Clients, fiche) et affiche la remise sur les commandes.
 
-**Remise (OrderDiscount)** (métier) : réduction portée par une commande, appliquée par l'application : « communauté » (pourcentage de la communauté) ou « fidélité » (15 %). Le montant est conservé en centimes ; le total dû est le sous-total des lignes moins ce montant (`computeOrderTotalCents`).
+**Remise (OrderDiscount)** (métier) : réduction portée par une commande, appliquée par l'application : « communauté » (pourcentage de la communauté) ou « fidélité » (15 %). Le montant est conservé en centimes ; le total dû est le sous-total des lignes moins ce montant (`computeOrderTotalCents`). Source de vérité : le paiement dans l'application ; le dashboard ne la calcule jamais.
 
 **Série de fidélité** (métier) : nombre de commandes d'affilée d'un particulier (`loyaltyStatus`). Une annulation remet à zéro, la commande qui porte la remise repart de zéro ; à huit, la prochaine commande est à −15 %. Affichée en jauge sur la fiche client et en badge dans la liste.
 
@@ -187,3 +187,33 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **`alias()` (Drizzle)** (base) : joindre deux fois la même table sous deux noms (`preparer`, `driver`) dans une requête, pour lire les deux personnes affectées à une commande en un seul `SELECT`.
 
 **Rafraîchissement de session (glissant)** (sécurité) : Auth.js re-signe le jeton et re-pose le cookie à chaque lecture de session, pour prolonger une session active. Effet de bord : une réponse de préchargement encore en vol après la déconnexion re-posait un cookie valide. Le proxy retire ce cookie des réponses de préchargement et tant que le jeton a moins de la moitié de sa vie (`src/lib/session-refresh.ts`).
+
+**Recherche et filtres d'URL** (commandes, livraisons) : la barre `OrdersFilters` est un formulaire GET automatique (`AutoSubmitForm`), chaque champ devient un paramètre (`?q=benali&du=2026-09-01&au=2026-09-07&livreur=aucun`). L'URL est la source de vérité : partageable, retour arrière gratuit, relue par `parseOrderFilters` (tolérant) et réécrite par `orderFiltersQuery` pour la pagination et les raccourcis. `aucun` demande les commandes sans personne affectée.
+
+**Période ramenée** (livraisons) : une tournée couvre 7 jours au plus (`TOUR_MAX_DAYS`). Une période plus longue n'est pas refusée : sa fin est ramenée au 7e jour (`tourRange`) et l'écran le signale.
+
+**Barre d'avancement segmentée** (livraisons) : barre découpée en segments proportionnels, un par statut (livrées, annulées, en livraison, en préparation, en attente), accompagnée d'une légende chiffrée. Sur la tournée et sur le tableau de bord (commandes de la période). « Traitée » veut dire livrée ou annulée : il ne reste rien à faire.
+
+**Source de vérité** (branchement) : le système dont la valeur fait foi quand deux copies divergent. Pour FIG, l'application : le montant d'une remise est celui du paiement, l'horaire de retrait est celui choisi à la commande. Le dashboard affiche ces valeurs, il ne les recalcule pas.
+
+**Type de client (particulier, communauté)** (métier) : une commande ou un client est « particulier » sans communauté, « communauté » sinon (`clientTypeOf`). Affiché partout par `ClientTypeLabel`, avec une icône et un code couleur (tokens `--individual`, `--community`) ; le nom de la communauté passe à la ligne au lieu de déborder.
+
+**Annuaire (clients)** (clients) : la liste commune des particuliers et des communautés de la section Clients (`buildDirectory`), cherchée (`matchesDirectoryQuery`), filtrée par type et triée (nom, commandes, montant, récence) par des règles pures.
+
+**Camembert plein** (métriques) : un disque découpé en parts proportionnelles, chacune de sa couleur, sans pourcentage écrit ; au survol, une étiquette nomme la part et son nombre (`RatioPie`). La géométrie des parts est une fonction pure (`pieSlicePaths`).
+
+**Duplication (personnel)** (personnel) : créer une nouvelle fiche préremplie depuis une personne (`/personnel/nouveau?depuis=`) : métier, créneau, disponibilité et jours sont repris (`staffTemplate`), l'identité, les coordonnées et les notes restent à saisir.
+
+**Masque CSS (image de fond)** (style) : `mask-image` découpe un élément selon la forme d'une image. Le motif du fond (`public/fond/verger.svg`, feuilles, figue, agrume, vagues) sert de masque à un dégradé de tokens : le même fichier prend la couleur de chaque thème, sans couleur en dur dans le CSS. Il couvre toute la fenêtre (`mask-size: cover`) sur une couche fixe de `body`, qui ne bouge pas au défilement.
+
+**Container query** (responsive) : une règle CSS qui dépend de la largeur d'un élément parent et non de la fenêtre. Le conteneur de page du layout est `@container/main` ; `@2xl/main:grid-cols-2` veut dire « deux colonnes quand la zone de contenu fait au moins 42rem ». Indispensable avec une sidebar : à 768 px, la fenêtre est « tablette » mais le contenu fait 440 px menu ouvert, 630 px menu replié.
+
+**Anti-rebond (debounce)** (recherche) : attendre que la saisie s'arrête (350 ms) avant de lancer la recherche, au lieu d'une requête par touche. Chaque frappe relance le minuteur (`AutoSubmitForm`).
+
+**Course (race condition)** (recherche) : deux recherches parties l'une après l'autre dont les réponses arrivent dans le désordre ; l'ancienne pourrait écraser la plus récente ou la saisie en cours. Parade : le routeur de Next abandonne la navigation doublée, et `settleRequests` reconnaît une réponse à nous (les champs ne sont pas touchés) d'une navigation extérieure comme « Réinitialiser » (les champs reprennent l'URL).
+
+**Transition (`useTransition`)** (React) : marque une mise à jour comme non urgente ; pendant qu'elle charge, l'écran actuel reste affiché (pas de squelette) et `isPending` permet un indicateur discret, ici l'icône de recherche qui tourne.
+
+**Thème FIG (crépuscule)** (style) : le troisième mode d'affichage, inspiré des affiches de GTA VI : nuit violette, rose coucher de soleil, orange pêche, bleu lagon, en teintes adoucies.
+
+**Groupes de navigation** (coquille) : les neuf sections du menu rangées sous quatre intitulés (Activité, Offre, Clients et équipe, Pilotage) par `groupNavItems` ; un groupe sans section permise au rôle disparaît.

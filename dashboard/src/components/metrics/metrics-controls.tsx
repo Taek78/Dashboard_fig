@@ -42,7 +42,7 @@ export function MetricsControls({
           range={range}
           hiddenFields={{ tva: query.tax }}
         >
-          <div className="grid gap-1.5 md:w-52">
+          <div className="grid gap-1.5 @2xl/main:w-52">
             <Label htmlFor="comparaison">Comparer à</Label>
             <NativeSelect
               id="comparaison"

@@ -2,37 +2,35 @@ import { describe, expect, it } from "vitest";
 import {
   NOTE_MAX_LENGTH,
   addNoteSchema,
-  parseCustomerSearch,
+  parseClientsSearch,
 } from "@/domain/customers/schemas";
 
-describe("parseCustomerSearch", () => {
-  it("renvoie l'onglet, la requête trimée et le drapeau « tous »", () => {
-    expect(parseCustomerSearch({ q: " amel " })).toEqual({
-      tab: "particuliers",
-      query: "amel",
-      all: false,
-    });
-    expect(parseCustomerSearch({ tous: "1" })).toEqual({
-      tab: "particuliers",
-      query: undefined,
-      all: true,
-    });
-    expect(parseCustomerSearch({ type: "communautes" }).tab).toBe(
-      "communautes",
-    );
-    expect(parseCustomerSearch({ type: "autre" }).tab).toBe("particuliers");
+describe("parseClientsSearch", () => {
+  it("lit recherche, type, tri et page", () => {
+    expect(
+      parseClientsSearch({
+        q: " amel ",
+        type: "communautes",
+        tri: "recent",
+        page: "2",
+      }),
+    ).toEqual({ query: "amel", type: "communautes", sort: "recent", page: 2 });
   });
 
-  it("sans paramètre valide, ni requête ni liste : la page reste sur le moteur", () => {
-    expect(parseCustomerSearch({})).toEqual({
-      tab: "particuliers",
+  it("par défaut : tout le monde, par nom, première page", () => {
+    expect(parseClientsSearch({})).toEqual({
       query: undefined,
-      all: false,
+      type: "tous",
+      sort: "nom",
+      page: 1,
     });
-    expect(parseCustomerSearch({ q: "" }).query).toBeUndefined();
-    expect(parseCustomerSearch({ q: ["a", "b"] }).query).toBeUndefined();
-    expect(parseCustomerSearch({ q: "x".repeat(65) }).query).toBeUndefined();
-    expect(parseCustomerSearch({ tous: "oui" }).all).toBe(false);
+    expect(parseClientsSearch({ q: "" }).query).toBeUndefined();
+    expect(parseClientsSearch({ q: ["a", "b"] }).query).toBeUndefined();
+    expect(parseClientsSearch({ q: "x".repeat(65) }).query).toBeUndefined();
+    expect(parseClientsSearch({ type: "autre" }).type).toBe("tous");
+    expect(parseClientsSearch({ tri: "prix" }).sort).toBe("nom");
+    expect(parseClientsSearch({ page: "0" }).page).toBe(1);
+    expect(parseClientsSearch({ page: "-3" }).page).toBe(1);
   });
 });
 

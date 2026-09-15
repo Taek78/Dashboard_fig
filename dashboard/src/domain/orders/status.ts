@@ -12,21 +12,23 @@
  * Clés anglaises (identifiants de code), libellés français (interface). Vocabulaire
  * à confirmer avec le client (question 9) ; l'enum Postgres order_status reprend
  * ces clés à l'identique.
+ *
+ * Pas de statut « confirmée » (décision du client, 2026-09-15) : une commande
+ * reçue est considérée comme déjà prise en charge, « en attente » passe
+ * directement à « en préparation ».
  */
 export const ORDER_STATUSES = [
   "pending",
-  "confirmed",
   "preparing",
   "delivering",
   "delivered",
   "cancelled",
-] as const; //Avec as const, chaque élément garde son type littéral ("pending", "confirmed"…) et le tableau devient readonly
+] as const; //Avec as const, chaque élément garde son type littéral ("pending", "preparing"…) et le tableau devient readonly
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "En attente",
-  confirmed: "Confirmée",
   preparing: "En préparation",
   delivering: "En livraison",
   delivered: "Livrée",
@@ -34,8 +36,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["preparing", "cancelled"],
+  pending: ["preparing", "cancelled"],
   preparing: ["delivering", "cancelled"],
   delivering: ["delivered"],
   delivered: [],
@@ -57,7 +58,7 @@ export function allowedTransitions(from: OrderStatus): OrderStatus[] {
 /**
  * Chemin nominal de « en attente » jusqu'à `to`, bornes incluses : sert aux
  * fixtures d'historique. Une annulation part toujours de « en attente ».
- * ["pending", "confirmed", "preparing"] pour "preparing".
+ * ["pending", "preparing", "delivering"] pour "delivering".
  */
 export function statusPath(to: OrderStatus): OrderStatus[] {
   if (to === "cancelled") return ["pending", "cancelled"];

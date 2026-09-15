@@ -51,9 +51,22 @@ describe("ordersMock.getOrders", () => {
     expect(pending.every((o) => o.status === "pending")).toBe(true);
 
     const both = await settle(
-      ordersMock.getOrders({ status: "pending", date: "2026-09-08" }),
+      ordersMock.getOrders({
+        status: "pending",
+        from: "2026-09-08",
+        to: "2026-09-08",
+      }),
     );
     expect(both.map((o) => o.id)).toEqual(["cmd-0009", "cmd-0010"]);
+
+    const search = await settle(
+      ordersMock.getOrders({
+        query: "benali",
+        from: "2026-09-05",
+        to: "2026-09-09",
+      }),
+    );
+    expect(search.map((o) => o.id)).toEqual(["cmd-0001", "cmd-0012"]);
   });
 
   it("renvoie des copies : muter le résultat ne touche ni le store ni les fixtures", async () => {
@@ -97,15 +110,15 @@ describe("ordersMock.getOrder", () => {
 describe("ordersMock.updateOrderStatus", () => {
   it("écrit le nouveau statut et le rend visible par getOrder et getOrders", async () => {
     const updated = await settle(
-      ordersMock.updateOrderStatus("cmd-0001", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0001", change("pending", "preparing")),
     );
-    expect(updated?.status).toBe("confirmed");
+    expect(updated?.status).toBe("preparing");
 
     const byId = await settle(ordersMock.getOrder("cmd-0001"));
-    expect(byId?.status).toBe("confirmed");
+    expect(byId?.status).toBe("preparing");
 
     const confirmed = await settle(
-      ordersMock.getOrders({ status: "confirmed" }),
+      ordersMock.getOrders({ status: "preparing" }),
     );
     expect(confirmed.map((o) => o.id)).toContain("cmd-0001");
   });
@@ -115,7 +128,7 @@ describe("ordersMock.updateOrderStatus", () => {
       await settle(
         ordersMock.updateOrderStatus(
           "cmd-9999",
-          change("pending", "confirmed"),
+          change("pending", "preparing"),
         ),
       ),
     ).toBeNull();
@@ -123,28 +136,28 @@ describe("ordersMock.updateOrderStatus", () => {
 
   it("renvoie null si le statut attendu (from) ne correspond plus, sans rien écrire", async () => {
     await settle(
-      ordersMock.updateOrderStatus("cmd-0001", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0001", change("pending", "preparing")),
     );
     const stale = await settle(
       ordersMock.updateOrderStatus("cmd-0001", change("pending", "cancelled")),
     );
     expect(stale).toBeNull();
     const order = await settle(ordersMock.getOrder("cmd-0001"));
-    expect(order?.status).toBe("confirmed");
+    expect(order?.status).toBe("preparing");
   });
 
   it("renvoie une copie : la muter ne change pas le store", async () => {
     const updated = await settle(
-      ordersMock.updateOrderStatus("cmd-0001", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0001", change("pending", "preparing")),
     );
     updated!.status = "delivered";
     const order = await settle(ordersMock.getOrder("cmd-0001"));
-    expect(order?.status).toBe("confirmed");
+    expect(order?.status).toBe("preparing");
   });
 
   it("ne modifie jamais les fixtures", async () => {
     await settle(
-      ordersMock.updateOrderStatus("cmd-0001", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0001", change("pending", "preparing")),
     );
     expect(ordersFixtures[0].status).toBe("pending");
   });
@@ -160,14 +173,14 @@ describe("ordersMock.updateOrderStatus", () => {
 describe("ordersMock.getOrderEvents", () => {
   it("relit l'historique des fixtures, du plus récent au plus ancien", async () => {
     const list = await settle(ordersMock.getOrderEvents("cmd-0002"));
-    expect(list.map((e) => e.to)).toEqual(["confirmed"]);
+    expect(list.map((e) => e.to)).toEqual(["preparing"]);
     expect(await settle(ordersMock.getOrderEvents("cmd-0001"))).toEqual([]);
     expect(await settle(ordersMock.getOrderEvents("cmd-9999"))).toEqual([]);
   });
 
   it("un changement de statut réussi ajoute un événement portant l'acteur", async () => {
     await settle(
-      ordersMock.updateOrderStatus("cmd-0001", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0001", change("pending", "preparing")),
     );
     await settle(
       ordersMock.updateOrderStatus("cmd-0001", change("pending", "cancelled")),
@@ -177,7 +190,7 @@ describe("ordersMock.getOrderEvents", () => {
     expect(list[0]).toMatchObject({
       orderId: "cmd-0001",
       from: "pending",
-      to: "confirmed",
+      to: "preparing",
       actor: ACTOR,
       at: MOCK_EVENT_AT,
     });
@@ -200,7 +213,7 @@ describe("ordersMock.updateOrderStatus : annulation", () => {
     const [event] = await settle(ordersMock.getOrderEvents("cmd-0001"));
     expect(event?.cancellation).toEqual(cancellation);
     const confirmed = await settle(
-      ordersMock.updateOrderStatus("cmd-0009", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0009", change("pending", "preparing")),
     );
     expect(confirmed?.cancellation).toBeNull();
   });
@@ -209,7 +222,7 @@ describe("ordersMock.updateOrderStatus : annulation", () => {
 describe("resetOrdersMock", () => {
   it("restaure l'état initial après une écriture", async () => {
     await settle(
-      ordersMock.updateOrderStatus("cmd-0001", change("pending", "confirmed")),
+      ordersMock.updateOrderStatus("cmd-0001", change("pending", "preparing")),
     );
     resetOrdersMock();
     const order = await settle(ordersMock.getOrder("cmd-0001"));

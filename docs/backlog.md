@@ -1,13 +1,13 @@
 # État du projet et reste à faire
 
-Dernière mise à jour : 2026-09-14.
+Dernière mise à jour : 2026-09-15.
 
 ## Livré
 
-- **Écrans** : tableau de bord (période et HT/TTC), commandes (cartes, détail, historique des statuts, annulation avec motif, affectation d'un préparateur et d'un livreur, remises affichées), livraisons (tournée de terrain, livreur affecté), catalogue (grille avec modifier / dupliquer / supprimer, fiche, création, suppression confirmée), articles, clients (particuliers avec série de fidélité, communautés avec remise, fiches, notes), personnel (livreurs, préparateurs, gestionnaires : fiches complètes, disponibilité, historique de traitement), métriques (KPI, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
+- **Écrans** : tableau de bord (période et HT/TTC, avancement des commandes), commandes (recherche par référence, client ou coordonnées, filtres statut, période, préparateur et livreur, cartes, détail, historique des statuts, annulation avec motif, affectation d'un préparateur et d'un livreur, remises affichées), livraisons (tournées sur 7 jours au plus groupées par jour, même recherche et mêmes filtres que les commandes, avancement détaillé par statut, livreur affecté), catalogue (grille avec modifier / dupliquer / supprimer, fiche, création, suppression confirmée), articles, clients (recherche commune particuliers et communautés, filtre et tri, grandes cartes, fidélité, notes), personnel (recherche par nom, prénom et coordonnées, filtres métier, disponibilité, créneau, jour et présence, cartes avec modifier, dupliquer et supprimer, fiche modifiable en haut, historique de traitement filtrable), métriques (rangées par thème, part des commandes de communauté, camemberts pleins, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
 - **Données** : domaine pur par section, façades avec deux implémentations (fixtures en mémoire, PostgreSQL via Drizzle), schéma et migrations possédés par le dashboard, seed, sauvegardes.
 - **Sécurité** : Auth.js Credentials, rôles et matrice d'accès en lecture et en écriture, limitation de débit, CSP à nonce, journal de sécurité en base, gardes de production.
-- **Qualité** : 429 tests Vitest, 18 parcours Playwright, CI (check, audit, Playwright en mock puis contre PostgreSQL).
+- **Qualité** : 487 tests Vitest, 33 parcours Playwright (dont tablette 768 px et menu replié), CI (check, audit, Playwright en mock puis contre PostgreSQL).
 
 ## Reste à faire
 
@@ -54,8 +54,14 @@ Dernière mise à jour : 2026-09-14.
 ## Décisions prises
 
 - La base n'existe pas chez le client : le dashboard la crée et la possède (2026-09-14).
+- Plus de statut « confirmée » : une commande reçue passe d'« en attente » à « en préparation » ; migration 0003 avec reprise des données (2026-09-15).
+- L'horaire de retrait d'une communauté est choisi par le client à chaque commande dans l'application, source de vérité ; la communauté n'a plus d'heure fixe (2026-09-15).
+- Clients : une recherche commune pour les particuliers et les communautés, avec filtre et tri ; chaque commande et chaque client affichent leur type en couleur (2026-09-15).
+- Personnel : modifier, dupliquer et supprimer depuis les cartes (admin et gestionnaire) ; une duplication reprend le métier et l'organisation, jamais l'identité (2026-09-15).
+- Les recherches se lancent pendant la saisie (anti-rebond de 350 ms), sans bouton « Rechercher » (2026-09-15).
+- Mise en page pilotée par la largeur de la zone de contenu (container queries) pour la tablette, sidebar ouverte ou repliée ; fond de fenêtre fixe ; thème FIG refondu en crépuscule adouci (2026-09-15).
 - Affectation d'un préparateur et d'un livreur sur chaque commande, depuis les cartes et la fiche, par liste déroulante qui écrit aussitôt ; la tournée continue de se piloter par le statut (2026-09-14, remplace la décision du 2026-09-13).
-- Les remises (communauté, fidélité) sont décidées et appliquées par l'application FIG ; le dashboard les affiche et signale la fidélité à venir (2026-09-14).
+- Les remises (communauté, fidélité) sont décidées et appliquées par l'application FIG ; la source de vérité est le **paiement** dans l'application : le dashboard les affiche sans jamais les calculer et signale la fidélité à venir (2026-09-14, précisé le 2026-09-15).
 - Les communautés sont en lecture seule dans le dashboard tant que la question 15 est ouverte (2026-09-14).
 - Un produit dupliqué naît masqué, nommé « (copie) », pour être relu avant publication (2026-09-14).
 - HT par défaut sur toutes les pages qui affichent des montants (2026-09-14).

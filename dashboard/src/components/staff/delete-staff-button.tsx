@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { STAFF_DELETE_CONFIRM_WORD } from "@/domain/staff/types";
 import { idleActionResult } from "@/lib/action-result";
+import { cn } from "@/lib/utils";
 
 /*
  * Suppression définitive d'une personne en deux temps (client), même
@@ -15,13 +16,17 @@ import { idleActionResult } from "@/lib/action-result";
  * ici et par zod côté serveur. Les commandes déjà affectées perdent
  * l'affectation (clé étrangère « set null ») ; pour garder l'historique,
  * décocher « Dans l'équipe » suffit.
+ * `compact` : sur une carte, le bouton est une icône et l'encart se replie
+ * dans la carte.
  */
 export function DeleteStaffButton({
   staffId,
   name,
+  compact = false,
 }: {
   staffId: string;
   name: string;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
@@ -37,11 +42,14 @@ export function DeleteStaffButton({
       <Button
         type="button"
         variant="ghost"
+        size={compact ? "icon-sm" : "default"}
         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        title={compact ? `Supprimer ${name}` : undefined}
+        aria-label={compact ? `Supprimer ${name}` : undefined}
         onClick={() => setOpen(true)}
       >
         <Trash2 />
-        Supprimer cette personne
+        {compact ? null : "Supprimer cette personne"}
       </Button>
     );
   }
@@ -50,23 +58,31 @@ export function DeleteStaffButton({
     <form
       action={formAction}
       role="alert"
-      className="border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-xl border p-4"
+      className={cn(
+        "border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-xl border",
+        compact ? "w-full p-3" : "p-4",
+      )}
     >
       <input type="hidden" name="staffId" value={staffId} />
-      <p className="flex items-start gap-2 text-sm">
+      <p
+        className={cn(
+          "flex items-start gap-2",
+          compact ? "text-xs" : "text-sm",
+        )}
+      >
         <CircleAlert
           className="text-destructive mt-0.5 size-4 shrink-0"
           aria-hidden="true"
         />
         <span>
-          <strong>Suppression définitive de {name}.</strong> Les commandes
-          qu&apos;elle a préparées ou livrées perdent son nom. Pour garder
-          l&apos;historique d&apos;une personne qui part, décochez plutôt « Dans
-          l&apos;équipe ».
+          <strong>Suppression définitive de {name}.</strong>{" "}
+          {compact
+            ? "Ses commandes perdent son nom."
+            : "Les commandes qu'elle a préparées ou livrées perdent son nom. Pour garder l'historique d'une personne qui part, décochez plutôt « Dans l'équipe »."}
         </span>
       </p>
       <div className="grid gap-1.5">
-        <Label htmlFor={inputId}>
+        <Label htmlFor={inputId} className={compact ? "text-xs" : undefined}>
           Tapez <span className="font-mono">{STAFF_DELETE_CONFIRM_WORD}</span>{" "}
           pour confirmer
         </Label>
@@ -76,13 +92,14 @@ export function DeleteStaffButton({
           autoComplete="off"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
-          className="max-w-56"
+          className={compact ? "h-8 max-w-full" : "max-w-56"}
         />
       </div>
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
           variant="destructive"
+          size={compact ? "sm" : "default"}
           disabled={!ready || pending}
         >
           {pending ? (
@@ -93,13 +110,14 @@ export function DeleteStaffButton({
           ) : (
             <>
               <Trash2 />
-              Supprimer définitivement
+              {compact ? "Supprimer" : "Supprimer définitivement"}
             </>
           )}
         </Button>
         <Button
           type="button"
           variant="outline"
+          size={compact ? "sm" : "default"}
           onClick={() => {
             setOpen(false);
             setTyped("");

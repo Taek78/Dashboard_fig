@@ -65,7 +65,7 @@ export function ProductForm({ product }: ProductFormProps) {
           et son message de résultat, eux, restent en place. */}
       <div key={product?.updatedAt ?? "nouveau"} className="contents">
         {/* Identité */}
-        <fieldset className="grid gap-4 md:grid-cols-2">
+        <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
           <legend className="mb-3 text-sm font-semibold">Identité</legend>
           <div className={field}>
             <Label htmlFor="name">Nom</Label>
@@ -126,7 +126,7 @@ export function ProductForm({ product }: ProductFormProps) {
         </fieldset>
 
         {/* Prix et stock */}
-        <fieldset className="grid gap-4 md:grid-cols-2">
+        <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
           <legend className="mb-3 text-sm font-semibold">Prix et stock</legend>
           <div className={field}>
             <Label htmlFor="unit">Vendu</Label>
@@ -198,7 +198,7 @@ export function ProductForm({ product }: ProductFormProps) {
         </fieldset>
 
         {/* Origine et calibre */}
-        <fieldset className="grid gap-4 md:grid-cols-2">
+        <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
           <legend className="mb-3 text-sm font-semibold">
             Origine et calibre
           </legend>
@@ -256,7 +256,7 @@ export function ProductForm({ product }: ProductFormProps) {
         {/* Illustration */}
         <fieldset>
           <legend className="mb-3 text-sm font-semibold">Illustration</legend>
-          <div className="flex flex-col gap-4 md:flex-row">
+          <div className="flex flex-col gap-4 @2xl/main:flex-row">
             <div
               aria-hidden="true"
               className={cn(
@@ -320,7 +320,7 @@ export function ProductForm({ product }: ProductFormProps) {
         </fieldset>
 
         {/* Statut */}
-        <fieldset className="grid gap-3 sm:grid-cols-2">
+        <fieldset className="grid gap-3 @xl/main:grid-cols-2">
           <legend className="mb-3 text-sm font-semibold">Statut</legend>
           {(
             [
@@ -362,7 +362,7 @@ export function ProductForm({ product }: ProductFormProps) {
           variant="brand"
           disabled={pending}
           size="lg"
-          className="w-full sm:w-auto"
+          className="w-full @xl/main:w-auto"
         >
           {pending ? (
             <>

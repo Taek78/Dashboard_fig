@@ -12,7 +12,12 @@ import {
 } from "recharts";
 import type { StatusPoint } from "@/domain/metrics/rules";
 
-/* Répartition des commandes par statut : barres horizontales, une couleur de thème par statut. */
+/*
+ * Répartition des commandes par statut : barres horizontales, une couleur de
+ * thème par statut. Le graphe est masqué aux lecteurs d'écran (la liste
+ * sr-only le double) : accessibilityLayer={false} l'empêche aussi de prendre
+ * le focus, sinon Chrome refuse un élément focalisé sous aria-hidden.
+ */
 const COLORS = [
   "var(--chart-1)",
   "var(--chart-2)",
@@ -30,6 +35,7 @@ export function StatusChart({ points }: { points: StatusPoint[] }) {
           <BarChart
             data={points}
             layout="vertical"
+            accessibilityLayer={false}
             margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
           >
             <XAxis type="number" hide allowDecimals={false} />

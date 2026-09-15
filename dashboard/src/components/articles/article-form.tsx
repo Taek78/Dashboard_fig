@@ -58,7 +58,7 @@ export function ArticleForm({
       {/* key : après un enregistrement, la fiche relue remonte les champs avec
           ses nouvelles valeurs par défaut (sinon Base UI avertit). */}
       <div key={article?.updatedAt ?? "nouveau"} className="contents">
-        <div className="grid gap-4 md:grid-cols-[1fr_14rem_11rem]">
+        <div className="grid gap-4 @2xl/main:grid-cols-[1fr_14rem_11rem]">
           <div className="grid gap-1.5">
             <Label htmlFor="title">Titre</Label>
             <Input
@@ -181,13 +181,13 @@ export function ArticleForm({
         </Label>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 @xl/main:flex-row @xl/main:items-center">
         <Button
           type="submit"
           variant="brand"
           disabled={pending}
           size="lg"
-          className="w-full sm:w-auto"
+          className="w-full @xl/main:w-auto"
         >
           {pending ? (
             <>

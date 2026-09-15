@@ -18,9 +18,14 @@ import { getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
-import { paginate, sortOrdersBySlot } from "@/domain/orders/rules";
+import {
+  hasOrderFilters,
+  orderFiltersQuery,
+  paginate,
+  sortOrdersBySlot,
+} from "@/domain/orders/rules";
 import { parseOrderFilters, parsePage } from "@/domain/orders/schemas";
-import { assignmentOptions } from "@/domain/staff/rules";
+import { assignmentOptions, staffFilterOptions } from "@/domain/staff/rules";
 import { formatOrdersCount } from "@/lib/format";
 import { readSimulationMode } from "@/lib/simulation";
 
@@ -28,7 +33,8 @@ import { readSimulationMode } from "@/lib/simulation";
  * Liste des commandes. Composant serveur async : lit l'URL une fois, en tire le
  * mode de simulation (dev seulement), les filtres validés et la page, charge via
  * la façade (@/data/orders, jamais le mock) avec l'équipe (pour les listes
- * déroulantes d'affectation), puis rend la barre de filtres, le compteur, les
+ * déroulantes d'affectation), puis rend la recherche et les filtres (OrdersFilters, partagés avec les
+ * livraisons : référence, client, statut, période, équipe), le compteur, les
  * cartes de la page (les plus récentes d'abord, 40 par page) et la pagination,
  * ou l'un des deux états vides.
  *
@@ -51,7 +57,7 @@ export default async function CommandesPage({
   if (mode === "erreur") throw new Error("Simulation d'erreur");
 
   const filters = parseOrderFilters(raw);
-  const isFiltered = filters.status !== undefined || filters.date !== undefined;
+  const isFiltered = hasOrderFilters(filters);
   const [orders, user, staff] = await Promise.all([
     mode === "vide" ? Promise.resolve([]) : getOrders(filters),
     getCurrentUser(),
@@ -59,12 +65,7 @@ export default async function CommandesPage({
   ]);
   const options = assignmentOptions(staff);
   const page = paginate(sortOrdersBySlot(orders, "desc"), parsePage(raw));
-  const baseParams = [
-    filters.status ? `statut=${filters.status}` : "",
-    filters.date ? `date=${filters.date}` : "",
-  ]
-    .filter(Boolean)
-    .join("&");
+  const baseParams = orderFiltersQuery(filters);
 
   return (
     <>
@@ -73,12 +74,21 @@ export default async function CommandesPage({
         description="Suivez et préparez les commandes à livrer."
       />
       <div className="flex flex-col gap-4">
-        <OrdersFilters filters={filters} />
-        <p role="status" className="text-muted-foreground text-sm">
+        <OrdersFilters
+          action="/commandes"
+          formLabel="Recherche et filtres des commandes"
+          searchLabel="Rechercher une commande"
+          filters={filters}
+          staff={staffFilterOptions(staff)}
+          canReset={isFiltered}
+        />
+        <p role="status" className="text-base font-semibold">
           {formatOrdersCount(page.total)}
-          {page.pageCount > 1
-            ? ` · les plus récentes d'abord, page ${page.page} sur ${page.pageCount}`
-            : ""}
+          {page.pageCount > 1 ? (
+            <span className="text-muted-foreground text-sm font-normal">
+              {` · les plus récentes d'abord, page ${page.page} sur ${page.pageCount}`}
+            </span>
+          ) : null}
         </p>
         {orders.length > 0 ? (
           <>

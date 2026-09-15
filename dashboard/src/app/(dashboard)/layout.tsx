@@ -17,9 +17,14 @@ import { verifySession } from "@/lib/dal";
  *
  * - SidebarProvider : contexte lu par SidebarTrigger, NavMain et Sidebar.
  * - Le lien d'évitement est le premier élément focusable.
- * - SidebarInset est le <main> ; id="contenu" est la cible du lien.
+ * - SidebarInset est le <main> ; id="contenu" est la cible du lien. Le fond
+ *   (dégradé et motif) est posé sur toute la fenêtre par globals.css.
  * - min-w-0 sur le conteneur de page : un enfant large (tableau, graphe) défile
  *   dans son propre cadre au lieu d'élargir la page sur mobile.
+ * - @container/main : le conteneur de page est un conteneur de requêtes. Les
+ *   composants de page choisissent leur disposition selon SA largeur
+ *   (@xl/main:, @2xl/main:, @4xl/main:…) et non celle de la fenêtre : à 768 px,
+ *   la sidebar ouverte laisse ~440 px, repliée ~630 px, et la mise en page suit.
  */
 export default async function DashboardLayout({ children }: LayoutProps<"/">) {
   const user = await verifySession();
@@ -40,7 +45,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
       >
         <SiteHeader user={user} />
         {/* Largeur bornée et marges généreuses : la lisibilité avant la densité. */}
-        <div className="mx-auto flex w-full max-w-350 min-w-0 flex-1 flex-col gap-5 p-4 md:gap-6 md:p-8">
+        <div className="@container/main mx-auto flex w-full max-w-350 min-w-0 flex-1 flex-col gap-5 p-4 md:gap-6 md:p-6 xl:p-8">
           {children}
         </div>
       </SidebarInset>

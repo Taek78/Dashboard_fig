@@ -26,7 +26,7 @@ export function TrendBadge({
 }) {
   const trend = computeTrend(current, previous);
   const base =
-    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums";
+    "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap tabular-nums";
 
   if (trend.direction === "flat") {
     return (

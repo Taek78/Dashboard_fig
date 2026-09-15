@@ -9,8 +9,10 @@ test.describe("personnel", () => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel?type=livreur");
     await expect(
-      page.getByRole("link", { name: /Toute l'équipe/ }),
-    ).toBeVisible();
+      page
+        .getByRole("form", { name: "Recherche dans l'équipe" })
+        .getByLabel("Métier"),
+    ).toHaveValue("livreur");
     await page.getByRole("link", { name: "Nouvelle personne" }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Nouvelle personne" }),
@@ -60,12 +62,76 @@ test.describe("personnel", () => {
     ).toBeVisible();
   });
 
-  test("l'onglet des gestionnaires renvoie vers les comptes", async ({
+  test("la recherche dans l'équipe trouve par nom ou téléphone et se filtre par disponibilité", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/personnel");
+    const form = page.getByRole("form", { name: "Recherche dans l'équipe" });
+    const search = form.getByLabel("Rechercher une personne");
+    await search.pressSequentially("dembele", { delay: 50 });
+    await expect(page).toHaveURL(/q=dembele/);
+    await expect(
+      page.getByRole("article", { name: "Personne Malik Dembélé" }),
+    ).toBeVisible();
+    await expect(page.getByRole("status").first()).toContainText(
+      /^1 personne sur/,
+    );
+    await expect(search).toHaveValue("dembele");
+
+    await page.goto("/personnel");
+    await form.getByLabel("Disponibilité").selectOption("conge");
+    await expect(page).toHaveURL(/dispo=conge/);
+    await expect(
+      page.getByRole("article", { name: "Personne Ousmane Diagne" }),
+    ).toBeVisible();
+    await form.getByLabel("Rechercher une personne").fill("90 04");
+    await expect(page).toHaveURL(/q=90\+04/);
+    await expect(page.getByText("Personne ne correspond")).toBeVisible();
+  });
+
+  test("le filtre des gestionnaires renvoie vers les comptes", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel?type=gestionnaire");
     await expect(page.getByText("se gère dans")).toBeVisible();
     await expect(page.getByRole("link", { name: "Comptes" })).toBeVisible();
+  });
+
+  test("depuis la carte : dupliquer préremplit la fiche, et l'historique se filtre", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/personnel?type=livreur");
+    const card = page.getByRole("article", { name: "Personne Malik Dembélé" });
+    await expect(card.getByRole("link", { name: "Modifier" })).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "Supprimer Malik Dembélé" }),
+    ).toBeVisible();
+    await card.getByRole("link", { name: "Dupliquer" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Nouvelle personne" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Duplication de la fiche de Malik Dembélé"),
+    ).toBeVisible();
+    await expect(page.getByLabel("Métier")).toHaveValue("livreur");
+    await expect(page.getByLabel("E-mail")).toHaveValue("");
+
+    await page.goto("/personnel/stf-0001");
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Modifier la fiche" }),
+    ).toBeVisible();
+    const search = page.getByRole("form", {
+      name: "Recherche dans l'historique",
+    });
+    await search.getByLabel("Rechercher une commande").fill("FIG-260906");
+    await search.getByLabel("Rôle").selectOption("livraison");
+    await expect(page).toHaveURL(/role=livraison/);
+    await expect(page).toHaveURL(/q=FIG-260906/);
+    await expect(
+      page.getByRole("status").filter({ hasText: "correspond" }),
+    ).toContainText("2 commandes sur");
   });
 });

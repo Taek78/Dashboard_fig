@@ -70,7 +70,7 @@ export default async function ComptesPage() {
                 <article
                   aria-label={`Compte ${account.name}`}
                   className={cn(
-                    "bg-card text-card-foreground ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 md:p-5",
+                    "bg-card text-card-foreground ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
                     !account.active && "opacity-70",
                   )}
                 >

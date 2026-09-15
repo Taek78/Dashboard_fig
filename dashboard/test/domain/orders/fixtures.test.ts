@@ -64,9 +64,7 @@ describe("ordersFixtures (scénario + historique généré)", () => {
       if (o.deliverySlot.date < HISTORY_TO) {
         expect(["delivered", "cancelled"]).toContain(o.status);
       } else {
-        expect(["pending", "confirmed", "preparing", "delivering"]).toContain(
-          o.status,
-        );
+        expect(["pending", "preparing", "delivering"]).toContain(o.status);
       }
       if (o.status === "cancelled") expect(o.cancellation).not.toBeNull();
       else expect(o.cancellation).toBeNull();
@@ -118,7 +116,7 @@ describe("ordersFixtures (scénario + historique généré)", () => {
     expect(prepared.filter((o) => o.preparer).length / prepared.length).toBe(1);
     expect(driven.filter((o) => o.driver).length / driven.length).toBe(1);
     for (const o of generated) {
-      if (o.status === "pending" || o.status === "confirmed") {
+      if (o.status === "pending") {
         expect(o.preparer).toBeNull();
         expect(o.driver).toBeNull();
       }
@@ -135,7 +133,7 @@ describe("ordersFixtures (scénario + historique généré)", () => {
     }
   });
 
-  it("les membres d'une communauté sont livrés au point de retrait avec sa remise", () => {
+  it("les membres d'une communauté sont livrés au point de retrait avec sa remise, au créneau de leur commande", () => {
     const withCommunity = ordersFixtures.filter((o) => o.community);
     expect(withCommunity.length).toBeGreaterThan(100);
     for (const o of withCommunity) {
@@ -143,7 +141,6 @@ describe("ordersFixtures (scénario + historique généré)", () => {
         (c) => c.id === o.community?.id,
       )!;
       expect(o.deliveryCity).toBe(community.pickupCity);
-      expect(o.deliverySlot.start).toBe(community.pickupTime);
       expect(o.discount).toMatchObject({
         kind: "community",
         percent: community.discountPercent,

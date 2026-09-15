@@ -1,12 +1,21 @@
 import type { AssignmentRole } from "@/domain/orders/assignment";
-import type { Order } from "@/domain/orders/types";
-import { STAFF_KINDS, type StaffKind } from "@/domain/staff/kind";
+import { filterOrders } from "@/domain/orders/rules";
+import type { Order, OrderFilters } from "@/domain/orders/types";
+import {
+  STAFF_KINDS,
+  type Availability,
+  type Shift,
+  type StaffKind,
+  type Weekday,
+} from "@/domain/staff/kind";
 import type { StaffMember } from "@/domain/staff/types";
+import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
 
 /*
  * Règles pures du personnel, testées dans test/domain/staff/rules.test.ts :
- * nom affiché, tris et filtres, personnes proposables pour une affectation,
- * historique et compteurs d'une personne calculés à partir des commandes.
+ * nom affiché, tris et filtres, recherche dans l'équipe, personnes proposables
+ * pour une affectation, historique et compteurs d'une personne calculés à
+ * partir des commandes.
  */
 
 /** "Malik Dembélé" : le nom affiché partout (cartes, listes déroulantes, historique). */
@@ -39,6 +48,78 @@ export function filterStaff(
   return kind === undefined
     ? [...members]
     : members.filter((m) => m.kind === kind);
+}
+
+/* ---------- Recherche dans l'équipe ---------- */
+
+export const STAFF_PRESENCES = ["actifs", "partis"] as const;
+export type StaffPresence = (typeof STAFF_PRESENCES)[number];
+export const STAFF_PRESENCE_LABELS: Record<StaffPresence, string> = {
+  actifs: "Dans l'équipe",
+  partis: "Partis de l'équipe",
+};
+
+/** Recherche de la section Personnel (?q=&type=&dispo=&creneau=&jour=&presence=). */
+export type StaffSearch = {
+  query?: string;
+  kind?: StaffKind;
+  availability?: Availability;
+  shift?: Shift;
+  workDay?: Weekday;
+  presence?: StaffPresence;
+};
+
+/**
+ * Recherche libre, sans accents ni majuscules : chaque mot doit se retrouver
+ * dans le prénom, le nom ou l'e-mail (« malik dembele », « dembele malik »,
+ * « renard@ » fonctionnent). Une saisie qui ressemble à un numéro se compare
+ * au téléphone, chiffres seuls (« 90 04 »).
+ */
+export function matchesStaffQuery(
+  member: StaffMember,
+  query: string | undefined,
+): boolean {
+  const q = normalize(query ?? "");
+  if (q === "") return true;
+  const haystack = normalize(
+    `${member.firstName} ${member.lastName} ${member.email}`,
+  );
+  if (q.split(/\s+/).every((word) => haystack.includes(word))) return true;
+  const digits = digitsOnly(q);
+  return (
+    isPhoneLike(q) &&
+    digits.length >= 2 &&
+    digitsOnly(member.phone).includes(digits)
+  );
+}
+
+/**
+ * Filtres cumulés puis tri de sortStaff. Une disponibilité ne retient que les
+ * personnes encore dans l'équipe (une personne partie n'est ni disponible ni
+ * en congé) ; un jour retient celles qui travaillent ce jour-là.
+ */
+export function searchStaff(
+  members: readonly StaffMember[],
+  search: StaffSearch,
+): StaffMember[] {
+  return sortStaff(
+    members.filter(
+      (m) =>
+        (search.kind === undefined || m.kind === search.kind) &&
+        (search.availability === undefined ||
+          (m.active && m.availability === search.availability)) &&
+        (search.shift === undefined || m.shift === search.shift) &&
+        (search.workDay === undefined || m.workDays.includes(search.workDay)) &&
+        (search.presence === undefined ||
+          m.active === (search.presence === "actifs")) &&
+        matchesStaffQuery(m, search.query),
+    ),
+  );
+}
+
+/** Vrai si une recherche ou un filtre est actif sur l'équipe. */
+export function hasStaffSearch(search: StaffSearch): boolean {
+  return Object.values(search).some((value) => value !== undefined);
 }
 
 /** Métier attendu pour chaque rôle d'affectation sur une commande. */
@@ -144,4 +225,87 @@ export function assignmentOptions(
     preparer: assignableStaff(members, "preparer").map(toOption),
     driver: assignableStaff(members, "driver").map(toOption),
   };
+}
+
+export type StaffFilterOption = { id: string; name: string; active: boolean };
+
+/**
+ * Options des filtres « préparateur » et « livreur » des listes : tout le
+ * métier, personnes désactivées comprises (leurs commandes passées restent à
+ * retrouver), actives d'abord puis par nom.
+ */
+export function staffFilterOptions(
+  members: readonly StaffMember[],
+): Record<AssignmentRole, StaffFilterOption[]> {
+  const optionsFor = (role: AssignmentRole) =>
+    sortStaff(filterStaff(members, KIND_FOR_ROLE[role])).map((m) => ({
+      id: m.id,
+      name: staffFullName(m),
+      active: m.active,
+    }));
+  return { preparer: optionsFor("preparer"), driver: optionsFor("driver") };
+}
+
+/* ---------- Duplication ---------- */
+
+/** Ce qu'une duplication reprend d'une fiche. */
+export type StaffTemplate = Pick<
+  StaffMember,
+  "kind" | "shift" | "availability" | "workDays" | "active"
+>;
+
+/**
+ * Modèle d'une nouvelle fiche à partir d'une personne : métier, créneau,
+ * disponibilité, jours travaillés et présence dans l'équipe sont repris ;
+ * identité, coordonnées, date d'entrée et notes restent à saisir (un e-mail
+ * est unique, une note est personnelle).
+ */
+export function staffTemplate(member: StaffMember): StaffTemplate {
+  return {
+    kind: member.kind,
+    shift: member.shift,
+    availability: member.availability,
+    workDays: [...member.workDays],
+    active: member.active,
+  };
+}
+
+/* ---------- Historique filtré ---------- */
+
+export const STAFF_HISTORY_ROLES = ["preparation", "livraison"] as const;
+export type StaffHistoryRole = (typeof STAFF_HISTORY_ROLES)[number];
+export const STAFF_HISTORY_ROLE_LABELS: Record<StaffHistoryRole, string> = {
+  preparation: "Préparations",
+  livraison: "Livraisons",
+};
+
+/** Recherche dans l'historique d'une personne : commande, statut, période, rôle tenu. */
+export type StaffHistoryFilters = Pick<
+  OrderFilters,
+  "query" | "status" | "from" | "to"
+> & { role?: StaffHistoryRole };
+
+/**
+ * Commandes de la personne qui passent la recherche (règle filterOrders des
+ * commandes) et, si demandé, celles où elle a tenu ce rôle. Les plus récentes
+ * d'abord, comme staffOrders.
+ */
+export function filterStaffHistory(
+  orders: readonly Order[],
+  staffId: string,
+  filters: StaffHistoryFilters,
+): Order[] {
+  const { role, ...orderFilters } = filters;
+  return staffOrders(filterOrders(orders, orderFilters), staffId).filter(
+    (o) =>
+      role === undefined ||
+      (role === "preparation"
+        ? o.preparer?.id === staffId
+        : o.driver?.id === staffId),
+  );
+}
+
+/** Vrai si une recherche est active sur l'historique. */
+export function hasStaffHistoryFilters(filters: StaffHistoryFilters): boolean {
+  return Object.values(filters).some((value) => value !== undefined);
 }

@@ -5,7 +5,7 @@ export default function ClientLoading() {
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
       <p className="sr-only">Chargement du client…</p>
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
         <div className="flex flex-col gap-1.5">
           <Skeleton className="h-8 w-56" />
           <span
@@ -16,7 +16,7 @@ export default function ClientLoading() {
         </div>
         <Skeleton className="h-7 w-40" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 @4xl/main:grid-cols-3">
         {["coordonnees", "chiffres"].map((card) => (
           <Card key={card}>
             <CardHeader>
@@ -29,7 +29,7 @@ export default function ClientLoading() {
             </CardContent>
           </Card>
         ))}
-        <Card className="lg:row-span-2">
+        <Card className="@4xl/main:row-span-2">
           <CardHeader>
             <Skeleton className="h-5 w-28" />
           </CardHeader>
@@ -40,7 +40,7 @@ export default function ClientLoading() {
             <Skeleton className="h-8 w-36" />
           </CardContent>
         </Card>
-        <div className="flex flex-col gap-2 lg:col-span-2">
+        <div className="flex flex-col gap-2 @4xl/main:col-span-2">
           <Skeleton className="h-5 w-52" />
           <Skeleton className="h-48 w-full rounded-xl" />
         </div>

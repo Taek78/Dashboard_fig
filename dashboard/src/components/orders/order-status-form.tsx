@@ -86,7 +86,7 @@ export function OrderStatusForm({
         type="submit"
         disabled={pending}
         variant={cancelling ? "destructive" : "default"}
-        className="w-full sm:w-auto sm:self-start"
+        className="w-full @xl/main:w-auto @xl/main:self-start"
       >
         {pending ? (
           <>

@@ -65,7 +65,7 @@ afterEach(() => vi.useRealTimers());
 describe("changeOrderStatus", () => {
   it("refuse le rôle lecture avant même de valider l'entrée", async () => {
     session.role = "lecture";
-    const result = await run({ orderId: "cmd-0001", nextStatus: "confirmed" });
+    const result = await run({ orderId: "cmd-0001", nextStatus: "preparing" });
     expect(result).toEqual({
       status: "error",
       message:
@@ -74,11 +74,11 @@ describe("changeOrderStatus", () => {
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("passe une commande en attente à confirmée et invalide /commandes", async () => {
-    const result = await run({ orderId: "cmd-0001", nextStatus: "confirmed" });
+  it("passe une commande en attente en préparation et invalide /commandes", async () => {
+    const result = await run({ orderId: "cmd-0001", nextStatus: "preparing" });
     expect(result).toEqual({
       status: "success",
-      message: "Statut mis à jour : Confirmée.",
+      message: "Statut mis à jour : En préparation.",
     });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
 
@@ -87,7 +87,7 @@ describe("changeOrderStatus", () => {
     expect(await history).toMatchObject([
       {
         from: "pending",
-        to: "confirmed",
+        to: "preparing",
         actor: { id: "usr-test", name: "Testeur" },
       },
     ]);
@@ -113,12 +113,12 @@ describe("changeOrderStatus", () => {
   });
 
   it("refuse un orderId vide", async () => {
-    const result = await run({ orderId: "   ", nextStatus: "confirmed" });
+    const result = await run({ orderId: "   ", nextStatus: "preparing" });
     expect(result.status).toBe("error");
   });
 
   it("signale une commande inexistante", async () => {
-    const result = await run({ orderId: "cmd-9999", nextStatus: "confirmed" });
+    const result = await run({ orderId: "cmd-9999", nextStatus: "preparing" });
     expect(result).toEqual({
       status: "error",
       message: "Cette commande n'existe plus.",
@@ -126,7 +126,7 @@ describe("changeOrderStatus", () => {
   });
 
   it("est idempotente : redemander le statut courant est un succès sans écriture", async () => {
-    const result = await run({ orderId: "cmd-0002", nextStatus: "confirmed" });
+    const result = await run({ orderId: "cmd-0002", nextStatus: "preparing" });
     expect(result).toEqual({
       status: "success",
       message: "La commande est déjà à ce statut.",
@@ -145,7 +145,7 @@ describe("changeOrderStatus", () => {
   });
 
   it("enchaîne les transitions et refuse de sortir d'un état terminal", async () => {
-    await run({ orderId: "cmd-0001", nextStatus: "confirmed" });
+    await run({ orderId: "cmd-0001", nextStatus: "preparing" });
     await run({ orderId: "cmd-0001", nextStatus: "preparing" });
     await run({ orderId: "cmd-0001", nextStatus: "delivering" });
     const delivered = await run({
@@ -208,7 +208,7 @@ describe("changeOrderStatus", () => {
   it("le motif est ignoré pour un statut autre qu'annulée", async () => {
     const result = await run({
       orderId: "cmd-0001",
-      nextStatus: "confirmed",
+      nextStatus: "preparing",
       reason: "stock",
       detail: "peu importe",
     });
@@ -224,7 +224,7 @@ describe("changeOrderStatus", () => {
     // valeur : pas de contournement possible via la répétition.
     const result = await run({
       orderId: "cmd-0001",
-      nextStatus: ["confirmed", "cancelled"],
+      nextStatus: ["preparing", "cancelled"],
       reason: "stock",
     });
     expect(result).toEqual({
@@ -236,7 +236,7 @@ describe("changeOrderStatus", () => {
     resetOrdersMock();
     const forged = await run({
       orderId: "cmd-0001",
-      nextStatus: ["confirmed", "delivered"],
+      nextStatus: ["preparing", "delivered"],
     });
     expect(forged.status).toBe("error");
   });

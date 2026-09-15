@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatDateFr,
   formatDateTimeFr,
+  formatDayLongFr,
   formatEuros,
   formatOrdersCount,
   formatQuantity,
@@ -98,5 +99,12 @@ describe("formatDateTimeFr", () => {
     expect(plain(formatDateTimeFr("2026-09-07T08:15:00.000Z"))).toBe(
       "lun. 7 sept., 10:15",
     );
+  });
+});
+
+describe("formatDayLongFr", () => {
+  it("écrit le jour en toutes lettres, sans décalage de fuseau", () => {
+    expect(plain(formatDayLongFr("2026-09-07"))).toBe("lundi 7 septembre");
+    expect(plain(formatDayLongFr("2026-01-01"))).toBe("jeudi 1 janvier");
   });
 });

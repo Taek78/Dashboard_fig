@@ -43,7 +43,7 @@ export function CustomerNoteForm({ customerId }: { customerId: string }) {
       <Button
         type="submit"
         disabled={pending}
-        className="w-full sm:w-auto sm:self-start"
+        className="w-full @xl/main:w-auto @xl/main:self-start"
       >
         {pending ? (
           <>

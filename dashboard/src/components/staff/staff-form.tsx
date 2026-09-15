@@ -29,6 +29,7 @@ import {
   STAFF_NOTES_MAX_LENGTH,
   type StaffMember,
 } from "@/domain/staff/types";
+import type { StaffTemplate } from "@/domain/staff/rules";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 
@@ -38,15 +39,20 @@ import { cn } from "@/lib/utils";
  * créée), présent → saveStaffMember. Tout est non contrôlé : la validation
  * est faite par zod côté serveur. Les jours travaillés sont des cases à
  * cocher de même nom (workDays) : l'action les lit avec formData.getAll.
+ * `template` (duplication) préremplit métier, créneau, disponibilité, jours
+ * et présence d'une création ; l'identité reste vide.
  */
 const field = "grid gap-1.5";
 const DEFAULT_DAYS = ["lun", "mar", "mer", "jeu", "ven"];
 
 export function StaffForm({
   member,
+  template,
   defaultKind = "livreur",
 }: {
   member?: StaffMember;
+  /** Fiche dupliquée : ce qu'une création reprend (staffTemplate). */
+  template?: StaffTemplate;
   /** Métier présélectionné à la création (onglet d'où l'on vient). */
   defaultKind?: StaffKind;
 }) {
@@ -54,12 +60,12 @@ export function StaffForm({
     member ? saveStaffMember : addStaffMember,
     idleActionResult,
   );
-  const workDays = member?.workDays ?? DEFAULT_DAYS;
+  const workDays = member?.workDays ?? template?.workDays ?? DEFAULT_DAYS;
 
   return (
     <form action={formAction} className="flex flex-col gap-6">
       {member ? <input type="hidden" name="staffId" value={member.id} /> : null}
-      <fieldset className="grid gap-4 md:grid-cols-2">
+      <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">Identité</legend>
         <div className={field}>
           <Label htmlFor="firstName">Prénom</Label>
@@ -88,7 +94,7 @@ export function StaffForm({
           <NativeSelect
             id="kind"
             name="kind"
-            defaultValue={member?.kind ?? defaultKind}
+            defaultValue={member?.kind ?? template?.kind ?? defaultKind}
             className="w-full"
           >
             {STAFF_KINDS.map((kind) => (
@@ -111,7 +117,7 @@ export function StaffForm({
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4 md:grid-cols-2">
+      <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">Coordonnées</legend>
         <div className={field}>
           <Label htmlFor="email">E-mail</Label>
@@ -140,7 +146,7 @@ export function StaffForm({
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4 md:grid-cols-2">
+      <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">
           Horaires et disponibilité
         </legend>
@@ -149,7 +155,7 @@ export function StaffForm({
           <NativeSelect
             id="shift"
             name="shift"
-            defaultValue={member?.shift ?? "matin"}
+            defaultValue={member?.shift ?? template?.shift ?? "matin"}
             className="w-full"
           >
             {SHIFTS.map((shift) => (
@@ -164,7 +170,9 @@ export function StaffForm({
           <NativeSelect
             id="availability"
             name="availability"
-            defaultValue={member?.availability ?? "disponible"}
+            defaultValue={
+              member?.availability ?? template?.availability ?? "disponible"
+            }
             className="w-full"
           >
             {AVAILABILITIES.map((a) => (
@@ -174,7 +182,7 @@ export function StaffForm({
             ))}
           </NativeSelect>
         </div>
-        <fieldset className="md:col-span-2">
+        <fieldset className="@2xl/main:col-span-2">
           <legend className="mb-2 text-sm font-medium">Jours travaillés</legend>
           <div className="flex flex-wrap gap-2">
             {WEEKDAYS.map((day) => (
@@ -194,12 +202,12 @@ export function StaffForm({
             ))}
           </div>
         </fieldset>
-        <div className="flex items-center gap-2 md:col-span-2">
+        <div className="flex items-center gap-2 @2xl/main:col-span-2">
           <input
             id="active"
             name="active"
             type="checkbox"
-            defaultChecked={member?.active ?? true}
+            defaultChecked={member?.active ?? template?.active ?? true}
             className="accent-primary size-4"
           />
           <Label htmlFor="active">
@@ -228,7 +236,7 @@ export function StaffForm({
           variant="brand"
           size="lg"
           disabled={pending}
-          className="w-full sm:w-auto"
+          className="w-full @xl/main:w-auto"
         >
           {pending ? (
             <LoaderCircle className="animate-spin" />

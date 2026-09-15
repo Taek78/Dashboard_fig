@@ -3,7 +3,6 @@ import { communitiesFixtures } from "@/domain/communities/fixtures";
 import {
   communityMembers,
   communityOrders,
-  pickupSlot,
   sortCommunities,
   summarizeCommunity,
 } from "@/domain/communities/rules";
@@ -19,7 +18,7 @@ describe("communitiesFixtures", () => {
       expect(c.discountPercent).toBeGreaterThan(0);
       expect(c.contactEmail).toMatch(/@example\.invalid$/);
       expect(c.contactPhone).toMatch(/^06 39 98 80 \d{2}$/);
-      expect(c.pickupTime).toMatch(/^\d{2}:\d{2}$/);
+      expect(c).not.toHaveProperty("pickupTime");
     }
   });
 });
@@ -74,10 +73,5 @@ describe("communityMembers / communityOrders / summarizeCommunity", () => {
       discountCents: 0,
       lastDeliveryDate: null,
     });
-  });
-
-  it("pickupSlot dure une heure et passe minuit", () => {
-    expect(pickupSlot("17:00")).toEqual({ start: "17:00", end: "18:00" });
-    expect(pickupSlot("23:30")).toEqual({ start: "23:30", end: "00:30" });
   });
 });

@@ -18,9 +18,9 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-balance @2xl/main:text-4xl">
           {title}
         </h1>
         <span
@@ -28,13 +28,13 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
           className="bg-gradient-brand h-1.5 w-12 rounded-full"
         />
         {description ? (
-          <p className="text-muted-foreground max-w-2xl text-sm text-pretty md:text-base">
+          <p className="text-muted-foreground max-w-2xl text-sm text-pretty @2xl/main:text-base">
             {description}
           </p>
         ) : null}
       </div>
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2 md:shrink-0">
+        <div className="flex flex-wrap items-center gap-2 @2xl/main:shrink-0">
           {actions}
         </div>
       ) : null}

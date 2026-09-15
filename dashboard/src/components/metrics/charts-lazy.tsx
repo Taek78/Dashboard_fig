@@ -14,7 +14,10 @@ export const ComparisonChart = dynamic(
     import("@/components/metrics/comparison-chart").then(
       (m) => m.ComparisonChart,
     ),
-  { ssr: false, loading: () => <Skeleton className="h-64 w-full sm:h-80" /> },
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-64 w-full @xl/main:h-80" />,
+  },
 );
 
 export const StatusChart = dynamic(

@@ -13,13 +13,19 @@ Conventions communes : montants en centimes entiers, quantités en grammes ou pi
 | `updateOrderStatus(id, change)` | `{ from, to, actor, cancellation }`                   | `Order \| null`                                      | conditionnelle : `null` si le statut n'est plus `from` ; écrit l'événement d'historique dans la même transaction ; `cancellation` posé sur la commande quand `to = cancelled` |
 | `getOrderEvents(orderId)`       | `orderId`                                             | `OrderEvent[]` du plus récent au plus ancien         |                                                                                                                                                                               |
 
-`Order` : `id`, `reference` (unique), `createdAt`, `status` (`pending | confirmed | preparing | delivering | delivered | cancelled`), `customer { id, fullName, email, phone }`, `deliverySlot { date, start, end }`, `deliveryCity`, `deliveryPostalCode`, `lines[] { productId, productName, quantity, unit, lineTotalCents }` (instantané au moment de l'achat), `totalCents`, `cancellation { reason, detail } | null`.
+`Order` : `id`, `reference` (unique), `createdAt`, `status` (`pending | preparing | delivering | delivered | cancelled`), `customer { id, fullName, email, phone }`, `deliverySlot { date, start, end }`, `deliveryCity`, `deliveryPostalCode`, `lines[] { productId, productName, quantity, unit, lineTotalCents }` (instantané au moment de l'achat), `totalCents`, `cancellation { reason, detail } | null`.
 
 `OrderEvent` : `id`, `orderId`, `from`, `to`, `actor { id, name }`, `cancellation | null`, `at`.
 
+Sources de vérité côté application FIG, à respecter au branchement :
+
+- la **remise** (`discount`) est celle réellement appliquée au **paiement** dans l'application ; le dashboard l'affiche et ne la calcule jamais (le taux d'une communauté n'est qu'annoncé) ;
+- le **créneau** (`deliverySlot`) d'une commande de communauté est l'horaire de retrait choisi par le client **à chaque commande** ; une communauté n'a pas d'heure fixe ;
+- il n'y a **pas de statut « confirmée »** : une commande reçue passe d'« en attente » à « en préparation ».
+
 ## Livraisons
 
-Pas de source propre : la tournée est `getOrders({ date })` et des règles pures (`summarizeTour`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). L'adresse de rue n'existe pas encore (question 13).
+Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) s'applique après la requête SQL, comme celle des clients. L'adresse de rue n'existe pas encore (question 13).
 
 ## Catalogue (`ProductsSource`)
 
@@ -41,7 +47,7 @@ Pas de source propre : la tournée est `getOrders({ date })` et des règles pure
 | `getCustomer(id)`           | `id`                              | `Customer \| null`         | avec ses notes, de la plus ancienne à la plus récente                        |
 | `addNote(customerId, note)` | `{ text, authorName, createdAt }` | `CustomerNote \| null`     | auteur et date viennent de l'action (session, horloge), jamais du formulaire |
 
-`Customer` : `id`, `fullName`, `email`, `phone`, `city`, `postalCode`, `createdAt`, `notes[] { id, text, authorName, createdAt }`. Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne.
+`Customer` : `id`, `fullName`, `email`, `phone`, `city`, `postalCode`, `createdAt`, `notes[] { id, text, authorName, createdAt }`. Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne. La section Clients assemble particuliers et communautés en un annuaire calculé en mémoire (`buildDirectory`, `filterDirectory`, `sortDirectory`).
 
 ## Articles (`ArticlesSource`)
 

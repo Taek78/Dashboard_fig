@@ -1,136 +1,179 @@
 import type { Metadata } from "next";
-import Form from "next/form";
 import Link from "next/link";
-import { CalendarX2 } from "lucide-react";
+import { CalendarX2, TriangleAlert } from "lucide-react";
 import { TourCards } from "@/components/deliveries/tour-cards";
+import { TourProgress } from "@/components/deliveries/tour-progress";
+import { OrdersFilters } from "@/components/orders/orders-filters";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import {
-  deliveryDates,
-  summarizeTour,
+  groupOrdersByDay,
+  recentDeliveryDays,
+  TOUR_MAX_DAYS,
   todayInParis,
+  tourRange,
 } from "@/domain/deliveries/rules";
-import { parseTourDate } from "@/domain/deliveries/schemas";
-import { assignmentOptions } from "@/domain/staff/rules";
-import { formatDateFr } from "@/lib/format";
+import { hasOrderFilters, orderFiltersQuery } from "@/domain/orders/rules";
+import { parseOrderFilters } from "@/domain/orders/schemas";
+import type { OrderFilters } from "@/domain/orders/types";
+import { assignmentOptions, staffFilterOptions } from "@/domain/staff/rules";
+import { addDays } from "@/lib/days";
+import { formatDateFr, formatDayLongFr } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /*
- * Tournée du jour : toutes les commandes livrées un jour donné (?date=, défaut :
- * aujourd'hui en Europe/Paris), en cartes de terrain (ordre de passage, appel,
- * itinéraire, geste suivant en un bouton) avec la progression de la tournée.
- * Composant serveur : lectures via les façades, compteurs purs. Chaque carte
- * porte le livreur et le préparateur affectés (listes déroulantes de l'équipe).
+ * Livraisons : les tournées d'une période (aujourd'hui en Europe/Paris par
+ * défaut, TOUR_MAX_DAYS jours au plus), groupées par jour, en cartes de terrain
+ * (ordre de passage, appel, itinéraire, geste suivant en un bouton).
+ * Composant serveur :
+ * - même recherche et mêmes filtres que les commandes (parseOrderFilters) ; la
+ *   période effective vient de tourRange, qui signale une période ramenée ;
+ * - raccourcis sur les 7 derniers jours, chacun avec son nombre de livraisons,
+ *   qui gardent la recherche en cours ;
+ * - avancement détaillé par statut pour la période, puis pour chaque jour.
  */
 export const metadata: Metadata = { title: "Livraisons" };
+
+const plural = (n: number) => (n > 1 ? "s" : "");
 
 export default async function LivraisonsPage({
   searchParams,
 }: PageProps<"/livraisons">) {
-  const raw = await searchParams;
-  const date = parseTourDate(raw) ?? todayInParis(new Date());
+  const filters = parseOrderFilters(await searchParams);
+  const today = todayInParis(new Date());
+  const range = tourRange(filters, today);
+  const effective: OrderFilters = {
+    ...filters,
+    from: range.from,
+    to: range.to,
+  };
+  const weekStart = addDays(today, -(TOUR_MAX_DAYS - 1));
 
-  const [orders, allOrders, user, staff] = await Promise.all([
-    getOrders({ date }),
-    getOrders(),
+  const [orders, recentOrders, user, staff] = await Promise.all([
+    getOrders(effective),
+    getOrders({ from: weekStart, to: today }),
     getCurrentUser(),
     listStaff(),
   ]);
-  const options = assignmentOptions(staff);
-  const summary = summarizeTour(orders);
-  const dates = deliveryDates(allOrders);
-  const plural = (n: number) => (n > 1 ? "s" : "");
+  const groups = groupOrdersByDay(orders);
+  const days = recentDeliveryDays(recentOrders, today);
+  const singleDay = range.from === range.to;
+  const isWeek = range.from === weekStart && range.to === today;
+  const shortcut = (from: string, to: string) =>
+    `/livraisons?${orderFiltersQuery({ ...filters, from, to })}`;
+  const period = singleDay
+    ? formatDayLongFr(range.from)
+    : `du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`;
 
   return (
     <>
       <PageHeader
         title="Livraisons"
-        description="Tournée du jour : suivez chaque livraison et faites avancer son statut."
+        description="Tournées : suivez chaque livraison et faites avancer son statut."
       />
       <div className="flex flex-col gap-4">
-        <Form
+        <OrdersFilters
           action="/livraisons"
-          aria-label="Choix du jour"
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          formLabel="Recherche et filtres des livraisons"
+          searchLabel="Rechercher une livraison"
+          filters={effective}
+          staff={staffFilterOptions(staff)}
+          canReset={hasOrderFilters(filters)}
+          rangeHelp={`Sans date : la tournée du jour. Période de ${TOUR_MAX_DAYS} jours au plus.`}
+        />
+
+        <nav
+          aria-label={`${TOUR_MAX_DAYS} derniers jours`}
+          className="flex flex-wrap items-center gap-1.5 text-sm"
         >
-          <div className="grid gap-1.5 sm:w-48">
-            <Label htmlFor="date">Jour de livraison</Label>
-            <Input
-              key={date}
-              id="date"
-              type="date"
-              name="date"
-              defaultValue={date}
-              className="dark:scheme-dark"
-            />
-          </div>
-          <Button type="submit" className="w-full sm:w-auto">
-            Afficher
-          </Button>
-        </Form>
-
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted-foreground">
-            Jours avec des commandes :
+          <span className="text-muted-foreground mr-1">
+            {TOUR_MAX_DAYS} derniers jours :
           </span>
-          {dates.map((d) => (
-            <Button
-              key={d}
-              size="xs"
-              variant={d === date ? "secondary" : "ghost"}
-              render={<Link href={`/livraisons?date=${d}`} />}
-            >
-              {formatDateFr(d)}
-            </Button>
-          ))}
-        </div>
+          <Link
+            href={shortcut(weekStart, today)}
+            aria-current={isWeek ? "true" : undefined}
+            className={buttonVariants({
+              size: "xs",
+              variant: isWeek ? "secondary" : "outline",
+            })}
+          >
+            Les {TOUR_MAX_DAYS} jours
+          </Link>
+          {days.map((day) => {
+            const current = singleDay && range.from === day.date;
+            return (
+              <Link
+                key={day.date}
+                href={shortcut(day.date, day.date)}
+                aria-current={current ? "date" : undefined}
+                className={cn(
+                  buttonVariants({
+                    size: "xs",
+                    variant: current ? "secondary" : "ghost",
+                  }),
+                  day.count === 0 && !current && "text-muted-foreground",
+                )}
+              >
+                {day.date === today ? "Aujourd'hui" : formatDateFr(day.date)}
+                <span className="bg-muted text-foreground rounded-full px-1.5 text-[0.7rem] leading-4 tabular-nums">
+                  {day.count}
+                </span>
+                <span className="sr-only"> livraison{plural(day.count)}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-        <div className="flex flex-col gap-2">
-          <p role="status" className="text-muted-foreground text-sm">
-            {formatDateFr(date)} : {summary.total} commande
-            {plural(summary.total)}
-            {summary.total > 0
-              ? ` · ${summary.toConfirm} à confirmer · ${summary.inProgress} en cours · ${summary.done} terminée${plural(summary.done)}`
-              : ""}
+        {range.clamped ? (
+          <p className="text-warning flex items-center gap-2 text-sm font-medium">
+            <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+            Période ramenée à {TOUR_MAX_DAYS} jours : du{" "}
+            {formatDateFr(range.from)} au {formatDateFr(range.to)}.
           </p>
-          {summary.total > 0 ? (
-            <div
-              role="progressbar"
-              aria-label="Avancement de la tournée"
-              aria-valuemin={0}
-              aria-valuemax={summary.total}
-              aria-valuenow={summary.done}
-              className="bg-muted h-2 w-full max-w-md overflow-hidden rounded-full"
-            >
-              <div
-                className="bg-gradient-brand h-full rounded-full transition-[width]"
-                style={{
-                  width: `${Math.round((summary.done / summary.total) * 100)}%`,
-                }}
-              />
-            </div>
-          ) : null}
-        </div>
+        ) : null}
+
+        <p
+          role="status"
+          className="text-base font-semibold first-letter:uppercase"
+        >
+          {period} : {orders.length} livraison{plural(orders.length)}
+        </p>
 
         {orders.length > 0 ? (
-          <TourCards
-            orders={orders}
-            canChangeStatus={canChangeOrderStatus(user.role)}
-            canAssign={canAssignStaff(user.role)}
-            options={options}
-          />
+          <>
+            <Card>
+              <CardContent className="flex flex-col gap-3">
+                <h2 className="text-muted-foreground text-sm font-medium">
+                  {singleDay
+                    ? "Avancement de la tournée"
+                    : "Avancement de la période"}
+                </h2>
+                <TourProgress
+                  orders={orders}
+                  label="Avancement de la tournée"
+                />
+              </CardContent>
+            </Card>
+            <TourCards
+              groups={groups}
+              canChangeStatus={canChangeOrderStatus(user.role)}
+              canAssign={canAssignStaff(user.role)}
+              options={assignmentOptions(staff)}
+            />
+          </>
         ) : (
           <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">
             <EmptyHeader>
@@ -140,11 +183,26 @@ export default async function LivraisonsPage({
               >
                 <CalendarX2 />
               </EmptyMedia>
-              <EmptyTitle>Aucune livraison ce jour</EmptyTitle>
+              <EmptyTitle>
+                {singleDay
+                  ? "Aucune livraison ce jour"
+                  : "Aucune livraison sur cette période"}
+              </EmptyTitle>
               <EmptyDescription>
-                Choisissez un autre jour ou l&apos;un des raccourcis ci-dessus.
+                Changez de période, choisissez l&apos;un des {TOUR_MAX_DAYS}{" "}
+                derniers jours ou élargissez la recherche.
               </EmptyDescription>
             </EmptyHeader>
+            {hasOrderFilters(filters) ? (
+              <EmptyContent>
+                <Link
+                  href="/livraisons"
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  Revenir à la tournée du jour
+                </Link>
+              </EmptyContent>
+            ) : null}
           </Empty>
         )}
       </div>

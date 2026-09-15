@@ -29,6 +29,7 @@ import {
   TAX_MODES,
   toExcludingTax,
   topProducts,
+  communityShare,
 } from "@/domain/metrics/rules";
 import { scenarioOrders } from "@/domain/orders/fixtures";
 import { filterOrders } from "@/domain/orders/rules";
@@ -250,7 +251,10 @@ describe("séries", () => {
       { from: "2026-09-07", to: "2026-09-07" },
       "day",
     );
-    const day = filterOrders(scenarioOrders, { date: "2026-09-07" });
+    const day = filterOrders(scenarioOrders, {
+      from: "2026-09-07",
+      to: "2026-09-07",
+    });
     const active = day.filter((o) => o.status !== "cancelled");
     expect(day7?.orderCount).toBe(day.length);
     expect(day7?.cancelledCount).toBe(day.length - active.length);
@@ -293,8 +297,7 @@ describe("ordersByStatus et topProducts", () => {
       ordersByStatus(scenarioOrders).map((p) => [p.status, p.count]),
     ).toEqual([
       ["pending", 3],
-      ["confirmed", 3],
-      ["preparing", 1],
+      ["preparing", 4],
       ["delivering", 2],
       ["delivered", 3],
       ["cancelled", 2],
@@ -319,5 +322,28 @@ describe("ordersByStatus et topProducts", () => {
       }
     }
     expect(top[0]!.revenueCents).toBe(Math.max(...byProduct.values()));
+  });
+});
+
+describe("communityShare", () => {
+  it("répartit les commandes entre communautés et particuliers", () => {
+    expect(communityShare(scenarioOrders)).toEqual({
+      community: 0,
+      individual: scenarioOrders.length,
+      percent: 0,
+    });
+    const mixed = scenarioOrders.map((o, i) =>
+      i < 4 ? { ...o, community: { id: "com-0001", name: "Crèche" } } : o,
+    );
+    expect(communityShare(mixed)).toEqual({
+      community: 4,
+      individual: scenarioOrders.length - 4,
+      percent: Math.round((4 / scenarioOrders.length) * 100),
+    });
+    expect(communityShare([])).toEqual({
+      community: 0,
+      individual: 0,
+      percent: null,
+    });
   });
 });

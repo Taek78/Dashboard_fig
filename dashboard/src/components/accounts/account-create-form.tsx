@@ -33,7 +33,7 @@ export function AccountCreateForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 @2xl/main:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="new-name">Nom</Label>
           <Input id="new-name" name="name" required maxLength={80} />
@@ -82,12 +82,12 @@ export function AccountCreateForm() {
           </p>
         </div>
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 @xl/main:flex-row @xl/main:items-center">
         <Button
           type="submit"
           variant="brand"
           disabled={pending}
-          className="w-full sm:w-auto"
+          className="w-full @xl/main:w-auto"
         >
           {pending ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
           Créer le compte

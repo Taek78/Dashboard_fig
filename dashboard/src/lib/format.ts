@@ -26,6 +26,13 @@ const dateFr = new Intl.DateTimeFormat("fr-FR", {
 
 const NBSP = "\u00A0";
 
+const dayLongFr = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "Europe/Paris",
+});
+
 const dateTimeFr = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
   day: "numeric",
@@ -45,6 +52,11 @@ export function formatEuros(cents: number): string {
 /** Date ISO (courte ou complète) → jour abrégé, numéro, mois. "2026-09-08" → "mar. 8 sept." */
 export function formatDateFr(iso: string): string {
   return dateFr.format(new Date(iso));
+}
+
+/** Jour "AAAA-MM-JJ" → en-tête de tournée. "2026-09-07" → "lundi 7 septembre" */
+export function formatDayLongFr(day: string): string {
+  return dayLongFr.format(new Date(day));
 }
 
 /** Instant ISO → jour et heure de Paris. "2026-09-07T08:15:00.000Z" → "lun. 7 sept., 10:15" */

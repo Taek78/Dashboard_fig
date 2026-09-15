@@ -3,6 +3,8 @@ import {
   deleteStaffSchema,
   parseStaffKind,
   staffInputSchema,
+  parseStaffHistoryFilters,
+  parseStaffSearch,
 } from "@/domain/staff/schemas";
 
 const base = {
@@ -81,5 +83,63 @@ describe("parseStaffKind / deleteStaffSchema", () => {
       deleteStaffSchema.safeParse({ staffId: "stf-0001", confirm: "oui" })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("parseStaffSearch", () => {
+  it("lit recherche et filtres de la section Personnel", () => {
+    expect(
+      parseStaffSearch({
+        q: "  malik ",
+        type: "livreur",
+        dispo: "conge",
+        creneau: "matin",
+        jour: "sam",
+        presence: "actifs",
+      }),
+    ).toEqual({
+      query: "malik",
+      kind: "livreur",
+      availability: "conge",
+      shift: "matin",
+      workDay: "sam",
+      presence: "actifs",
+    });
+  });
+
+  it("ignore les valeurs vides, inconnues, répétées ou trop longues", () => {
+    expect(
+      parseStaffSearch({
+        q: "   ",
+        type: "chef",
+        dispo: ["disponible", "conge"],
+        creneau: "nuit",
+        jour: "lundi",
+        presence: "tous",
+      }),
+    ).toEqual({});
+    expect(parseStaffSearch({ q: "x".repeat(65) }).query).toBeUndefined();
+  });
+});
+
+describe("parseStaffHistoryFilters", () => {
+  it("lit recherche, rôle, statut et période ; ignore le reste", () => {
+    expect(
+      parseStaffHistoryFilters({
+        q: " FIG ",
+        role: "livraison",
+        statut: "delivered",
+        du: "2026-09-07",
+        au: "2026-09-01",
+      }),
+    ).toEqual({
+      query: "FIG",
+      role: "livraison",
+      status: "delivered",
+      from: "2026-09-01",
+      to: "2026-09-07",
+    });
+    expect(parseStaffHistoryFilters({ role: "autre" }).role).toBeUndefined();
+    expect(parseStaffHistoryFilters({ role: ["a", "b"] })).toEqual({});
   });
 });

@@ -35,7 +35,7 @@ export function PasswordForm() {
           maxLength={200}
         />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 @2xl/main:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="newPassword">Nouveau mot de passe</Label>
           <Input
@@ -64,8 +64,12 @@ export function PasswordForm() {
           />
         </div>
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+      <div className="flex flex-col gap-3 @xl/main:flex-row @xl/main:items-center">
+        <Button
+          type="submit"
+          disabled={pending}
+          className="w-full @xl/main:w-auto"
+        >
           {pending ? (
             <>
               <LoaderCircle className="animate-spin" />

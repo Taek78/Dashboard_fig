@@ -8,14 +8,18 @@
  * script de src/app/layout.tsx) :
  *   - light : clair, mauve discret, beaucoup de blanc.
  *   - dark  : sombre neutre, mauve adouci (défaut).
- *   - fig   : la « figue » : aubergine profond, rose figue, vert feuille. Sombre.
+ *   - fig   : crépuscule sur la côte, inspiré des affiches de GTA VI : nuit
+ *             violette, rose coucher de soleil, orange pêche, bleu lagon, en
+ *             teintes adoucies (chroma modéré) pour rester lisible. Sombre.
  * Le variant `dark:` de Tailwind s'applique en dark ET en fig.
  *
  * Les composants n'utilisent que des tokens (jamais de couleur en dur) :
  * changer l'identité visuelle = changer ce fichier.
  * --brand-from / --brand-to : bornes du dégradé de marque (bg-gradient-brand).
  * --success / --warning / --info : couleurs sémantiques (favorable, alerte, neutre).
- * --halo-1 / --halo-2 : les deux lueurs du fond de page.
+ * --halo-1 / --halo-2 / --halo-3 : teintes très légères du dégradé de fond ;
+ * --decor-art-opacity : opacité du motif de fond (public/fond/verger.svg).
+ * --individual / --community : type de client (particulier, communauté).
  */
 @custom-variant dark (&:where(
   [data-theme="dark"],
@@ -50,6 +54,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+  --color-individual: var(--individual);
+  --color-community: var(--community);
   --color-brand-from: var(--brand-from);
   --color-brand-to: var(--brand-to);
   --color-fruit: var(--fruit);
@@ -80,6 +86,7 @@
   --animate-shimmer: shimmer 1.8s ease-in-out infinite;
   --animate-page-in: page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-float: float 7s ease-in-out infinite;
+  --animate-nav-in: nav-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes shimmer {
     from {
@@ -97,6 +104,16 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+  @keyframes nav-in {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
     }
   }
   @keyframes float {
@@ -125,7 +142,7 @@
   --secondary: oklch(0.955 0.03 305);
   --secondary-foreground: oklch(0.38 0.14 302);
   --muted: oklch(0.965 0.012 305);
-  --muted-foreground: oklch(0.52 0.035 300);
+  --muted-foreground: oklch(0.47 0.035 300);
   --accent: oklch(0.945 0.045 305);
   --accent-foreground: oklch(0.35 0.15 302);
   --destructive: oklch(0.577 0.245 27.325);
@@ -150,8 +167,13 @@
   --sidebar-accent-foreground: oklch(0.32 0.14 302);
   --sidebar-border: oklch(0.9 0.03 305);
   --sidebar-ring: oklch(0.62 0.2 302);
-  --halo-1: color-mix(in oklch, var(--primary) 12%, transparent);
-  --halo-2: color-mix(in oklch, var(--brand-to) 8%, transparent);
+  /* Type de client : bleu canard = particulier, rose framboise = communauté. */
+  --individual: oklch(0.52 0.1 215);
+  --community: oklch(0.56 0.18 355);
+  --halo-1: color-mix(in oklch, var(--primary) 7%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 6%, transparent);
+  --halo-3: color-mix(in oklch, var(--individual) 5%, transparent);
+  --decor-art-opacity: 0.13;
   /* Catalogue : fond de carte par catégorie (orange = fruit, vert = légume). */
   --fruit: oklch(0.95 0.06 65);
   --fruit-foreground: oklch(0.45 0.14 55);
@@ -173,7 +195,7 @@
   --secondary: oklch(0.27 0.045 300);
   --secondary-foreground: oklch(0.9 0.04 305);
   --muted: oklch(0.25 0.025 300);
-  --muted-foreground: oklch(0.72 0.035 300);
+  --muted-foreground: oklch(0.77 0.03 300);
   --accent: oklch(0.3 0.06 300);
   --accent-foreground: oklch(0.94 0.03 305);
   --destructive: oklch(0.704 0.191 22.216);
@@ -198,59 +220,74 @@
   --sidebar-accent-foreground: oklch(0.95 0.02 305);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.6 0.18 302);
-  --halo-1: color-mix(in oklch, var(--primary) 18%, transparent);
-  --halo-2: color-mix(in oklch, var(--brand-to) 10%, transparent);
+  --individual: oklch(0.78 0.1 210);
+  --community: oklch(0.76 0.15 355);
+  --halo-1: color-mix(in oklch, var(--primary) 10%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 7%, transparent);
+  --halo-3: color-mix(in oklch, var(--individual) 5%, transparent);
+  --decor-art-opacity: 0.15;
   --fruit: oklch(0.32 0.07 60);
   --fruit-foreground: oklch(0.88 0.1 70);
   --vegetable: oklch(0.3 0.06 145);
   --vegetable-foreground: oklch(0.86 0.12 145);
 }
 
-/* ---------- fig : aubergine, rose figue, vert feuille ---------- */
+/*
+ * ---------- fig : crépuscule sur la côte (inspiration GTA VI) ----------
+ * Nuit violette en fond, rose coucher de soleil et orange pêche pour la marque,
+ * bleu lagon et menthe en contrepoint. Chroma volontairement modéré (0,08 à
+ * 0,13) : l'ambiance néon sans l'éblouissement. Le dégradé de marque reste
+ * assez sombre pour porter un texte blanc.
+ */
 [data-theme="fig"] {
   color-scheme: dark;
-  --background: oklch(0.19 0.05 335);
-  --foreground: oklch(0.96 0.02 80);
-  --card: oklch(0.24 0.055 335);
-  --card-foreground: oklch(0.96 0.02 80);
-  --popover: oklch(0.24 0.055 335);
-  --popover-foreground: oklch(0.96 0.02 80);
-  --primary: oklch(0.76 0.17 350);
-  --primary-foreground: oklch(0.2 0.06 340);
-  --secondary: oklch(0.31 0.07 335);
-  --secondary-foreground: oklch(0.93 0.04 350);
-  --muted: oklch(0.28 0.05 335);
-  --muted-foreground: oklch(0.78 0.04 340);
-  --accent: oklch(0.34 0.08 340);
-  --accent-foreground: oklch(0.96 0.03 350);
-  --destructive: oklch(0.72 0.19 25);
-  --success: oklch(0.76 0.16 145);
-  --warning: oklch(0.82 0.15 80);
-  --info: oklch(0.78 0.12 240);
-  --brand-from: oklch(0.72 0.18 350);
-  --brand-to: oklch(0.8 0.15 30);
-  --border: oklch(1 0 0 / 11%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.16 350);
-  --chart-1: oklch(0.86 0.1 350);
-  --chart-2: oklch(0.76 0.17 350);
-  --chart-3: oklch(0.66 0.18 340);
-  --chart-4: oklch(0.55 0.16 335);
-  --chart-5: oklch(0.44 0.12 330);
-  --sidebar: oklch(0.17 0.05 335);
-  --sidebar-foreground: oklch(0.95 0.02 80);
-  --sidebar-primary: oklch(0.76 0.17 350);
-  --sidebar-primary-foreground: oklch(0.2 0.06 340);
-  --sidebar-accent: oklch(0.3 0.07 340);
-  --sidebar-accent-foreground: oklch(0.96 0.03 350);
+  --background: oklch(0.2 0.045 295);
+  --foreground: oklch(0.96 0.015 60);
+  --card: oklch(0.245 0.05 298);
+  --card-foreground: oklch(0.96 0.015 60);
+  --popover: oklch(0.255 0.05 298);
+  --popover-foreground: oklch(0.96 0.015 60);
+  --primary: oklch(0.78 0.12 355);
+  --primary-foreground: oklch(0.22 0.05 330);
+  --secondary: oklch(0.31 0.055 300);
+  --secondary-foreground: oklch(0.93 0.03 350);
+  --muted: oklch(0.285 0.045 298);
+  --muted-foreground: oklch(0.8 0.03 320);
+  --accent: oklch(0.33 0.06 305);
+  --accent-foreground: oklch(0.96 0.02 350);
+  --destructive: oklch(0.74 0.14 22);
+  --success: oklch(0.8 0.1 170);
+  --warning: oklch(0.84 0.1 70);
+  --info: oklch(0.8 0.08 220);
+  --brand-from: oklch(0.66 0.13 355);
+  --brand-to: oklch(0.72 0.12 45);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.74 0.11 355);
+  --chart-1: oklch(0.84 0.09 350);
+  --chart-2: oklch(0.78 0.12 355);
+  --chart-3: oklch(0.8 0.11 45);
+  --chart-4: oklch(0.7 0.1 300);
+  --chart-5: oklch(0.78 0.08 205);
+  --sidebar: oklch(0.18 0.045 295);
+  --sidebar-foreground: oklch(0.95 0.015 60);
+  --sidebar-primary: oklch(0.78 0.12 355);
+  --sidebar-primary-foreground: oklch(0.22 0.05 330);
+  --sidebar-accent: oklch(0.29 0.055 305);
+  --sidebar-accent-foreground: oklch(0.96 0.02 350);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.7 0.16 350);
-  --halo-1: color-mix(in oklch, var(--primary) 22%, transparent);
-  --halo-2: color-mix(in oklch, var(--success) 12%, transparent);
-  --fruit: oklch(0.36 0.09 50);
-  --fruit-foreground: oklch(0.9 0.11 70);
-  --vegetable: oklch(0.33 0.08 145);
-  --vegetable-foreground: oklch(0.88 0.13 145);
+  --sidebar-ring: oklch(0.74 0.11 355);
+  /* Type de client : bleu lagon = particulier, pêche = communauté. */
+  --individual: oklch(0.8 0.08 205);
+  --community: oklch(0.82 0.1 50);
+  --halo-1: color-mix(in oklch, var(--brand-from) 13%, transparent);
+  --halo-2: color-mix(in oklch, var(--brand-to) 9%, transparent);
+  --halo-3: color-mix(in oklch, var(--individual) 7%, transparent);
+  --decor-art-opacity: 0.17;
+  --fruit: oklch(0.34 0.06 45);
+  --fruit-foreground: oklch(0.9 0.09 60);
+  --vegetable: oklch(0.32 0.05 170);
+  --vegetable-foreground: oklch(0.88 0.09 165);
 }
 
 /* Dégradé de marque, réutilisable partout sans recopier les couleurs. */
@@ -285,20 +322,77 @@
   body {
     @apply bg-background text-foreground;
   }
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(
+        in oklch,
+        var(--muted-foreground) 35%,
+        transparent
+      )
+      transparent;
+  }
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 30%, transparent);
+  }
   /*
-   * Fond : deux lueurs douces (haut droit, bas gauche) sur une couche fixe
-   * séparée. background-attachment: fixed sur body forcerait un nouveau rendu du
-   * fond à chaque défilement ; une couche fixe est composée une fois.
+   * Cartes : un liseré clair en haut et une ombre douce teintée de la marque,
+   * passés par les variables d'ombre de Tailwind (un utilitaire shadow-none ou
+   * ring d'une carte garde la main).
    */
-  body::before {
+  [data-slot="card"] {
+    --tw-inset-shadow: inset 0 1px 0 0
+      color-mix(in oklch, var(--foreground) 6%, transparent);
+    --tw-shadow: 0 14px 34px -22px
+      color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+  /* Menu mobile : les liens glissent l'un après l'autre à l'ouverture. */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-mobile="true"] [data-slot="sidebar-menu-item"] {
+      animation: var(--animate-nav-in);
+      animation-delay: calc(var(--nav-index, 0) * 30ms + 80ms);
+    }
+  }
+  /*
+   * Fond de la fenêtre entière, statique : deux couches fixes derrière tout
+   * (sidebar, contenu, connexion), composées une fois et jamais redessinées au
+   * défilement (background-attachment: fixed sur body le forcerait).
+   * - ::before : un dégradé diagonal très léger (teintes --halo-*).
+   * - ::after  : le motif public/fond/verger.svg utilisé comme MASQUE : le
+   *   fichier ne donne que la forme, la couleur est le dégradé de marque du
+   *   thème, à l'opacité --decor-art-opacity. mask-size: cover le fait couvrir
+   *   toute la fenêtre quel que soit son format.
+   */
+  body::before,
+  body::after {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
+  }
+  body::before {
     background-image:
-      radial-gradient(60rem 40rem at 105% -15%, var(--halo-1), transparent 65%),
-      radial-gradient(50rem 35rem at -10% 110%, var(--halo-2), transparent 65%);
+      linear-gradient(
+        155deg,
+        var(--halo-1) 0%,
+        transparent 38%,
+        transparent 62%,
+        var(--halo-2) 100%
+      ),
+      radial-gradient(60rem 42rem at 50% 50%, var(--halo-3), transparent 70%);
+  }
+  body::after {
+    background-image: linear-gradient(
+      135deg,
+      var(--brand-from),
+      var(--brand-to) 55%,
+      var(--individual)
+    );
+    opacity: var(--decor-art-opacity);
+    mask-image: url("/fond/verger.svg");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: cover;
   }
   /* Changement de thème en douceur, sauf si l'utilisateur refuse les animations. */
   @media (prefers-reduced-motion: no-preference) {
@@ -358,28 +452,23 @@
   }
 }
 
-/* Squelette avec reflet qui traverse : plus vivant qu'un simple clignotement. */
-@utility skeleton-shimmer {
-  position: relative;
-  overflow: hidden;
-  background-color: color-mix(in oklch, var(--muted) 85%, transparent);
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      color-mix(in oklch, var(--foreground) 6%, transparent),
-      transparent
-    );
-    animation: var(--animate-shimmer);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    &::after {
-      animation: none;
-    }
-  }
+/*
+ * Coquille translucide : pour que le fond de la fenêtre (body::before/::after)
+ * se voie partout, le conteneur de la sidebar devient transparent, la colonne
+ * de la sidebar (grand écran) et la zone de contenu laissent passer le fond.
+ * Règles HORS couche (@layer) exprès : elles priment sur les utilitaires
+ * bg-sidebar / bg-background posés par les composants shadcn. Le panneau
+ * mobile (Sheet) garde son fond plein : il recouvre le contenu.
+ */
+[data-slot="sidebar-wrapper"] {
+  background-color: transparent;
+}
+[data-slot="sidebar-inner"] {
+  background-color: color-mix(in oklch, var(--sidebar) 72%, transparent);
+  backdrop-filter: blur(14px);
+}
+[data-slot="sidebar-inset"] {
+  background-color: color-mix(in oklch, var(--background) 50%, transparent);
 }
 
 /* Entrée de page : fondu et léger glissement, uniquement si le mouvement est accepté. */

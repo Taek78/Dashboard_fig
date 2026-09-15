@@ -12,13 +12,12 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from "@/domain/orders/status";
  * Le libellé est toujours affiché : la couleur n'est jamais le seul signal.
  *
  * Lecture des couleurs : ambre = à traiter, mauve = en cours, vert = terminé,
- * rouge = à ne pas préparer, neutre = validé en attente de préparation.
+ * rouge = à ne pas préparer.
  */
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 
 const VARIANT_BY_STATUS: Record<OrderStatus, BadgeVariant> = {
   pending: "warning", // pas encore pris en charge : demande une action
-  confirmed: "outline", // validée, en file
   preparing: "default", // en cours, le plus visible (mauve plein)
   delivering: "secondary", // en cours, mauve doux
   delivered: "success", // terminée
@@ -28,19 +27,26 @@ const VARIANT_BY_STATUS: Record<OrderStatus, BadgeVariant> = {
 /** Couleur d'accent d'une carte (bordure gauche) selon le statut ; tokens seulement. */
 export const STATUS_ACCENT: Record<OrderStatus, string> = {
   pending: "border-l-warning",
-  confirmed: "border-l-primary",
   preparing: "border-l-primary",
   delivering: "border-l-info",
   delivered: "border-l-success",
   cancelled: "border-l-destructive",
 };
 
+/**
+ * Plus grand que les autres badges (hauteur 28 px, texte 14 px en gras, liseré
+ * de sa couleur) : le statut est l'information qu'on cherche d'un coup d'œil
+ * sur une carte de commande ou de livraison.
+ */
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <Badge variant={VARIANT_BY_STATUS[status]}>
+    <Badge
+      variant={VARIANT_BY_STATUS[status]}
+      className="h-7 gap-1.5 px-3 text-sm font-semibold ring-1 ring-current/25"
+    >
       <span
         aria-hidden="true"
-        className="size-1.5 shrink-0 rounded-full bg-current opacity-80"
+        className="size-2 shrink-0 rounded-full bg-current"
       />
       {ORDER_STATUS_LABELS[status]}
     </Badge>

@@ -88,7 +88,7 @@ export function AccountEditor({
         className="flex flex-col gap-3"
       >
         <input type="hidden" name="userId" value={account.id} />
-        <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+        <div className="grid gap-3 @xl/main:grid-cols-[1fr_12rem_auto] @xl/main:items-end">
           <div className="grid gap-1.5">
             <Label htmlFor={ids.name}>Nom</Label>
             <Input

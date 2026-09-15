@@ -117,5 +117,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // fond/ : images décoratives publiques (public/fond), sans donnée : servies sans garde,
+  // sinon un masque CSS reçoit la redirection vers /connexion au lieu du SVG.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|fond/).*)"],
 };

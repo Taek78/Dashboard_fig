@@ -5,7 +5,7 @@ export default function ArticleLoading() {
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
       <p className="sr-only">Chargement de l&apos;article…</p>
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
         <div className="flex flex-col gap-1.5">
           <Skeleton className="h-8 w-72 max-w-full" />
           <span
@@ -18,9 +18,9 @@ export default function ArticleLoading() {
       </div>
       <div className="flex flex-col gap-3">
         <Skeleton className="h-4 w-44" />
-        <div className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 sm:flex-row">
-          <Skeleton className="h-36 rounded-none sm:h-auto sm:w-44" />
-          <div className="flex flex-1 flex-col gap-2 p-4 md:p-5">
+        <div className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 @xl/main:flex-row">
+          <Skeleton className="h-36 rounded-none @xl/main:h-auto @xl/main:w-44" />
+          <div className="flex flex-1 flex-col gap-2 p-4 @2xl/main:p-5">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-6 w-2/3" />
             <Skeleton className="h-4 w-full" />

@@ -55,10 +55,3 @@ export function summarizeCommunity(orders: readonly Order[]): CommunitySummary {
     lastDeliveryDate: dates.at(-1) ?? null,
   };
 }
-
-/** Créneau de retrait d'une communauté : une heure à partir de l'heure convenue. */
-export function pickupSlot(pickupTime: string): { start: string; end: string } {
-  const [h, m] = pickupTime.split(":").map(Number);
-  const end = `${String(((h ?? 0) + 1) % 24).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")}`;
-  return { start: pickupTime, end };
-}

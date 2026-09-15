@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Users } from "lucide-react";
+import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
 import { LoyaltyGauge } from "@/components/customers/loyalty-badge";
 import { OrdersTable } from "@/components/orders/orders-table";
@@ -52,7 +53,8 @@ export default async function ClientPage({
           </Button>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-3">
+      <ClientTypeLabel community={customer.community} className="self-start" />
+      <div className="grid gap-4 @4xl/main:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>
@@ -125,7 +127,7 @@ export default async function ClientPage({
           </CardContent>
         </Card>
 
-        <Card className="lg:row-span-2">
+        <Card className="@4xl/main:row-span-2">
           <CardHeader>
             <CardTitle>
               <h2>Notes internes</h2>
@@ -155,7 +157,7 @@ export default async function ClientPage({
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="@4xl/main:col-span-2">
           <CardHeader>
             <CardTitle>
               <h2>Fidélité</h2>
@@ -174,7 +176,7 @@ export default async function ClientPage({
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-2 lg:col-span-2">
+        <div className="flex flex-col gap-2 @4xl/main:col-span-2">
           <h2 className="text-lg font-semibold tracking-tight">
             Historique des commandes
           </h2>

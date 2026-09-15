@@ -57,13 +57,13 @@ export function ArticleCard({
     <article
       aria-label={article.title}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 sm:flex-row",
+        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 @xl/main:flex-row",
         state === "hidden" && "opacity-75",
       )}
     >
       <div
         className={cn(
-          "relative flex h-36 shrink-0 items-center justify-center sm:h-auto sm:min-h-40 sm:w-44",
+          "relative flex h-36 shrink-0 items-center justify-center @xl/main:h-auto @xl/main:min-h-40 @xl/main:w-44",
           TINT[article.category],
         )}
       >
@@ -83,7 +83,7 @@ export function ArticleCard({
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 md:p-5">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 @2xl/main:p-5">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge variant={CATEGORY_BADGE[article.category]}>
             {ARTICLE_CATEGORY_LABELS[article.category]}

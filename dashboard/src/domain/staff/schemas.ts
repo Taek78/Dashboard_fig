@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseOrderFilters } from "@/domain/orders/schemas";
 import {
   AVAILABILITIES,
   SHIFTS,
@@ -7,9 +8,16 @@ import {
   type StaffKind,
 } from "@/domain/staff/kind";
 import {
+  STAFF_HISTORY_ROLES,
+  STAFF_PRESENCES,
+  type StaffHistoryFilters,
+  type StaffSearch,
+} from "@/domain/staff/rules";
+import {
   STAFF_DELETE_CONFIRM_WORD,
   STAFF_NAME_MAX_LENGTH,
   STAFF_NOTES_MAX_LENGTH,
+  STAFF_SEARCH_MAX_LENGTH,
   type StaffInput,
 } from "@/domain/staff/types";
 
@@ -27,6 +35,39 @@ export function parseStaffKind(
   raw: Record<string, string | string[] | undefined>,
 ): StaffKind | undefined {
   return z.enum(STAFF_KINDS).optional().catch(undefined).parse(raw.type);
+}
+
+/**
+ * Recherche de la section Personnel (lecture tolérante) : ?q= (texte borné),
+ * ?type= (métier), ?dispo=, ?creneau=, ?jour=, ?presence=actifs|partis. Une
+ * valeur inconnue, vide ou répétée est ignorée.
+ */
+export function parseStaffSearch(
+  raw: Record<string, string | string[] | undefined>,
+): StaffSearch {
+  return {
+    query: z
+      .string()
+      .trim()
+      .min(1)
+      .max(STAFF_SEARCH_MAX_LENGTH)
+      .optional()
+      .catch(undefined)
+      .parse(raw.q),
+    kind: parseStaffKind(raw),
+    availability: z
+      .enum(AVAILABILITIES)
+      .optional()
+      .catch(undefined)
+      .parse(raw.dispo),
+    shift: z.enum(SHIFTS).optional().catch(undefined).parse(raw.creneau),
+    workDay: z.enum(WEEKDAYS).optional().catch(undefined).parse(raw.jour),
+    presence: z
+      .enum(STAFF_PRESENCES)
+      .optional()
+      .catch(undefined)
+      .parse(raw.presence),
+  };
 }
 
 const name = z.string().trim().min(1).max(STAFF_NAME_MAX_LENGTH);
@@ -73,3 +114,19 @@ export const deleteStaffSchema = z.object({
   staffId: staffIdSchema,
   confirm: z.literal(STAFF_DELETE_CONFIRM_WORD),
 });
+
+/**
+ * Recherche dans l'historique d'une fiche (lecture tolérante) : ?q=, ?statut=,
+ * ?du=, ?au= comme la liste des commandes, et ?role=preparation|livraison.
+ */
+export function parseStaffHistoryFilters(
+  raw: Record<string, string | string[] | undefined>,
+): StaffHistoryFilters {
+  const { query, status, from, to } = parseOrderFilters(raw);
+  const role = z
+    .enum(STAFF_HISTORY_ROLES)
+    .optional()
+    .catch(undefined)
+    .parse(raw.role);
+  return { query, status, from, to, role };
+}

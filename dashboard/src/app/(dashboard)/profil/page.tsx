@@ -18,7 +18,7 @@ export default async function ProfilPage() {
         title="Mon profil"
         description="Votre compte et votre mot de passe."
       />
-      <div className="grid gap-4 lg:grid-cols-[minmax(16rem,20rem)_1fr]">
+      <div className="grid gap-4 @4xl/main:grid-cols-[minmax(16rem,20rem)_1fr]">
         <Card>
           <CardHeader>
             <CardTitle>

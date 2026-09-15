@@ -35,13 +35,13 @@ describe("changeStatusSchema", () => {
   it("accepte une entrée valide et renvoie les deux champs typés", () => {
     const result = changeStatusSchema.safeParse({
       orderId: "cmd-0001",
-      nextStatus: "confirmed",
+      nextStatus: "preparing",
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).toEqual({
         orderId: "cmd-0001",
-        nextStatus: "confirmed",
+        nextStatus: "preparing",
         cancellation: null,
       });
     }
@@ -61,7 +61,7 @@ describe("changeStatusSchema", () => {
   it("refuse un id vide et désigne le champ fautif", () => {
     const result = changeStatusSchema.safeParse({
       orderId: "  ",
-      nextStatus: "confirmed",
+      nextStatus: "preparing",
     });
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -74,14 +74,14 @@ describe("changeStatusSchema", () => {
       false,
     );
     expect(
-      changeStatusSchema.safeParse({ nextStatus: "confirmed" }).success,
+      changeStatusSchema.safeParse({ nextStatus: "preparing" }).success,
     ).toBe(false);
   });
 
   it("ignore un champ en trop sans le laisser passer dans data", () => {
     const result = changeStatusSchema.safeParse({
       orderId: "cmd-0001",
-      nextStatus: "confirmed",
+      nextStatus: "preparing",
       role: "admin",
     });
     expect(result.success).toBe(true);
@@ -132,7 +132,7 @@ describe("changeStatusSchema", () => {
     expect(
       changeStatusSchema.safeParse({
         orderId: "cmd-0001",
-        nextStatus: ["confirmed", "cancelled"],
+        nextStatus: ["preparing", "cancelled"],
       }).success,
     ).toBe(false);
   });
@@ -140,57 +140,84 @@ describe("changeStatusSchema", () => {
 
 describe("parseOrderFilters", () => {
   it("sans paramètre, ne filtre rien", () => {
-    expect(parseOrderFilters({})).toEqual({
-      status: undefined,
-      date: undefined,
-    });
+    expect(parseOrderFilters({})).toEqual({});
   });
 
-  it("traduit statut (URL) en status (code)", () => {
-    expect(parseOrderFilters({ statut: "pending" })).toEqual({
-      status: "pending",
-      date: undefined,
-    });
-  });
-
-  it("accepte une date AAAA-MM-JJ", () => {
-    expect(parseOrderFilters({ date: "2026-09-08" }).date).toBe("2026-09-08");
-  });
-
-  it("ignore un statut inconnu au lieu d'échouer", () => {
-    expect(parseOrderFilters({ statut: "foo" }).status).toBeUndefined();
-  });
-
-  it("ignore un paramètre répété (tableau)", () => {
+  it("traduit les clés d'URL françaises en clés de code", () => {
     expect(
-      parseOrderFilters({ statut: ["pending", "confirmed"] }).status,
-    ).toBeUndefined();
+      parseOrderFilters({
+        q: "  Benali ",
+        statut: "pending",
+        du: "2026-09-01",
+        au: "2026-09-07",
+        preparateur: "stf-0005",
+        livreur: "stf-0001",
+      }),
+    ).toEqual({
+      query: "Benali",
+      status: "pending",
+      from: "2026-09-01",
+      to: "2026-09-07",
+      preparerId: "stf-0005",
+      driverId: "stf-0001",
+    });
   });
 
-  it("ignore une date mal formée ou impossible", () => {
-    expect(parseOrderFilters({ date: "08/09/2026" }).date).toBeUndefined();
-    expect(parseOrderFilters({ date: "2026-13-01" }).date).toBeUndefined();
+  it("« aucun » demande les commandes sans personne affectée, vide ne filtre pas", () => {
+    const result = parseOrderFilters({ preparateur: "aucun", livreur: "" });
+    expect(result.preparerId).toBeNull();
+    expect(result.driverId).toBeUndefined();
+  });
+
+  it("remet dans l'ordre une période saisie à l'envers", () => {
+    expect(
+      parseOrderFilters({ du: "2026-09-08", au: "2026-09-01" }),
+    ).toMatchObject({ from: "2026-09-01", to: "2026-09-08" });
+  });
+
+  it("lit encore ?date= (liens existants) comme un seul jour", () => {
+    expect(parseOrderFilters({ date: "2026-09-08" })).toMatchObject({
+      from: "2026-09-08",
+      to: "2026-09-08",
+    });
+    expect(
+      parseOrderFilters({ date: "2026-09-08", du: "2026-09-01" }),
+    ).toMatchObject({ from: "2026-09-01", to: undefined });
+  });
+
+  it("ignore une recherche vide ou trop longue", () => {
+    expect(parseOrderFilters({ q: "   " }).query).toBeUndefined();
+    expect(parseOrderFilters({ q: "x".repeat(101) }).query).toBeUndefined();
+  });
+
+  it("ignore un statut inconnu, un paramètre répété, une date impossible", () => {
+    expect(
+      parseOrderFilters({
+        statut: "foo",
+        q: ["a", "b"],
+        livreur: ["stf-0001", "stf-0002"],
+        du: "08/09/2026",
+        au: "2026-13-01",
+      }),
+    ).toEqual({});
   });
 
   it("ignore les clés inconnues comme simuler", () => {
     const result = parseOrderFilters({ simuler: "vide", statut: "cancelled" });
-    expect(result).toEqual({ status: "cancelled", date: undefined });
+    expect(result).toEqual({ status: "cancelled" });
     expect("simuler" in result).toBe(false);
   });
 
   it("ne lève jamais sur un objet, même entièrement invalide", () => {
     expect(() =>
-      parseOrderFilters({ statut: "x", date: "y", autre: ["z"] }),
+      parseOrderFilters({ statut: "x", du: "y", autre: ["z"] }),
     ).not.toThrow();
   });
 
   it("orderFiltersSchema garde une valeur valide à côté d'une invalide", () => {
     expect(
-      orderFiltersSchema.parse({ statut: "foo", date: "2026-09-08" }),
-    ).toEqual({
-      status: undefined,
-      date: "2026-09-08",
-    });
+      orderFiltersSchema.parse({ statut: "foo", du: "2026-09-08" }),
+    ).toMatchObject({ status: undefined, from: "2026-09-08" });
   });
 });
 

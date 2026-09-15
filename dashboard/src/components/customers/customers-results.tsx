@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { SearchX } from "lucide-react";
-import { CustomersTable } from "@/components/customers/customers-table";
-import { mobileCardFrame, tableFrame } from "@/components/orders/orders-table";
-import { Button } from "@/components/ui/button";
+import { CommunityCard } from "@/components/customers/community-card";
+import { CustomerCard } from "@/components/customers/customer-card";
+import { OrdersPagination } from "@/components/orders/orders-pagination";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
@@ -12,43 +13,43 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { listCommunities } from "@/data/communities";
 import { getCustomers } from "@/data/customers";
 import { getOrders } from "@/data/orders";
-import { loyaltyStatus, type LoyaltyStatus } from "@/domain/customers/loyalty";
-import type { CustomerSearch } from "@/domain/customers/schemas";
-import { filterOrders } from "@/domain/orders/rules";
-import { cn } from "@/lib/utils";
+import {
+  buildDirectory,
+  countDirectory,
+  DIRECTORY_PAGE_SIZE,
+  directorySearchQuery,
+  filterDirectory,
+  sortDirectory,
+} from "@/domain/customers/directory";
+import type { ClientsSearch } from "@/domain/customers/schemas";
+import { paginate } from "@/domain/orders/rules";
 
 /*
- * Zone de résultats des particuliers, composant serveur ASYNC rendu dans un
- * <Suspense> par la page : pendant la recherche, seul ce bloc affiche son
- * squelette (CustomersResultsSkeleton), le moteur de recherche au-dessus reste
- * en place. Les commandes sont chargées une fois pour calculer la série de
- * fidélité de chaque client listé (règle pure loyaltyStatus).
+ * Résultats de la recherche commune (serveur async, dans un <Suspense> de la
+ * page : seul ce bloc affiche son squelette pendant la recherche).
+ * Particuliers et communautés en grandes cartes, filtrés et triés par les
+ * règles pures de l'annuaire, DIRECTORY_PAGE_SIZE par page ; chaque carte mène
+ * à sa fiche par un bouton dédié.
  */
-export async function CustomersResults({ search }: { search: CustomerSearch }) {
-  const [customers, orders] = await Promise.all([
-    getCustomers({ query: search.query, membership: "individual" }),
+export async function CustomersResults({ search }: { search: ClientsSearch }) {
+  const [customers, communities, orders] = await Promise.all([
+    getCustomers(),
+    listCommunities(),
     getOrders(),
   ]);
-  const loyalty = new Map<string, LoyaltyStatus>(
-    customers.map((c) => [
-      c.id,
-      loyaltyStatus(filterOrders(orders, { customerId: c.id })),
-    ]),
+  const entries = sortDirectory(
+    filterDirectory(buildDirectory(customers, communities, orders), search),
+    search.sort,
   );
-  const count = customers.length;
+  const page = paginate(entries, search.page, DIRECTORY_PAGE_SIZE);
+  const counts = countDirectory(entries);
   const scope = search.query ? ` pour « ${search.query} »` : "";
+  const plural = (n: number) => (n > 1 ? "s" : "");
 
-  if (count === 0) {
+  if (entries.length === 0) {
     return (
       <Empty className="bg-card/60 min-h-[30vh] rounded-2xl border border-dashed">
         <EmptyHeader>
@@ -58,94 +59,85 @@ export async function CustomersResults({ search }: { search: CustomerSearch }) {
           >
             <SearchX />
           </EmptyMedia>
-          <EmptyTitle>Aucun client{scope}</EmptyTitle>
+          <EmptyTitle>Aucun résultat{scope}</EmptyTitle>
           <EmptyDescription>
-            Essayez un autre nom, une partie de l&apos;e-mail ou les derniers
-            chiffres du téléphone. Les membres d&apos;une communauté sont dans
-            l&apos;onglet Communautés.
+            Essayez un autre nom, une partie de l&apos;e-mail, une ville, le nom
+            d&apos;une communauté ou les derniers chiffres du téléphone.
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" render={<Link href="/clients?tous=1" />}>
-            Afficher tous les particuliers
-          </Button>
+          <Link
+            href="/clients"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Voir tous les clients
+          </Link>
         </EmptyContent>
       </Empty>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p role="status" className="text-muted-foreground text-sm">
-        {count} client{count > 1 ? "s" : ""}
+    <div className="flex flex-col gap-4">
+      <p role="status" className="text-base font-semibold">
+        {entries.length} résultat{plural(entries.length)}
         {scope}
+        <span className="text-muted-foreground text-sm font-normal">
+          {` · ${counts.communities} communauté${plural(counts.communities)} · ${counts.customers} client${plural(counts.customers)}`}
+          {page.pageCount > 1
+            ? ` · page ${page.page} sur ${page.pageCount}`
+            : ""}
+        </span>
       </p>
-      <CustomersTable
-        customers={customers}
-        loyalty={loyalty}
-        showCommunity={false}
+      <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+        {page.items.map((entry) => (
+          <li key={`${entry.kind}-${entry.id}`}>
+            {entry.kind === "community" ? (
+              <CommunityCard entry={entry} />
+            ) : (
+              <CustomerCard entry={entry} />
+            )}
+          </li>
+        ))}
+      </ul>
+      <OrdersPagination
+        page={page}
+        baseParams={directorySearchQuery(search)}
+        path="/clients"
       />
     </div>
   );
 }
 
-const ROWS = [1, 2, 3, 4];
+const CARDS = [1, 2, 3, 4, 5, 6];
 
-/** Squelette de la zone de résultats : même cadre, même en-tête, annonce sr-only. */
+/** Squelette des résultats : même grille, mêmes cartes, annonce du chargement. */
 export function CustomersResultsSkeleton() {
   return (
-    <div aria-busy="true" className="flex flex-col gap-3">
+    <div aria-busy="true" className="flex flex-col gap-4">
       <p role="status" className="text-muted-foreground text-sm">
         Recherche en cours…
       </p>
-      <ul className="flex flex-col gap-3 md:hidden">
-        {ROWS.map((row) => (
-          <li key={row} className={mobileCardFrame}>
-            <Skeleton className="h-4 w-32" />
+      <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+        {CARDS.map((card) => (
+          <li
+            key={card}
+            className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 @2xl/main:p-5"
+          >
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-12 rounded-full" />
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-5 w-28 rounded-lg" />
+              </div>
+            </div>
             <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-28" />
-            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-9 w-full" />
           </li>
         ))}
       </ul>
-      <div className={cn(tableFrame, "hidden md:block")}>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead scope="col">Nom</TableHead>
-              <TableHead scope="col">E-mail</TableHead>
-              <TableHead scope="col" className="hidden lg:table-cell">
-                Téléphone
-              </TableHead>
-              <TableHead scope="col" className="hidden lg:table-cell">
-                Ville
-              </TableHead>
-              <TableHead scope="col">Fidélité</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ROWS.map((row) => (
-              <TableRow key={row}>
-                <TableCell>
-                  <Skeleton className="h-4 w-32" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-48" />
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <Skeleton className="h-4 w-28" />
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <Skeleton className="h-4 w-24" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-24 rounded-4xl" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
     </div>
   );
 }

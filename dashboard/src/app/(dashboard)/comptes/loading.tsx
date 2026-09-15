@@ -15,7 +15,7 @@ export default function ComptesLoading() {
           <CardHeader>
             <Skeleton className="h-5 w-40" />
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
+          <CardContent className="grid gap-4 @2xl/main:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-8 w-full" />
             ))}
@@ -26,7 +26,7 @@ export default function ComptesLoading() {
           {[1, 2].map((i) => (
             <li
               key={i}
-              className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 md:p-5"
+              className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 @2xl/main:p-5"
             >
               <Skeleton className="h-6 w-64" />
               <Skeleton className="h-8 w-full" />

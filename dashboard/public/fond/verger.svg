@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Image de fond du back-office FIG, utilisée comme MASQUE CSS (body::after, globals.css) :
+       seule l'opacité des tracés compte, la couleur vient des tokens du thème.
+       Motif réparti sur toute la surface : elle couvre la fenêtre entière et reste fixe. -->
+  <defs>
+    <g id="feuille">
+      <path d="M0 0 C 38 -46 118 -52 176 0 C 118 52 38 46 0 0 Z" stroke-width="2.2"/>
+      <path d="M6 0 H 168" stroke-width="1.4"/>
+      <path d="M46 0 L 70 -22 M46 0 L 70 22 M92 0 L 116 -24 M92 0 L 116 24 M136 0 L 154 -16 M136 0 L 154 16" stroke-width="1.1"/>
+    </g>
+    <g id="agrume">
+      <circle r="64" stroke-width="2.4"/>
+      <circle r="52" stroke-width="1.2"/>
+      <path d="M0 -50 V 50 M-50 0 H 50 M-35 -35 L 35 35 M35 -35 L -35 35" stroke-width="1.1"/>
+    </g>
+    <g id="figue">
+      <path d="M0 -70 C 14 -70 22 -56 30 -40 C 58 -14 70 18 58 46 C 46 74 -46 74 -58 46 C -70 18 -58 -14 -30 -40 C -22 -56 -14 -70 0 -70 Z" stroke-width="2.4"/>
+      <path d="M0 -70 C 4 -86 14 -94 26 -96" stroke-width="2"/>
+      <path d="M-18 30 C -8 44 8 44 18 30" stroke-width="1.2"/>
+    </g>
+    <g id="baies" stroke-width="2">
+      <circle cx="0" cy="0" r="9"/>
+      <circle cx="24" cy="20" r="7"/>
+      <circle cx="-10" cy="28" r="6"/>
+    </g>
+  </defs>
+
+  <!-- Vagues douces qui traversent la fenêtre -->
+  <g opacity=".45" stroke-width="1.4">
+    <path d="M1600 110 C 1440 150 1360 50 1200 90 S 940 250 760 200 S 460 130 260 220 S 60 300 -20 260"/>
+    <path d="M1600 180 C 1450 220 1370 120 1215 160 S 960 330 780 280 S 490 210 290 300"/>
+    <path d="M-20 820 C 160 770 260 870 440 830 S 720 690 900 740 S 1220 820 1400 760 S 1560 700 1620 720"/>
+    <path d="M-20 890 C 170 840 280 940 460 900 S 740 770 920 820"/>
+  </g>
+
+  <!-- Haut droit -->
+  <use href="#agrume" transform="translate(1420 130) scale(1.1)" opacity=".7"/>
+  <use href="#feuille" transform="translate(1260 300) rotate(-32) scale(1.25)" opacity=".75"/>
+  <use href="#figue" transform="translate(1470 420) rotate(12) scale(.8)" opacity=".55"/>
+  <!-- Haut gauche -->
+  <use href="#feuille" transform="translate(140 110) rotate(24) scale(.8)" opacity=".45"/>
+  <use href="#baies" transform="translate(420 90)" opacity=".4"/>
+  <!-- Centre -->
+  <use href="#figue" transform="translate(860 440) rotate(-14) scale(.9)" opacity=".35"/>
+  <use href="#agrume" transform="translate(620 560) scale(.5)" opacity=".3"/>
+  <!-- Bas gauche -->
+  <use href="#figue" transform="translate(190 640) rotate(-10) scale(1.05)" opacity=".6"/>
+  <use href="#feuille" transform="translate(300 760) rotate(-160) scale(.9)" opacity=".5"/>
+  <use href="#agrume" transform="translate(90 900) scale(.7)" opacity=".45"/>
+  <!-- Bas droit -->
+  <use href="#feuille" transform="translate(1180 880) rotate(-20) scale(1)" opacity=".55"/>
+  <use href="#baies" transform="translate(1500 860)" opacity=".5"/>
+  <use href="#agrume" transform="translate(1040 640) scale(.45)" opacity=".3"/>
+</svg>

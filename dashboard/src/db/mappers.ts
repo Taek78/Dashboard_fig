@@ -328,7 +328,6 @@ export function toCommunity(row: CommunityRow): Community {
     pickupPlace: row.pickupPlace,
     pickupCity: row.pickupCity,
     pickupPostalCode: row.pickupPostalCode,
-    pickupTime: row.pickupTime,
     discountPercent: row.discountPercent,
     active: row.active,
     createdAt: row.createdAt.toISOString(),

@@ -84,7 +84,7 @@ export function ProductsResultsSkeleton() {
         Recherche en cours…
       </p>
       <div className={gridClass}>
-        <Skeleton className="min-h-20 rounded-2xl sm:min-h-72" />
+        <Skeleton className="min-h-20 rounded-2xl @xl/main:min-h-72" />
         {CARDS.map((i) => (
           <div
             key={i}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Euro, ShoppingBasket, Truck, Wallet } from "lucide-react";
+import { TourProgress } from "@/components/deliveries/tour-progress";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { PeriodForm } from "@/components/metrics/period-form";
 import { TaxModeSwitch } from "@/components/metrics/tax-mode-switch";
@@ -29,7 +30,9 @@ import { formatDateFr, formatEuros } from "@/lib/format";
  * de la période choisie (défaut : aujourd'hui, mêmes périodes prédéfinies et
  * plage libre que les métriques) et ce qui attend une action, toutes dates.
  * Chiffres calculés par les fonctions pures de metrics ; montants HT par
- * défaut, TTC par l'interrupteur (même URL ?tva= que les métriques).
+ * défaut, TTC par l'interrupteur (même URL ?tva= que les métriques). Sous les
+ * KPI, la barre d'avancement des commandes de la période (TourProgress, la
+ * même que la tournée : segments par statut, légende chiffrée).
  */
 export default async function TableauDeBordPage({
   searchParams,
@@ -77,7 +80,7 @@ export default async function TableauDeBordPage({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
         <KpiCard
           label="Commandes"
           value={String(kpis.orderCount)}
@@ -104,26 +107,45 @@ export default async function TableauDeBordPage({
         />
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <h2 className="text-muted-foreground text-sm font-medium">
+            Avancement des commandes :{" "}
+            {query.customRange ? "période choisie" : title.toLowerCase()}
+          </h2>
+          {orders.length > 0 ? (
+            <TourProgress
+              orders={orders}
+              label="Avancement des commandes de la période"
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Aucune commande sur la période.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
         <Button
           variant="outline"
-          className="justify-between sm:justify-center"
+          className="justify-between @xl/main:justify-center"
           render={<Link href="/commandes?statut=pending" />}
         >
-          Commandes à confirmer
+          Commandes en attente
           <ArrowRight />
         </Button>
         <Button
           variant="outline"
-          className="justify-between sm:justify-center"
-          render={<Link href={`/livraisons?date=${today}`} />}
+          className="justify-between @xl/main:justify-center"
+          render={<Link href="/livraisons" />}
         >
           Tournée du jour
           <ArrowRight />
         </Button>
         <Button
           variant="outline"
-          className="justify-between sm:justify-center"
+          className="justify-between @xl/main:justify-center"
           render={<Link href="/metriques" />}
         >
           Métriques
@@ -133,7 +155,7 @@ export default async function TableauDeBordPage({
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">
-          Commandes à confirmer ({pending.length}, toutes dates)
+          Commandes en attente ({pending.length}, toutes dates)
         </h2>
         {pending.length > 0 ? (
           <OrdersCards
@@ -144,7 +166,7 @@ export default async function TableauDeBordPage({
           />
         ) : (
           <p className="text-muted-foreground text-sm">
-            Aucune commande en attente de confirmation.
+            Aucune commande en attente.
           </p>
         )}
       </div>

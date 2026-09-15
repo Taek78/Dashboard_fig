@@ -15,10 +15,8 @@ import {
  * la décision (questions 7 et 9 au client, docs/backlog.md).
  */
 const ALLOWED: ReadonlyArray<[OrderStatus, OrderStatus]> = [
-  ["pending", "confirmed"],
+  ["pending", "preparing"],
   ["pending", "cancelled"],
-  ["confirmed", "preparing"],
-  ["confirmed", "cancelled"],
   ["preparing", "delivering"],
   ["preparing", "cancelled"],
   ["delivering", "delivered"],
@@ -32,7 +30,7 @@ describe("canTransition", () => {
     expect(canTransition(from, to)).toBe(true);
   });
 
-  it("refuse tous les autres couples (36 couples testés)", () => {
+  it("refuse tous les autres couples (chaque couple testé)", () => {
     let checked = 0;
     for (const from of ORDER_STATUSES) {
       for (const to of ORDER_STATUSES) {
@@ -57,7 +55,7 @@ describe("canTransition", () => {
   });
 
   it("n'autorise aucun retour arrière ni saut de fin", () => {
-    expect(canTransition("preparing", "confirmed")).toBe(false);
+    expect(canTransition("preparing", "pending")).toBe(false);
     expect(canTransition("delivering", "cancelled")).toBe(false);
     expect(canTransition("pending", "delivered")).toBe(false);
   });
@@ -88,8 +86,17 @@ describe("allowedTransitions", () => {
   it("renvoie une copie : la muter ne change pas l'appel suivant", () => {
     const first = allowedTransitions("pending");
     first.push("delivered");
-    expect(allowedTransitions("pending")).toEqual(["confirmed", "cancelled"]);
+    expect(allowedTransitions("pending")).toEqual(["preparing", "cancelled"]);
     expect(canTransition("pending", "delivered")).toBe(false);
+  });
+});
+
+describe("ORDER_STATUSES", () => {
+  it("n'a pas de statut « confirmée » : en attente passe en préparation", () => {
+    expect((ORDER_STATUSES as readonly string[]).includes("confirmed")).toBe(
+      false,
+    );
+    expect(canTransition("pending", "preparing")).toBe(true);
   });
 });
 
@@ -104,14 +111,9 @@ describe("ORDER_STATUS_LABELS", () => {
 describe("statusPath", () => {
   it("suit le cycle nominal jusqu'au statut, et pending → cancelled pour une annulation", () => {
     expect(statusPath("pending")).toEqual(["pending"]);
-    expect(statusPath("preparing")).toEqual([
-      "pending",
-      "confirmed",
-      "preparing",
-    ]);
+    expect(statusPath("preparing")).toEqual(["pending", "preparing"]);
     expect(statusPath("delivered")).toEqual([
       "pending",
-      "confirmed",
       "preparing",
       "delivering",
       "delivered",

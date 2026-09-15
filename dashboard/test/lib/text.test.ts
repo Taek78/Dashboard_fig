@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { digitsOnly, initials, normalize } from "@/lib/text";
+import { digitsOnly, initials, normalize, isPhoneLike } from "@/lib/text";
 
 describe("normalize", () => {
   it("retire accents, ligatures, majuscules et espaces autour", () => {
@@ -25,5 +25,14 @@ describe("initials", () => {
   it("un seul mot donne une lettre, un nom vide donne ?", () => {
     expect(initials("admin")).toBe("A");
     expect(initials("   ")).toBe("?");
+  });
+});
+
+describe("isPhoneLike", () => {
+  it("reconnaît un numéro, pas une référence ni un nom", () => {
+    expect(isPhoneLike("06 39 98 00 07")).toBe(true);
+    expect(isPhoneLike("+33 6.39")).toBe(true);
+    expect(isPhoneLike("FIG-2609")).toBe(false);
+    expect(isPhoneLike("benali")).toBe(false);
   });
 });

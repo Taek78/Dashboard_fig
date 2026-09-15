@@ -1,28 +1,27 @@
-import { Sparkles, Users } from "lucide-react";
+import { Percent, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Order } from "@/domain/orders/types";
 
 /*
- * Badge de la remise appliquée par l'application (serveur) : le nom de la
- * communauté et son pourcentage, ou la fidélité. Rien si la commande n'a pas
- * de remise. Le libellé porte l'information : la couleur n'est jamais seule.
+ * Badge de la remise appliquée par l'application FIG au paiement (serveur) :
+ * remise de communauté ou fidélité, avec son pourcentage. Rien si la commande
+ * n'a pas de remise. Le nom de la communauté est porté par ClientTypeLabel :
+ * le badge reste court, et passe à la ligne plutôt que de déborder.
  */
+const wrap = "h-auto max-w-full whitespace-normal text-left";
+
 export function OrderDiscountBadge({ order }: { order: Order }) {
   if (!order.discount) return null;
-  if (order.discount.kind === "community") {
-    return (
-      <Badge variant="secondary" className="max-w-full">
-        <Users aria-hidden="true" />
-        <span className="truncate">
-          {order.community?.name ?? "Communauté"} · −{order.discount.percent} %
-        </span>
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="success">
+  const percent = `−${order.discount.percent} %`;
+  return order.discount.kind === "community" ? (
+    <Badge variant="secondary" className={wrap}>
+      <Percent aria-hidden="true" />
+      Remise communauté {percent}
+    </Badge>
+  ) : (
+    <Badge variant="success" className={wrap}>
       <Sparkles aria-hidden="true" />
-      Fidélité · −{order.discount.percent} %
+      Fidélité {percent}
     </Badge>
   );
 }

@@ -60,7 +60,7 @@ Dashboard_fig/
 
 ### 3.1 `src/domain/<domaine>/` : le métier pur
 
-Un dossier par domaine : `orders` (commandes, avec `assignment.ts` pour l'affectation de l'équipe et `discount.ts` pour les remises), `deliveries` (tournée), `products` (catalogue), `customers` (clients, avec `loyalty.ts` pour la série de fidélité), `communities` (groupes de clients livrés à un même point de retrait), `staff` (personnel : livreurs, préparateurs, gestionnaires), `articles`, `metrics` (agrégations), `engagement` (usage de l'appli), `auth` (rôles et comptes). Chaque dossier suit le même patron :
+Un dossier par domaine : `orders` (commandes, avec `assignment.ts` pour l'affectation de l'équipe et `discount.ts` pour les remises), `deliveries` (tournée), `products` (catalogue), `customers` (clients, avec `loyalty.ts` pour la série de fidélité, `client-type.ts` pour particulier ou communauté, `directory.ts` pour la recherche commune), `communities` (groupes de clients livrés à un même point de retrait), `staff` (personnel : livreurs, préparateurs, gestionnaires), `articles`, `metrics` (agrégations), `engagement` (usage de l'appli), `auth` (rôles et comptes). Chaque dossier suit le même patron :
 
 | Fichier                     | Rôle                                                               | Exemple                                        |
 | --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
@@ -109,30 +109,30 @@ Next associe un dossier à une URL. Le groupe `(dashboard)` regroupe toutes les 
 | `api/health/route.ts`             | `{ ok: true }` ou 503 si la base ne répond pas                                         |
 | `api/auth/[...nextauth]/route.ts` | points d'entrée d'Auth.js                                                              |
 
-Sections : `/` tableau de bord, `/commandes`, `/livraisons`, `/catalogue`, `/articles`, `/clients` (onglets particuliers et communautés, fiche `/clients/communautes/[id]`), `/personnel` (équipe, fiche `/personnel/[id]`), `/metriques`, `/comptes` (admin), `/profil`.
+Sections : `/` tableau de bord, `/commandes`, `/livraisons`, `/catalogue`, `/articles`, `/clients` (recherche commune particuliers et communautés, fiches `/clients/[id]` et `/clients/communautes/[id]`), `/personnel` (équipe, fiche `/personnel/[id]`), `/metriques`, `/comptes` (admin), `/profil`.
 
 ### 3.5 `src/components/` : les composants
 
 Par domaine, deux natures :
 
-- **serveur** (par défaut) : reçoivent des données déjà chargées et les rendent. Cartes (`order-card`, `delivery-card`, `product-card`, `article-card`, `staff-card`, `communities-cards`), listes, tableaux, en-têtes, badges, onglets (`staff-tabs`, `customer-tabs`), le bloc « Équipe » d'une commande (`order-team`, qui choisit entre lecture et listes déroulantes), la jauge de fidélité. Aucun hook.
-- **client** (`"use client"`, seulement quand un hook l'exige) : les formulaires branchés sur une Server Action avec `useActionState` (`order-actions`, `order-status-form`, `staff-assign-field` qui écrit dès le choix dans la liste, `product-form`, `duplicate-product-button`, `staff-form`, `article-form`, `account-editor`…), le sélecteur de thème, le fil d'Ariane, la navigation.
+- **serveur** (par défaut) : reçoivent des données déjà chargées et les rendent. Cartes (`order-card`, `delivery-card`, `product-card`, `article-card`, `staff-card`, `customer-card`, `community-card`), listes, tableaux, en-têtes, badges, l'étiquette de type de client (`client-type-label`), le bloc « Équipe » d'une commande (`order-team`, qui choisit entre lecture et listes déroulantes), les recherches (`orders-filters` partagée par les commandes et les livraisons, `customers-search`, `products-filters`, `staff-search` pour l'équipe : champs serveur dans un `AutoSubmitForm`), la tournée groupée par jour (`tour-cards`) et sa barre d'avancement segmentée par statut (`tour-progress`), la recherche dans l'historique d'une personne (`staff-history-filters`), les sections des métriques (`metrics-section`), la jauge de fidélité. Aucun hook.
+- **client** (`"use client"`, seulement quand un hook l'exige) : les formulaires branchés sur une Server Action avec `useActionState` (`order-actions`, `order-status-form`, `staff-assign-field` qui écrit dès le choix dans la liste, `product-form`, `duplicate-product-button`, `staff-form`, `article-form`, `account-editor`…), `auto-submit-form` (recherche GET lancée pendant la saisie, anti-rebond et protection contre les courses), le camembert plein des métriques (`ratio-pie`, étiquette au survol), le sélecteur de thème, le fil d'Ariane, la navigation.
 
-La coquille : `app-sidebar` (logo, navigation filtrée par rôle, utilisateur, déconnexion), `site-header` (bouton du menu, marque sur mobile, fil d'Ariane, thème, avatar vers le profil), `page-header` (le seul `h1` de chaque page).
+La coquille : le layout `(dashboard)` pose `@container/main` sur le conteneur de page (les composants de page s'adaptent à sa largeur, donc à la sidebar ouverte ou repliée), `app-sidebar` (logo, navigation filtrée par rôle, utilisateur, déconnexion), `site-header` (bouton du menu, marque sur mobile, fil d'Ariane, thème, avatar vers le profil), `page-header` (le seul `h1` de chaque page).
 
 `components/ui/` contient les composants shadcn copiés dans le projet (bouton, carte, tableau, sidebar…). Ils nous appartiennent : on les modifie sur place, on ne les réinstalle pas.
 
 ### 3.6 `src/lib/` : utilitaires purs
 
-`format.ts` (euros, dates, créneaux, quantités), `text.ts` (normalisation sans accents, initiales), `navigation.ts` (entrées du menu, fil d'Ariane), `theme.ts` (modes light, dark, fig), `env-schema.ts` et `env.ts` (validation de l'environnement), `password.ts` (scrypt), `rate-limit.ts` (verrou progressif), `csp.ts` (Content-Security-Policy), `security-log.ts` (format du journal), `action-result.ts` (le résultat que toute action renvoie), `dal.ts` (session → utilisateur courant), `simulation.ts` (états vide et erreur en développement).
+`format.ts` (euros, dates, créneaux, quantités), `days.ts` (arithmétique des jours `AAAA-MM-JJ`, partagée par les métriques et la tournée), `pie.ts` (géométrie du camembert), `search-query.ts` (URL d'une recherche automatique, tri entre nos réponses et une navigation extérieure), `text.ts` (normalisation sans accents, saisie « façon téléphone », initiales), `navigation.ts` (entrées du menu, fil d'Ariane), `theme.ts` (modes light, dark, fig), `env-schema.ts` et `env.ts` (validation de l'environnement), `password.ts` (scrypt), `rate-limit.ts` (verrou progressif), `csp.ts` (Content-Security-Policy), `security-log.ts` (format du journal), `action-result.ts` (le résultat que toute action renvoie), `dal.ts` (session → utilisateur courant), `simulation.ts` (états vide et erreur en développement).
 
 ## 4. Deux flux à connaître par cœur
 
 ### Lecture : afficher la liste des commandes
 
 1. Le proxy laisse passer la requête (session valide, section permise) et pose un nonce.
-2. `commandes/page.tsx` attend `searchParams`, les passe à `parseOrderFilters` (tolérant), et appelle `getOrders(filters)` de la façade.
-3. La façade délègue au mock ou à Drizzle ; dans les deux cas, résultat trié par créneau.
+2. `commandes/page.tsx` attend `searchParams`, les passe à `parseOrderFilters` (tolérant : recherche, statut, période, préparateur, livreur), et appelle `getOrders(filters)` de la façade.
+3. La façade délègue au mock ou à Drizzle ; dans les deux cas, résultat trié par créneau, et la recherche libre passe par la même règle pure (`matchesOrderQuery`).
 4. La page rend `OrdersCards`, qui rend une `OrderCard` par commande, avec `OrderActions` si le rôle peut écrire.
 5. Pendant l'attente, Next affiche `loading.tsx`.
 

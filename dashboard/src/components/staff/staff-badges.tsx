@@ -26,8 +26,16 @@ const AVAILABILITY_VARIANT: Record<Availability, BadgeVariant> = {
   conge: "outline",
 };
 
+/** Le libellé passe à la ligne dans une carte étroite (« Préparateur de commandes »). */
 export function StaffKindBadge({ kind }: { kind: StaffKind }) {
-  return <Badge variant={KIND_VARIANT[kind]}>{STAFF_KIND_LABELS[kind]}</Badge>;
+  return (
+    <Badge
+      variant={KIND_VARIANT[kind]}
+      className="h-auto min-h-5 max-w-full whitespace-normal"
+    >
+      {STAFF_KIND_LABELS[kind]}
+    </Badge>
+  );
 }
 
 export function AvailabilityBadge({

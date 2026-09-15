@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, Navigation, Package, Phone } from "lucide-react";
+import {
+  CLIENT_TYPE_TINT,
+  ClientTypeLabel,
+} from "@/components/customers/client-type-label";
 import { OrderActions } from "@/components/orders/order-actions";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
@@ -11,6 +15,7 @@ import {
   type AssignmentOptions,
 } from "@/components/orders/order-team";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { clientTypeOf } from "@/domain/customers/client-type";
 import { itineraryUrl } from "@/domain/deliveries/rules";
 import type { Order } from "@/domain/orders/types";
 import { formatEuros, toTelHref } from "@/lib/format";
@@ -18,9 +23,10 @@ import { cn } from "@/lib/utils";
 
 /*
  * Carte d'une livraison (serveur), pensée pour le terrain autant que pour le
- * bureau. Trois bandes de gauche à droite sur écran large, empilées sur mobile :
- *   1. l'ordre de passage (numéro), le créneau, le statut, la référence, la
- *      remise éventuelle ;
+ * bureau. Trois bandes :
+ *   1. l'ordre de passage (numéro), le créneau, le statut, la référence, le
+ *      type de client (particulier ou communauté, en couleur, bande teintée) et
+ *      la remise éventuelle ;
  *   2. le client, avec deux gestes en un tap : appeler, ouvrir l'itinéraire
  *      (de vrais <a> habillés en bouton : Base UI donnerait role="button" à un
  *      lien rendu par <Button>) ; puis l'adresse ou le point de retrait, le
@@ -28,6 +34,9 @@ import { cn } from "@/lib/utils";
  *   3. le suivi : le livreur affecté (en premier, c'est la tournée) et le
  *      préparateur, puis le geste suivant et l'annulation avec motif
  *      (OrderActions, partagé avec les cartes de commandes).
+ * Disposition selon la largeur de la zone de contenu (@container/main), comme
+ * la carte de commande : empilées, puis bandeau + deux colonnes (@xl), puis
+ * trois colonnes (@4xl).
  * La prochaine livraison à faire est mise en avant (anneau de couleur).
  * Aucun élément absolu : rien ne peut se chevaucher.
  */
@@ -54,14 +63,19 @@ export function DeliveryCard({
     <article
       aria-label={`Livraison ${position}, ${order.reference}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 md:flex-row",
+        "bg-card text-card-foreground ring-foreground/10 card-lift grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
         STATUS_ACCENT[order.status],
         isNext && "ring-primary ring-2",
         done && "opacity-80",
       )}
     >
       {/* 1. Ordre de passage, créneau et statut */}
-      <div className="bg-muted/40 flex flex-row items-center gap-4 border-b p-4 md:w-52 md:shrink-0 md:flex-col md:items-start md:border-r md:border-b-0 md:p-5">
+      <div
+        className={cn(
+          "flex flex-row items-center gap-4 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:flex-col @4xl/main:items-start @4xl/main:border-r @4xl/main:border-b-0",
+          CLIENT_TYPE_TINT[clientTypeOf(order.community)],
+        )}
+      >
         <span
           aria-hidden="true"
           className={cn(
@@ -95,21 +109,22 @@ export function DeliveryCard({
               {order.reference}
             </Link>
           </div>
+          <ClientTypeLabel community={order.community} className="mt-1" />
           <OrderDiscountBadge order={order} />
         </div>
       </div>
 
       {/* 2. Client et gestes rapides */}
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:p-5">
+      <div className="flex min-w-0 flex-col gap-3 p-4 @xl/main:p-5">
         <p className="truncate text-lg font-semibold">
           {order.customer.fullName}
         </p>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
           <a
             href={toTelHref(order.customer.phone)}
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
-              "justify-start sm:justify-center",
+              "justify-start @xl/main:justify-center",
             )}
           >
             <Phone />
@@ -121,7 +136,7 @@ export function DeliveryCard({
             rel="noopener noreferrer"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
-              "justify-start sm:justify-center",
+              "justify-start @xl/main:justify-center",
             )}
           >
             <Navigation />
@@ -155,7 +170,7 @@ export function DeliveryCard({
           </dt>
           <dd>
             {order.lines.length} article{order.lines.length > 1 ? "s" : ""} ·{" "}
-            <span className="font-medium tabular-nums">
+            <span className="text-base font-bold tabular-nums">
               {formatEuros(order.totalCents)}
             </span>
           </dd>
@@ -174,7 +189,7 @@ export function DeliveryCard({
       </div>
 
       {/* 3. Suivi : équipe puis action de terrain */}
-      <div className="flex flex-col justify-center gap-3 border-t p-4 md:w-80 md:shrink-0 md:border-t-0 md:border-l md:p-5">
+      <div className="flex min-w-0 flex-col justify-center gap-3 border-t p-4 @xl/main:border-t-0 @xl/main:border-l @xl/main:p-5">
         <OrderTeam
           order={order}
           options={options}

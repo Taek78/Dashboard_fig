@@ -16,18 +16,63 @@ import {
  * src/app/(dashboard)/ : un href qui ne correspond à aucun dossier donne un 404.
  * Les icônes sont les composants lucide eux-mêmes (pas leur nom en chaîne),
  * pour que nav-main.tsx les rende directement avec <item.icon />.
+ * Chaque entrée appartient à un groupe : le menu les range sous un intitulé,
+ * plus lisible qu'une liste de neuf liens.
  */
-export const NAV_ITEMS = [
-  { title: "Tableau de bord", href: "/", icon: LayoutDashboard },
-  { title: "Commandes", href: "/commandes", icon: ShoppingBasket },
-  { title: "Livraisons", href: "/livraisons", icon: Truck },
-  { title: "Catalogue", href: "/catalogue", icon: Carrot },
-  { title: "Articles", href: "/articles", icon: Newspaper },
-  { title: "Clients", href: "/clients", icon: Users },
-  { title: "Personnel", href: "/personnel", icon: Contact },
-  { title: "Métriques", href: "/metriques", icon: ChartColumn },
-  { title: "Comptes", href: "/comptes", icon: UserCog },
+export const NAV_GROUPS = [
+  "activite",
+  "offre",
+  "relations",
+  "pilotage",
 ] as const;
+export type NavGroup = (typeof NAV_GROUPS)[number];
+export const NAV_GROUP_LABELS: Record<NavGroup, string> = {
+  activite: "Activité",
+  offre: "Offre",
+  relations: "Clients et équipe",
+  pilotage: "Pilotage",
+};
+
+export const NAV_ITEMS = [
+  {
+    title: "Tableau de bord",
+    href: "/",
+    icon: LayoutDashboard,
+    group: "activite",
+  },
+  {
+    title: "Commandes",
+    href: "/commandes",
+    icon: ShoppingBasket,
+    group: "activite",
+  },
+  { title: "Livraisons", href: "/livraisons", icon: Truck, group: "activite" },
+  { title: "Catalogue", href: "/catalogue", icon: Carrot, group: "offre" },
+  { title: "Articles", href: "/articles", icon: Newspaper, group: "offre" },
+  { title: "Clients", href: "/clients", icon: Users, group: "relations" },
+  { title: "Personnel", href: "/personnel", icon: Contact, group: "relations" },
+  {
+    title: "Métriques",
+    href: "/metriques",
+    icon: ChartColumn,
+    group: "pilotage",
+  },
+  { title: "Comptes", href: "/comptes", icon: UserCog, group: "pilotage" },
+] as const;
+
+/**
+ * Range des entrées (déjà filtrées par rôle) sous leurs groupes, dans l'ordre
+ * de NAV_GROUPS ; un groupe sans entrée n'apparaît pas.
+ */
+export function groupNavItems<T extends { group: NavGroup }>(
+  items: readonly T[],
+): { group: NavGroup; label: string; items: T[] }[] {
+  return NAV_GROUPS.map((group) => ({
+    group,
+    label: NAV_GROUP_LABELS[group],
+    items: items.filter((item) => item.group === group),
+  })).filter((entry) => entry.items.length > 0);
+}
 
 /** La racine n'est active que sur "/" ; une section reste active sur ses sous-pages. */
 export function isNavActive(pathname: string, href: string): boolean {

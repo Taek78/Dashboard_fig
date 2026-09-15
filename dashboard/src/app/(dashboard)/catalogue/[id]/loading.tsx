@@ -5,7 +5,7 @@ export default function ProduitLoading() {
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
       <p className="sr-only">Chargement du produit…</p>
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
         <div className="flex flex-col gap-1.5">
           <Skeleton className="h-8 w-56" />
           <span
@@ -16,7 +16,7 @@ export default function ProduitLoading() {
         </div>
         <Skeleton className="h-7 w-40" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(16rem,20rem)_1fr]">
+      <div className="grid gap-6 @4xl/main:grid-cols-[minmax(16rem,20rem)_1fr]">
         <div className="flex flex-col gap-3">
           <Skeleton className="h-4 w-40" />
           <div className="bg-card ring-foreground/10 overflow-hidden rounded-2xl ring-1">
@@ -32,7 +32,7 @@ export default function ProduitLoading() {
           <CardHeader>
             <Skeleton className="h-5 w-36" />
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
+          <CardContent className="grid gap-4 @2xl/main:grid-cols-2">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="grid gap-1.5">
                 <Skeleton className="h-4 w-24" />

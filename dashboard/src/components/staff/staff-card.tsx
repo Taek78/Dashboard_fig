@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Clock, Mail, Phone } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Clock,
+  Copy,
+  Mail,
+  Pencil,
+  Phone,
+} from "lucide-react";
+import { DeleteStaffButton } from "@/components/staff/delete-staff-button";
 import {
   AvailabilityBadge,
   StaffKindBadge,
@@ -16,13 +25,20 @@ import { cn } from "@/lib/utils";
  * Carte d'une personne de l'équipe (serveur) : identité et métier, coordonnées
  * en un tap, créneau et jours travaillés, compteurs d'activité calculés à
  * partir des commandes (préparées, livrées, en cours), lien vers la fiche.
+ * Pour un rôle qui gère le personnel (admin, gestionnaire) : modifier (la
+ * fiche, formulaire en haut), dupliquer (nouvelle fiche préremplie) et
+ * supprimer (confirmation SUPPRIMER) directement depuis la carte. Les actions
+ * revérifient le rôle côté serveur.
  */
 export function StaffCard({
   member,
   summary,
+  canManage = false,
 }: {
   member: StaffMember;
   summary: StaffWorkSummary;
+  /** Rôle autorisé à gérer le personnel : affiche les actions. */
+  canManage?: boolean;
 }) {
   const name = staffFullName(member);
   const isDriver = member.kind === "livreur";
@@ -31,7 +47,7 @@ export function StaffCard({
     <article
       aria-label={`Personne ${name}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 md:p-5",
+        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
         !member.active && "opacity-70",
       )}
     >
@@ -147,17 +163,40 @@ export function StaffCard({
         </div>
       </dl>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col gap-2 border-t pt-3">
         <Link
           href={`/personnel/${member.id}`}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
-            "-ml-2",
+            "-ml-2 self-start",
           )}
         >
           Fiche et historique
           <ArrowRight />
         </Link>
+        {canManage ? (
+          <div
+            role="group"
+            aria-label={`Actions sur ${name}`}
+            className="flex flex-wrap items-center gap-1.5"
+          >
+            <Link
+              href={`/personnel/${member.id}#modifier`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Pencil />
+              Modifier
+            </Link>
+            <Link
+              href={`/personnel/nouveau?depuis=${member.id}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Copy />
+              Dupliquer
+            </Link>
+            <DeleteStaffButton staffId={member.id} name={name} compact />
+          </div>
+        ) : null}
       </div>
     </article>
   );

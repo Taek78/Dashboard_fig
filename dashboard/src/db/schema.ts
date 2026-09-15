@@ -33,7 +33,6 @@ import {
  */
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
-  "confirmed",
   "preparing",
   "delivering",
   "delivered",
@@ -150,7 +149,6 @@ export const communities = pgTable("communities", {
   pickupPlace: text("pickup_place").notNull(),
   pickupCity: text("pickup_city").notNull(),
   pickupPostalCode: text("pickup_postal_code").notNull(),
-  pickupTime: text("pickup_time").notNull(),
   discountPercent: integer("discount_percent").notNull().default(0),
   active: boolean("active").notNull().default(true),
   createdAt: timestampTz("created_at").notNull().defaultNow(),

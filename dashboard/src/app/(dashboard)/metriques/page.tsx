@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Ban,
+  Contact,
   Download,
   Euro,
   MessageSquareWarning,
@@ -9,12 +10,14 @@ import {
   Star,
   UserCheck,
   UserPlus,
+  Users,
   Wallet,
 } from "lucide-react";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { MetricsControls } from "@/components/metrics/metrics-controls";
 import { ComparisonChart, StatusChart } from "@/components/metrics/charts-lazy";
-import { RatioDonut } from "@/components/metrics/ratio-donut";
+import { MetricsSection } from "@/components/metrics/metrics-section";
+import { RatioPie } from "@/components/metrics/ratio-pie";
 import { TrendBadge } from "@/components/metrics/trend-badge";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +38,7 @@ import {
   applyTaxMode,
   applyTaxToValues,
   bucketFor,
+  communityShare,
   compareSeries,
   COMPARISON_LABELS,
   computeKpis,
@@ -53,14 +57,21 @@ import { parseMetricsQuery } from "@/domain/metrics/schemas";
 import { formatDateFr, formatEuros, formatQuantity } from "@/lib/format";
 
 /*
- * Métriques : période prédéfinie ou plage libre,
- * montants HT ou TTC, référence de comparaison (N-1 ou période précédente),
- * badge de tendance sur chaque KPI, graphe pleine largeur, statuts, produits
- * phares, et un bloc « usage de l'application » sur l'année civile de la période
- * (téléchargements, inscriptions, acheteurs, réclamations, note).
+ * Métriques : période prédéfinie ou plage libre, montants HT ou TTC, référence
+ * de comparaison (N-1 ou période précédente), badge de tendance sur chaque KPI.
+ * Rangées par thème, chacune dans sa section titrée :
+ *   1. Ventes : CA, panier moyen, acheteurs, graphe d'évolution ;
+ *   2. Commandes : volume, annulations, part des communautés (indicateur et
+ *      tendance), répartition par statut ;
+ *   3. Produits : les produits phares ;
+ *   4. Usage de l'application sur l'année civile de la période.
+ * Les ratios sont des camemberts pleins, sans pourcentage écrit : au survol,
+ * chaque part dit ce qu'elle représente.
  * Composant serveur : deux lectures, toutes les agrégations en fonctions pures.
  */
 export const metadata: Metadata = { title: "Métriques" };
+
+const pct = (value: number | null) => (value === null ? "—" : `${value} %`);
 
 export default async function MetriquesPage({
   searchParams,
@@ -75,8 +86,13 @@ export default async function MetriquesPage({
 
   const [all, engagement] = await Promise.all([getOrders(), getEngagement()]);
   const orders = filterByRange(all, range);
+  const referenceOrders = filterByRange(all, reference);
   const kpis = computeKpis(orders);
-  const kpisRef = computeKpis(filterByRange(all, reference));
+  const kpisRef = computeKpis(referenceOrders);
+  const buyersInRange = distinctBuyers(orders);
+  const buyersInRangeRef = distinctBuyers(referenceOrders);
+  const share = communityShare(orders);
+  const shareRef = communityShare(referenceOrders);
   const bucket = bucketFor(range);
   const comparison = compareSeries(
     revenueSeries(all, range, bucket),
@@ -94,6 +110,7 @@ export default async function MetriquesPage({
 
   // Usage de l'application : année civile de la fin de la période, vs l'année d'avant.
   const year = range.to.slice(0, 4);
+  const yearLabel = `Année ${Number(year) - 1}`;
   const yearRange = { from: `${year}-01-01`, to: `${year}-12-31` };
   const yearRef = previousYearRange(yearRange);
   const usage = summarizeEngagement(engagement, yearRange);
@@ -128,172 +145,138 @@ export default async function MetriquesPage({
 
       <MetricsControls query={query} range={range} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label={`CA ${taxLabel}`}
-          value={money(kpis.revenueCents)}
-          hint="hors annulées"
-          icon={<Euro />}
-          trend={trend(kpis.revenueCents, kpisRef.revenueCents)}
-          tone="brand"
-        />
-        <KpiCard
-          label="Commandes"
-          value={String(kpis.orderCount)}
-          hint={`${kpis.pendingCount} en attente`}
-          icon={<ShoppingBasket />}
-          trend={trend(kpis.orderCount, kpisRef.orderCount)}
-        />
-        <KpiCard
-          label={`Panier moyen ${taxLabel}`}
-          value={money(kpis.averageBasketCents)}
-          icon={<Wallet />}
-          trend={trend(kpis.averageBasketCents, kpisRef.averageBasketCents)}
-        />
-        <KpiCard
-          label="Annulées"
-          value={String(kpis.cancelledCount)}
-          hint="moins, c'est mieux"
-          icon={<Ban />}
-          trend={trend(kpis.cancelledCount, kpisRef.cancelledCount, true)}
-          visual={
-            <RatioDonut
-              percent={ratioPercent(kpis.cancelledCount, kpis.orderCount)}
-              label="part des commandes annulées"
-              tone="destructive"
-            />
-          }
-        />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2>
-              Évolution : {title.toLowerCase()} et{" "}
-              {referenceLabel.toLowerCase()}
-            </h2>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ComparisonChart
-            points={comparison}
-            bucket={bucket}
-            taxLabel={taxLabel}
-            referenceLabel={referenceLabel}
-          />
-        </CardContent>
-      </Card>
-
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Usage de l&apos;application en {year}
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Année civile de la période choisie, variations par rapport à{" "}
-            {Number(year) - 1}. Téléchargements, inscriptions, réclamations et
-            note viennent des stores et du support.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <MetricsSection
+        id="ventes"
+        title="Ventes"
+        description={`Chiffre d'affaires, panier moyen et acheteurs de la période, montants ${taxLabel}, commandes annulées exclues.`}
+      >
+        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
           <KpiCard
-            label="Téléchargements"
-            value={usage.downloads.toLocaleString("fr-FR")}
-            icon={<Download />}
-            trend={trend(
-              usage.downloads,
-              usageRef.downloads,
-              false,
-              `Année ${Number(year) - 1}`,
-            )}
+            label={`CA ${taxLabel}`}
+            value={money(kpis.revenueCents)}
+            hint="hors annulées"
+            icon={<Euro />}
+            trend={trend(kpis.revenueCents, kpisRef.revenueCents)}
+            tone="brand"
           />
           <KpiCard
-            label="Inscrits / téléchargements"
-            value={signupRate === null ? "—" : `${signupRate} %`}
-            hint={`${usage.signups.toLocaleString("fr-FR")} inscriptions`}
-            icon={<UserPlus />}
-            visual={
-              <RatioDonut
-                percent={signupRate}
-                label="part des téléchargements devenus inscriptions"
-              />
-            }
-            trend={trend(
-              signupRate,
-              signupRateRef,
-              false,
-              `Année ${Number(year) - 1}`,
-            )}
+            label={`Panier moyen ${taxLabel}`}
+            value={money(kpis.averageBasketCents)}
+            icon={<Wallet />}
+            trend={trend(kpis.averageBasketCents, kpisRef.averageBasketCents)}
           />
           <KpiCard
-            label="Inscrits ayant commandé"
-            value={buyerRate === null ? "—" : `${buyerRate} %`}
-            hint={`${buyers} acheteur${buyers > 1 ? "s" : ""} distinct${buyers > 1 ? "s" : ""}`}
-            icon={<UserCheck />}
-            visual={
-              <RatioDonut
-                percent={buyerRate}
-                label="part des inscrits ayant commandé"
-                tone="success"
-              />
-            }
-            trend={trend(
-              buyerRate,
-              buyerRateRef,
-              false,
-              `Année ${Number(year) - 1}`,
-            )}
-          />
-          <KpiCard
-            label="Réclamations"
-            value={String(usage.complaints)}
-            hint="moins, c'est mieux"
-            icon={<MessageSquareWarning />}
-            trend={trend(
-              usage.complaints,
-              usageRef.complaints,
-              true,
-              `Année ${Number(year) - 1}`,
-            )}
-          />
-          <KpiCard
-            label="Note de l'appli"
-            value={
-              usage.rating === null
-                ? "—"
-                : `${usage.rating.toLocaleString("fr-FR")} / 5`
-            }
-            hint={`${usage.ratingCount} avis`}
-            icon={<Star />}
-            trend={trend(
-              usage.rating,
-              usageRef.rating,
-              false,
-              `Année ${Number(year) - 1}`,
-            )}
+            label="Acheteurs distincts"
+            value={String(buyersInRange)}
+            hint="clients ayant commandé sur la période"
+            icon={<Contact />}
+            trend={trend(buyersInRange, buyersInRangeRef)}
           />
         </div>
-      </section>
-
-      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>
-              <h2>Commandes par statut</h2>
+              <h3>
+                Évolution : {title.toLowerCase()} et{" "}
+                {referenceLabel.toLowerCase()}
+              </h3>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ComparisonChart
+              points={comparison}
+              bucket={bucket}
+              taxLabel={taxLabel}
+              referenceLabel={referenceLabel}
+            />
+          </CardContent>
+        </Card>
+      </MetricsSection>
+
+      <MetricsSection
+        id="commandes"
+        title="Commandes"
+        description="Volume, annulations et part des commandes passées par les membres d'une communauté."
+      >
+        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
+          <KpiCard
+            label="Commandes"
+            value={String(kpis.orderCount)}
+            hint={`${kpis.pendingCount} en attente`}
+            icon={<ShoppingBasket />}
+            trend={trend(kpis.orderCount, kpisRef.orderCount)}
+          />
+          <KpiCard
+            label="Annulées"
+            value={String(kpis.cancelledCount)}
+            hint="moins, c'est mieux"
+            icon={<Ban />}
+            trend={trend(kpis.cancelledCount, kpisRef.cancelledCount, true)}
+            visual={
+              <RatioPie
+                label="part des commandes annulées"
+                slices={[
+                  {
+                    label: "Annulées",
+                    value: kpis.cancelledCount,
+                    tone: "destructive",
+                  },
+                  {
+                    label: "Non annulées",
+                    value: kpis.orderCount - kpis.cancelledCount,
+                    tone: "rest",
+                  },
+                ]}
+              />
+            }
+          />
+          <KpiCard
+            label="Commandes communauté"
+            value={String(share.community)}
+            hint={
+              share.percent === null
+                ? "aucune commande sur la période"
+                : `${pct(share.percent)} des commandes · ${share.individual} de particuliers`
+            }
+            icon={<Users />}
+            trend={trend(share.community, shareRef.community)}
+            visual={
+              <RatioPie
+                label="commandes de communautés et de particuliers"
+                slices={[
+                  {
+                    label: "Communautés",
+                    value: share.community,
+                    tone: "community",
+                  },
+                  {
+                    label: "Particuliers",
+                    value: share.individual,
+                    tone: "individual",
+                  },
+                ]}
+              />
+            }
+          />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h3>Commandes par statut</h3>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <StatusChart points={statuses} />
           </CardContent>
         </Card>
+      </MetricsSection>
 
+      <MetricsSection
+        id="produits"
+        title="Produits"
+        description={`Les cinq produits au plus fort chiffre d'affaires ${taxLabel} sur la période, hors commandes annulées.`}
+      >
         <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Produits phares ({taxLabel})</h2>
-            </CardTitle>
-          </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableCaption className="sr-only">
@@ -341,7 +324,89 @@ export default async function MetriquesPage({
             </Table>
           </CardContent>
         </Card>
-      </div>
+      </MetricsSection>
+
+      <MetricsSection
+        id="usage"
+        title={`Usage de l'application en ${year}`}
+        description={`Année civile de la période choisie, variations par rapport à ${Number(year) - 1}. Téléchargements, inscriptions, réclamations et note viennent des stores et du support.`}
+      >
+        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3 @6xl/main:grid-cols-5">
+          <KpiCard
+            label="Téléchargements"
+            value={usage.downloads.toLocaleString("fr-FR")}
+            icon={<Download />}
+            trend={trend(usage.downloads, usageRef.downloads, false, yearLabel)}
+          />
+          <KpiCard
+            label="Inscrits / téléchargements"
+            value={pct(signupRate)}
+            hint={`${usage.signups.toLocaleString("fr-FR")} inscriptions`}
+            icon={<UserPlus />}
+            visual={
+              <RatioPie
+                label="part des téléchargements devenus inscriptions"
+                slices={[
+                  { label: "Inscrits", value: usage.signups, tone: "brand" },
+                  {
+                    label: "Téléchargements sans inscription",
+                    value: Math.max(0, usage.downloads - usage.signups),
+                    tone: "rest",
+                  },
+                ]}
+              />
+            }
+            trend={trend(signupRate, signupRateRef, false, yearLabel)}
+          />
+          <KpiCard
+            label="Inscrits ayant commandé"
+            value={pct(buyerRate)}
+            hint={`${buyers} acheteur${buyers > 1 ? "s" : ""} distinct${buyers > 1 ? "s" : ""}`}
+            icon={<UserCheck />}
+            visual={
+              <RatioPie
+                label="part des inscrits ayant commandé"
+                slices={[
+                  {
+                    label: "Inscrits ayant commandé",
+                    value: buyers,
+                    tone: "success",
+                  },
+                  {
+                    label: "Inscrits sans commande",
+                    value: Math.max(0, usage.signups - buyers),
+                    tone: "rest",
+                  },
+                ]}
+              />
+            }
+            trend={trend(buyerRate, buyerRateRef, false, yearLabel)}
+          />
+          <KpiCard
+            label="Réclamations"
+            value={String(usage.complaints)}
+            hint="moins, c'est mieux"
+            icon={<MessageSquareWarning />}
+            trend={trend(
+              usage.complaints,
+              usageRef.complaints,
+              true,
+              yearLabel,
+            )}
+          />
+          <KpiCard
+            label="Note de l'appli"
+            value={
+              usage.rating === null
+                ? "—"
+                : `${usage.rating.toLocaleString("fr-FR")} / 5`
+            }
+            hint={`${usage.ratingCount} avis`}
+            icon={<Star />}
+            trend={trend(usage.rating, usageRef.rating, false, yearLabel)}
+          />
+        </div>
+      </MetricsSection>
     </>
   );
 }

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  * icône au dégradé de marque et, en haut à droite, un badge de tendance
  * optionnel (TrendBadge). La valeur est déjà formatée par l'appelant.
  * `tone="brand"` : carte au dégradé de marque pour le chiffre principal d'un écran.
- * `visual` : un petit graphique (RatioDonut) calé à droite du chiffre.
+ * `visual` : un petit graphique (RatioPie) calé à droite du chiffre.
  */
 export function KpiCard({
   label,
@@ -23,7 +23,7 @@ export function KpiCard({
   hint?: string;
   icon: ReactNode;
   trend?: ReactNode;
-  /** Petit visuel à droite (camembert de ratio). */
+  /** Petit visuel à droite (camembert plein). */
   visual?: ReactNode;
   tone?: "default" | "brand";
 }) {
@@ -53,7 +53,7 @@ export function KpiCard({
             <span className="text-muted-foreground text-xs">{label}</span>
             {trend}
           </div>
-          <span className="text-2xl font-semibold tracking-tight tabular-nums md:text-[1.75rem]">
+          <span className="text-2xl font-semibold tracking-tight tabular-nums @2xl/main:text-[1.75rem]">
             {value}
           </span>
           {hint ? (

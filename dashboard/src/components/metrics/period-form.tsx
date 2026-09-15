@@ -42,12 +42,12 @@ export function PeriodForm({
     <Form
       action={action}
       aria-label="Choix de la période"
-      className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end"
+      className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:flex-wrap @2xl/main:items-end"
     >
       {Object.entries(hiddenFields).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
-      <div className="grid gap-1.5 md:w-60">
+      <div className="grid gap-1.5 @2xl/main:w-60">
         <Label htmlFor="periode">Période</Label>
         <NativeSelect
           id="periode"
@@ -67,8 +67,8 @@ export function PeriodForm({
           ))}
         </NativeSelect>
       </div>
-      {/* Du / Au côte à côte sur mobile ; md:contents les rend au parent flex. */}
-      <div className="grid grid-cols-2 gap-3 md:contents">
+      {/* Du / Au côte à côte quand la page est étroite ; @2xl/main:contents les rend au parent flex. */}
+      <div className="grid grid-cols-2 gap-3 @2xl/main:contents">
         <div className="grid gap-1.5">
           <Label htmlFor="du">Du</Label>
           <Input
@@ -93,11 +93,11 @@ export function PeriodForm({
         </div>
       </div>
       {children}
-      <Button type="submit" className="w-full md:w-auto">
+      <Button type="submit" className="w-full @2xl/main:w-auto">
         <CalendarRange />
         Afficher
       </Button>
-      <p className="text-muted-foreground text-sm md:ml-auto md:self-center">
+      <p className="text-muted-foreground text-sm @2xl/main:ml-auto @2xl/main:self-center">
         Du {formatDateFr(range.from)} au {formatDateFr(range.to)}. Une plage «
         Du / Au » remplace la période.
       </p>

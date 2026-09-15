@@ -1,39 +1,80 @@
 import { DeliveryCard } from "@/components/deliveries/delivery-card";
+import { TourProgress } from "@/components/deliveries/tour-progress";
 import type { AssignmentOptions } from "@/components/orders/order-team";
-import { nextStopIndex } from "@/domain/deliveries/rules";
-import type { Order } from "@/domain/orders/types";
+import { nextStopIndex, type DayGroup } from "@/domain/deliveries/rules";
+import { formatDayLongFr } from "@/lib/format";
 
 /*
- * Liste verticale de la tournée (serveur) : les commandes arrivent déjà triées
- * par créneau (la source), l'ordre de passage est leur rang ; la première non
- * terminée est mise en avant.
+ * Tournées groupées par jour (serveur). Chaque jour a son en-tête : la date, le
+ * nombre de livraisons et, quand la période couvre plusieurs jours, son propre
+ * avancement. Les commandes arrivent triées par créneau (la source) : l'ordre
+ * de passage est leur rang dans le jour, et la première non terminée du jour
+ * est mise en avant.
  */
 export function TourCards({
-  orders,
+  groups,
   canChangeStatus,
   canAssign,
   options,
 }: {
-  orders: Order[];
+  groups: DayGroup[];
   canChangeStatus: boolean;
   canAssign: boolean;
   options: AssignmentOptions;
 }) {
-  const next = nextStopIndex(orders);
+  const severalDays = groups.length > 1;
+
   return (
-    <ul className="flex flex-col gap-4">
-      {orders.map((order, index) => (
-        <li key={order.id}>
-          <DeliveryCard
-            order={order}
-            position={index + 1}
-            isNext={index === next}
-            canChangeStatus={canChangeStatus}
-            canAssign={canAssign}
-            options={options}
-          />
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-8">
+      {groups.map((group) => {
+        const next = nextStopIndex(group.orders);
+        const day = formatDayLongFr(group.date);
+        const count = group.orders.length;
+        const headingId = `jour-${group.date}`;
+        return (
+          <section
+            key={group.date}
+            aria-labelledby={headingId}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex flex-col gap-2 border-b pb-3 @xl/main:flex-row @xl/main:items-end @xl/main:justify-between @xl/main:gap-6">
+              <h2
+                id={headingId}
+                className="text-lg font-semibold first-letter:uppercase"
+              >
+                {day}
+                <span className="text-muted-foreground text-sm font-normal">
+                  {" "}
+                  · {count} livraison{count > 1 ? "s" : ""}
+                </span>
+              </h2>
+              {severalDays ? (
+                <div className="w-full @xl/main:w-72">
+                  <TourProgress
+                    orders={group.orders}
+                    label={`Avancement du ${day}`}
+                    compact
+                  />
+                </div>
+              ) : null}
+            </div>
+            <ul className="flex flex-col gap-4">
+              {group.orders.map((order, index) => (
+                <li key={order.id}>
+                  <DeliveryCard
+                    order={order}
+                    position={index + 1}
+                    isNext={index === next}
+                    canChangeStatus={canChangeStatus}
+                    canAssign={canAssign}
+                    options={options}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
   );
 }

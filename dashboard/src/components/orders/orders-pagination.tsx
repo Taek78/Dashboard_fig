@@ -12,14 +12,17 @@ import { cn } from "@/lib/utils";
 export function OrdersPagination({
   page,
   baseParams,
+  path = "/commandes",
 }: {
   page: Page<unknown>;
   /** Paramètres d'URL à conserver, sans « page » (ex. "statut=pending"). */
   baseParams: string;
+  /** Liste paginée (les commandes par défaut, les clients aussi). */
+  path?: string;
 }) {
   if (page.pageCount <= 1) return null;
   const href = (n: number) =>
-    `/commandes?${baseParams ? `${baseParams}&` : ""}page=${n}`;
+    `${path}?${baseParams ? `${baseParams}&` : ""}page=${n}`;
   const disabled = cn(
     buttonVariants({ variant: "outline", size: "sm" }),
     "pointer-events-none opacity-50",

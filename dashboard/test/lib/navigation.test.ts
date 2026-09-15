@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { NAV_ITEMS, breadcrumbFor, isNavActive } from "@/lib/navigation";
+import {
+  NAV_ITEMS,
+  breadcrumbFor,
+  groupNavItems,
+  isNavActive,
+} from "@/lib/navigation";
 
 describe("NAV_ITEMS", () => {
   it("pointe vers les neuf sections du back-office, racine en premier", () => {
@@ -73,5 +78,27 @@ describe("breadcrumbFor", () => {
 
   it("un chemin hors navigation donne une liste vide", () => {
     expect(breadcrumbFor("/inconnu")).toEqual([]);
+  });
+});
+
+describe("groupNavItems", () => {
+  it("range les neuf sections sous quatre intitulés, dans l'ordre du menu", () => {
+    const groups = groupNavItems(NAV_ITEMS);
+    expect(groups.map((g) => g.label)).toEqual([
+      "Activité",
+      "Offre",
+      "Clients et équipe",
+      "Pilotage",
+    ]);
+    expect(groups.flatMap((g) => g.items.map((i) => i.href))).toEqual(
+      NAV_ITEMS.map((i) => i.href),
+    );
+  });
+
+  it("n'affiche pas un groupe vide (rôle aux sections limitées)", () => {
+    const livreur = NAV_ITEMS.filter((i) =>
+      ["/", "/commandes", "/livraisons"].includes(i.href),
+    );
+    expect(groupNavItems(livreur).map((g) => g.group)).toEqual(["activite"]);
   });
 });

@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, MapPin, Package, Phone, User } from "lucide-react";
+import {
+  CLIENT_TYPE_TINT,
+  ClientTypeLabel,
+} from "@/components/customers/client-type-label";
 import { OrderActions } from "@/components/orders/order-actions";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
@@ -11,6 +15,7 @@ import {
   type AssignmentOptions,
 } from "@/components/orders/order-team";
 import { Button } from "@/components/ui/button";
+import { clientTypeOf } from "@/domain/customers/client-type";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import type { Order } from "@/domain/orders/types";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
@@ -18,13 +23,18 @@ import { cn } from "@/lib/utils";
 
 /*
  * Carte d'une commande (serveur), même silhouette que la carte de livraison,
- * en trois bandes (côte à côte sur écran large, empilées sur mobile) :
- *   1. la référence, le jour et le créneau, le statut (et le motif si annulée),
- *      la remise éventuelle (communauté, fidélité) ;
+ * en trois bandes :
+ *   1. la référence, le jour et le créneau, le type de client (particulier ou
+ *      communauté, en couleur, la bande est teintée de même), le statut (et le
+ *      motif si annulée), la remise éventuelle (communauté, fidélité) ;
  *   2. le client (fiche, téléphone), l'adresse ou le point de retrait, le
  *      contenu et le montant (remise déduite), le lien vers le détail ;
  *   3. le suivi : l'équipe (préparateur, livreur, en listes déroulantes qui
  *      écrivent aussitôt), puis le geste suivant et l'annulation avec motif.
+ * Disposition selon la largeur de la ZONE DE CONTENU (@container/main du
+ * layout), pas de la fenêtre : empilées quand la page est étroite (mobile,
+ * tablette sidebar ouverte), bande 1 en bandeau et bandes 2 et 3 côte à côte
+ * dès @xl, trois colonnes dès @4xl.
  * Aucun élément absolu : rien ne peut se chevaucher.
  */
 export function OrderCard({
@@ -45,13 +55,18 @@ export function OrderCard({
     <article
       aria-label={`Commande ${order.reference}, ${order.customer.fullName}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 md:flex-row",
+        "bg-card text-card-foreground ring-foreground/10 card-lift grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
         STATUS_ACCENT[order.status],
         done && "opacity-80",
       )}
     >
       {/* 1. Référence, créneau, statut, remise */}
-      <div className="bg-muted/40 flex flex-row items-start justify-between gap-3 border-b p-4 md:w-52 md:shrink-0 md:flex-col md:justify-start md:border-r md:border-b-0 md:p-5">
+      <div
+        className={cn(
+          "flex flex-row items-start justify-between gap-3 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:flex-col @4xl/main:justify-start @4xl/main:border-r @4xl/main:border-b-0",
+          CLIENT_TYPE_TINT[clientTypeOf(order.community)],
+        )}
+      >
         <div className="flex min-w-0 flex-col gap-1">
           <Link
             href={`/commandes/${order.id}`}
@@ -65,8 +80,9 @@ export function OrderCard({
           <span className="text-muted-foreground text-sm tabular-nums">
             {order.deliverySlot.start} → {order.deliverySlot.end}
           </span>
+          <ClientTypeLabel community={order.community} className="mt-1" />
         </div>
-        <div className="flex min-w-0 flex-col items-end gap-1.5 md:items-start">
+        <div className="flex min-w-0 flex-col items-end gap-1.5 @4xl/main:items-start">
           <OrderStatusBadge status={order.status} />
           <OrderDiscountBadge order={order} />
           {order.cancellation ? (
@@ -78,7 +94,7 @@ export function OrderCard({
       </div>
 
       {/* 2. Client et contenu */}
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 md:p-5">
+      <div className="flex min-w-0 flex-col gap-3 p-4 @xl/main:p-5">
         <p className="truncate text-lg font-semibold">
           <Link
             href={`/clients/${order.customer.id}`}
@@ -125,7 +141,7 @@ export function OrderCard({
           </dt>
           <dd>
             {order.lines.length} article{order.lines.length > 1 ? "s" : ""} ·{" "}
-            <span className="font-medium tabular-nums">
+            <span className="text-base font-bold tabular-nums">
               {formatEuros(order.totalCents)}
             </span>
             {order.discount ? (
@@ -156,7 +172,7 @@ export function OrderCard({
       </div>
 
       {/* 3. Suivi : équipe puis actions */}
-      <div className="flex flex-col justify-center gap-3 border-t p-4 md:w-80 md:shrink-0 md:border-t-0 md:border-l md:p-5">
+      <div className="flex min-w-0 flex-col justify-center gap-3 border-t p-4 @xl/main:border-t-0 @xl/main:border-l @xl/main:p-5">
         <OrderTeam
           order={order}
           options={options}

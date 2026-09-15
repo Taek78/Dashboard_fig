@@ -43,7 +43,11 @@ export type Order = {
   cancellation: Cancellation | null;
   /** Communauté dont le client est membre : livraison au point de retrait. */
   community: CommunityRef | null;
-  /** Remise appliquée par l'application (communauté ou fidélité), sinon null. */
+  /**
+   * Remise appliquée par l'application FIG au paiement (communauté ou
+   * fidélité), sinon null. Source de vérité : le paiement dans l'application ;
+   * le dashboard l'affiche et ne la calcule jamais.
+   */
   discount: OrderDiscount | null;
   /** Préparateur affecté par l'équipe, sinon null. */
   preparer: StaffRef | null;
@@ -51,15 +55,27 @@ export type Order = {
   driver: StaffRef | null;
 };
 
+/** Longueur maximale de la recherche libre (?q=) des commandes et des livraisons. */
+export const ORDER_SEARCH_MAX_LENGTH = 100;
+
+/** Valeur d'URL des filtres d'équipe pour « personne d'affecté » (?livreur=aucun). */
+export const UNASSIGNED_FILTER = "aucun";
+
 /*
- * Filtres de la liste, déjà validés (sortie de parseOrderFilters, jamais l'URL brute).
- * `date` est un jour de livraison "AAAA-MM-JJ" comparé à deliverySlot.date, pas à
- * createdAt : le gestionnaire cherche « les commandes à livrer tel jour ».
- * Chaque champ absent = pas de filtre sur ce critère.
+ * Filtres des listes, déjà validés (sortie de parseOrderFilters, jamais l'URL brute).
+ * `from` / `to` bornent le jour de livraison "AAAA-MM-JJ" (deliverySlot.date,
+ * bornes incluses), pas createdAt : on cherche « les commandes à livrer entre
+ * tel et tel jour ». `preparerId` / `driverId` : l'id d'une personne, ou null
+ * pour « non affecté ». Chaque champ absent = pas de filtre sur ce critère.
  */
 export type OrderFilters = {
+  /** Référence, nom du client, e-mail, téléphone, ville ou code postal. */
+  query?: string;
   status?: OrderStatus;
-  date?: string;
+  from?: string;
+  to?: string;
+  preparerId?: string | null;
+  driverId?: string | null;
   /** Fiche client : commandes d'une personne. */
   customerId?: string;
   /** Fiche communauté : commandes livrées à son point de retrait. */

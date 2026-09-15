@@ -1,6 +1,13 @@
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/domain/orders/status";
 import type { OrderStatus } from "@/domain/orders/status";
 import type { Order } from "@/domain/orders/types";
+import {
+  addDays,
+  daysBetween,
+  fromIso,
+  toIso,
+  type DateRange,
+} from "@/lib/days";
 
 /*
  * Agrégations pures des métriques, testées dans
@@ -39,20 +46,8 @@ export function applyTaxMode(cents: number, mode: TaxMode): number {
 
 /* ---------- Dates ---------- */
 
-export type DateRange = { from: string; to: string };
-
-function toIso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-function fromIso(day: string): Date {
-  return new Date(`${day}T00:00:00.000Z`);
-}
-
-export function addDays(day: string, n: number): string {
-  const d = fromIso(day);
-  d.setUTCDate(d.getUTCDate() + n);
-  return toIso(d);
-}
+// Arithmétique des jours partagée avec la tournée des livraisons.
+export { addDays, daysBetween, type DateRange } from "@/lib/days";
 
 export function addMonths(day: string, n: number): string {
   const d = fromIso(day);
@@ -84,15 +79,6 @@ export function startOfWeek(day: string): string {
   const d = fromIso(day);
   const offset = (d.getUTCDay() + 6) % 7; // lundi = 0
   return addDays(day, -offset);
-}
-
-export function daysBetween(range: DateRange): number {
-  return (
-    Math.round(
-      (fromIso(range.to).getTime() - fromIso(range.from).getTime()) /
-        86_400_000,
-    ) + 1
-  );
 }
 
 /* ---------- Périodes ---------- */
@@ -225,6 +211,30 @@ export function computeKpis(orders: readonly Order[]): Kpis {
       active.length === 0 ? 0 : Math.round(revenueCents / active.length),
     cancelledCount: orders.length - active.length,
     pendingCount: orders.filter((o) => o.status === "pending").length,
+  };
+}
+
+/* ---------- Communautés ---------- */
+
+export type CommunityShare = {
+  /** Commandes de membres d'une communauté (retrait au point de la communauté). */
+  community: number;
+  /** Commandes de particuliers. */
+  individual: number;
+  /** Part des commandes de communauté, en pourcentage arrondi ; null sans commande. */
+  percent: number | null;
+};
+
+/** Répartition des commandes (annulées comprises) entre communautés et particuliers. */
+export function communityShare(orders: readonly Order[]): CommunityShare {
+  const community = orders.filter((o) => o.community !== null).length;
+  return {
+    community,
+    individual: orders.length - community,
+    percent:
+      orders.length === 0
+        ? null
+        : Math.round((community / orders.length) * 100),
   };
 }
 

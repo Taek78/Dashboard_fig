@@ -10,8 +10,8 @@ export default function MetriquesLoading() {
         <p className="sr-only">Chargement des métriques…</p>
         <Card>
           <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end">
-              <Skeleton className="h-8 w-full md:w-60" />
+            <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-end">
+              <Skeleton className="h-8 w-full @2xl/main:w-60" />
               <Skeleton className="h-8 w-40" />
               <Skeleton className="h-8 w-40" />
               <Skeleton className="h-8 w-28" />
@@ -19,7 +19,7 @@ export default function MetriquesLoading() {
             <Skeleton className="h-8 w-56" />
           </CardContent>
         </Card>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} size="sm">
               <CardContent className="flex items-center gap-3">
@@ -40,7 +40,7 @@ export default function MetriquesLoading() {
             <Skeleton className="h-80 w-full" />
           </CardContent>
         </Card>
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 @4xl/main:grid-cols-2">
           {[1, 2].map((i) => (
             <Card key={i}>
               <CardHeader>

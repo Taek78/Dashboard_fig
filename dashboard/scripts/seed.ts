@@ -118,7 +118,6 @@ async function main(): Promise<void> {
           pickupPlace: c.pickupPlace,
           pickupCity: c.pickupCity,
           pickupPostalCode: c.pickupPostalCode,
-          pickupTime: c.pickupTime,
           discountPercent: c.discountPercent,
           active: c.active,
           createdAt: new Date(c.createdAt),

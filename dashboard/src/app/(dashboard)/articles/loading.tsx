@@ -29,10 +29,10 @@ export default function ArticlesLoading() {
           {ROWS.map((row) => (
             <li
               key={row}
-              className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 sm:flex-row"
+              className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 @xl/main:flex-row"
             >
-              <Skeleton className="h-36 rounded-none sm:h-auto sm:w-44" />
-              <div className="flex flex-1 flex-col gap-2 p-4 md:p-5">
+              <Skeleton className="h-36 rounded-none @xl/main:h-auto @xl/main:w-44" />
+              <div className="flex flex-1 flex-col gap-2 p-4 @2xl/main:p-5">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-6 w-2/3" />
                 <Skeleton className="h-4 w-full" />

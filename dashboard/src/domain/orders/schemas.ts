@@ -5,7 +5,11 @@ import {
   CANCELLATION_REASONS,
 } from "@/domain/orders/cancellation";
 import { ORDER_STATUSES } from "@/domain/orders/status";
-import type { OrderFilters } from "@/domain/orders/types";
+import {
+  ORDER_SEARCH_MAX_LENGTH,
+  UNASSIGNED_FILTER,
+  type OrderFilters,
+} from "@/domain/orders/types";
 
 /*
  * Schémas zod des ENTRÉES des commandes : ce qui arrive du navigateur (FormData,
@@ -59,17 +63,59 @@ export const changeStatusSchema = z
         : null,
   }));
 
-// Clés d'URL en français (?statut=…&date=…), clés de code en anglais : transform.
-// z.object ignore les clés inconnues (simuler…) ; un paramètre répété arrive en
-// tableau, échoue sur l'enum et tombe lui aussi dans catch.
+/*
+ * Recherche et filtres des listes de commandes et de livraisons. Clés d'URL en
+ * français (?q=…&statut=…&du=…&au=…&preparateur=…&livreur=…), clés de code en
+ * anglais : transform. z.object ignore les clés inconnues (simuler, page…) ; un
+ * paramètre répété arrive en tableau, échoue et tombe dans catch.
+ * - q : trimée ; vide = pas de recherche, trop longue = ignorée ;
+ * - du / au : jours de livraison, remis dans l'ordre s'ils sont inversés ;
+ * - date : ancienne clé d'un seul jour, encore lue pour les liens existants ;
+ * - preparateur / livreur : l'id d'une personne, ou « aucun »
+ *   (UNASSIGNED_FILTER) pour les commandes sans personne affectée.
+ */
+const staffFilterSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(64)
+  .transform((v) => (v === UNASSIGNED_FILTER ? null : v))
+  .optional()
+  .catch(undefined);
+
 export const orderFiltersSchema = z
   .object({
+    q: z
+      .string()
+      .trim()
+      .max(ORDER_SEARCH_MAX_LENGTH)
+      .transform((v) => (v === "" ? undefined : v))
+      .optional()
+      .catch(undefined),
     statut: z.enum(ORDER_STATUSES).optional().catch(undefined),
+    du: z.iso.date().optional().catch(undefined),
+    au: z.iso.date().optional().catch(undefined),
     date: z.iso.date().optional().catch(undefined),
+    preparateur: staffFilterSchema,
+    livreur: staffFilterSchema,
   })
-  .transform(({ statut, date }) => ({ status: statut, date }));
+  .transform(
+    ({ q, statut, du, au, date, preparateur, livreur }): OrderFilters => {
+      const from = du ?? (au === undefined ? date : undefined);
+      const to = au ?? (du === undefined ? date : undefined);
+      const inverted = from !== undefined && to !== undefined && from > to;
+      return {
+        query: q,
+        status: statut,
+        from: inverted ? to : from,
+        to: inverted ? from : to,
+        preparerId: preparateur,
+        driverId: livreur,
+      };
+    },
+  );
 
-/** Seule porte d'entrée de la page liste : searchParams déjà await → OrderFilters.
+/** Seule porte d'entrée des pages Commandes et Livraisons : searchParams déjà await → OrderFilters.
  *  parse et non safeParse : avec un catch sur chaque champ, ce schéma ne peut
  *  pas échouer sur un objet, il n'y a aucun cas d'erreur à traiter. */
 export function parseOrderFilters(

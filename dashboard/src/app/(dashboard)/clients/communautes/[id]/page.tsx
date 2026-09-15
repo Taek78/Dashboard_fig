@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { CustomersTable } from "@/components/customers/customers-table";
+import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CustomerCard } from "@/components/customers/customer-card";
 import { OrdersTable } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { getCustomers } from "@/data/customers";
 import { getOrders } from "@/data/orders";
 import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
 import { summarizeCommunity } from "@/domain/communities/rules";
+import { buildCustomerEntries } from "@/domain/customers/directory";
 import { customerIdSchema } from "@/domain/customers/schemas";
 import { sortOrdersBySlot } from "@/domain/orders/rules";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
@@ -58,6 +60,10 @@ export default async function CommunautePage({
         }
       />
       <div className="flex flex-wrap gap-1.5">
+        <ClientTypeLabel
+          community={{ id: community.id, name: community.name }}
+          showName={false}
+        />
         <Badge variant="success">
           −{community.discountPercent} % appliqués par l&apos;application sur
           chaque commande
@@ -67,7 +73,7 @@ export default async function CommunautePage({
         ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 @4xl/main:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>
@@ -82,9 +88,9 @@ export default async function CommunautePage({
               <dd className="font-medium">
                 {community.pickupPostalCode} {community.pickupCity}
               </dd>
-              <dt className="text-muted-foreground">Heure</dt>
-              <dd className="font-medium tabular-nums">
-                {community.pickupTime}
+              <dt className="text-muted-foreground">Horaire</dt>
+              <dd className="text-muted-foreground">
+                Choisi par chaque membre à la commande, dans l&apos;application
               </dd>
             </dl>
           </CardContent>
@@ -156,7 +162,13 @@ export default async function CommunautePage({
       <section className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">Membres</h2>
         {members.length > 0 ? (
-          <CustomersTable customers={members} showCommunity={false} />
+          <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+            {buildCustomerEntries(members, orders).map((entry) => (
+              <li key={entry.id}>
+                <CustomerCard entry={entry} />
+              </li>
+            ))}
+          </ul>
         ) : (
           <p className="text-muted-foreground text-sm">
             Aucun membre pour l&apos;instant.

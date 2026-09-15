@@ -8,9 +8,16 @@ import {
   filterStaff,
   KIND_FOR_ROLE,
   sortStaff,
+  staffFilterOptions,
   staffFullName,
   staffOrders,
   summarizeStaffWork,
+  filterStaffHistory,
+  hasStaffHistoryFilters,
+  hasStaffSearch,
+  matchesStaffQuery,
+  searchStaff,
+  staffTemplate,
 } from "@/domain/staff/rules";
 import type { StaffMember } from "@/domain/staff/types";
 
@@ -41,6 +48,77 @@ describe("sortStaff / filterStaff", () => {
     expect(filterStaff(staffFixtures, "gestionnaire").map((m) => m.id)).toEqual(
       ["stf-0008", "stf-0009"],
     );
+  });
+});
+
+describe("matchesStaffQuery", () => {
+  const malik = () => byId("stf-0001");
+
+  it("trouve par prénom, nom, dans les deux ordres, sans accents ni majuscules", () => {
+    expect(matchesStaffQuery(malik(), "MALIK")).toBe(true);
+    expect(matchesStaffQuery(malik(), "dembele")).toBe(true);
+    expect(matchesStaffQuery(malik(), "dembélé malik")).toBe(true);
+    expect(matchesStaffQuery(malik(), "malik renard")).toBe(false);
+  });
+
+  it("trouve par e-mail et par téléphone (chiffres seuls)", () => {
+    expect(matchesStaffQuery(malik(), "dembele@fig")).toBe(true);
+    expect(matchesStaffQuery(malik(), "90 01")).toBe(true);
+    expect(matchesStaffQuery(malik(), "9001")).toBe(true);
+    expect(matchesStaffQuery(malik(), "90 04")).toBe(false);
+    expect(matchesStaffQuery(malik(), "0")).toBe(false);
+  });
+
+  it("une recherche vide ou absente garde tout le monde", () => {
+    expect(matchesStaffQuery(malik(), undefined)).toBe(true);
+    expect(matchesStaffQuery(malik(), "   ")).toBe(true);
+  });
+});
+
+describe("searchStaff / hasStaffSearch", () => {
+  const ids = (members: readonly StaffMember[]) => members.map((m) => m.id);
+
+  it("sans recherche, toute l'équipe triée", () => {
+    expect(ids(searchStaff(staffFixtures, {}))).toEqual(
+      ids(sortStaff(staffFixtures)),
+    );
+    expect(hasStaffSearch({})).toBe(false);
+    expect(hasStaffSearch({ workDay: "sam" })).toBe(true);
+  });
+
+  it("cumule métier, créneau et jour travaillé", () => {
+    expect(
+      ids(
+        searchStaff(staffFixtures, {
+          kind: "livreur",
+          shift: "matin",
+          workDay: "sam",
+        }),
+      ),
+    ).toEqual(["stf-0001"]);
+  });
+
+  it("une disponibilité ne retient que les personnes encore dans l'équipe", () => {
+    const unavailable = ids(
+      searchStaff(staffFixtures, { availability: "indisponible" }),
+    );
+    expect(unavailable).toEqual(["stf-0007"]);
+    expect(unavailable).not.toContain("stf-0010");
+    expect(ids(searchStaff(staffFixtures, { presence: "partis" }))).toEqual([
+      "stf-0010",
+    ]);
+    expect(
+      searchStaff(staffFixtures, { presence: "actifs" }).every((m) => m.active),
+    ).toBe(true);
+  });
+
+  it("combine la recherche libre et les filtres", () => {
+    expect(
+      ids(
+        searchStaff(staffFixtures, { query: "fig-demo", kind: "gestionnaire" }),
+      ),
+    ).toEqual(["stf-0009", "stf-0008"]);
+    expect(searchStaff(staffFixtures, { query: "zzz" })).toEqual([]);
   });
 });
 
@@ -106,5 +184,92 @@ describe("staffOrders / summarizeStaffWork", () => {
       inProgress: 0,
       lastActivityDate: null,
     });
+  });
+});
+
+describe("staffFilterOptions", () => {
+  it("propose tout le métier, personnes désactivées comprises, actives d'abord", () => {
+    const { preparer, driver } = staffFilterOptions(staffFixtures);
+    expect(preparer.map((o) => o.id).sort()).toEqual([
+      "stf-0005",
+      "stf-0006",
+      "stf-0007",
+    ]);
+    expect(driver.map((o) => o.id).sort()).toEqual([
+      "stf-0001",
+      "stf-0002",
+      "stf-0003",
+      "stf-0004",
+      "stf-0010",
+    ]);
+    expect(driver.at(-1)).toEqual({
+      id: "stf-0010",
+      name: "Paul Girard",
+      active: false,
+    });
+  });
+});
+
+describe("staffTemplate", () => {
+  it("reprend le métier et l'organisation, jamais l'identité ni les notes", () => {
+    const malik = byId("stf-0001");
+    const template = staffTemplate(malik);
+    expect(template).toEqual({
+      kind: malik.kind,
+      shift: malik.shift,
+      availability: malik.availability,
+      workDays: malik.workDays,
+      active: malik.active,
+    });
+    expect(template.workDays).not.toBe(malik.workDays);
+    expect(template).not.toHaveProperty("email");
+    expect(template).not.toHaveProperty("notes");
+  });
+});
+
+describe("filterStaffHistory / hasStaffHistoryFilters", () => {
+  const ids = (orders: readonly { id: string }[]) => orders.map((o) => o.id);
+
+  it("sans recherche, toutes les commandes de la personne", () => {
+    expect(ids(filterStaffHistory(scenarioOrders, "stf-0001", {}))).toEqual(
+      ids(staffOrders(scenarioOrders, "stf-0001")),
+    );
+    expect(hasStaffHistoryFilters({})).toBe(false);
+    expect(hasStaffHistoryFilters({ role: "livraison" })).toBe(true);
+  });
+
+  it("filtre par rôle tenu", () => {
+    expect(
+      filterStaffHistory(scenarioOrders, "stf-0001", { role: "livraison" }),
+    ).toHaveLength(4);
+    expect(
+      filterStaffHistory(scenarioOrders, "stf-0001", { role: "preparation" }),
+    ).toEqual([]);
+  });
+
+  it("cumule recherche, statut, période et rôle, les plus récentes d'abord", () => {
+    expect(
+      ids(
+        filterStaffHistory(scenarioOrders, "stf-0005", {
+          role: "preparation",
+          query: "FIG-260906",
+        }),
+      ),
+    ).toEqual(["cmd-0005", "cmd-0007"]);
+    expect(
+      ids(
+        filterStaffHistory(scenarioOrders, "stf-0005", {
+          status: "delivering",
+        }),
+      ),
+    ).toEqual(["cmd-0014"]);
+    expect(
+      ids(
+        filterStaffHistory(scenarioOrders, "stf-0005", {
+          from: "2026-09-07",
+          to: "2026-09-07",
+        }),
+      ),
+    ).toEqual(["cmd-0003", "cmd-0014"]);
   });
 });

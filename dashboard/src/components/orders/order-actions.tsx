@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 /*
  * Actions d'une carte de commande ou de livraison (client : useActionState) :
- * UN gros bouton pour le geste suivant (confirmer, préparer, démarrer, livrée)
+ * UN gros bouton pour le geste suivant (préparer, démarrer, livrée)
  * et, tant que c'est permis, « Annuler la commande » qui ouvre le motif à
  * communiquer au client ; l'annulation ne part qu'avec ce motif. Même Server
  * Action que la fiche : la valeur du bouton cliqué devient nextStatus, l'action

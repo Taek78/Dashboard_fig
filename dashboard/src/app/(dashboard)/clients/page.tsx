@@ -1,70 +1,45 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import {
-  CommunitiesCards,
-  CommunitiesCardsSkeleton,
-} from "@/components/customers/communities-cards";
-import { CustomerTabs } from "@/components/customers/customer-tabs";
 import {
   CustomersResults,
   CustomersResultsSkeleton,
 } from "@/components/customers/customers-results";
 import { CustomersSearch } from "@/components/customers/customers-search";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import { parseCustomerSearch } from "@/domain/customers/schemas";
+import { parseClientsSearch } from "@/domain/customers/schemas";
 
 /*
- * Clients et support, en deux onglets (?type=) :
- * - particuliers : le moteur de recherche, sans liste tant que l'utilisateur
- *   n'a pas cherché (?q=) ou demandé « tous » (?tous=1) ; les résultats
- *   portent la série de fidélité de chacun ;
- * - communautés : les groupes de clients livrés à un même point de retrait,
- *   avec leur remise, en cartes.
- * Chaque zone charge dans son propre <Suspense> : la page ne fait aucun
- * await de données elle-même (pas de loading.tsx pour ce segment, c'est
- * voulu). La key force un nouveau squelette à chaque nouvelle recherche.
+ * Clients : une recherche commune pour les particuliers et les communautés
+ * (?q=), un filtre de type (?type=) et un tri (?tri=), puis les résultats en
+ * grandes cartes paginées (?page=), chacune avec son bouton vers la fiche.
+ * Les résultats chargent dans leur propre <Suspense> : la recherche reste en
+ * place pendant le chargement (pas de loading.tsx pour ce segment, c'est
+ * voulu). Pas de key sur la Suspense : la recherche automatique navigue dans
+ * une transition, les résultats précédents restent affichés jusqu'aux
+ * suivants au lieu de clignoter en squelette à chaque frappe (le squelette ne
+ * sert qu'au premier chargement).
  */
 export const metadata: Metadata = { title: "Clients" };
 
 export default async function ClientsPage({
   searchParams,
 }: PageProps<"/clients">) {
-  const search = parseCustomerSearch(await searchParams);
-  const showResults = search.all || search.query !== undefined;
+  const search = parseClientsSearch(await searchParams);
+  const canReset =
+    search.query !== undefined ||
+    search.type !== "tous" ||
+    search.sort !== "nom";
 
   return (
     <>
       <PageHeader
         title="Clients"
-        description="Particuliers et communautés : historique de commandes, fidélité, notes internes."
-        actions={
-          search.tab === "particuliers" && showResults ? (
-            <Button variant="ghost" size="sm" render={<Link href="/clients" />}>
-              Nouvelle recherche
-            </Button>
-          ) : undefined
-        }
+        description="Particuliers et communautés : coordonnées, commandes, fidélité, notes internes."
       />
-      <CustomerTabs current={search.tab} />
-      {search.tab === "communautes" ? (
-        <Suspense fallback={<CommunitiesCardsSkeleton />}>
-          <CommunitiesCards />
-        </Suspense>
-      ) : (
-        <>
-          <CustomersSearch query={search.query} />
-          {showResults ? (
-            <Suspense
-              key={`${search.query ?? ""}|${search.all}`}
-              fallback={<CustomersResultsSkeleton />}
-            >
-              <CustomersResults search={search} />
-            </Suspense>
-          ) : null}
-        </>
-      )}
+      <CustomersSearch search={search} canReset={canReset} />
+      <Suspense fallback={<CustomersResultsSkeleton />}>
+        <CustomersResults search={search} />
+      </Suspense>
     </>
   );
 }

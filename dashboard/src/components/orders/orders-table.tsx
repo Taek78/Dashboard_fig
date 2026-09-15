@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
  * - Dans le tableau, la Référence est le seul lien : un <tr> cliquable n'est ni
  *   focusable ni annoncé comme lien.
  */
-export const hideUntilLg = "hidden lg:table-cell";
+export const hideUntilLg = "hidden @4xl/main:table-cell";
 const numeric = "text-right tabular-nums";
 
 export const tableFrame =
@@ -43,7 +43,7 @@ export const mobileCardFrame =
 export function OrdersTable({ orders }: { orders: Order[] }) {
   return (
     <>
-      <ul className="flex flex-col gap-3 md:hidden">
+      <ul className="flex flex-col gap-3 @2xl/main:hidden">
         {orders.map((order) => (
           <li key={order.id}>
             <Link
@@ -89,7 +89,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
         ))}
       </ul>
 
-      <div className={cn(tableFrame, "hidden md:block")}>
+      <div className={cn(tableFrame, "hidden @2xl/main:block")}>
         <Table>
           <TableCaption className="sr-only">
             Liste des commandes triées par créneau de livraison.

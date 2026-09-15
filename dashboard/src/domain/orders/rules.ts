@@ -1,5 +1,12 @@
+import type { StaffRef } from "@/domain/orders/assignment";
 import type { OrderDiscount } from "@/domain/orders/discount";
-import type { OrderLine, Order, OrderFilters } from "@/domain/orders/types";
+import {
+  UNASSIGNED_FILTER,
+  type Order,
+  type OrderFilters,
+  type OrderLine,
+} from "@/domain/orders/types";
+import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
 
 /*
  * Logique pure des commandes.
@@ -30,27 +37,103 @@ export function computeOrderTotalCents(
 }
 
 /**
+ * Vrai si la commande correspond à la recherche libre : référence, nom du
+ * client, e-mail, ville ou code postal, sans accents ni majuscules ; ou chiffres
+ * du téléphone quand la saisie ressemble à un numéro ("00 07" trouve
+ * "06 39 98 00 07", mais « FIG-2609 » ne cherche pas dans les téléphones).
+ * Recherche vide ou absente : tout correspond.
+ */
+export function matchesOrderQuery(
+  order: Order,
+  query: string | undefined,
+): boolean {
+  const q = normalize(query ?? "");
+  if (q === "") return true;
+  const fields = [
+    order.reference,
+    order.customer.fullName,
+    order.customer.email,
+    order.deliveryCity,
+    order.deliveryPostalCode,
+  ];
+  if (fields.some((field) => normalize(field).includes(q))) return true;
+  const qDigits = digitsOnly(q);
+  return (
+    isPhoneLike(q) &&
+    qDigits.length >= 2 &&
+    digitsOnly(order.customer.phone).includes(qDigits)
+  );
+}
+
+/** Filtre d'équipe : absent = tout, null = personne d'affecté, sinon cette personne. */
+function staffMatches(
+  ref: StaffRef | null,
+  wanted: string | null | undefined,
+): boolean {
+  if (wanted === undefined) return true;
+  return wanted === null ? ref === null : ref?.id === wanted;
+}
+
+/**
  * Garde les commandes qui passent TOUS les filtres présents. Un critère absent
  * (undefined) laisse tout passer : le cas « aucun filtre » n'a pas besoin d'être
- * traité à part. Ne trie pas : c'est le rôle de sortOrdersBySlot.
+ * traité à part. Les jours sont des chaînes "AAAA-MM-JJ" : la comparaison de
+ * chaînes borne la période. Ne trie pas : c'est le rôle de sortOrdersBySlot.
  */
 export function filterOrders(
   orders: readonly Order[],
   filters: OrderFilters,
 ): Order[] {
   return orders.filter((order) => {
-    const statusOk =
-      filters.status === undefined || order.status === filters.status;
-    const dateOk =
-      filters.date === undefined || order.deliverySlot.date === filters.date;
-    const customerOk =
-      filters.customerId === undefined ||
-      order.customer.id === filters.customerId;
-    const communityOk =
-      filters.communityId === undefined ||
-      order.community?.id === filters.communityId;
-    return dateOk && statusOk && customerOk && communityOk;
+    const day = order.deliverySlot.date;
+    return (
+      (filters.status === undefined || order.status === filters.status) &&
+      (filters.from === undefined || day >= filters.from) &&
+      (filters.to === undefined || day <= filters.to) &&
+      (filters.customerId === undefined ||
+        order.customer.id === filters.customerId) &&
+      (filters.communityId === undefined ||
+        order.community?.id === filters.communityId) &&
+      staffMatches(order.preparer, filters.preparerId) &&
+      staffMatches(order.driver, filters.driverId) &&
+      matchesOrderQuery(order, filters.query)
+    );
   });
+}
+
+/** Vrai si un filtre de la barre (recherche, statut, période, équipe) est actif. */
+export function hasOrderFilters(filters: OrderFilters): boolean {
+  return (
+    filters.query !== undefined ||
+    filters.status !== undefined ||
+    filters.from !== undefined ||
+    filters.to !== undefined ||
+    filters.preparerId !== undefined ||
+    filters.driverId !== undefined
+  );
+}
+
+/**
+ * Filtres de la barre → paramètres d'URL, avec les clés françaises que
+ * parseOrderFilters relit : la pagination et les raccourcis de jours gardent la
+ * recherche en cours. customerId et communityId ne passent jamais par l'URL.
+ */
+export function orderFiltersQuery(filters: OrderFilters): string {
+  const staff = (id: string | null | undefined) =>
+    id === null ? UNASSIGNED_FILTER : id;
+  const entries: [string, string | undefined][] = [
+    ["q", filters.query],
+    ["statut", filters.status],
+    ["du", filters.from],
+    ["au", filters.to],
+    ["preparateur", staff(filters.preparerId)],
+    ["livreur", staff(filters.driverId)],
+  ];
+  const params = new URLSearchParams();
+  for (const [key, value] of entries) {
+    if (value !== undefined) params.set(key, value);
+  }
+  return params.toString();
 }
 
 /**

@@ -13,6 +13,11 @@ export function normalize(text: string): string {
     .trim();
 }
 
+/** Vrai si la saisie ressemble à un numéro : chiffres, espaces, points, tirets ou +. */
+export function isPhoneLike(text: string): boolean {
+  return /^[\d\s.+-]+$/.test(text.trim());
+}
+
 /** Ne garde que les chiffres : "06 39 98 00 01" → "0639980001". */
 export function digitsOnly(text: string): string {
   return text.replace(/\D/g, "");

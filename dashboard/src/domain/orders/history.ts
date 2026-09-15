@@ -1,5 +1,4 @@
 import { communitiesFixtures } from "@/domain/communities/fixtures";
-import { pickupSlot } from "@/domain/communities/rules";
 import type { Community, CommunityRef } from "@/domain/communities/types";
 import {
   LOYALTY_DISCOUNT_PERCENT,
@@ -34,7 +33,7 @@ import type { StaffMember } from "@/domain/staff/types";
  * - produits de saison plus présents (fruits d'été de mai à septembre, légumes
  *   d'hiver d'octobre à mars), paniers de 2 à 5 lignes, prix du catalogue ;
  * - statuts vraisemblables : le passé est livré (5 % d'annulations motivées),
- *   la journée en cours est en attente, confirmée, en préparation ou en livraison ;
+ *   la journée en cours est en attente, en préparation ou en livraison ;
  * - l'équipe (src/domain/staff/fixtures.ts) affectée aux commandes à partir
  *   de la date d'entrée de chacun : préparateur dès la préparation, livreur
  *   dès la livraison ;
@@ -357,13 +356,7 @@ function statusFor(
   }
   const r = random();
   const status: OrderStatus =
-    r < 0.3
-      ? "pending"
-      : r < 0.6
-        ? "confirmed"
-        : r < 0.8
-          ? "preparing"
-          : "delivering";
+    r < 0.3 ? "pending" : r < 0.8 ? "preparing" : "delivering";
   return { status, cancellation: null };
 }
 
@@ -461,11 +454,13 @@ function build(): { customers: Customer[]; orders: Order[] } {
         ? (communitiesFixtures.find((c) => c.id === customer.community?.id) ??
           null)
         : null;
-      const slot: { start: string; end: string } = community
-        ? pickupSlot(community.pickupTime)
-        : (([start, end]) => ({ start, end }))(
-            SLOTS[Math.floor(random() * SLOTS.length)]!,
-          );
+      // Le créneau est choisi à chaque commande dans l'application, retrait
+      // en communauté compris ; pour un membre il est tiré sans consommer
+      // l'aléa, pour garder le reste du jeu de données identique.
+      const [start, end] = community
+        ? SLOTS[(index + seq) % SLOTS.length]!
+        : SLOTS[Math.floor(random() * SLOTS.length)]!;
+      const slot = { start, end };
       const createdDay = addDays(day, -(1 + Math.floor(random() * 3)));
       const createdHour = 7 + Math.floor(random() * 14);
       const lines = buildLines(month, random);

@@ -1,7 +1,17 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, inArray, type SQL } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lte,
+  type SQL,
+} from "drizzle-orm";
+import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { getDb, type DbExecutor } from "@/db/client";
 import { toOrder, toOrderEvent } from "@/db/mappers";
 import {
@@ -13,12 +23,16 @@ import {
   staff,
 } from "@/db/schema";
 import type { StaffAssignment } from "@/domain/orders/assignment";
+import { filterOrders } from "@/domain/orders/rules";
 import type { OrdersSource } from "@/domain/orders/source";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
 
 /*
  * Implémentation Drizzle du contrat OrdersSource.
- * Les filtres deviennent des clauses WHERE, le tri par créneau un ORDER BY ;
+ * Les filtres deviennent des clauses WHERE (statut, période, client,
+ * communauté, équipe), le tri par créneau un ORDER BY ; la recherche libre
+ * (sans accents, chiffres du téléphone) reste la règle pure du domaine,
+ * appliquée après chargement : identique au mock, donc identique à l'écran ;
  * la communauté, le préparateur et le livreur sont joints (LEFT JOIN, la table
  * staff deux fois sous alias) ; les lignes sont chargées en une seconde
  * requête (IN) puis rattachées.
@@ -86,22 +100,37 @@ async function loadOrders(
   );
 }
 
+/** Filtre d'équipe : absent = pas de clause, null = IS NULL, sinon l'égalité. */
+function staffClause(
+  column: AnyPgColumn,
+  id: string | null | undefined,
+): SQL | undefined {
+  if (id === undefined) return undefined;
+  return id === null ? isNull(column) : eq(column, id);
+}
+
 function whereFor(filters: OrderFilters): SQL | undefined {
-  const clauses: SQL[] = [];
-  if (filters.status) clauses.push(eq(orders.status, filters.status));
-  if (filters.date) clauses.push(eq(orders.deliveryDate, filters.date));
-  if (filters.customerId) {
-    clauses.push(eq(orders.customerId, filters.customerId));
-  }
-  if (filters.communityId) {
-    clauses.push(eq(orders.communityId, filters.communityId));
-  }
+  const clauses = [
+    filters.status ? eq(orders.status, filters.status) : undefined,
+    filters.from ? gte(orders.deliveryDate, filters.from) : undefined,
+    filters.to ? lte(orders.deliveryDate, filters.to) : undefined,
+    filters.customerId ? eq(orders.customerId, filters.customerId) : undefined,
+    filters.communityId
+      ? eq(orders.communityId, filters.communityId)
+      : undefined,
+    staffClause(orders.preparerId, filters.preparerId),
+    staffClause(orders.driverId, filters.driverId),
+  ].filter((clause): clause is SQL => clause !== undefined);
   return clauses.length === 0 ? undefined : and(...clauses);
 }
 
 export const ordersDb: OrdersSource = {
-  getOrders: (filters: OrderFilters = {}) =>
-    loadOrders(getDb(), whereFor(filters)),
+  getOrders: async (filters: OrderFilters = {}) => {
+    const rows = await loadOrders(getDb(), whereFor(filters));
+    return filters.query === undefined
+      ? rows
+      : filterOrders(rows, { query: filters.query });
+  },
 
   getOrder: async (id: string) => {
     const [order] = await loadOrders(getDb(), eq(orders.id, id));

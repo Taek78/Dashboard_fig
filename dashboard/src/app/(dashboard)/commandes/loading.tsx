@@ -1,11 +1,13 @@
+import { OrdersFiltersSkeleton } from "@/components/orders/orders-filters";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /*
  * État de chargement de /commandes. Next l'affiche automatiquement pendant que
  * page.tsx attend getOrders() (frontière Suspense). Composant serveur.
- * On reproduit la silhouette des cartes (même cadre, mêmes bandes) pour éviter
- * un saut de mise en page quand les données arrivent.
+ * On reproduit la silhouette des cartes (même grille, mêmes bandes, mêmes
+ * seuils de largeur de contenu que OrderCard) pour éviter un saut de mise en
+ * page quand les données arrivent.
  */
 const ROWS = [1, 2, 3, 4];
 
@@ -18,37 +20,27 @@ export default function CommandesLoading() {
       />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement des commandes…</p>
-        {/* Silhouette de la barre de filtres : loading.tsx ne connaît pas l'URL. */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="grid gap-1.5 md:w-48">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-          <div className="grid gap-1.5 md:w-48">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-8 w-full" />
-          </div>
-          <Skeleton className="h-8 w-full md:w-20" />
-        </div>
+        {/* Silhouette de la recherche et des filtres : loading.tsx ne connaît pas l'URL. */}
+        <OrdersFiltersSkeleton />
         <Skeleton className="h-4 w-28" />
         <ul className="flex flex-col gap-4">
           {ROWS.map((row) => (
             <li
               key={row}
-              className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 md:flex-row"
+              className="bg-card ring-foreground/10 grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]"
             >
-              <div className="bg-muted/40 flex flex-col gap-2 border-b p-4 md:w-52 md:border-r md:border-b-0 md:p-5">
+              <div className="bg-muted/40 flex flex-col gap-2 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:border-r @4xl/main:border-b-0">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-5 w-24 rounded-4xl" />
+                <Skeleton className="h-7 w-28 rounded-4xl" />
               </div>
-              <div className="flex flex-1 flex-col gap-3 p-4 md:p-5">
+              <div className="flex flex-col gap-3 p-4 @xl/main:p-5">
                 <Skeleton className="h-5 w-40" />
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-4 w-44" />
               </div>
-              <div className="flex flex-col justify-center gap-3 border-t p-4 md:w-80 md:border-t-0 md:border-l md:p-5">
+              <div className="flex flex-col justify-center gap-3 border-t p-4 @xl/main:border-t-0 @xl/main:border-l @xl/main:p-5">
                 <Skeleton className="h-7 w-full" />
                 <Skeleton className="h-7 w-full" />
                 <Skeleton className="h-11 w-full" />
