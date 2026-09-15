@@ -15,6 +15,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "db:test": "docker compose up -d --wait test-db",
     "db:seed": "tsx scripts/seed.ts",
     "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup.ps1",
     "db:restore": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restore.ps1",

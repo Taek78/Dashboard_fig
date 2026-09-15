@@ -5,8 +5,8 @@ import type { Order, OrderActor, OrderEvent } from "@/domain/orders/types";
 
 /*
  * Toutes les commandes factices : le scénario écrit à la main (scenario.ts)
- * plus l'historique généré sur deux ans (history.ts). Le mock, le seed et les
- * tests consomment ce module ; les tests qui raisonnent sur des valeurs
+ * plus l'historique généré sur deux ans (history.ts). Le seed (base de
+ * développement et base de test) et les tests consomment ce module ; les tests qui raisonnent sur des valeurs
  * précises importent scenarioOrders.
  */
 export { FIXTURE_TODAY, scenarioOrders } from "@/domain/orders/scenario";

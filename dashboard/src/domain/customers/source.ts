@@ -5,9 +5,9 @@ import type {
 } from "@/domain/customers/types";
 
 /*
- * CONTRAT des clients (fixtures ou Drizzle). Types seulement.
- * addNote reçoit la note complète (id exclu) : la date vient de l'action, pas du
- * store, pour que le mock reste déterministe sous Vitest.
+ * CONTRAT des clients, implémenté par PostgreSQL (src/data/customers.db.ts).
+ * Types seulement. addNote reçoit la note complète (id exclu) : la date vient
+ * de l'action (horloge du serveur), jamais du formulaire.
  */
 export type CustomersSource = {
   getCustomers(filters?: CustomerFilters): Promise<Customer[]>;

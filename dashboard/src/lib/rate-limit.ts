@@ -1,8 +1,8 @@
 /*
  * Limitation de débit des tentatives de connexion : règles PURES (aucun état,
  * aucune dépendance), testées. L'état par clé (e-mail, adresse IP) est stocké
- * par src/data/login-attempts.ts (mémoire ou table login_attempts selon
- * DATA_SOURCE) ; src/data/credentials.ts orchestre.
+ * par src/data/login-attempts.ts (table login_attempts) ;
+ * src/data/credentials.ts orchestre.
  *
  * Verrouillage progressif : à partir de `maxFailures` échecs rapprochés (moins
  * de `windowMs` entre deux échecs), chaque nouvel échec double la durée du
@@ -55,9 +55,9 @@ export const LONGEST_WINDOW_MS = Math.max(
 export type AttemptKey = { key: string; policy: RateLimitPolicy };
 
 /**
- * Contrat du stockage des tentatives (src/data/login-attempts.{mock,db}.ts) :
- * en mémoire pour les fixtures, en base pour que plusieurs instances partagent
- * le même compteur. Le stockage lit et écrit ; les règles restent ici.
+ * Contrat du stockage des tentatives (src/data/login-attempts.db.ts, table
+ * login_attempts) : plusieurs instances partagent le même compteur. Le
+ * stockage lit et écrit ; les règles restent ici.
  * recordFailure applique recordFailure() à chaque clé de façon ATOMIQUE : deux
  * échecs simultanés comptent pour deux.
  */

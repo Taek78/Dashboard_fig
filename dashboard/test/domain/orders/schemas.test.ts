@@ -147,7 +147,7 @@ describe("parseOrderFilters", () => {
     expect(
       parseOrderFilters({
         q: "  Benali ",
-        statut: "pending",
+        statut: "preparing",
         du: "2026-09-01",
         au: "2026-09-07",
         preparateur: "stf-0005",
@@ -155,7 +155,7 @@ describe("parseOrderFilters", () => {
       }),
     ).toEqual({
       query: "Benali",
-      status: "pending",
+      status: "preparing",
       from: "2026-09-01",
       to: "2026-09-07",
       preparerId: "stf-0005",

@@ -6,9 +6,9 @@ Ce document décrit comment le code est organisé, ce que fait chaque partie et 
 
 Le dashboard est une application Next.js rendue côté serveur. Chaque écran est une **page serveur** qui lit des données par une **façade**, puis les affiche avec des **composants**. Chaque modification passe par une **Server Action**, une fonction qui tourne sur le serveur, vérifie qui demande, valide ce qui est envoyé, applique les règles métier, puis écrit par la même façade.
 
-Derrière la façade, deux implémentations interchangeables : des **données factices en mémoire** (mode `mock`, pour développer et tester sans base) et **PostgreSQL** via Drizzle (mode `db`). Le choix se fait par une variable d'environnement, `DATA_SOURCE`. Le reste du code ne sait pas laquelle est active.
+Derrière la façade, une implémentation : **PostgreSQL** via Drizzle. Il n'y a pas de mode sans base (décision du 2026-09-15) : les données de démonstration sont insérées par le seed, en développement comme en test. Aucun écran ne charge tout l'historique : la base filtre, pagine et agrège.
 
-Les **règles métier** (tri, filtres, calculs, machine d'états) sont des fonctions pures, sans dépendance à Next ni à la base : elles sont testées en quelques millisecondes et utilisées par les deux implémentations.
+Les **règles métier** (tri, filtres, calculs, machine d'états) sont des fonctions pures, sans dépendance à Next ni à la base : elles sont testées en quelques millisecondes, mettent en forme les totaux agrégés par la base et servent de référence aux tests des requêtes SQL.
 
 ```
 navigateur
@@ -22,8 +22,8 @@ src/app/**/page.tsx     page serveur : lit l'URL, appelle une façade, rend des 
 src/data/<domaine>.ts   │  session → rôle → zod → relecture → règle → écriture │
    façade (server-only) └──────────────────────────────────────────────────┘
    │
-   ├── src/data/<domaine>.mock.ts   Map en mémoire seedée par les fixtures
    └── src/data/<domaine>.db.ts     Drizzle + PostgreSQL, lignes converties par src/db/mappers.ts
+                                    (commandes : orders.db.ts et orders-aggregates.db.ts)
    ▲
 src/domain/<domaine>/   types, règles pures, schémas zod des entrées, fixtures, contrat de source
 ```
@@ -35,13 +35,13 @@ Dashboard_fig/
 ├── README.md                    présentation et mise en route
 ├── CLAUDE.md                    conventions de travail (pour l'assistant et pour l'équipe)
 ├── docs/                        cette documentation
-├── .github/workflows/ci.yml     intégration continue (check, audit, Playwright mock puis Postgres)
+├── .github/workflows/ci.yml     intégration continue (check et Playwright sur PostgreSQL, audit)
 └── dashboard/                   l'application
     ├── src/
     │   ├── app/                 routes Next.js (pages, layouts, actions, états de chargement)
     │   ├── components/          composants React, par domaine ; components/ui/ = shadcn
     │   ├── domain/              métier pur : types, règles, schémas, fixtures, contrats
-    │   ├── data/                façades et implémentations des sources (mock, db)
+    │   ├── data/                façades et implémentations PostgreSQL des sources
     │   ├── db/                  schéma Drizzle, client PostgreSQL, mappers
     │   ├── lib/                 utilitaires purs (format, env, mots de passe, CSP…)
     │   ├── hooks/               hooks React (un seul : détection mobile)
@@ -52,7 +52,7 @@ Dashboard_fig/
     ├── e2e/                     parcours navigateur Playwright
     ├── drizzle/                 migrations SQL générées
     ├── scripts/                 seed, création de la base locale, sauvegarde, restauration
-    ├── compose.yaml             PostgreSQL Docker de secours (port 5433)
+    ├── compose.yaml             PostgreSQL Docker : développement (db, 5433) et tests (test-db, 5434)
     └── playwright.config.ts     serveur de test, comptes de test
 ```
 
@@ -79,17 +79,16 @@ Deux régimes de validation zod : **tolérant** pour la lecture (un paramètre d
 
 Pour chaque domaine, trois fichiers :
 
-- `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et choisit l'implémentation avec `selectSource()` selon `DATA_SOURCE`, au moment de chaque appel (`source()`) et non au chargement du module : `next build` importe les pages sans environnement (`test/app/facades.test.ts`).
-- `<domaine>.mock.ts` : une `Map` en mémoire seedée depuis les fixtures, avec une latence simulée (pour voir les états de chargement) et des copies à l'entrée et à la sortie (rien ne partage d'objet avec le store). Une fonction `resetXxxMock()` hors contrat sert aux tests.
-- `<domaine>.db.ts` : la même chose avec Drizzle. Les filtres deviennent des `WHERE`, les tris des `ORDER BY`, les écritures conditionnelles des `UPDATE … WHERE id = $1 AND status = $2` (statut) ou `… AND driver_id IS NOT DISTINCT FROM $2` (affectation), les opérations couplées des transactions. `test/contract/sources.pg.test.ts` vérifie que le mock et la base répondent pareil. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
+- `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et réexporte l'implémentation typée par le contrat ; aucun module ne lit l'environnement à son chargement : `next build` importe les pages sans `.env` (`test/app/facades.test.ts`).
+- `<domaine>.db.ts` : l'implémentation Drizzle. Les filtres et la recherche deviennent des `WHERE`, les tris des `ORDER BY`, la pagination un `COUNT` puis `LIMIT/OFFSET`, les écritures conditionnelles des `UPDATE … WHERE id = $1 AND status = $2` (statut) ou `… AND driver_id IS NOT DISTINCT FROM $2` (affectation), les opérations couplées des transactions. Les chiffres (KPI, séries, produits phares, compteurs du personnel, annuaire) sont agrégés par la base dans `orders-aggregates.db.ts` et mis en forme par les règles pures. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
 
-Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation : en mémoire en mode mock, table `login_attempts` en mode db, partagée entre instances), `security-log.ts` (journal), `select-source.ts` (le choix mock / db).
+Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation, table `login_attempts`, partagée entre instances), `security-log.ts` (journal).
 
 ### 3.3 `src/db/` : PostgreSQL
 
 - `schema.ts` : les tables, enums et contraintes, source de vérité des migrations. Le schéma n'importe pas le domaine (drizzle-kit doit pouvoir le charger seul) ; un test vérifie que ses enums restent identiques aux constantes du domaine.
-- `client.ts` : `getDb()`, client paresseux (aucune connexion avant le premier appel), pool de cinq connexions, refus en mode mock.
-- `mappers.ts` : fonctions pures ligne → type métier et entrée → colonnes, testées en aller-retour sur toutes les fixtures : l'écran est identique en mock et en base.
+- `client.ts` : `getDb()`, client paresseux (aucune connexion avant le premier appel), pool de cinq connexions.
+- `mappers.ts` : fonctions pures ligne → type métier et entrée → colonnes, testées en aller-retour sur toutes les fixtures.
 
 Le détail des tables, des migrations, du seed et des sauvegardes est dans [base-de-donnees.md](base-de-donnees.md).
 
@@ -131,8 +130,8 @@ La coquille : le layout `(dashboard)` pose `@container/main` sur le conteneur de
 ### Lecture : afficher la liste des commandes
 
 1. Le proxy laisse passer la requête (session valide, section permise) et pose un nonce.
-2. `commandes/page.tsx` attend `searchParams`, les passe à `parseOrderFilters` (tolérant : recherche, statut, période, préparateur, livreur), et appelle `getOrders(filters)` de la façade.
-3. La façade délègue au mock ou à Drizzle ; dans les deux cas, résultat trié par créneau, et la recherche libre passe par la même règle pure (`matchesOrderQuery`).
+2. `commandes/page.tsx` attend `searchParams`, les passe à `parseOrderFilters` (tolérant : recherche, statut, période, préparateur, livreur), et appelle `getOrdersPage(filters, page)` de la façade.
+3. La base filtre, cherche (règle `matchesOrderQuery` reproduite en SQL), compte et renvoie les 40 commandes de la page, les plus récentes d'abord.
 4. La page rend `OrdersCards`, qui rend une `OrderCard` par commande, avec `OrderActions` si le rôle peut écrire.
 5. Pendant l'attente, Next affiche `loading.tsx`.
 
@@ -155,7 +154,7 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 ## 5. Authentification et autorisation
 
 - **Connexion** : Auth.js v5 avec e-mail et mot de passe, `authorizeCredentials` (limitation de débit par e-mail et par IP, hachage factice pour un e-mail inconnu, journal), session JWT de 8 heures avec le rôle dedans.
-- **Comptes** : en mode mock, le compte d'amorçage et le gestionnaire viennent de `.env.local` ; en mode db, la table `users` (créée par le seed, gérée sur `/comptes`).
+- **Comptes** : la table `users`, créée par le seed (comptes de `.env.local`), gérée sur `/comptes`.
 - **Lecture** : la matrice `SECTION_ACCESS` (rôle → sections) est appliquée par le proxy (redirection) et par la navigation (entrées masquées).
 - **Écriture** : une règle `canXxx(role)` par action métier, vérifiée dans chaque Server Action après relecture de la session.
 
@@ -169,20 +168,20 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 | Content-Security-Policy avec nonce par requête, HSTS, X-Frame-Options, nosniff                                   | `src/proxy.ts`, `src/lib/csp.ts`, `next.config.ts` |
 | Déconnexion robuste : le cookie de session n'est re-posé ni sur un préchargement ni tant que le jeton est récent | `src/proxy.ts`, `src/lib/session-refresh.ts`       |
 | Journal de sécurité (sortie standard et table `security_events`)                                                 | `src/data/security-log.ts`                         |
-| Gardes de production : `AUTH_URL` obligatoire, fixtures et amorçage refusés sans dérogation explicite            | `src/lib/env-schema.ts`, `src/instrumentation.ts`  |
+| Gardes de démarrage : base PostgreSQL et secret obligatoires, `AUTH_URL` obligatoire en production                 | `src/lib/env-schema.ts`, `src/instrumentation.ts`  |
 | Mots de passe hachés par scrypt, jamais journalisés                                                              | `src/lib/password.ts`                              |
 | Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                       | schémas zod des domaines                           |
 
 ## 7. Tests
 
-- **Vitest** (`test/`, miroir de `src/`) : règles pures, schémas, fixtures, mocks, mappers, et les Server Actions de bout en bout sur le mock (`server-only`, `next/cache`, la session et l'env sont neutralisés par `vi.mock`). Un test n'importe jamais une façade.
-- **Playwright** (`e2e/`) : parcours réels dans Chromium contre le serveur construit, avec des comptes de test ; rejoués en CI sur fixtures puis contre PostgreSQL.
+- **Vitest** (`test/`, miroir de `src/`), deux projets : `unit` (règles pures, schémas, fixtures, mappers, sans base) et `db` (couche données et Server Actions de bout en bout sur la base de test Docker, migrée et seedée une fois, chaque test dans une transaction annulée ; `server-only`, `next/cache` et la session neutralisés par `vi.mock`). Chaque requête SQL filtrée ou agrégée est comparée à sa règle pure sur toutes les commandes seedées.
+- **Playwright** (`e2e/`) : parcours réels dans Chromium contre le serveur construit, sur la base de test (migrée et seedée avant la suite, comptes de test) ; rejoués en CI contre un PostgreSQL de service.
 
 ## 8. Ajouter une fonctionnalité : la checklist
 
 1. Types et règles pures dans `src/domain/<domaine>/`, avec leurs tests.
 2. Schéma zod de l'entrée (`schemas.ts`), testé.
-3. Contrat `source.ts` étendu ; implémentations mock **et** db ; mapper si nouvelle table ; migration (`npm run db:generate`).
+3. Contrat `source.ts` étendu ; implémentation db (agrégat SQL plutôt que calcul en mémoire, testé contre la règle pure) ; mapper si nouvelle table ; migration (`npm run db:generate`) ; seed si nouvelle donnée de démonstration.
 4. Façade `src/data/<domaine>.ts` : réexporter la fonction.
 5. Server Action dans `src/app/<section>/actions.ts`, dans l'ordre des neuf étapes ; test de bout en bout.
 6. Composants : serveur pour l'affichage, client seulement pour le formulaire.

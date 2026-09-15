@@ -31,27 +31,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getEngagement } from "@/data/engagement";
-import { getOrders } from "@/data/orders";
+import { getOrderSeries, getOrderStats, getTopProducts } from "@/data/orders";
 import { todayInParis } from "@/domain/deliveries/rules";
 import { ratioPercent, summarizeEngagement } from "@/domain/engagement/rules";
 import {
   applyTaxMode,
   applyTaxToValues,
   bucketFor,
-  communityShare,
   compareSeries,
   COMPARISON_LABELS,
-  computeKpis,
-  distinctBuyers,
-  filterByRange,
   METRIC_PERIOD_LABELS,
-  ordersByStatus,
   periodRange,
   previousYearRange,
   referenceRange,
-  revenueSeries,
+  statusPoints,
   TAX_MODE_LABELS,
-  topProducts,
 } from "@/domain/metrics/rules";
 import { parseMetricsQuery } from "@/domain/metrics/schemas";
 import { formatDateFr, formatEuros, formatQuantity } from "@/lib/format";
@@ -67,7 +61,10 @@ import { formatDateFr, formatEuros, formatQuantity } from "@/lib/format";
  *   4. Usage de l'application sur l'année civile de la période.
  * Les ratios sont des camemberts pleins, sans pourcentage écrit : au survol,
  * chaque part dit ce qu'elle représente.
- * Composant serveur : deux lectures, toutes les agrégations en fonctions pures.
+ * Composant serveur : les chiffres des deux périodes, les deux séries, les
+ * produits phares et les acheteurs de l'année sont AGRÉGÉS par la base (huit
+ * requêtes parallèles, quelques lignes chacune), puis mis en forme par les
+ * règles pures (statsFromTotals, fillSeries, rankProducts).
  */
 export const metadata: Metadata = { title: "Métriques" };
 
@@ -84,39 +81,48 @@ export default async function MetriquesPage({
   const taxLabel = TAX_MODE_LABELS[query.tax];
   const money = (cents: number) => formatEuros(applyTaxMode(cents, query.tax));
 
-  const [all, engagement] = await Promise.all([getOrders(), getEngagement()]);
-  const orders = filterByRange(all, range);
-  const referenceOrders = filterByRange(all, reference);
-  const kpis = computeKpis(orders);
-  const kpisRef = computeKpis(referenceOrders);
-  const buyersInRange = distinctBuyers(orders);
-  const buyersInRangeRef = distinctBuyers(referenceOrders);
-  const share = communityShare(orders);
-  const shareRef = communityShare(referenceOrders);
   const bucket = bucketFor(range);
-  const comparison = compareSeries(
-    revenueSeries(all, range, bucket),
-    revenueSeries(all, reference, bucket),
-  ).map((p) => ({
-    ...p,
-    current: applyTaxToValues(p.current, query.tax),
-    previous: applyTaxToValues(p.previous, query.tax),
-  }));
-  const statuses = ordersByStatus(orders);
-  const top = topProducts(orders, 5);
-  const title = query.customRange
-    ? `Du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`
-    : METRIC_PERIOD_LABELS[query.period];
-
   // Usage de l'application : année civile de la fin de la période, vs l'année d'avant.
   const year = range.to.slice(0, 4);
   const yearLabel = `Année ${Number(year) - 1}`;
   const yearRange = { from: `${year}-01-01`, to: `${year}-12-31` };
   const yearRef = previousYearRange(yearRange);
+
+  const [
+    stats,
+    statsRef,
+    series,
+    seriesRef,
+    top,
+    yearStats,
+    yearStatsRef,
+    engagement,
+  ] = await Promise.all([
+    getOrderStats(range),
+    getOrderStats(reference),
+    getOrderSeries(range, bucket),
+    getOrderSeries(reference, bucket),
+    getTopProducts(range, 5),
+    getOrderStats(yearRange),
+    getOrderStats(yearRef),
+    getEngagement(),
+  ]);
+  const { kpis, share, buyers: buyersInRange } = stats;
+  const { kpis: kpisRef, share: shareRef, buyers: buyersInRangeRef } = statsRef;
+  const comparison = compareSeries(series, seriesRef).map((p) => ({
+    ...p,
+    current: applyTaxToValues(p.current, query.tax),
+    previous: applyTaxToValues(p.previous, query.tax),
+  }));
+  const statuses = statusPoints(stats.statusCounts);
+  const title = query.customRange
+    ? `Du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`
+    : METRIC_PERIOD_LABELS[query.period];
+
   const usage = summarizeEngagement(engagement, yearRange);
   const usageRef = summarizeEngagement(engagement, yearRef);
-  const buyers = distinctBuyers(filterByRange(all, yearRange));
-  const buyersRef = distinctBuyers(filterByRange(all, yearRef));
+  const buyers = yearStats.buyers;
+  const buyersRef = yearStatsRef.buyers;
   const signupRate = ratioPercent(usage.signups, usage.downloads);
   const signupRateRef = ratioPercent(usageRef.signups, usageRef.downloads);
   const buyerRate = ratioPercent(buyers, usage.signups);
@@ -202,7 +208,7 @@ export default async function MetriquesPage({
           <KpiCard
             label="Commandes"
             value={String(kpis.orderCount)}
-            hint={`${kpis.pendingCount} en attente`}
+            hint={`${kpis.preparingCount} en préparation`}
             icon={<ShoppingBasket />}
             trend={trend(kpis.orderCount, kpisRef.orderCount)}
           />

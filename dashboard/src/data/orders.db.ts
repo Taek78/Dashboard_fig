@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gte,
@@ -10,9 +11,12 @@ import {
   isNull,
   lte,
   notInArray,
+  or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { ordersAggregatesDb } from "@/data/orders-aggregates.db";
 import { getDb, type DbExecutor } from "@/db/client";
 import { toOrder, toOrderEvent } from "@/db/mappers";
 import {
@@ -24,36 +28,48 @@ import {
   staff,
 } from "@/db/schema";
 import type { StaffAssignment } from "@/domain/orders/assignment";
-import { filterOrders } from "@/domain/orders/rules";
+import { ORDERS_PAGE_SIZE, pageWindow } from "@/domain/orders/rules";
 import { FINISHED_STATUSES } from "@/domain/orders/status";
 import type { OrdersSource } from "@/domain/orders/source";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
+import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
 
 /*
- * Implémentation Drizzle du contrat OrdersSource.
- * Les filtres deviennent des clauses WHERE (statut, période, client,
- * communauté, équipe), le tri par créneau un ORDER BY ; la recherche libre
- * (sans accents, chiffres du téléphone) reste la règle pure du domaine,
- * appliquée après chargement : identique au mock, donc identique à l'écran ;
- * la communauté, le préparateur et le livreur sont joints (LEFT JOIN, la table
- * staff deux fois sous alias) ; les lignes sont chargées en une seconde
- * requête (IN) puis rattachées.
- * updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :
- * `UPDATE … WHERE id = $1 AND status = $2`, 0 ligne → null, sinon l'événement
- * d'historique est inséré dans la même transaction.
- * assignStaff aussi : `UPDATE … WHERE id = $1 AND status NOT IN ('delivered',
- * 'cancelled') AND driver_id IS NOT DISTINCT FROM $2` (colonne du rôle, la
- * personne que l'écran affichait) : une commande terminée entre la relecture et
- * l'écriture, ou réaffectée par quelqu'un d'autre, n'est pas écrasée.
+ * Implémentation Drizzle du contrat OrdersSource (lectures et écritures des
+ * commandes ; les chiffres agrégés sont dans orders-aggregates.db.ts).
+ * - Filtres ET recherche libre deviennent des clauses WHERE : la base ne
+ *   renvoie que les commandes utiles, et getOrdersPage découpe la page (LIMIT,
+ *   OFFSET) après un COUNT. La recherche reproduit la règle pure
+ *   matchesOrderQuery (référence, nom, e-mail, ville, code postal sans accents
+ *   ni majuscules ; téléphone chiffres seuls quand la saisie ressemble à un
+ *   numéro) ; test/data/orders.db.test.ts compare les deux.
+ * - La communauté, le préparateur et le livreur sont joints (LEFT JOIN, la table
+ *   staff deux fois sous alias) ; les lignes sont chargées en une seconde
+ *   requête (IN) puis rattachées.
+ * - updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :
+ *   `UPDATE … WHERE id = $1 AND status = $2`, 0 ligne → null, sinon l'événement
+ *   d'historique est inséré dans la même transaction.
+ * - assignStaff aussi : `UPDATE … WHERE id = $1 AND status NOT IN ('delivered',
+ *   'cancelled') AND driver_id IS NOT DISTINCT FROM $2` (colonne du rôle, la
+ *   personne que l'écran affichait) : une commande terminée entre la relecture
+ *   et l'écriture, ou réaffectée par quelqu'un d'autre, n'est pas écrasée.
  */
 const preparer = alias(staff, "preparer");
 const driver = alias(staff, "driver");
 
+type LoadOptions = {
+  direction?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+};
+
 async function loadOrders(
   db: DbExecutor,
   where: SQL | undefined,
+  { direction = "asc", limit, offset = 0 }: LoadOptions = {},
 ): Promise<Order[]> {
-  const rows = await db
+  const by = direction === "desc" ? desc : asc;
+  let query = db
     .select({
       order: orders,
       customer: customers,
@@ -76,10 +92,13 @@ async function loadOrders(
     .leftJoin(driver, eq(orders.driverId, driver.id))
     .where(where)
     .orderBy(
-      asc(orders.deliveryDate),
-      asc(orders.deliveryStart),
-      asc(orders.reference),
-    );
+      by(orders.deliveryDate),
+      by(orders.deliveryStart),
+      by(orders.reference),
+    )
+    .$dynamic();
+  if (limit !== undefined) query = query.limit(limit).offset(offset);
+  const rows = await query;
   if (rows.length === 0) return [];
 
   const lines = await db
@@ -115,6 +134,41 @@ function staffClause(
   return id === null ? isNull(column) : eq(column, id);
 }
 
+/*
+ * normalize() de src/lib/text.ts en SQL : ligatures œ et æ dépliées, lettres
+ * accentuées françaises ramenées à leur base, minuscules. Les deux alphabets
+ * ont la même longueur (translate remplace caractère pour caractère).
+ */
+const ACCENTED = "ÀÁÂÃÄÅàáâãäåÇçÈÉÊËèéêëÌÍÎÏìíîïÑñÒÓÔÕÖòóôõöÙÚÛÜùúûüÝýÿ";
+const PLAIN = "AAAAAAaaaaaaCcEEEEeeeeIIIIiiiiNnOOOOOoooooUUUUuuuuYyy";
+
+function normalized(column: AnyPgColumn): SQL {
+  return sql`lower(translate(replace(replace(replace(replace(${column}, 'œ', 'oe'), 'Œ', 'OE'), 'æ', 'ae'), 'Æ', 'AE'), ${ACCENTED}, ${PLAIN}))`;
+}
+
+/** matchesOrderQuery en SQL ; strpos plutôt que LIKE : « % » ou « _ » saisis restent du texte. */
+function queryClause(query: string | undefined): SQL | undefined {
+  const q = normalize(query ?? "");
+  if (q === "") return undefined;
+  const fields = [
+    orders.reference,
+    customers.fullName,
+    customers.email,
+    orders.deliveryCity,
+    orders.deliveryPostalCode,
+  ];
+  const clauses = fields.map(
+    (field) => sql`strpos(${normalized(field)}, ${q}) > 0`,
+  );
+  const digits = digitsOnly(q);
+  if (isPhoneLike(q) && digits.length >= 2) {
+    clauses.push(
+      sql`strpos(regexp_replace(${customers.phone}, '[^0-9]', '', 'g'), ${digits}) > 0`,
+    );
+  }
+  return or(...clauses);
+}
+
 function whereFor(filters: OrderFilters): SQL | undefined {
   const clauses = [
     filters.status ? eq(orders.status, filters.status) : undefined,
@@ -124,18 +178,46 @@ function whereFor(filters: OrderFilters): SQL | undefined {
     filters.communityId
       ? eq(orders.communityId, filters.communityId)
       : undefined,
+    filters.staffId
+      ? or(
+          eq(orders.preparerId, filters.staffId),
+          eq(orders.driverId, filters.staffId),
+        )
+      : undefined,
     staffClause(orders.preparerId, filters.preparerId),
     staffClause(orders.driverId, filters.driverId),
+    queryClause(filters.query),
   ].filter((clause): clause is SQL => clause !== undefined);
   return clauses.length === 0 ? undefined : and(...clauses);
 }
 
-export const ordersDb: OrdersSource = {
-  getOrders: async (filters: OrderFilters = {}) => {
-    const rows = await loadOrders(getDb(), whereFor(filters));
-    return filters.query === undefined
-      ? rows
-      : filterOrders(rows, { query: filters.query });
+const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
+  getOrders: (filters: OrderFilters = {}) =>
+    loadOrders(getDb(), whereFor(filters)),
+
+  getOrdersPage: async (
+    filters: OrderFilters,
+    page: number,
+    size = ORDERS_PAGE_SIZE,
+  ) => {
+    const db = getDb();
+    const where = whereFor(filters);
+    const [row] = await db
+      .select({ total: count() })
+      .from(orders)
+      .innerJoin(customers, eq(orders.customerId, customers.id))
+      .where(where);
+    const total = row?.total ?? 0;
+    const window = pageWindow(total, page, size);
+    const items =
+      total === 0
+        ? []
+        : await loadOrders(db, where, {
+            direction: "desc",
+            limit: size,
+            offset: window.offset,
+          });
+    return { items, page: window.page, pageCount: window.pageCount, total };
   },
 
   getOrder: async (id: string) => {
@@ -206,3 +288,5 @@ export const ordersDb: OrdersSource = {
     return order ?? null;
   },
 };
+
+export const ordersDb: OrdersSource = { ...records, ...ordersAggregatesDb };

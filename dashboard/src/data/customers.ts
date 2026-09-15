@@ -1,16 +1,11 @@
 import "server-only";
-import { selectSource } from "@/data/select-source";
-import type { CustomersSource } from "@/domain/customers/source";
 import { customersDb } from "@/data/customers.db";
-import { customersMock } from "@/data/customers.mock";
+import type { CustomersSource } from "@/domain/customers/source";
 
-/* FAÇADE des clients : seul module importé par le front ; DATA_SOURCE choisit fixtures ou Postgres. */
-const source = (): CustomersSource =>
-  selectSource("clients", customersMock, customersDb);
-
-export const getCustomers: CustomersSource["getCustomers"] = (query) =>
-  source().getCustomers(query);
-export const getCustomer: CustomersSource["getCustomer"] = (id) =>
-  source().getCustomer(id);
-export const addNote: CustomersSource["addNote"] = (customerId, note) =>
-  source().addNote(customerId, note);
+/*
+ * FAÇADE des clients : le seul module que le front (pages, Server Actions) importe.
+ * L'implémentation est PostgreSQL (customers.db.ts) ; la façade fixe le contrat
+ * CustomersSource et `server-only` (un composant client qui l'importerait casse le build).
+ */
+export const { getCustomers, getCustomer, addNote }: CustomersSource =
+  customersDb;

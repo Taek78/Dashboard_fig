@@ -1,6 +1,8 @@
 # Intégration continue : à chaque push et pull request, le rituel de
-# vérification du projet (typecheck, lint, format, tests) puis l'audit des
-# dépendances de production. Aucun secret requis : tout tourne sur fixtures.
+# vérification du projet (typecheck, lint, format, tests unitaires et tests
+# contre PostgreSQL), l'audit des dépendances de production, puis la suite
+# navigateur. Aucun secret requis : bases de CI éphémères, données fictives,
+# comptes de test publics (test/support/config.ts).
 name: CI
 
 on:
@@ -17,6 +19,21 @@ jobs:
     defaults:
       run:
         working-directory: dashboard
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fig
+          POSTGRES_PASSWORD: fig
+          POSTGRES_DB: fig_test
+        ports: ["5434:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fig -d fig_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://fig:fig@localhost:5434/fig_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,22 +57,15 @@ jobs:
         env:
           POSTGRES_USER: fig
           POSTGRES_PASSWORD: fig
-          POSTGRES_DB: fig
-        ports: ["5432:5432"]
+          POSTGRES_DB: fig_test
+        ports: ["5434:5432"]
         options: >-
-          --health-cmd "pg_isready -U fig -d fig"
+          --health-cmd "pg_isready -U fig -d fig_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://fig:fig@localhost:5432/fig
-      # Comptes de test : les mêmes que playwright.config.ts (publics, sans valeur).
-      AUTH_BOOTSTRAP_EMAIL: e2e-admin@fig-demo.invalid
-      AUTH_BOOTSTRAP_PASSWORD: E2E-FIG-2026-admin
-      AUTH_BOOTSTRAP_NAME: Admin E2E
-      AUTH_MANAGER_EMAIL: e2e-gestion@fig-demo.invalid
-      AUTH_MANAGER_PASSWORD: E2E-FIG-2026-gestion
-      AUTH_MANAGER_NAME: Gestion E2E
+      TEST_DATABASE_URL: postgresql://fig:fig@localhost:5434/fig_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -66,19 +76,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - name: Suite navigateur sur fixtures
+      # Migrations et seed de la base de test : e2e/global-setup.ts.
+      - name: Suite navigateur sur PostgreSQL
         run: npm run test:e2e
-      - name: Migration et seed de la base de CI
-        run: npm run db:migrate && npm run db:seed
-      # Juste après le seed : la comparaison mock = base exige les fixtures d'origine.
-      - name: Contrat des sources (mock et Postgres donnent les mêmes réponses)
-        run: npx vitest run test/contract
-        env:
-          TEST_DATABASE_URL: postgresql://fig:fig@localhost:5432/fig
-      - name: Suite navigateur sur Postgres
-        run: npm run test:e2e
-        env:
-          E2E_DATA_SOURCE: db
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

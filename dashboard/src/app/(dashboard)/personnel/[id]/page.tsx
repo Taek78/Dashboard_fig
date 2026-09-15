@@ -48,9 +48,10 @@ export default async function PersonnePage({
   const parsed = staffIdSchema.safeParse(id);
   if (!parsed.success) notFound();
 
+  // Seulement les commandes de la personne (préparateur ou livreur), filtrées par la base.
   const [member, orders, user, raw] = await Promise.all([
     getStaff(parsed.data),
-    getOrders(),
+    getOrders({ staffId: parsed.data }),
     getCurrentUser(),
     searchParams,
   ]);

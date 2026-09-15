@@ -1,7 +1,11 @@
 import { DeliveryCard } from "@/components/deliveries/delivery-card";
 import { TourProgress } from "@/components/deliveries/tour-progress";
 import type { AssignmentOptions } from "@/components/orders/order-team";
-import { nextStopIndex, type DayGroup } from "@/domain/deliveries/rules";
+import {
+  nextStopIndex,
+  tourProgress,
+  type DayGroup,
+} from "@/domain/deliveries/rules";
 import { formatDayLongFr } from "@/lib/format";
 
 /*
@@ -51,7 +55,7 @@ export function TourCards({
               {severalDays ? (
                 <div className="w-full @xl/main:w-72">
                   <TourProgress
-                    orders={group.orders}
+                    progress={tourProgress(group.orders)}
                     label={`Avancement du ${day}`}
                     compact
                   />

@@ -1,30 +1,31 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TEST_ACCOUNTS } from "../../support/config";
 
 /*
- * Server Actions de la gestion des comptes, de bout en bout sur le mock :
- * session simulée (rôle et id pilotables), server-only et env neutralisés,
- * revalidatePath espionné, journal de sécurité neutralisé.
+ * Server Actions de la gestion des comptes, de bout en bout sur la base de
+ * test (comptes seedés : usr-0001 admin, usr-0002 gestionnaire) : session
+ * simulée (rôle et id pilotables), server-only neutralisé, revalidatePath
+ * espionné, journal de sécurité neutralisé. Chaque test dans une transaction
+ * annulée.
  */
 const session = vi.hoisted(() => ({ id: "usr-0001", role: "admin" }));
 vi.mock("@/data/session", () => ({
   getCurrentUser: async () => ({
     id: session.id,
-    name: "Testeur",
+    name: "Admin E2E",
     role: session.role,
   }),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/env", () => ({
-  getEnv: () => ({
-    DATA_SOURCE: "mock",
-    AUTH_BOOTSTRAP_EMAIL: "admin@fig.invalid",
-    AUTH_BOOTSTRAP_PASSWORD: "Admin-mot-de-passe-1",
-    AUTH_BOOTSTRAP_NAME: "Admin",
-  }),
-}));
+vi.mock("@/db/client", () =>
+  import("../../support/test-database").then((m) => m.dbClientMock),
+);
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 vi.mock("@/data/security-log", () => ({ logSecurity: vi.fn() }));
+
+const { isolateEachTest } = await import("../../support/test-database");
+isolateEachTest();
 
 const { createAccount, resetAccountPassword, setAccountActive, updateAccount } =
   await import("@/app/(dashboard)/comptes/actions");
@@ -40,22 +41,15 @@ function form(fields: Record<string, string>): FormData {
 const run = (action: typeof createAccount, fields: Record<string, string>) =>
   action(idleActionResult, form(fields));
 
-beforeEach(async () => {
+beforeEach(() => {
   session.id = "usr-0001";
   session.role = "admin";
   revalidatePath.mockClear();
-  // Le store mock est un singleton : on remet chaque compte de test à plat.
-  for (const u of await listUsers()) {
-    if (u.id !== "usr-0001") {
-      await (await import("@/data/users")).updateUser(u.id, { active: false });
-    }
-  }
 });
-afterEach(() => vi.useRealTimers());
 
 describe("createAccount", () => {
   it("crée un compte avec un hachage vérifiable, puis refuse le doublon", async () => {
-    const email = `nour-${Date.now()}@fig.invalid`;
+    const email = "nour@fig-demo.invalid";
     const result = await run(createAccount, {
       email,
       name: "Nour",
@@ -70,13 +64,14 @@ describe("createAccount", () => {
     ).toBe(true);
     expect(revalidatePath).toHaveBeenCalledWith("/comptes", "layout");
 
-    const again = await run(createAccount, {
-      email: email.toUpperCase(),
-      name: "Nour bis",
-      role: "lecture",
-      password: "Nour-mot-de-passe-2",
-    });
-    expect(again).toEqual({
+    expect(
+      await run(createAccount, {
+        email: email.toUpperCase(),
+        name: "Nour bis",
+        role: "lecture",
+        password: "Nour-mot-de-passe-2",
+      }),
+    ).toEqual({
       status: "error",
       message: "Un compte existe déjà avec cet e-mail.",
     });
@@ -87,7 +82,7 @@ describe("createAccount", () => {
     expect(
       (
         await run(createAccount, {
-          email: "x@y.invalid",
+          email: "x@fig-demo.invalid",
           name: "X",
           role: "lecture",
           password: "Assez-long-oui-1",
@@ -98,7 +93,7 @@ describe("createAccount", () => {
     expect(
       (
         await run(createAccount, {
-          email: "x@y.invalid",
+          email: "x@fig-demo.invalid",
           name: "X",
           role: "lecture",
           password: "court",
@@ -122,58 +117,52 @@ describe("setAccountActive / updateAccount", () => {
       role: "lecture",
     });
     expect(demote.status).toBe("error");
-    if (demote.status === "error")
+    if (demote.status === "error") {
       expect(demote.message).toContain("dernier administrateur");
+    }
   });
 
   it("désactive puis réactive un autre compte, qui ne peut plus se connecter entre-temps", async () => {
-    const email = `lea-${Date.now()}@fig.invalid`;
-    await run(createAccount, {
-      email,
-      name: "Léa",
-      role: "lecture",
-      password: "Lea-mot-de-passe-12",
-    });
-    const created = (await listUsers()).find((u) => u.email === email)!;
-    const off = await run(setAccountActive, {
-      userId: created.id,
-      active: "0",
-    });
-    expect(off.status).toBe("success");
+    const email = TEST_ACCOUNTS.manager.email;
+    expect(
+      (await run(setAccountActive, { userId: "usr-0002", active: "0" })).status,
+    ).toBe("success");
     expect(await findUserByEmail(email)).toBeNull();
-    const on = await run(setAccountActive, { userId: created.id, active: "1" });
-    expect(on.status).toBe("success");
-    expect((await findUserByEmail(email))?.id).toBe(created.id);
+    expect(
+      (await run(setAccountActive, { userId: "usr-0002", active: "1" })).status,
+    ).toBe("success");
+    expect((await findUserByEmail(email))?.id).toBe("usr-0002");
+    expect((await listUsers()).find((u) => u.id === "usr-0002")?.active).toBe(
+      true,
+    );
   });
 });
 
 describe("resetAccountPassword", () => {
-  it("remplace le hachage d'un compte existant", async () => {
-    const email = `sam-${Date.now()}@fig.invalid`;
-    await run(createAccount, {
-      email,
-      name: "Sam",
-      role: "livreur",
-      password: "Sam-mot-de-passe-12",
-    });
-    const created = (await listUsers()).find((u) => u.email === email)!;
-    const result = await run(resetAccountPassword, {
-      userId: created.id,
-      password: "Sam-nouveau-mdp-34",
-    });
-    expect(result.status).toBe("success");
-    const account = await findUserByEmail(email);
+  it("remplace le hachage d'un compte existant, refuse un compte inconnu", async () => {
     expect(
-      await verifyPassword("Sam-nouveau-mdp-34", account!.passwordHash),
+      (
+        await run(resetAccountPassword, {
+          userId: "usr-0002",
+          password: "Gestion-nouveau-34",
+        })
+      ).status,
+    ).toBe("success");
+    const account = await findUserByEmail(TEST_ACCOUNTS.manager.email);
+    expect(
+      await verifyPassword("Gestion-nouveau-34", account!.passwordHash),
     ).toBe(true);
     expect(
-      await verifyPassword("Sam-mot-de-passe-12", account!.passwordHash),
+      await verifyPassword(
+        TEST_ACCOUNTS.manager.password,
+        account!.passwordHash,
+      ),
     ).toBe(false);
     expect(
       (
         await run(resetAccountPassword, {
           userId: "nope",
-          password: "Sam-nouveau-mdp-34",
+          password: "Gestion-nouveau-34",
         })
       ).status,
     ).toBe("error");

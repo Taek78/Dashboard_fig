@@ -1,6 +1,6 @@
 # Contrat de données : ce que le front consomme
 
-Pour chaque domaine, le contrat `src/domain/<domaine>/source.ts` liste les fonctions que les pages et les Server Actions appellent par la façade `src/data/<domaine>.ts`. Deux implémentations le respectent : les fixtures en mémoire (`<domaine>.mock.ts`) et PostgreSQL via Drizzle (`<domaine>.db.ts`, colonnes de `src/db/schema.ts`). Les deux renvoient les mêmes types métier ; `src/db/mappers.ts` fait la conversion depuis les lignes, et `test/db/mappers.test.ts` vérifie l'aller-retour sur toutes les fixtures.
+Pour chaque domaine, le contrat `src/domain/<domaine>/source.ts` liste les fonctions que les pages et les Server Actions appellent par la façade `src/data/<domaine>.ts`. Il est implémenté par PostgreSQL via Drizzle (`<domaine>.db.ts`, colonnes de `src/db/schema.ts`), qui renvoie des types métier ; les tests de `test/data/` exécutent chaque fonction sur une base de test seedée ; `src/db/mappers.ts` fait la conversion depuis les lignes, et `test/db/mappers.test.ts` vérifie l'aller-retour sur toutes les fixtures.
 
 Conventions communes : montants en centimes entiers, quantités en grammes ou pièces selon `unit`, instants en ISO 8601, jours `AAAA-MM-JJ`, heures `HH:mm`. `null` signifie « introuvable » (cas métier normal), jamais une panne.
 
@@ -8,12 +8,18 @@ Conventions communes : montants en centimes entiers, quantités en grammes ou pi
 
 | Fonction                        | Entrées                                               | Sortie                                               | Notes                                                                                                                                                                         |
 | ------------------------------- | ----------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `getOrders(filters?)`           | `status?`, `date?` (jour de livraison), `customerId?` | `Order[]` triées par jour, heure de début, référence | filtres en `WHERE`, tri en `ORDER BY` ; lignes chargées en une seconde requête                                                                                                |
+| `getOrders(filters?)`           | `query?`, `status?`, `from?`, `to?`, `preparerId?`, `driverId?`, `customerId?`, `communityId?`, `staffId?` | `Order[]` triées par jour, heure de début, référence | filtres et recherche sans accents en `WHERE`, tri en `ORDER BY` ; lignes chargées en une seconde requête ; pour des listes bornées (tournée, fiche) |
+| `getOrdersPage(filters, page, size?)` | mêmes filtres, numéro de page | `Page<Order>` (`items`, `page`, `pageCount`, `total`), les plus récentes d'abord | `COUNT` puis `LIMIT/OFFSET` ; numéro ramené dans les bornes (`pageWindow`) |
+| `getOrderStats(range)` | `{ from, to }` | `OrderStats` : KPI, nombre par statut, part des communautés, acheteurs distincts | une requête agrégée ; arrondis de `statsFromTotals` |
+| `getOrderSeries(range, bucket)` | plage, `day \| week \| month` | `SeriesPoint[]`, seaux vides compris | `GROUP BY` du premier jour du seau ; `fillSeries` |
+| `getTopProducts(range, limit)` | plage, nombre | `ProductPoint[]` | lignes des commandes non annulées groupées par produit ; `rankProducts` |
+| `getStaffWorkSummaries()` | | `Map<staffId, StaffWorkSummary>` | préparées, livrées, en cours, dernière activité |
+| `getDirectoryStats()` | | `DirectoryStats` : chiffres par client, par communauté, série de fidélité | trois requêtes agrégées ; `loyaltyFromStreak` |
 | `getOrder(id)`                  | `id`                                                  | `Order \| null`                                      |                                                                                                                                                                               |
 | `updateOrderStatus(id, change)` | `{ from, to, actor, cancellation }`                   | `Order \| null`                                      | conditionnelle : `null` si le statut n'est plus `from` ; écrit l'événement d'historique dans la même transaction ; `cancellation` posé sur la commande quand `to = cancelled` |
 | `getOrderEvents(orderId)`       | `orderId`                                             | `OrderEvent[]` du plus récent au plus ancien         |                                                                                                                                                                               |
 
-`Order` : `id`, `reference` (unique), `createdAt`, `status` (`pending | preparing | delivering | delivered | cancelled`), `customer { id, fullName, email, phone }`, `deliverySlot { date, start, end }`, `deliveryCity`, `deliveryPostalCode`, `lines[] { productId, productName, quantity, unit, lineTotalCents }` (instantané au moment de l'achat), `totalCents`, `cancellation { reason, detail } | null`.
+`Order` : `id`, `reference` (unique), `createdAt`, `status` (`preparing | delivering | delivered | cancelled`), `customer { id, fullName, email, phone }`, `deliverySlot { date, start, end }`, `deliveryCity`, `deliveryPostalCode`, `lines[] { productId, productName, quantity, unit, lineTotalCents }` (instantané au moment de l'achat), `totalCents`, `cancellation { reason, detail } | null`.
 
 `OrderEvent` : `id`, `orderId`, `from`, `to`, `actor { id, name }`, `cancellation | null`, `at`.
 
@@ -21,11 +27,11 @@ Sources de vérité côté application FIG, à respecter au branchement :
 
 - la **remise** (`discount`) est celle réellement appliquée au **paiement** dans l'application ; le dashboard l'affiche et ne la calcule jamais (le taux d'une communauté n'est qu'annoncé) ;
 - le **créneau** (`deliverySlot`) d'une commande de communauté est l'horaire de retrait choisi par le client **à chaque commande** ; une communauté n'a pas d'heure fixe ;
-- il n'y a **pas de statut « confirmée »** : une commande reçue passe d'« en attente » à « en préparation ».
+- une commande reçue est **en préparation** d'emblée (ni « confirmée » ni « en attente ») ; elle passe à **expédiée** (`delivering`) puis **livrée** ; l'annulation, avec motif, n'est possible qu'en préparation.
 
 ## Livraisons
 
-Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) s'applique après la requête SQL, comme celle des clients. L'adresse de rue n'existe pas encore (question 13).
+Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure. L'adresse de rue n'existe pas encore (question 13).
 
 ## Catalogue (`ProductsSource`)
 
@@ -47,7 +53,7 @@ Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jour
 | `getCustomer(id)`           | `id`                              | `Customer \| null`         | avec ses notes, de la plus ancienne à la plus récente                        |
 | `addNote(customerId, note)` | `{ text, authorName, createdAt }` | `CustomerNote \| null`     | auteur et date viennent de l'action (session, horloge), jamais du formulaire |
 
-`Customer` : `id`, `fullName`, `email`, `phone`, `city`, `postalCode`, `createdAt`, `notes[] { id, text, authorName, createdAt }`. Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne. La section Clients assemble particuliers et communautés en un annuaire calculé en mémoire (`buildDirectory`, `filterDirectory`, `sortDirectory`).
+`Customer` : `id`, `fullName`, `email`, `phone`, `city`, `postalCode`, `createdAt`, `notes[] { id, text, authorName, createdAt }`. Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne. La section Clients assemble particuliers et communautés en un annuaire (`buildDirectory`, `filterDirectory`, `sortDirectory`) à partir des chiffres agrégés par la base (`getDirectoryStats`).
 
 ## Articles (`ArticlesSource`)
 
@@ -75,7 +81,7 @@ Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jour
 | `updateUser(id, patch)`  | `{ name?, role?, active? }`           | `ManagedUser \| null`                        | les règles (dernier admin, soi-même) sont dans l'action                           |
 | `setPassword(id, hash)`  |                                       | `boolean`                                    |                                                                                   |
 
-En mode mock, les comptes viennent de `.env.local` ; en mode db, de la table `users` (seed puis écran `/comptes`).
+Les comptes viennent de la table `users` : créés par `npm run db:seed` (`AUTH_BOOTSTRAP_*`, `AUTH_MANAGER_*` de `.env.local`), puis gérés sur l'écran `/comptes`.
 
 ## Session
 

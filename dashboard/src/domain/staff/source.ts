@@ -2,8 +2,8 @@ import type { StaffKind } from "@/domain/staff/kind";
 import type { StaffInput, StaffMember } from "@/domain/staff/types";
 
 /*
- * CONTRAT du personnel : fixtures (src/data/staff.mock.ts) ou Drizzle
- * (src/data/staff.db.ts). Types seulement.
+ * CONTRAT du personnel, implémenté par PostgreSQL (src/data/staff.db.ts).
+ * Types seulement.
  * - listStaff(kind) renvoie toute l'équipe ou un métier, triée (staff/rules.ts) ;
  * - createStaff attribue l'id et createdAt ; updateStaff et deleteStaff
  *   renvoient null / false si la personne n'existe pas ;

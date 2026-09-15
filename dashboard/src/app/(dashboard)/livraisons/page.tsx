@@ -24,6 +24,7 @@ import {
   recentDeliveryDays,
   TOUR_MAX_DAYS,
   todayInParis,
+  tourProgress,
   tourRange,
 } from "@/domain/deliveries/rules";
 import { hasOrderFilters, orderFiltersQuery } from "@/domain/orders/rules";
@@ -162,7 +163,7 @@ export default async function LivraisonsPage({
                     : "Avancement de la période"}
                 </h2>
                 <TourProgress
-                  orders={orders}
+                  progress={tourProgress(orders)}
                   label="Avancement de la tournée"
                 />
               </CardContent>

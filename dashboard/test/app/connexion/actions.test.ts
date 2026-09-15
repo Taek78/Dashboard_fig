@@ -2,23 +2,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
  * Action de connexion : Auth.js simulé (signIn), en-têtes simulés (adresse
- * IP), horloge figée. La vérification et le comptage des échecs vivent dans
- * src/data/credentials.ts (testé à part) ; ici on vérifie que l'action lit le
- * verrou avant d'appeler Auth.js et que ses messages restent génériques.
+ * IP), horloge figée (Date seulement), limitation de débit dans la base de test
+ * (transaction annulée par test). La vérification et le comptage des échecs
+ * vivent dans src/data/credentials.ts (testé à part) ; ici on vérifie que
+ * l'action lit le verrou avant d'appeler Auth.js et que ses messages restent
+ * génériques.
  */
 const signIn = vi.hoisted(() => vi.fn());
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
+vi.mock("@/db/client", () =>
+  import("../../support/test-database").then((m) => m.dbClientMock),
+);
 vi.mock("@/auth", () => ({ signIn, signOut: vi.fn() }));
 vi.mock("next-auth", () => ({ AuthError: class AuthError extends Error {} }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "203.0.113.5" }),
 }));
 
+const { isolateEachTest } = await import("../../support/test-database");
+isolateEachTest();
+
 const { login } = await import("@/app/connexion/actions");
 const { AuthError } = await import("next-auth");
 const { recordLoginFailure } = await import("@/data/login-attempts");
-const { resetLoginAttemptsMock } = await import("@/data/login-attempts.mock");
 const { idleActionResult } = await import("@/lib/action-result");
 
 function attempt(email: string, password = "Mauvais-mot-de-passe-1") {
@@ -29,9 +35,8 @@ function attempt(email: string, password = "Mauvais-mot-de-passe-1") {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-14T08:00:00.000Z"));
-  resetLoginAttemptsMock();
   signIn.mockReset();
   signIn.mockRejectedValue(new AuthError("CredentialsSignin"));
 });
@@ -54,8 +59,7 @@ describe("login", () => {
         now,
       );
     }
-    const result = await attempt("Zaki@fig.invalid");
-    expect(result).toEqual({
+    expect(await attempt("Zaki@fig.invalid")).toEqual({
       status: "error",
       message: "Trop de tentatives. Réessayez dans 1 minute.",
     });

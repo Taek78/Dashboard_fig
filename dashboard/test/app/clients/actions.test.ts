@@ -1,26 +1,31 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { customersMock, resetCustomersMock } from "@/data/customers.mock";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
- * Session simulée : getCurrentUser() (Auth.js) est remplacé par un
- * utilisateur de test dont le rôle est pilotable par cas (session.role).
+ * Note interne sur un client, de bout en bout sur la base de test : session
+ * simulée (rôle pilotable), server-only neutralisé, revalidatePath espionné.
+ * Chaque test dans une transaction annulée.
  */
 const session = vi.hoisted(() => ({ role: "gestionnaire" }));
 vi.mock("@/data/session", () => ({
   getCurrentUser: async () => ({
-    id: "usr-test",
-    name: "Testeur",
+    id: "usr-0002",
+    name: "Gestion E2E",
     role: session.role,
   }),
 }));
-
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
+vi.mock("@/db/client", () =>
+  import("../../support/test-database").then((m) => m.dbClientMock),
+);
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 
+const { isolateEachTest } = await import("../../support/test-database");
+isolateEachTest();
+
 const { addCustomerNote } =
   await import("@/app/(dashboard)/clients/[id]/actions");
+const { getCustomer } = await import("@/data/customers");
 const { idleActionResult } = await import("@/lib/action-result");
 
 function form(fields: Record<string, string>): FormData {
@@ -29,34 +34,24 @@ function form(fields: Record<string, string>): FormData {
   return data;
 }
 
-async function run(fields: Record<string, string>) {
-  const promise = addCustomerNote(idleActionResult, form(fields));
-  await vi.advanceTimersByTimeAsync(2000);
-  return promise;
-}
+const run = (fields: Record<string, string>) =>
+  addCustomerNote(idleActionResult, form(fields));
 
 beforeEach(() => {
-  vi.useFakeTimers();
   session.role = "gestionnaire";
-  resetCustomersMock();
   revalidatePath.mockClear();
 });
-afterEach(() => vi.useRealTimers());
 
 describe("addCustomerNote", () => {
   it("ajoute une note signée par l'utilisateur de la session, datée par le serveur", async () => {
-    const r = await run({
-      customerId: "cli-0003",
-      text: "  Rappeler lundi.  ",
-    });
-    expect(r).toEqual({ status: "success", message: "Note ajoutée." });
-    const p = customersMock.getCustomer("cli-0003");
-    await vi.advanceTimersByTimeAsync(1000);
-    const c = await p;
+    expect(
+      await run({ customerId: "cli-0003", text: "  Rappeler lundi.  " }),
+    ).toEqual({ status: "success", message: "Note ajoutée." });
+    const c = await getCustomer("cli-0003");
     expect(c?.notes).toHaveLength(1);
     expect(c?.notes[0]).toMatchObject({
       text: "Rappeler lundi.",
-      authorName: "Testeur",
+      authorName: "Gestion E2E",
     });
     expect(new Date(c!.notes[0]!.createdAt).toISOString()).toBe(
       c!.notes[0]!.createdAt,
@@ -71,10 +66,8 @@ describe("addCustomerNote", () => {
       authorName: "Pirate",
       createdAt: "1999-01-01T00:00:00.000Z",
     });
-    const p = customersMock.getCustomer("cli-0003");
-    await vi.advanceTimersByTimeAsync(1000);
-    const note = (await p)!.notes[0]!;
-    expect(note.authorName).toBe("Testeur");
+    const note = (await getCustomer("cli-0003"))!.notes[0]!;
+    expect(note.authorName).toBe("Gestion E2E");
     expect(note.createdAt.startsWith("1999")).toBe(false);
   });
 

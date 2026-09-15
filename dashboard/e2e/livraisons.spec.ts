@@ -17,8 +17,8 @@ test.describe("tournée", () => {
     await expect(
       card.getByRole("link", { name: /Itinéraire/ }),
     ).toHaveAttribute("href", /google\.com\/maps/);
-    await card.getByRole("button", { name: "Démarrer la livraison" }).click();
-    await expect(card).toContainText("En livraison");
+    await card.getByRole("button", { name: "Expédier la commande" }).click();
+    await expect(card).toContainText("Expédiée");
     await expect(
       card.getByRole("button", { name: "Marquer comme livrée" }),
     ).toBeVisible();
@@ -51,7 +51,8 @@ test.describe("tournée : période, recherche et avancement", () => {
     }
     const legend = page.getByRole("list", { name: "Détail par statut" });
     await expect(legend).toContainText("Livrées");
-    await expect(legend).toContainText("En attente");
+    await expect(legend).toContainText("En préparation");
+    await expect(legend).not.toContainText("En attente");
     await expect(
       page.getByRole("progressbar", {
         name: "Avancement du dimanche 6 septembre",

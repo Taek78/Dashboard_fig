@@ -4,6 +4,7 @@ import {
   ORDER_STATUS_LABELS,
   allowedTransitions,
   canTransition,
+  isFinished,
   type OrderStatus,
   statusPath,
 } from "@/domain/orders/status";
@@ -12,11 +13,9 @@ import {
  * Teste src/domain/orders/status.ts : la machine d'états en liste blanche.
  * On énumère les passages autorisés ici, indépendamment de la matrice du code :
  * si quelqu'un modifie ORDER_TRANSITIONS, ce test le signale et force à relire
- * la décision (questions 7 et 9 au client, docs/backlog.md).
+ * la décision du client (trois états de parcours, 2026-09-15).
  */
 const ALLOWED: ReadonlyArray<[OrderStatus, OrderStatus]> = [
-  ["pending", "preparing"],
-  ["pending", "cancelled"],
   ["preparing", "delivering"],
   ["preparing", "cancelled"],
   ["delivering", "delivered"],
@@ -52,12 +51,16 @@ describe("canTransition", () => {
       expect(canTransition("delivered", to)).toBe(false);
       expect(canTransition("cancelled", to)).toBe(false);
     }
+    expect(isFinished("delivered")).toBe(true);
+    expect(isFinished("cancelled")).toBe(true);
+    expect(isFinished("preparing")).toBe(false);
+    expect(isFinished("delivering")).toBe(false);
   });
 
-  it("n'autorise aucun retour arrière ni saut de fin", () => {
-    expect(canTransition("preparing", "pending")).toBe(false);
+  it("n'autorise aucun retour arrière, saut de fin ni annulation d'une commande expédiée", () => {
+    expect(canTransition("delivering", "preparing")).toBe(false);
     expect(canTransition("delivering", "cancelled")).toBe(false);
-    expect(canTransition("pending", "delivered")).toBe(false);
+    expect(canTransition("preparing", "delivered")).toBe(false);
   });
 });
 
@@ -84,40 +87,50 @@ describe("allowedTransitions", () => {
   });
 
   it("renvoie une copie : la muter ne change pas l'appel suivant", () => {
-    const first = allowedTransitions("pending");
+    const first = allowedTransitions("preparing");
     first.push("delivered");
-    expect(allowedTransitions("pending")).toEqual(["preparing", "cancelled"]);
-    expect(canTransition("pending", "delivered")).toBe(false);
+    expect(allowedTransitions("preparing")).toEqual([
+      "delivering",
+      "cancelled",
+    ]);
+    expect(canTransition("preparing", "delivered")).toBe(false);
   });
 });
 
 describe("ORDER_STATUSES", () => {
-  it("n'a pas de statut « confirmée » : en attente passe en préparation", () => {
-    expect((ORDER_STATUSES as readonly string[]).includes("confirmed")).toBe(
-      false,
-    );
-    expect(canTransition("pending", "preparing")).toBe(true);
-  });
-});
-
-describe("ORDER_STATUS_LABELS", () => {
-  it("a un libellé français non vide pour chaque statut", () => {
-    for (const status of ORDER_STATUSES) {
-      expect(ORDER_STATUS_LABELS[status].length).toBeGreaterThan(0);
+  it("trois états de parcours et l'annulation, sans « confirmée » ni « en attente »", () => {
+    expect(ORDER_STATUSES).toEqual([
+      "preparing",
+      "delivering",
+      "delivered",
+      "cancelled",
+    ]);
+    for (const removed of ["confirmed", "pending"]) {
+      expect((ORDER_STATUSES as readonly string[]).includes(removed)).toBe(
+        false,
+      );
     }
   });
 });
 
+describe("ORDER_STATUS_LABELS", () => {
+  it("a un libellé français non vide pour chaque statut, « Expédiée » pour la livraison en cours", () => {
+    for (const status of ORDER_STATUSES) {
+      expect(ORDER_STATUS_LABELS[status].length).toBeGreaterThan(0);
+    }
+    expect(ORDER_STATUS_LABELS.delivering).toBe("Expédiée");
+  });
+});
+
 describe("statusPath", () => {
-  it("suit le cycle nominal jusqu'au statut, et pending → cancelled pour une annulation", () => {
-    expect(statusPath("pending")).toEqual(["pending"]);
-    expect(statusPath("preparing")).toEqual(["pending", "preparing"]);
+  it("suit le cycle nominal depuis la préparation, et preparing → cancelled pour une annulation", () => {
+    expect(statusPath("preparing")).toEqual(["preparing"]);
+    expect(statusPath("delivering")).toEqual(["preparing", "delivering"]);
     expect(statusPath("delivered")).toEqual([
-      "pending",
       "preparing",
       "delivering",
       "delivered",
     ]);
-    expect(statusPath("cancelled")).toEqual(["pending", "cancelled"]);
+    expect(statusPath("cancelled")).toEqual(["preparing", "cancelled"]);
   });
 });

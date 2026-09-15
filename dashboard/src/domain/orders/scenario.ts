@@ -33,7 +33,7 @@ const seeds: readonly ScenarioSeed[] = [
     id: "cmd-0001",
     reference: "FIG-260907-001",
     createdAt: "2026-09-07T08:15:00.000Z",
-    status: "pending",
+    status: "preparing",
     cancellation: null,
     customer: {
       id: "cli-0001",
@@ -353,7 +353,7 @@ const seeds: readonly ScenarioSeed[] = [
     id: "cmd-0009",
     reference: "FIG-260907-005",
     createdAt: "2026-09-07T12:05:00.000Z",
-    status: "pending",
+    status: "preparing",
     cancellation: null,
     customer: {
       id: "cli-0008",
@@ -393,7 +393,7 @@ const seeds: readonly ScenarioSeed[] = [
     id: "cmd-0010",
     reference: "FIG-260907-006",
     createdAt: "2026-09-07T13:20:00.000Z",
-    status: "pending",
+    status: "preparing",
     cancellation: null,
     customer: {
       id: "cli-0009",

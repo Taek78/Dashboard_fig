@@ -191,27 +191,92 @@ export function filterByRange(
   );
 }
 
-/* ---------- KPI ---------- */
+/* ---------- Totaux, KPI et répartitions d'une période ---------- */
+
+export type StatusCounts = Record<OrderStatus, number>;
+
+/** Nombre de commandes par statut, chaque statut présent (0 compris). */
+export function countByStatus(orders: readonly Order[]): StatusCounts {
+  const counts = Object.fromEntries(
+    ORDER_STATUSES.map((status) => [status, 0]),
+  ) as StatusCounts;
+  for (const o of orders) counts[o.status] += 1;
+  return counts;
+}
+
+/**
+ * Totaux BRUTS d'une période : ce qu'une requête SQL agrégée renvoie
+ * (src/data/orders-aggregates.db.ts) et ce que orderTotals() calcule en
+ * mémoire. Les chiffres affichés en sont tirés par statsFromTotals, une seule
+ * fois : mêmes arrondis quelle que soit l'origine des totaux.
+ */
+export type OrderTotals = {
+  statusCounts: StatusCounts;
+  /** CA hors annulées. */
+  revenueCents: number;
+  /** Commandes de membres d'une communauté, annulées comprises. */
+  communityCount: number;
+  /** Clients distincts ayant au moins une commande non annulée. */
+  buyers: number;
+};
 
 export type Kpis = {
   orderCount: number;
   revenueCents: number;
   averageBasketCents: number;
   cancelledCount: number;
-  pendingCount: number;
+  /** Commandes encore en préparation (le travail qui reste à l'atelier). */
+  preparingCount: number;
 };
 
-export function computeKpis(orders: readonly Order[]): Kpis {
-  const active = orders.filter((o) => o.status !== "cancelled");
-  const revenueCents = active.reduce((sum, o) => sum + o.totalCents, 0);
+/** Tout ce que le tableau de bord et les métriques affichent d'une période. */
+export type OrderStats = {
+  kpis: Kpis;
+  statusCounts: StatusCounts;
+  share: CommunityShare;
+  buyers: number;
+};
+
+/** Totaux d'une liste de commandes déjà bornée à la période. */
+export function orderTotals(orders: readonly Order[]): OrderTotals {
   return {
-    orderCount: orders.length,
-    revenueCents,
-    averageBasketCents:
-      active.length === 0 ? 0 : Math.round(revenueCents / active.length),
-    cancelledCount: orders.length - active.length,
-    pendingCount: orders.filter((o) => o.status === "pending").length,
+    statusCounts: countByStatus(orders),
+    revenueCents: orders
+      .filter((o) => o.status !== "cancelled")
+      .reduce((sum, o) => sum + o.totalCents, 0),
+    communityCount: orders.filter((o) => o.community !== null).length,
+    buyers: distinctBuyers(orders),
   };
+}
+
+export function statsFromTotals(totals: OrderTotals): OrderStats {
+  const orderCount = ORDER_STATUSES.reduce(
+    (sum, status) => sum + totals.statusCounts[status],
+    0,
+  );
+  const cancelledCount = totals.statusCounts.cancelled;
+  const active = orderCount - cancelledCount;
+  return {
+    kpis: {
+      orderCount,
+      revenueCents: totals.revenueCents,
+      averageBasketCents:
+        active === 0 ? 0 : Math.round(totals.revenueCents / active),
+      cancelledCount,
+      preparingCount: totals.statusCounts.preparing,
+    },
+    statusCounts: totals.statusCounts,
+    share: communityShareFrom(totals.communityCount, orderCount),
+    buyers: totals.buyers,
+  };
+}
+
+export function orderStats(orders: readonly Order[]): OrderStats {
+  return statsFromTotals(orderTotals(orders));
+}
+
+export function computeKpis(orders: readonly Order[]): Kpis {
+  return orderStats(orders).kpis;
 }
 
 /* ---------- Communautés ---------- */
@@ -225,17 +290,24 @@ export type CommunityShare = {
   percent: number | null;
 };
 
-/** Répartition des commandes (annulées comprises) entre communautés et particuliers. */
-export function communityShare(orders: readonly Order[]): CommunityShare {
-  const community = orders.filter((o) => o.community !== null).length;
+/** Répartition à partir des nombres : `community` commandes de communauté sur `total`. */
+export function communityShareFrom(
+  community: number,
+  total: number,
+): CommunityShare {
   return {
     community,
-    individual: orders.length - community,
-    percent:
-      orders.length === 0
-        ? null
-        : Math.round((community / orders.length) * 100),
+    individual: total - community,
+    percent: total === 0 ? null : Math.round((community / total) * 100),
   };
+}
+
+/** Répartition des commandes (annulées comprises) entre communautés et particuliers. */
+export function communityShare(orders: readonly Order[]): CommunityShare {
+  return communityShareFrom(
+    orders.filter((o) => o.community !== null).length,
+    orders.length,
+  );
 }
 
 /** Variation en pourcentage (arrondie), null si la référence est nulle. */
@@ -359,46 +431,89 @@ export const EMPTY_SERIES_VALUES: SeriesValues = {
 };
 
 /**
- * Les cinq mesures par seau sur TOUTE la plage, seaux vides compris : deux
- * plages de même longueur donnent deux séries alignées (comparaison N-1).
+ * Totaux BRUTS d'un seau (clé = premier jour : le jour, le lundi ou le 1er du
+ * mois), tels que la base les agrège ou que revenueSeries les compte.
  */
-export function revenueSeries(
-  orders: readonly Order[],
+export type BucketTotals = {
+  key: string;
+  orderCount: number;
+  cancelledCount: number;
+  /** CA hors annulées. */
+  revenueCents: number;
+  /** Clients distincts hors annulées. */
+  buyers: number;
+};
+
+/**
+ * Les cinq mesures par seau sur TOUTE la plage, seaux vides compris : deux
+ * plages de même longueur donnent deux séries alignées (comparaison N-1). Le
+ * panier moyen est calculé ici, une seule fois.
+ */
+export function fillSeries(
   range: DateRange,
   bucket: Bucket,
+  totals: readonly BucketTotals[],
 ): SeriesPoint[] {
-  const points = new Map<string, SeriesPoint & { customers: Set<string> }>();
+  const byKey = new Map(totals.map((t) => [t.key, t]));
+  const points: SeriesPoint[] = [];
   for (
     let start = bucketStart(range.from, bucket);
     start <= range.to;
     start = nextBucket(start, bucket)
   ) {
-    points.set(start, {
+    const t = byKey.get(start);
+    if (!t) {
+      points.push({ key: start, ...EMPTY_SERIES_VALUES });
+      continue;
+    }
+    const active = t.orderCount - t.cancelledCount;
+    points.push({
       key: start,
-      ...EMPTY_SERIES_VALUES,
-      customers: new Set(),
+      revenueCents: t.revenueCents,
+      orderCount: t.orderCount,
+      cancelledCount: t.cancelledCount,
+      averageBasketCents:
+        active === 0 ? 0 : Math.round(t.revenueCents / active),
+      buyers: t.buyers,
     });
   }
+  return points;
+}
+
+/** Série calculée en mémoire à partir de commandes (règle de référence de la version SQL). */
+export function revenueSeries(
+  orders: readonly Order[],
+  range: DateRange,
+  bucket: Bucket,
+): SeriesPoint[] {
+  const totals = new Map<string, BucketTotals & { customers: Set<string> }>();
   for (const o of filterByRange(orders, range)) {
-    const point = points.get(bucketStart(o.deliverySlot.date, bucket));
-    if (!point) continue;
-    point.orderCount += 1;
-    if (o.status === "cancelled") {
-      point.cancelledCount += 1;
-    } else {
-      point.revenueCents += o.totalCents;
-      point.customers.add(o.customer.id);
-    }
-  }
-  return [...points.values()].map(({ customers, ...point }) => {
-    const active = point.orderCount - point.cancelledCount;
-    return {
-      ...point,
-      averageBasketCents:
-        active === 0 ? 0 : Math.round(point.revenueCents / active),
-      buyers: customers.size,
+    const key = bucketStart(o.deliverySlot.date, bucket);
+    const t = totals.get(key) ?? {
+      key,
+      orderCount: 0,
+      cancelledCount: 0,
+      revenueCents: 0,
+      buyers: 0,
+      customers: new Set<string>(),
     };
-  });
+    t.orderCount += 1;
+    if (o.status === "cancelled") {
+      t.cancelledCount += 1;
+    } else {
+      t.revenueCents += o.totalCents;
+      t.customers.add(o.customer.id);
+    }
+    totals.set(key, t);
+  }
+  return fillSeries(
+    range,
+    bucket,
+    [...totals.values()].map(({ customers, ...t }) => ({
+      ...t,
+      buyers: customers.size,
+    })),
+  );
 }
 
 export type ComparisonPoint = {
@@ -456,12 +571,16 @@ export function applyTaxToValues(
 export type StatusPoint = { status: OrderStatus; label: string; count: number };
 
 /** Une entrée par statut, dans l'ordre du cycle de vie, même à zéro. */
-export function ordersByStatus(orders: readonly Order[]): StatusPoint[] {
+export function statusPoints(counts: StatusCounts): StatusPoint[] {
   return ORDER_STATUSES.map((status) => ({
     status,
     label: ORDER_STATUS_LABELS[status],
-    count: orders.filter((o) => o.status === status).length,
+    count: counts[status],
   }));
+}
+
+export function ordersByStatus(orders: readonly Order[]): StatusPoint[] {
+  return statusPoints(countByStatus(orders));
 }
 
 export type ProductPoint = {
@@ -493,7 +612,15 @@ export function topProducts(
       byProduct.set(line.productId, point);
     }
   }
-  return [...byProduct.values()]
+  return rankProducts([...byProduct.values()], limit);
+}
+
+/** Classement des produits : CA décroissant, puis nom (ordre français), `limit` premiers. */
+export function rankProducts(
+  points: readonly ProductPoint[],
+  limit: number,
+): ProductPoint[] {
+  return points
     .toSorted(
       (a, b) =>
         b.revenueCents - a.revenueCents ||

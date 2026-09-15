@@ -1,14 +1,11 @@
 import "server-only";
-import { selectSource } from "@/data/select-source";
-import type { CommunitiesSource } from "@/domain/communities/source";
 import { communitiesDb } from "@/data/communities.db";
-import { communitiesMock } from "@/data/communities.mock";
+import type { CommunitiesSource } from "@/domain/communities/source";
 
-/* FAÇADE des communautés (lecture seule) : DATA_SOURCE choisit fixtures ou Postgres. */
-const source = (): CommunitiesSource =>
-  selectSource("communautés", communitiesMock, communitiesDb);
-
-export const listCommunities: CommunitiesSource["listCommunities"] = () =>
-  source().listCommunities();
-export const getCommunity: CommunitiesSource["getCommunity"] = (id) =>
-  source().getCommunity(id);
+/*
+ * FAÇADE des communautés (lecture seule) : le seul module que le front (pages, Server Actions) importe.
+ * L'implémentation est PostgreSQL (communities.db.ts) ; la façade fixe le contrat
+ * CommunitiesSource et `server-only` (un composant client qui l'importerait casse le build).
+ */
+export const { listCommunities, getCommunity }: CommunitiesSource =
+  communitiesDb;

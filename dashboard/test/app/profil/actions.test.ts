@@ -1,28 +1,33 @@
 import { describe, expect, it, vi } from "vitest";
+import { TEST_ACCOUNTS } from "../../support/config";
 
-/* changeOwnPassword de bout en bout sur le mock : mot de passe actuel vérifié, nouveau enregistré. */
+/*
+ * changeOwnPassword de bout en bout sur la base de test (compte seedé
+ * usr-0001) : mot de passe actuel vérifié, nouveau enregistré. Chaque test dans
+ * une transaction annulée.
+ */
 vi.mock("@/data/session", () => ({
   getCurrentUser: async () => ({
     id: "usr-0001",
-    name: "Admin",
+    name: "Admin E2E",
     role: "admin",
   }),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/env", () => ({
-  getEnv: () => ({
-    DATA_SOURCE: "mock",
-    AUTH_BOOTSTRAP_EMAIL: "admin@fig.invalid",
-    AUTH_BOOTSTRAP_PASSWORD: "Admin-mot-de-passe-1",
-    AUTH_BOOTSTRAP_NAME: "Admin",
-  }),
-}));
+vi.mock("@/db/client", () =>
+  import("../../support/test-database").then((m) => m.dbClientMock),
+);
 vi.mock("@/data/security-log", () => ({ logSecurity: vi.fn() }));
+
+const { isolateEachTest } = await import("../../support/test-database");
+isolateEachTest();
 
 const { changeOwnPassword } = await import("@/app/(dashboard)/profil/actions");
 const { findUserById } = await import("@/data/users");
 const { verifyPassword } = await import("@/lib/password");
 const { idleActionResult } = await import("@/lib/action-result");
+
+const CURRENT = TEST_ACCOUNTS.admin.password;
 
 function run(fields: Record<string, string>) {
   const data = new FormData();
@@ -32,24 +37,23 @@ function run(fields: Record<string, string>) {
 
 describe("changeOwnPassword", () => {
   it("refuse un mot de passe actuel faux sans rien changer", async () => {
-    const result = await run({
-      currentPassword: "Pas-le-bon-mdp-123",
-      newPassword: "Nouveau-mot-de-passe",
-      confirmPassword: "Nouveau-mot-de-passe",
-    });
-    expect(result).toEqual({
+    expect(
+      await run({
+        currentPassword: "Pas-le-bon-mdp-123",
+        newPassword: "Nouveau-mot-de-passe",
+        confirmPassword: "Nouveau-mot-de-passe",
+      }),
+    ).toEqual({
       status: "error",
       message: "Le mot de passe actuel est incorrect.",
     });
     const account = await findUserById("usr-0001");
-    expect(
-      await verifyPassword("Admin-mot-de-passe-1", account!.passwordHash),
-    ).toBe(true);
+    expect(await verifyPassword(CURRENT, account!.passwordHash)).toBe(true);
   });
 
   it("refuse une confirmation différente", async () => {
     const result = await run({
-      currentPassword: "Admin-mot-de-passe-1",
+      currentPassword: CURRENT,
       newPassword: "Nouveau-mot-de-passe",
       confirmPassword: "Autre-mot-de-passe-9",
     });
@@ -57,15 +61,13 @@ describe("changeOwnPassword", () => {
   });
 
   it("enregistre le nouveau mot de passe quand l'actuel est bon", async () => {
-    const result = await run({
-      currentPassword: "Admin-mot-de-passe-1",
-      newPassword: "Nouveau-mot-de-passe",
-      confirmPassword: "Nouveau-mot-de-passe",
-    });
-    expect(result).toEqual({
-      status: "success",
-      message: "Mot de passe modifié.",
-    });
+    expect(
+      await run({
+        currentPassword: CURRENT,
+        newPassword: "Nouveau-mot-de-passe",
+        confirmPassword: "Nouveau-mot-de-passe",
+      }),
+    ).toEqual({ status: "success", message: "Mot de passe modifié." });
     const account = await findUserById("usr-0001");
     expect(
       await verifyPassword("Nouveau-mot-de-passe", account!.passwordHash),

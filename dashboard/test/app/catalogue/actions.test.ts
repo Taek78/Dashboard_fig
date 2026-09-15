@@ -1,21 +1,24 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { productsMock, resetProductsMock } from "@/data/products.mock";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
- * Session simulée (rôle pilotable), server-only et env neutralisés, revalidatePath
- * espionné. redirect() de Next lève une exception : on simule la même chose pour
- * observer la cible de la redirection après une création ou une suppression.
+ * Server Actions du catalogue sur la base de test : session simulée (rôle
+ * pilotable), server-only neutralisé, revalidatePath espionné. redirect() de
+ * Next lève une exception : on simule la même chose pour observer la cible de
+ * la redirection après une création ou une suppression. Chaque test dans une
+ * transaction annulée.
  */
 const session = vi.hoisted(() => ({ role: "gestionnaire" }));
 vi.mock("@/data/session", () => ({
   getCurrentUser: async () => ({
-    id: "usr-test",
-    name: "Testeur",
+    id: "usr-0002",
+    name: "Gestion E2E",
     role: session.role,
   }),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
+vi.mock("@/db/client", () =>
+  import("../../support/test-database").then((m) => m.dbClientMock),
+);
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath }));
 const redirect = vi.hoisted(() =>
@@ -25,8 +28,12 @@ const redirect = vi.hoisted(() =>
 );
 vi.mock("next/navigation", () => ({ redirect }));
 
+const { isolateEachTest } = await import("../../support/test-database");
+isolateEachTest();
+
 const { addProduct, duplicateProduct, removeProduct, saveProduct } =
   await import("@/app/(dashboard)/catalogue/actions");
+const { getProduct } = await import("@/data/products");
 const { idleActionResult } = await import("@/lib/action-result");
 
 function form(fields: Record<string, string>): FormData {
@@ -59,34 +66,27 @@ type Outcome = {
   redirectedTo?: string;
 };
 
-async function run(
+function run(
   action: typeof saveProduct,
   fields: Record<string, string>,
 ): Promise<Outcome> {
-  const promise = action(idleActionResult, form(fields)).then(
+  return action(idleActionResult, form(fields)).then(
     (result): Outcome => ({ result }),
     (error: Error): Outcome => ({
       redirectedTo: error.message.replace("NEXT_REDIRECT:", ""),
     }),
   );
-  await vi.advanceTimersByTimeAsync(2000);
-  return promise;
 }
 
-async function read(id: string) {
-  const p = productsMock.getProduct(id);
-  await vi.advanceTimersByTimeAsync(1000);
-  return p;
-}
+/** « /catalogue/<id>?cree=1 » → id. */
+const idFrom = (url: string | undefined) =>
+  url?.match(/^\/catalogue\/([^?]+)\?/)?.[1] ?? "";
 
 beforeEach(() => {
-  vi.useFakeTimers();
   session.role = "gestionnaire";
-  resetProductsMock();
   revalidatePath.mockClear();
   redirect.mockClear();
 });
-afterEach(() => vi.useRealTimers());
 
 describe("saveProduct", () => {
   it("enregistre toute la fiche (prix en centimes, calibre, cases)", async () => {
@@ -103,7 +103,7 @@ describe("saveProduct", () => {
       status: "success",
       message: "Fiche « Carottes » enregistrée.",
     });
-    expect(await read("prd-0001")).toMatchObject({
+    expect(await getProduct("prd-0001")).toMatchObject({
       priceCents: 310,
       caliber: { minMm: 20, maxMm: 30 },
       organic: true,
@@ -120,43 +120,39 @@ describe("saveProduct", () => {
       priceEuros: "x",
     });
     expect(result?.status).toBe("error");
-    expect((await read("prd-0001"))?.priceCents).toBe(290);
+    expect((await getProduct("prd-0001"))?.priceCents).toBe(290);
 
     session.role = "lecture";
-    const forbidden = await run(saveProduct, {
-      ...base,
-      productId: "prd-0001",
-    });
-    expect(forbidden.result).toEqual({
+    expect(
+      (await run(saveProduct, { ...base, productId: "prd-0001" })).result,
+    ).toEqual({
       status: "error",
       message: "Vous n'avez pas les droits pour modifier le catalogue.",
     });
   });
 
   it("signale un produit inconnu", async () => {
-    const { result } = await run(saveProduct, {
-      ...base,
-      productId: "prd-9999",
-    });
-    expect(result).toEqual({
-      status: "error",
-      message: "Ce produit n'existe plus.",
-    });
+    expect(
+      (await run(saveProduct, { ...base, productId: "prd-9999" })).result,
+    ).toEqual({ status: "error", message: "Ce produit n'existe plus." });
   });
 });
 
 describe("addProduct", () => {
   it("crée le produit puis redirige vers sa fiche", async () => {
     const { redirectedTo } = await run(addProduct, base);
-    expect(redirectedTo).toBe("/catalogue/prd-m-1?cree=1");
-    expect((await read("prd-m-1"))?.name).toBe("Poires");
+    expect(redirectedTo).toMatch(/^\/catalogue\/[0-9a-f-]{36}\?cree=1$/);
+    expect((await getProduct(idFrom(redirectedTo)))?.name).toBe("Poires");
     expect(revalidatePath).toHaveBeenCalledWith("/catalogue", "layout");
   });
 
   it("ne crée rien si la saisie est invalide", async () => {
-    const { result } = await run(addProduct, { ...base, name: "" });
+    const { result, redirectedTo } = await run(addProduct, {
+      ...base,
+      name: "",
+    });
     expect(result?.status).toBe("error");
-    expect(await read("prd-m-1")).toBeNull();
+    expect(redirectedTo).toBeUndefined();
   });
 });
 
@@ -165,15 +161,14 @@ describe("duplicateProduct", () => {
     const { redirectedTo } = await run(duplicateProduct, {
       productId: "prd-0001",
     });
-    expect(redirectedTo).toBe("/catalogue/prd-m-1?duplique=1");
-    const copy = await read("prd-m-1");
-    expect(copy).toMatchObject({
+    expect(redirectedTo).toMatch(/^\/catalogue\/[0-9a-f-]{36}\?duplique=1$/);
+    expect(await getProduct(idFrom(redirectedTo))).toMatchObject({
       name: "Carottes (copie)",
       visible: false,
       priceCents: 290,
       category: "vegetable",
     });
-    expect((await read("prd-0001"))?.name).toBe("Carottes");
+    expect((await getProduct("prd-0001"))?.name).toBe("Carottes");
     expect(revalidatePath).toHaveBeenCalledWith("/catalogue", "layout");
   });
 
@@ -186,7 +181,6 @@ describe("duplicateProduct", () => {
     expect(
       (await run(duplicateProduct, { productId: "prd-9999" })).result,
     ).toEqual({ status: "error", message: "Ce produit n'existe plus." });
-    expect(await read("prd-m-1")).toBeNull();
   });
 });
 
@@ -197,29 +191,32 @@ describe("removeProduct", () => {
       confirm: "SUPPRIMER",
     });
     expect(redirectedTo).toBe("/catalogue?supprime=1");
-    expect(await read("prd-0003")).toBeNull();
+    expect(await getProduct("prd-0003")).toBeNull();
   });
 
   it("refuse sans le mot exact, même par POST forgé", async () => {
-    const { result } = await run(removeProduct, {
-      productId: "prd-0003",
-      confirm: "oui",
-    });
-    expect(result).toEqual({
+    expect(
+      (
+        await run(removeProduct, {
+          productId: "prd-0003",
+          confirm: "oui",
+        })
+      ).result,
+    ).toEqual({
       status: "error",
       message: "Tapez SUPPRIMER pour confirmer la suppression.",
     });
-    expect((await read("prd-0003"))?.name).toBe("Bananes");
+    expect((await getProduct("prd-0003"))?.name).toBe("Bananes");
   });
 
   it("signale un produit déjà supprimé", async () => {
-    const { result } = await run(removeProduct, {
-      productId: "prd-9999",
-      confirm: "SUPPRIMER",
-    });
-    expect(result).toEqual({
-      status: "error",
-      message: "Ce produit n'existe plus.",
-    });
+    expect(
+      (
+        await run(removeProduct, {
+          productId: "prd-9999",
+          confirm: "SUPPRIMER",
+        })
+      ).result,
+    ).toEqual({ status: "error", message: "Ce produit n'existe plus." });
   });
 });

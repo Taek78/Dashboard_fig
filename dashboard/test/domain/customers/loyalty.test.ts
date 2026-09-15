@@ -52,7 +52,7 @@ describe("loyaltyStatus", () => {
       order(2),
       order(3, "cancelled"),
       order(4),
-      order(5, "pending"),
+      order(5, "preparing"),
     ];
     expect(loyaltyStatus(orders).streak).toBe(2);
     expect(loyaltyStatus(orders.toReversed()).streak).toBe(2);

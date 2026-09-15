@@ -107,15 +107,13 @@ describe("tourProgress", () => {
       percentDone: 20,
       segments: [
         { status: "cancelled", count: 1 },
-        { status: "preparing", count: 2 },
-        { status: "pending", count: 2 },
+        { status: "preparing", count: 4 },
       ],
     });
-    // cmd-0001 pending ; 0002 et 0003 preparing ; 0004 et 0014 delivering
+    // cmd-0001, 0002 et 0003 en préparation ; 0004 et 0014 expédiées
     expect(tourProgress(day("2026-09-07")).segments).toEqual([
       { status: "delivering", count: 2 },
-      { status: "preparing", count: 2 },
-      { status: "pending", count: 1 },
+      { status: "preparing", count: 3 },
     ]);
   });
 
@@ -138,7 +136,6 @@ describe("tourProgress", () => {
 
 describe("nextDeliveryStep", () => {
   it("suit le cycle nominal et s'arrête aux états terminaux", () => {
-    expect(nextDeliveryStep("pending")).toBe("preparing");
     expect(nextDeliveryStep("preparing")).toBe("delivering");
     expect(nextDeliveryStep("delivering")).toBe("delivered");
     expect(nextDeliveryStep("delivered")).toBeNull();

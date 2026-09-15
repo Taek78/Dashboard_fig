@@ -12,7 +12,7 @@ Stack : Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4, s
 
 ## Démarrer en local
 
-Prérequis : Node.js 22, PostgreSQL 16 ou plus (installé sur le poste, ou Docker).
+Prérequis : Node.js 22, PostgreSQL 16 ou plus (installé sur le poste, ou Docker), Docker pour la base de test.
 
 ```bash
 cd dashboard
@@ -20,14 +20,7 @@ npm install
 cp .env.example .env.local        # puis remplir AUTH_SECRET (npx auth secret) et le compte d'amorçage
 ```
 
-Sans base, tout fonctionne sur des données factices :
-
-```bash
-# .env.local : DATA_SOURCE=mock
-npm run dev                        # http://localhost:3000
-```
-
-Avec PostgreSQL (une fois) :
+Le dashboard fonctionne toujours sur PostgreSQL ; les données de démonstration sont insérées par le seed. Créer la base (une fois) :
 
 ```powershell
 # Windows, depuis dashboard/ : crée le rôle fig et la base fig
@@ -35,10 +28,19 @@ Avec PostgreSQL (une fois) :
 ```
 
 ```bash
-# .env.local : DATA_SOURCE=db et DATABASE_URL=postgresql://fig:fig@localhost:5432/fig
+# .env.local : DATABASE_URL=postgresql://fig:fig@localhost:5432/fig
+# (ou sans installation : docker compose up -d db, port 5433)
 npm run db:migrate                 # crée les tables
 npm run db:seed                    # données de démo et comptes de .env.local
-npm run dev
+npm run dev                        # http://localhost:3000
+```
+
+Les tests utilisent une base jetable à part (Docker, port 5434), qu'ils migrent et seedent eux-mêmes :
+
+```bash
+npm run db:test                    # docker compose up -d --wait test-db
+npm run check
+npm run build && npm run test:e2e
 ```
 
 Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `AUTH_BOOTSTRAP_PASSWORD`). L'administrateur crée ensuite les autres comptes depuis la section **Comptes**.
@@ -48,7 +50,8 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 | Commande                                        | Rôle                                                                  |
 | ----------------------------------------------- | --------------------------------------------------------------------- |
 | `npm run dev`                                   | serveur de développement (Turbopack)                                  |
-| `npm run check`                                 | typecheck, lint, format, tests unitaires : à lancer avant tout commit |
+| `npm run check`                                 | typecheck, lint, format, tests (base de test) : avant tout commit     |
+| `npm run db:test`                               | démarre la base de test jetable (Docker, port 5434)                   |
 | `npm run build` puis `npm run start`            | build et serveur de production                                        |
 | `npm run test:e2e`                              | parcours navigateur Playwright (après un build)                       |
 | `npm run db:generate`                           | génère une migration SQL depuis `src/db/schema.ts`                    |
@@ -61,7 +64,7 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 
 | Section         | Fonctions                                                                                                                                                                                                       |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tableau de bord | chiffres de la période choisie (aujourd'hui par défaut), montants HT ou TTC, commandes à confirmer                                                                                                              |
+| Tableau de bord | chiffres de la période choisie (aujourd'hui par défaut), montants HT ou TTC, commandes en préparation                                                                                                           |
 | Commandes       | recherche par référence, client ou coordonnées, filtres statut, période, préparateur et livreur, étiquette particulier ou communauté, cartes paginées, affectation en un choix, remises, détail avec historique |
 | Livraisons      | même recherche et mêmes filtres, période de 7 jours au plus groupée par jour, raccourcis des 7 derniers jours, avancement détaillé par statut, appel, itinéraire et statut en un geste                          |
 | Catalogue       | grille de produits (prix unitaire et au kilo, origine, calibre, saison, bio), fiche complète, création, suppression confirmée                                                                                   |
@@ -79,4 +82,4 @@ Authentification par e-mail et mot de passe (scrypt), session JWT de 8 heures, l
 
 ## Vérification
 
-Chaque tâche se termine par `npm run check` (unitaires) et, pour ce qui touche aux écrans, `npm run build && npm run test:e2e`. La CI GitHub Actions rejoue les deux, sur données factices puis contre un PostgreSQL de service.
+Chaque tâche se termine par `npm run check` (règles pures, puis couche données et Server Actions sur la base de test) et, pour ce qui touche aux écrans, `npm run build && npm run test:e2e`. La CI GitHub Actions rejoue les deux contre un PostgreSQL de service.

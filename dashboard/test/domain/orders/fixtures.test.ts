@@ -64,7 +64,7 @@ describe("ordersFixtures (scénario + historique généré)", () => {
       if (o.deliverySlot.date < HISTORY_TO) {
         expect(["delivered", "cancelled"]).toContain(o.status);
       } else {
-        expect(["pending", "preparing", "delivering"]).toContain(o.status);
+        expect(["preparing", "delivering"]).toContain(o.status);
       }
       if (o.status === "cancelled") expect(o.cancellation).not.toBeNull();
       else expect(o.cancellation).toBeNull();
@@ -116,8 +116,7 @@ describe("ordersFixtures (scénario + historique généré)", () => {
     expect(prepared.filter((o) => o.preparer).length / prepared.length).toBe(1);
     expect(driven.filter((o) => o.driver).length / driven.length).toBe(1);
     for (const o of generated) {
-      if (o.status === "pending") {
-        expect(o.preparer).toBeNull();
+      if (o.status === "preparing") {
         expect(o.driver).toBeNull();
       }
       if (o.preparer) {

@@ -7,21 +7,21 @@ test.describe("commandes", () => {
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
-    await page.goto("/commandes?statut=pending");
+    await page.goto("/commandes?statut=preparing");
     await page.getByRole("link", { name: "FIG-260907-001" }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Commande FIG-260907-001" }),
     ).toBeVisible();
 
-    await page.getByLabel("Nouveau statut").selectOption("preparing");
+    await page.getByLabel("Nouveau statut").selectOption("delivering");
     await page.getByRole("button", { name: "Changer le statut" }).click();
     await expect(page.getByRole("status").first()).toContainText(
-      "Statut mis à jour : En préparation.",
+      "Statut mis à jour : Expédiée.",
     );
 
     const history = page.getByRole("region", { name: "Historique" });
-    await expect(history).toContainText("En préparation");
-    await expect(history).toContainText("(depuis en attente)");
+    await expect(history).toContainText("Expédiée");
+    await expect(history).toContainText("(depuis en préparation)");
     await expect(history).toContainText(E2E_ACCOUNTS.manager.name);
   });
 
@@ -34,7 +34,7 @@ test.describe("commandes", () => {
       .evaluateAll((options) =>
         options.map((o) => (o as HTMLOptionElement).value).filter(Boolean),
       );
-    expect(values).toEqual(["preparing", "cancelled"]);
+    expect(values).toEqual(["delivering", "cancelled"]);
   });
 });
 
@@ -44,13 +44,13 @@ test.describe("commandes : cartes et annulation", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     // Le jour du scénario : une fois annulée, la carte resterait absente d'une
-    // liste filtrée sur « en attente », et la liste complète est paginée.
+    // liste filtrée sur « en préparation », et la liste complète est paginée.
     await page.goto("/commandes?date=2026-09-08");
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-006,/,
     });
     await expect(
-      card.getByRole("button", { name: "Passer en préparation" }),
+      card.getByRole("button", { name: "Expédier la commande" }),
     ).toBeVisible();
     await card.getByRole("button", { name: "Annuler la commande" }).click();
     const panel = card.getByRole("group", {

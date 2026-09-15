@@ -4,66 +4,23 @@ import { z } from "zod";
  * Schéma des variables d'environnement : PUR (aucun accès à process.env ici),
  * donc testable. src/lib/env.ts l'applique au vrai process.env, côté serveur.
  *
- * Union discriminée sur DATA_SOURCE : en "mock", DATABASE_URL n'est pas requise ;
- * en "db", elle l'est et doit être une URL postgres. Une variable
- * absente ou invalide fait échouer le démarrage, pas la première requête.
+ * Le dashboard fonctionne toujours sur PostgreSQL : DATABASE_URL est
+ * obligatoire et doit être une URL postgres. Une variable absente ou invalide
+ * fait échouer le démarrage, pas la première requête. Les comptes vivent dans
+ * la table users : les variables AUTH_BOOTSTRAP_* et AUTH_MANAGER_* ne servent
+ * qu'à `npm run db:seed`, l'application ne les lit pas.
  *
- * Compte d'amorçage : le seul compte en mode mock (en mode db, les comptes sont
- * dans la table users). Le mot de passe n'est jamais journalisé : zod ne
- * met pas la valeur d'entrée dans ses issues.
- *
- * Gardes de production (productionProblems) : avec NODE_ENV=production,
+ * Garde de production (productionProblems) : avec NODE_ENV=production,
  * AUTH_URL est obligatoire (Auth.js en fait l'origine canonique au lieu de
- * croire l'en-tête Host), les fixtures sont
- * refusées sauf ALLOW_MOCK_IN_PRODUCTION=1 (démo assumée), et le compte
- * d'amorçage (mode mock seulement : en mode db les comptes sont en table) est
- * refusé sauf AUTH_ALLOW_BOOTSTRAP=1.
+ * croire l'en-tête Host). Les valeurs ne sont jamais reflétées dans les
+ * erreurs : zod ne met pas la valeur d'entrée dans ses issues.
  */
-const flag = z.literal("1").optional();
-
-const commonFields = {
+export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   AUTH_URL: z.url().optional(),
-  AUTH_ALLOW_BOOTSTRAP: flag,
-  ALLOW_MOCK_IN_PRODUCTION: flag,
   AUTH_SECRET: z.string().min(32),
-  AUTH_BOOTSTRAP_EMAIL: z.email(),
-  AUTH_BOOTSTRAP_PASSWORD: z.string().min(12),
-  AUTH_BOOTSTRAP_NAME: z
-    .string()
-    .trim()
-    .min(1)
-    .max(80)
-    .default("Administrateur"),
-  /* Second compte, rôle gestionnaire : les trois ensemble ou aucun. */
-  AUTH_MANAGER_EMAIL: z.email().optional(),
-  AUTH_MANAGER_PASSWORD: z.string().min(12).optional(),
-  AUTH_MANAGER_NAME: z.string().trim().min(1).max(80).optional(),
-};
-
-export const envSchema = z
-  .discriminatedUnion("DATA_SOURCE", [
-    z.object({ DATA_SOURCE: z.literal("mock"), ...commonFields }),
-    z.object({
-      DATA_SOURCE: z.literal("db"),
-      DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
-      ...commonFields,
-    }),
-  ])
-  .refine(
-    (env) =>
-      [env.AUTH_MANAGER_EMAIL, env.AUTH_MANAGER_PASSWORD].every(
-        (v) => v === undefined,
-      ) ||
-      [env.AUTH_MANAGER_EMAIL, env.AUTH_MANAGER_PASSWORD].every(
-        (v) => v !== undefined,
-      ),
-    {
-      message:
-        "AUTH_MANAGER_EMAIL et AUTH_MANAGER_PASSWORD vont ensemble (compte gestionnaire).",
-      path: ["AUTH_MANAGER_PASSWORD"],
-    },
-  );
+});
 
 export type Env = z.infer<typeof envSchema>;
 
@@ -73,16 +30,6 @@ export function productionProblems(env: Env): string[] {
   if (!env.AUTH_URL) {
     problems.push(
       "AUTH_URL est obligatoire en production (l'hôte n'est plus deviné).",
-    );
-  }
-  if (env.DATA_SOURCE === "mock" && env.ALLOW_MOCK_IN_PRODUCTION !== "1") {
-    problems.push(
-      "DATA_SOURCE=mock en production : fixtures refusées (ALLOW_MOCK_IN_PRODUCTION=1 pour une démo assumée).",
-    );
-  }
-  if (env.DATA_SOURCE === "mock" && env.AUTH_ALLOW_BOOTSTRAP !== "1") {
-    problems.push(
-      "Compte d'amorçage refusé en production en mode mock ; AUTH_ALLOW_BOOTSTRAP=1 pour l'autoriser explicitement.",
     );
   }
   return problems;

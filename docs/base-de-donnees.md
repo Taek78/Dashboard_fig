@@ -14,7 +14,7 @@ Depuis `dashboard/`, dans PowerShell :
 
 Le script crée le rôle `fig` (mot de passe `fig`, base locale uniquement) et la base `fig` dont il est propriétaire. Si `psql` répond « role "fig" already exists », c'est déjà fait.
 
-`.env.local` contient déjà la ligne `DATABASE_URL=postgresql://fig:fig@localhost:5432/fig`. Alternative sans installation : `docker compose up -d` (port **5433** pour ne pas gêner le service installé) et `DATABASE_URL` sur `localhost:5433`.
+`.env.local` contient déjà la ligne `DATABASE_URL=postgresql://fig:fig@localhost:5432/fig`. Alternative sans installation : `docker compose up -d db` (port **5433** pour ne pas gêner le service installé) et `DATABASE_URL` sur `localhost:5433`.
 
 ## 2. À chaque changement de schéma
 
@@ -28,13 +28,11 @@ Le script crée le rôle `fig` (mot de passe `fig`, base locale uniquement) et l
 
 Ne jamais modifier une migration déjà appliquée ailleurs : en écrire une nouvelle. Ne jamais lancer `db:migrate` ou `db:seed` vers une base qui n'est pas la vôtre sans l'avoir dit.
 
-## 3. Basculer l'application sur la base
+## 3. Base de développement et base de test
 
-Dans `.env.local` : `DATA_SOURCE=db`, puis `npm run dev`. `/api/health` répond 200 si la base est joignable, 503 sinon. Revenir aux fixtures : `DATA_SOURCE=mock`. Les écrans sont identiques dans les deux modes : c'est vérifié par les tests d'aller-retour des mappers (`test/db/mappers.test.ts`).
+Le dashboard fonctionne toujours sur PostgreSQL (plus de mode sans base depuis le 2026-09-15). `npm run dev` lit `DATABASE_URL` ; `/api/health` répond 200 si la base est joignable, 503 sinon.
 
-Tests navigateur contre la base : seeder d'abord avec les comptes de test (`AUTH_BOOTSTRAP_EMAIL=e2e-admin@fig-demo.invalid AUTH_BOOTSTRAP_PASSWORD=E2E-FIG-2026-admin AUTH_MANAGER_EMAIL=e2e-gestion@fig-demo.invalid AUTH_MANAGER_PASSWORD=E2E-FIG-2026-gestion npm run db:seed`), lancer `E2E_DATA_SOURCE=db npm run test:e2e`, puis `npm run db:seed` pour revenir aux comptes locaux. La CI reste en mode mock.
-
-Comptes en mode db : `db:seed` crée l'administrateur (`AUTH_BOOTSTRAP_*`) et le gestionnaire (`AUTH_MANAGER_*`) dans la table `users` ; ensuite les comptes vivent en base, l'environnement n'est plus lu pour eux.
+Les tests n'utilisent jamais la base de travail. `npm run db:test` démarre la base jetable `test-db` de `compose.yaml` (port **5434**, en mémoire, vide à chaque démarrage). Vitest (projet `db`) et Playwright la migrent et la seedent eux-mêmes avant de commencer (`test/support/global-setup.ts`, comptes de test publics de `test/support/config.ts`) ; sous Vitest, chaque test s'exécute dans une transaction annulée à la fin et repart donc des fixtures. Ne pas lancer `npm run check` et `npm run test:e2e` en même temps : ils partagent cette base. `TEST_DATABASE_URL` la remplace si besoin (la CI utilise un PostgreSQL de service).
 
 ## 4. Le schéma
 
@@ -54,17 +52,18 @@ Comptes en mode db : `db:seed` crée l'administrateur (`AUTH_BOOTSTRAP_*`) et le
 | `security_events`    | journal de sécurité (type, instant, détails JSON)                                                                                                                                                      | écrit sans bloquer l'action ; jamais de secret                                                                                                                                                                           |
 | `login_attempts`     | limitation de débit de la connexion : une ligne par clé (`email:…`, `ip:…`), nombre d'échecs, dernier échec, fin du verrou                                                                             | partagée par toutes les instances ; mise à jour sous verrou de ligne (`FOR UPDATE`) ; lignes expirées purgées à chaque échec ; contient des e-mails (RGPD), jamais plus de 15 min sans verrou actif                      |
 
-Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `product_category`, `product_unit`, `container`, `article_category`, `user_role`, `staff_kind`, `staff_shift`, `staff_availability`, `community_kind`, `discount_kind`), identiques aux constantes du domaine (vérifié par `test/db/schema.test.ts`). Ajouter une valeur = modifier le domaine ET le schéma, puis `db:generate`. Retirer une valeur (comme `confirmed` en 0003) exige une migration des données écrite à la main dans le SQL généré, avant la recréation du type.
+Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `product_category`, `product_unit`, `container`, `article_category`, `user_role`, `staff_kind`, `staff_shift`, `staff_availability`, `community_kind`, `discount_kind`), identiques aux constantes du domaine (vérifié par `test/db/schema.test.ts`). Ajouter une valeur = modifier le domaine ET le schéma, puis `db:generate`. Retirer une valeur (comme `confirmed` en 0003, puis `pending` en 0005, qui retire aussi le temps de la reprise la contrainte `orders_cancellation_consistent`) exige une migration des données écrite à la main dans le SQL généré, avant la recréation du type.
 
 ## 5. Comment le code lit la base
 
-`src/data/<domaine>.db.ts` implémente le même contrat que le mock ; `src/data/<domaine>.ts` choisit selon `DATA_SOURCE`. Les lignes Drizzle ne sortent jamais de `src/data/` : `src/db/mappers.ts` les convertit en types métier (dates ISO, motif d'annulation, lignes triées). Deux choix à connaître :
+`src/data/<domaine>.db.ts` implémente le contrat du domaine ; `src/data/<domaine>.ts` le réexporte. Les lignes Drizzle ne sortent jamais de `src/data/` : `src/db/mappers.ts` les convertit en types métier (dates ISO, motif d'annulation, lignes triées). Deux choix à connaître :
 
-- la recherche catalogue et la recherche clients se font **en mémoire** après chargement, avec les règles pures du domaine (mêmes résultats que le mock) ; à passer en SQL (`pg_trgm`) si les tables grossissent ;
+- la recherche des commandes se fait **en SQL** (`translate` et `lower` reproduisent la normalisation sans accents de `src/lib/text.ts`, `regexp_replace` garde les chiffres du téléphone) ; celles du catalogue et des clients, petites tables, restent en mémoire avec les règles pures ; `pg_trgm` si elles grossissent ;
+- la liste des commandes est paginée par la base (`COUNT` puis `LIMIT/OFFSET`) ; tableau de bord, métriques, personnel et annuaire lisent des **agrégats** (`count(*) filter (where …)`, `GROUP BY` du premier jour du seau, `distinct on` pour la dernière remise à zéro de la fidélité) dans `orders-aggregates.db.ts`, sans charger l'historique ;
 - `updateOrderStatus` est une mise à jour conditionnelle (`WHERE id = $1 AND status = $2`) dans une transaction avec l'insertion de l'événement : deux personnes ne peuvent pas écraser le même statut ;
 - `assignStaff` aussi (`WHERE id = $1 AND status NOT IN ('delivered', 'cancelled') AND driver_id IS NOT DISTINCT FROM $2`) : une commande terminée entre-temps, ou réaffectée par quelqu'un d'autre depuis l'affichage, n'est pas écrasée ;
-- la limitation de débit de la connexion vit dans `login_attempts` en mode db (mémoire en mode mock) : l'échec est compté dans une transaction qui verrouille les lignes des clés, deux tentatives simultanées comptent pour deux ;
-- les tests de contrat (`test/contract/sources.pg.test.ts`) posent les mêmes questions au mock et à Postgres et exigent les mêmes réponses ; ils tournent en CI juste après le seed, et en local avec `TEST_DATABASE_URL` vers une base seedée dédiée (jamais la base de travail) ;
+- la limitation de débit de la connexion vit dans `login_attempts` : l'échec est compté dans une transaction qui verrouille les lignes des clés, deux tentatives simultanées comptent pour deux ;
+- `test/data/orders.db.test.ts` compare chaque requête filtrée ou agrégée à sa règle pure (`filterOrders`, `paginate`, `orderStats`, `revenueSeries`, `topProducts`, `summarizeStaffWork`, `directoryStatsFromOrders`) sur toutes les commandes seedées de la base de test ;
 - les commandes sont lues avec leur communauté, leur préparateur et leur livreur par `LEFT JOIN` (la table `staff` jointe deux fois sous alias) : la source renvoie des noms, jamais des identifiants à résoudre par l'écran.
 
 ## 6. Sauvegarder et restaurer

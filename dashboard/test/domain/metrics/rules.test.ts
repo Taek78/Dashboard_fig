@@ -160,7 +160,7 @@ describe("computeKpis et percentChange", () => {
     const k = computeKpis(scenarioOrders);
     expect(k.orderCount).toBe(14);
     expect(k.cancelledCount).toBe(2);
-    expect(k.pendingCount).toBe(3);
+    expect(k.preparingCount).toBe(7);
     expect(k.revenueCents).toBe(expectedRevenue);
     expect(k.averageBasketCents).toBe(Math.round(expectedRevenue / 12));
   });
@@ -296,8 +296,7 @@ describe("ordersByStatus et topProducts", () => {
     expect(
       ordersByStatus(scenarioOrders).map((p) => [p.status, p.count]),
     ).toEqual([
-      ["pending", 3],
-      ["preparing", 4],
+      ["preparing", 7],
       ["delivering", 2],
       ["delivered", 3],
       ["cancelled", 2],

@@ -10,7 +10,7 @@ import {
 } from "@/lib/rate-limit";
 
 /*
- * Tentatives de connexion dans la table login_attempts (DATA_SOURCE=db) :
+ * Tentatives de connexion dans la table login_attempts :
  * l'état est partagé par toutes les instances et survit à un redémarrage, un
  * attaquant ne contourne plus le verrou en changeant de serveur.
  *

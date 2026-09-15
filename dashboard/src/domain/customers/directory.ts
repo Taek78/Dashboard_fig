@@ -5,7 +5,11 @@ import {
   type CommunitySummary,
 } from "@/domain/communities/rules";
 import type { Community } from "@/domain/communities/types";
-import { loyaltyStatus, type LoyaltyStatus } from "@/domain/customers/loyalty";
+import {
+  loyaltyFromStreak,
+  loyaltyStreak,
+  type LoyaltyStatus,
+} from "@/domain/customers/loyalty";
 import {
   computeCustomerStats,
   type CustomerStats,
@@ -89,32 +93,64 @@ function groupBy(
   return groups;
 }
 
-/** Une entrée par client, chiffres calculés sur SES commandes. */
+/**
+ * Chiffres de l'annuaire, par client et par communauté : calculés par une
+ * requête SQL agrégée (orders-aggregates.db.ts) pour toute la base, ou en
+ * mémoire par directoryStatsFromOrders pour une liste de commandes déjà
+ * chargée (fiche d'une communauté, tests). Un client ou une communauté absent
+ * des tables n'a aucune commande.
+ */
+export type DirectoryStats = {
+  customers: ReadonlyMap<string, CustomerStats>;
+  communities: ReadonlyMap<string, CommunitySummary>;
+  /** Série de fidélité brute (loyaltyStreak) de chaque client ayant commandé. */
+  loyaltyStreaks: ReadonlyMap<string, number>;
+};
+
+const NO_CUSTOMER_STATS = computeCustomerStats([]);
+const NO_COMMUNITY_SUMMARY = summarizeCommunity([]);
+
+export function directoryStatsFromOrders(
+  orders: readonly Order[],
+): DirectoryStats {
+  const byCustomer = groupBy(orders, (o) => o.customer.id);
+  const byCommunity = groupBy(orders, (o) => o.community?.id ?? null);
+  return {
+    customers: new Map(
+      [...byCustomer].map(([id, mine]) => [id, computeCustomerStats(mine)]),
+    ),
+    communities: new Map(
+      [...byCommunity].map(([id, list]) => [id, summarizeCommunity(list)]),
+    ),
+    loyaltyStreaks: new Map(
+      [...byCustomer].map(([id, mine]) => [id, loyaltyStreak(mine)]),
+    ),
+  };
+}
+
+/** Une entrée par client, chiffres tirés de ses commandes. */
 export function buildCustomerEntries(
   customers: readonly Customer[],
-  orders: readonly Order[],
+  stats: DirectoryStats,
 ): CustomerEntry[] {
-  const byCustomer = groupBy(orders, (o) => o.customer.id);
-  return customers.map((customer) => {
-    const mine = byCustomer.get(customer.id) ?? [];
-    return {
-      kind: "customer",
-      id: customer.id,
-      name: customer.fullName,
-      customer,
-      stats: computeCustomerStats(mine),
-      loyalty: customer.community ? null : loyaltyStatus(mine),
-    };
-  });
+  return customers.map((customer) => ({
+    kind: "customer",
+    id: customer.id,
+    name: customer.fullName,
+    customer,
+    stats: stats.customers.get(customer.id) ?? NO_CUSTOMER_STATS,
+    loyalty: customer.community
+      ? null
+      : loyaltyFromStreak(stats.loyaltyStreaks.get(customer.id) ?? 0),
+  }));
 }
 
 /** L'annuaire complet : les communautés puis les clients (non trié). */
 export function buildDirectory(
   customers: readonly Customer[],
   communities: readonly Community[],
-  orders: readonly Order[],
+  stats: DirectoryStats,
 ): DirectoryEntry[] {
-  const byCommunity = groupBy(orders, (o) => o.community?.id ?? null);
   return [
     ...communities.map((community): CommunityEntry => ({
       kind: "community",
@@ -122,9 +158,9 @@ export function buildDirectory(
       name: community.name,
       community,
       memberCount: communityMembers(customers, community.id).length,
-      summary: summarizeCommunity(byCommunity.get(community.id) ?? []),
+      summary: stats.communities.get(community.id) ?? NO_COMMUNITY_SUMMARY,
     })),
-    ...buildCustomerEntries(customers, orders),
+    ...buildCustomerEntries(customers, stats),
   ];
 }
 

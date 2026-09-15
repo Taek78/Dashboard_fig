@@ -89,16 +89,14 @@ export const TOUR_STAGES = [
   "cancelled",
   "delivering",
   "preparing",
-  "pending",
 ] as const satisfies readonly OrderStatus[];
 
 /** Libellés de la légende de l'avancement, au pluriel de la tournée. */
 export const TOUR_STAGE_LABELS: Record<OrderStatus, string> = {
   delivered: "Livrées",
   cancelled: "Annulées",
-  delivering: "En livraison",
+  delivering: "Expédiées",
   preparing: "En préparation",
-  pending: "En attente",
 };
 
 export type TourProgress = {
@@ -112,22 +110,32 @@ export type TourProgress = {
   segments: { status: OrderStatus; count: number }[];
 };
 
-/** Avancement d'un ensemble de livraisons : compteurs et segments de la barre. */
-export function tourProgress(orders: readonly Order[]): TourProgress {
-  const counts = new Map<OrderStatus, number>();
-  for (const o of orders) counts.set(o.status, (counts.get(o.status) ?? 0) + 1);
-  const total = orders.length;
-  const done = (counts.get("delivered") ?? 0) + (counts.get("cancelled") ?? 0);
+/**
+ * Avancement à partir du nombre de commandes par statut (tel qu'une requête
+ * agrégée le renvoie) : compteurs et segments de la barre.
+ */
+export function tourProgressFromCounts(
+  counts: Partial<Record<OrderStatus, number>>,
+): TourProgress {
+  const count = (status: OrderStatus) => counts[status] ?? 0;
+  const total = TOUR_STAGES.reduce((sum, status) => sum + count(status), 0);
+  const done = count("delivered") + count("cancelled");
   return {
     total,
     done,
     remaining: total - done,
     percentDone: total === 0 ? 0 : Math.round((done / total) * 100),
-    segments: TOUR_STAGES.flatMap((status) => {
-      const count = counts.get(status) ?? 0;
-      return count > 0 ? [{ status, count }] : [];
-    }),
+    segments: TOUR_STAGES.flatMap((status) =>
+      count(status) > 0 ? [{ status, count: count(status) }] : [],
+    ),
   };
+}
+
+/** Avancement d'un ensemble de livraisons déjà chargées. */
+export function tourProgress(orders: readonly Order[]): TourProgress {
+  const counts: Partial<Record<OrderStatus, number>> = {};
+  for (const o of orders) counts[o.status] = (counts[o.status] ?? 0) + 1;
+  return tourProgressFromCounts(counts);
 }
 
 /* ---------- Écran de terrain ---------- */
@@ -135,8 +143,6 @@ export function tourProgress(orders: readonly Order[]): TourProgress {
 /** Le geste naturel suivant en tournée, ou null quand la commande est terminée. */
 export function nextDeliveryStep(status: OrderStatus): OrderStatus | null {
   switch (status) {
-    case "pending":
-      return "preparing";
     case "preparing":
       return "delivering";
     case "delivering":
@@ -146,11 +152,14 @@ export function nextDeliveryStep(status: OrderStatus): OrderStatus | null {
   }
 }
 
-/** Libellé du bouton d'action pour le statut visé. */
+/**
+ * Libellé du bouton d'action pour le statut visé. « En préparation » n'est
+ * jamais une cible (c'est l'état d'arrivée d'une commande) : son libellé ne
+ * sert qu'à compléter le Record.
+ */
 export const DELIVERY_STEP_LABELS: Record<OrderStatus, string> = {
-  pending: "Remettre en attente",
-  preparing: "Passer en préparation",
-  delivering: "Démarrer la livraison",
+  preparing: "Remettre en préparation",
+  delivering: "Expédier la commande",
   delivered: "Marquer comme livrée",
   cancelled: "Annuler la commande",
 };

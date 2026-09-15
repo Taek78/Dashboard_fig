@@ -14,7 +14,10 @@ import { getCustomers } from "@/data/customers";
 import { getOrders } from "@/data/orders";
 import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
 import { summarizeCommunity } from "@/domain/communities/rules";
-import { buildCustomerEntries } from "@/domain/customers/directory";
+import {
+  buildCustomerEntries,
+  directoryStatsFromOrders,
+} from "@/domain/customers/directory";
 import { customerIdSchema } from "@/domain/customers/schemas";
 import { sortOrdersBySlot } from "@/domain/orders/rules";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
@@ -163,7 +166,10 @@ export default async function CommunautePage({
         <h2 className="text-lg font-semibold tracking-tight">Membres</h2>
         {members.length > 0 ? (
           <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-            {buildCustomerEntries(members, orders).map((entry) => (
+            {buildCustomerEntries(
+              members,
+              directoryStatsFromOrders(orders),
+            ).map((entry) => (
               <li key={entry.id}>
                 <CustomerCard entry={entry} />
               </li>

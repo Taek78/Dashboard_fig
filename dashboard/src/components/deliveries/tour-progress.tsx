@@ -1,6 +1,8 @@
-import { TOUR_STAGE_LABELS, tourProgress } from "@/domain/deliveries/rules";
+import {
+  TOUR_STAGE_LABELS,
+  type TourProgress as Progress,
+} from "@/domain/deliveries/rules";
 import type { OrderStatus } from "@/domain/orders/status";
-import type { Order } from "@/domain/orders/types";
 import { cn } from "@/lib/utils";
 
 /*
@@ -18,21 +20,20 @@ const SEGMENT_COLOR: Record<OrderStatus, string> = {
   delivered: "bg-success",
   cancelled: "bg-destructive/60",
   delivering: "bg-info",
-  preparing: "bg-primary",
-  pending: "bg-warning",
+  preparing: "bg-warning",
 };
 
 export function TourProgress({
-  orders,
+  progress,
   label,
   compact = false,
 }: {
-  orders: readonly Order[];
+  /** Déjà calculé : tourProgress(commandes) ou tourProgressFromCounts(totaux de la base). */
+  progress: Progress;
   /** Nom accessible de la barre. */
   label: string;
   compact?: boolean;
 }) {
-  const progress = tourProgress(orders);
   if (progress.total === 0) return null;
   const treated = `traitée${progress.done > 1 ? "s" : ""}`;
   const percent = `${progress.percentDone}\u00A0%`;

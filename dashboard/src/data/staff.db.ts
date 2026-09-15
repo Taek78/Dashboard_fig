@@ -13,7 +13,7 @@ import type { StaffInput } from "@/domain/staff/types";
  * Implémentation Drizzle du contrat StaffSource : table `staff`, e-mail unique
  * sans casse (index sur lower(email), vérifié avant l'écriture pour renvoyer
  * "email_taken" plutôt qu'une erreur Postgres). L'équipe est petite : tri en
- * mémoire par la même règle que le mock.
+ * mémoire par la règle pure sortStaff.
  */
 const lowerEmail = (email: string) => email.trim().toLowerCase();
 

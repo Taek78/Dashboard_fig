@@ -13,7 +13,7 @@ import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
  *
  * Pourquoi un fichier séparé des composants et de la source de données : aucune
  * dépendance à Next, à la base ni au navigateur, donc testable avec Vitest en
- * quelques millisecondes et réutilisable par le mock comme par la version Drizzle.
+ * quelques millisecondes, et réutilisable par la source PostgreSQL et les écrans.
  * Les composants et les Server Actions ne font que brancher ces fonctions.
  *
  * Chaque fonction RENVOIE une valeur : elle ne modifie rien. L'appelant stocke ou
@@ -94,6 +94,9 @@ export function filterOrders(
         order.customer.id === filters.customerId) &&
       (filters.communityId === undefined ||
         order.community?.id === filters.communityId) &&
+      (filters.staffId === undefined ||
+        order.preparer?.id === filters.staffId ||
+        order.driver?.id === filters.staffId) &&
       staffMatches(order.preparer, filters.preparerId) &&
       staffMatches(order.driver, filters.driverId) &&
       matchesOrderQuery(order, filters.query)
@@ -178,12 +181,26 @@ export function paginate<T>(
   page: number,
   size = ORDERS_PAGE_SIZE,
 ): Page<T> {
-  const pageCount = Math.max(1, Math.ceil(items.length / size));
-  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  const window = pageWindow(items.length, page, size);
   return {
-    items: items.slice((current - 1) * size, current * size),
-    page: current,
-    pageCount,
+    items: items.slice(window.offset, window.offset + size),
+    page: window.page,
+    pageCount: window.pageCount,
     total: items.length,
   };
+}
+
+/**
+ * Bornes d'une page sur `total` éléments : numéro ramené dans [1, pageCount]
+ * et rang du premier élément. Partagé par paginate (en mémoire) et la
+ * pagination SQL (LIMIT / OFFSET) : même page pour la même demande.
+ */
+export function pageWindow(
+  total: number,
+  page: number,
+  size = ORDERS_PAGE_SIZE,
+): { page: number; pageCount: number; offset: number } {
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount);
+  return { page: current, pageCount, offset: (current - 1) * size };
 }

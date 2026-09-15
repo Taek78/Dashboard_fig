@@ -4,18 +4,20 @@ import {
   buildDirectory,
   countDirectory,
   directorySearchQuery,
+  directoryStatsFromOrders,
   filterDirectory,
   matchesDirectoryQuery,
   sortDirectory,
   type DirectoryEntry,
 } from "@/domain/customers/directory";
 import { customersFixtures } from "@/domain/customers/fixtures";
+import { loyaltyStatus } from "@/domain/customers/loyalty";
 import { ordersFixtures } from "@/domain/orders/fixtures";
 
 const directory = buildDirectory(
   customersFixtures,
   communitiesFixtures,
-  ordersFixtures,
+  directoryStatsFromOrders(ordersFixtures),
 );
 
 function customerEntry(id: string) {
@@ -41,7 +43,19 @@ describe("buildDirectory", () => {
     expect(amel.stats.orderCount).toBe(
       ordersFixtures.filter((o) => o.customer.id === "cli-0001").length,
     );
-    expect(amel.loyalty).not.toBeNull();
+    expect(amel.loyalty).toEqual(
+      loyaltyStatus(ordersFixtures.filter((o) => o.customer.id === "cli-0001")),
+    );
+    const noOrders = buildDirectory(
+      customersFixtures.slice(0, 1),
+      [],
+      directoryStatsFromOrders([]),
+    )[0];
+    expect(noOrders?.kind === "customer" && noOrders.stats).toEqual({
+      orderCount: 0,
+      totalSpentCents: 0,
+      lastDeliveryDate: null,
+    });
     const creche = communityEntry("com-0001");
     expect(creche.memberCount).toBe(
       customersFixtures.filter((c) => c.community?.id === "com-0001").length,

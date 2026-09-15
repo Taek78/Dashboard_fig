@@ -11,23 +11,21 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from "@/domain/orders/status";
  * refuser par tsc tout statut oublié le jour où la liste change.
  * Le libellé est toujours affiché : la couleur n'est jamais le seul signal.
  *
- * Lecture des couleurs : ambre = à traiter, mauve = en cours, vert = terminé,
- * rouge = à ne pas préparer.
+ * Lecture des couleurs : ambre = à l'atelier, couleur de marque = expédiée,
+ * vert = livrée, rouge = annulée.
  */
 type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 
 const VARIANT_BY_STATUS: Record<OrderStatus, BadgeVariant> = {
-  pending: "warning", // pas encore pris en charge : demande une action
-  preparing: "default", // en cours, le plus visible (mauve plein)
-  delivering: "secondary", // en cours, mauve doux
+  preparing: "warning", // à l'atelier : le travail qui reste à faire
+  delivering: "default", // expédiée : en route, couleur pleine
   delivered: "success", // terminée
-  cancelled: "destructive", // à ne pas préparer
+  cancelled: "destructive", // à ne pas livrer
 };
 
 /** Couleur d'accent d'une carte (bordure gauche) selon le statut ; tokens seulement. */
 export const STATUS_ACCENT: Record<OrderStatus, string> = {
-  pending: "border-l-warning",
-  preparing: "border-l-primary",
+  preparing: "border-l-warning",
   delivering: "border-l-info",
   delivered: "border-l-success",
   cancelled: "border-l-destructive",

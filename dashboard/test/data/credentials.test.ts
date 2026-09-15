@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
- * authorizeCredentials de bout en bout : comptes simulés (un seul, hachage
- * scrypt réel), horloge figée. C'est le chemin commun au formulaire et à la
- * route HTTP d'Auth.js : on y vérifie la limitation de débit, le coût constant
- * (l'e-mail inconnu passe aussi par scrypt) et la remise à zéro après succès.
+ * authorizeCredentials de bout en bout : compte simulé (un seul, hachage
+ * scrypt réel), limitation de débit dans la table login_attempts de la base de
+ * test (transaction annulée par test), horloge figée (Date seulement : les
+ * minuteries du pilote Postgres restent réelles). C'est le chemin commun au
+ * formulaire et à la route HTTP d'Auth.js : limitation de débit, coût constant
+ * (l'e-mail inconnu passe aussi par scrypt), remise à zéro après succès.
  */
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/env", () => ({ getEnv: () => ({ DATA_SOURCE: "mock" }) }));
+vi.mock("@/db/client", () =>
+  import("../support/test-database").then((m) => m.dbClientMock),
+);
 const accounts = vi.hoisted(() => ({ passwordHash: "" }));
 vi.mock("@/data/users", () => ({
   findUserByEmail: async (email: string) =>
@@ -22,8 +26,10 @@ vi.mock("@/data/users", () => ({
       : null,
 }));
 
+const { isolateEachTest } = await import("../support/test-database");
+isolateEachTest();
+
 const { authorizeCredentials } = await import("@/data/credentials");
-const { resetLoginAttemptsMock } = await import("@/data/login-attempts.mock");
 const { hashPassword } = await import("@/lib/password");
 
 const GOOD = "Demo-FIG-2026-local";
@@ -32,9 +38,8 @@ const attempt = (email: string, password: string, ip?: string) =>
   authorizeCredentials({ email, password }, headers(ip));
 
 beforeEach(async () => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-14T08:00:00.000Z"));
-  resetLoginAttemptsMock();
   accounts.passwordHash = await hashPassword(GOOD);
 });
 afterEach(() => vi.useRealTimers());
@@ -69,7 +74,7 @@ describe("authorizeCredentials", () => {
     expect(
       await attempt("zaki@fig.invalid", GOOD, "203.0.113.5"),
     ).not.toBeNull();
-  }, 30_000); // vingt scrypt : lent sur une machine chargée
+  }, 60_000); // vingt scrypt : lent sur une machine chargée
 
   it("un succès efface le compteur de l'e-mail", async () => {
     for (let i = 0; i < 4; i++) {

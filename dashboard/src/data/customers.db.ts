@@ -15,7 +15,7 @@ import type {
 /*
  * Implémentation Drizzle du contrat CustomersSource. La recherche (nom,
  * e-mail, chiffres du téléphone, sans accents) reste la règle pure du domaine,
- * appliquée après chargement : identique au mock, donc identique à l'écran.
+ * appliquée après chargement.
  * À passer en SQL (pg_trgm) si la table dépasse quelques milliers de clients.
  */
 async function loadCustomers(ids?: readonly string[]): Promise<Customer[]> {

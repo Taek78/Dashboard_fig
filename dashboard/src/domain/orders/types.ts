@@ -80,6 +80,8 @@ export type OrderFilters = {
   customerId?: string;
   /** Fiche communauté : commandes livrées à son point de retrait. */
   communityId?: string;
+  /** Fiche personnel : commandes où la personne est préparateur OU livreur. */
+  staffId?: string;
 };
 
 /** Qui a fait le geste : l'utilisateur de la session, jamais un champ de formulaire. */

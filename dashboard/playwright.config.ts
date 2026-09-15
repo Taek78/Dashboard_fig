@@ -1,32 +1,23 @@
 import { defineConfig, devices } from "@playwright/test";
+import { TEST_ACCOUNTS, TEST_DATABASE_URL } from "./test/support/config";
 
 /*
  * Tests de bout en bout navigateur (Chromium). Ils tournent contre le serveur
  * de PRODUCTION (`next start`, donc `npm run build` avant) sur le port 3126,
- * avec des comptes, un secret et des dérogations qui n'existent que pour ces
- * tests : les valeurs ci-dessous sont publiques et sans rapport avec
- * .env.local ni avec un déploiement (sauf DATABASE_URL en mode db). Un seul
- * worker : les tests écrivent dans la source partagée du serveur (statuts,
- * articles), l'ordre compte.
+ * branché sur la base de TEST PostgreSQL (`docker compose up -d --wait test-db`),
+ * migrée et seedée par e2e/global-setup.ts avant la suite. Le secret et les
+ * comptes n'existent que pour ces tests : valeurs publiques, sans rapport avec
+ * .env.local ni avec un déploiement. Un seul worker : les tests écrivent dans la
+ * base partagée par le serveur, l'ordre compte.
  */
 const PORT = 3126;
 const baseURL = `http://localhost:${PORT}`;
 
-export const E2E_ACCOUNTS = {
-  admin: {
-    email: "e2e-admin@fig-demo.invalid",
-    password: "E2E-FIG-2026-admin",
-    name: "Admin E2E",
-  },
-  manager: {
-    email: "e2e-gestion@fig-demo.invalid",
-    password: "E2E-FIG-2026-gestion",
-    name: "Gestion E2E",
-  },
-} as const;
+export const E2E_ACCOUNTS = TEST_ACCOUNTS;
 
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   // Une reprise partout : un poste chargé peut dépasser un délai sans qu'un écran soit faux.
@@ -48,19 +39,9 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       NODE_ENV: "production",
-      // E2E_DATA_SOURCE=db rejoue la suite contre la base locale (DATABASE_URL
-      // de .env.local) ; la relancer ensuite avec `npm run db:seed`.
-      DATA_SOURCE: process.env.E2E_DATA_SOURCE ?? "mock",
+      DATABASE_URL: TEST_DATABASE_URL,
       AUTH_URL: baseURL,
       AUTH_SECRET: "e2e-secret-fig-dashboard-0123456789-abcdef",
-      AUTH_ALLOW_BOOTSTRAP: "1",
-      ALLOW_MOCK_IN_PRODUCTION: "1",
-      AUTH_BOOTSTRAP_EMAIL: E2E_ACCOUNTS.admin.email,
-      AUTH_BOOTSTRAP_PASSWORD: E2E_ACCOUNTS.admin.password,
-      AUTH_BOOTSTRAP_NAME: E2E_ACCOUNTS.admin.name,
-      AUTH_MANAGER_EMAIL: E2E_ACCOUNTS.manager.email,
-      AUTH_MANAGER_PASSWORD: E2E_ACCOUNTS.manager.password,
-      AUTH_MANAGER_NAME: E2E_ACCOUNTS.manager.name,
     },
   },
 });

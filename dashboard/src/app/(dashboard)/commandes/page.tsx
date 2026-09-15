@@ -14,29 +14,30 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { getOrders } from "@/data/orders";
+import { getOrdersPage } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import {
   hasOrderFilters,
   orderFiltersQuery,
-  paginate,
-  sortOrdersBySlot,
+  type Page,
 } from "@/domain/orders/rules";
 import { parseOrderFilters, parsePage } from "@/domain/orders/schemas";
+import type { Order } from "@/domain/orders/types";
 import { assignmentOptions, staffFilterOptions } from "@/domain/staff/rules";
 import { formatOrdersCount } from "@/lib/format";
 import { readSimulationMode } from "@/lib/simulation";
 
 /*
  * Liste des commandes. Composant serveur async : lit l'URL une fois, en tire le
- * mode de simulation (dev seulement), les filtres validés et la page, charge via
- * la façade (@/data/orders, jamais le mock) avec l'équipe (pour les listes
- * déroulantes d'affectation), puis rend la recherche et les filtres (OrdersFilters, partagés avec les
+ * mode de simulation (dev seulement), les filtres validés et la page, puis
+ * demande à la façade (@/data/orders) UNE page : la base filtre, cherche, compte
+ * et découpe (40 commandes, les plus récentes d'abord) au lieu de charger tout
+ * l'historique. Avec l'équipe (pour les listes déroulantes d'affectation), la
+ * page rend la recherche et les filtres (OrdersFilters, partagés avec les
  * livraisons : référence, client, statut, période, équipe), le compteur, les
- * cartes de la page (les plus récentes d'abord, 40 par page) et la pagination,
- * ou l'un des deux états vides.
+ * cartes et la pagination, ou l'un des deux états vides.
  *
  * Deux états vides : « rien ne correspond aux filtres » (proposer de réinitialiser)
  * et « aucune commande du tout » n'appellent pas la même action.
@@ -45,6 +46,8 @@ export const metadata: Metadata = { title: "Commandes" };
 
 const emptyMedia =
   "bg-gradient-brand size-12 rounded-xl text-white shadow-sm [&_svg]:size-6";
+
+const EMPTY_PAGE: Page<Order> = { items: [], page: 1, pageCount: 1, total: 0 };
 
 export default async function CommandesPage({
   searchParams,
@@ -58,13 +61,14 @@ export default async function CommandesPage({
 
   const filters = parseOrderFilters(raw);
   const isFiltered = hasOrderFilters(filters);
-  const [orders, user, staff] = await Promise.all([
-    mode === "vide" ? Promise.resolve([]) : getOrders(filters),
+  const [page, user, staff] = await Promise.all([
+    mode === "vide"
+      ? Promise.resolve(EMPTY_PAGE)
+      : getOrdersPage(filters, parsePage(raw)),
     getCurrentUser(),
     listStaff(),
   ]);
   const options = assignmentOptions(staff);
-  const page = paginate(sortOrdersBySlot(orders, "desc"), parsePage(raw));
   const baseParams = orderFiltersQuery(filters);
 
   return (
@@ -90,7 +94,7 @@ export default async function CommandesPage({
             </span>
           ) : null}
         </p>
-        {orders.length > 0 ? (
+        {page.total > 0 ? (
           <>
             <OrdersCards
               orders={page.items}

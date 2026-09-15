@@ -6,8 +6,8 @@ import { getEnv } from "@/lib/env";
 
 /*
  * Client Drizzle + postgres.js, PARESSEUX : aucune connexion à l'import, la
- * première au premier appel de getDb(), et seulement si DATA_SOURCE vaut "db".
- * En mode mock, l'appeler est une erreur de programmation (message explicite).
+ * première au premier appel de getDb(). `next build` importe les pages sans
+ * environnement : rien ne doit lire DATABASE_URL avant une vraie requête.
  *
  * server-only en ligne 1 : DATABASE_URL ne doit jamais approcher un bundle client.
  *
@@ -29,13 +29,8 @@ const globalForDb = globalThis as unknown as { figSql?: Sql };
 let db: Db | null = null;
 
 export function getDb(): Db {
-  const env = getEnv();
-  if (env.DATA_SOURCE !== "db") {
-    throw new Error(
-      "getDb() appelé alors que DATA_SOURCE n'est pas \"db\" : la base n'est pas branchée.",
-    );
-  }
   if (db) return db;
+  const env = getEnv();
 
   const sql =
     globalForDb.figSql ??

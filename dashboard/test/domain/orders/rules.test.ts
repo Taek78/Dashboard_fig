@@ -72,9 +72,9 @@ describe("filterOrders", () => {
   });
 
   it("par statut, renvoie exactement les commandes de ce statut", () => {
-    const result = filterOrders(scenarioOrders, { status: "pending" });
-    expect(result).toHaveLength(3);
-    expect(result.every((o) => o.status === "pending")).toBe(true);
+    const result = filterOrders(scenarioOrders, { status: "preparing" });
+    expect(result).toHaveLength(7);
+    expect(result.every((o) => o.status === "preparing")).toBe(true);
   });
 
   it("couvre chaque statut : la somme des filtres vaut le total", () => {
@@ -98,11 +98,19 @@ describe("filterOrders", () => {
 
   it("cumule statut et date (ET, pas OU)", () => {
     const result = filterOrders(scenarioOrders, {
-      status: "pending",
+      status: "preparing",
       from: "2026-09-08",
       to: "2026-09-08",
     });
-    expect(ids(result)).toEqual(["cmd-0009", "cmd-0010"]);
+    expect(result).toHaveLength(4);
+    expect(ids(result)).toEqual(
+      expect.arrayContaining(["cmd-0009", "cmd-0010"]),
+    );
+    expect(
+      result.every(
+        (o) => o.status === "preparing" && o.deliverySlot.date === "2026-09-08",
+      ),
+    ).toBe(true);
   });
 
   it("par client, renvoie les commandes de cette personne", () => {
@@ -289,7 +297,7 @@ describe("hasOrderFilters / orderFiltersQuery", () => {
   it("écrit les clés d'URL françaises, que parseOrderFilters relit à l'identique", () => {
     const filters = {
       query: "amel benali",
-      status: "pending",
+      status: "delivering",
       from: "2026-09-01",
       to: "2026-09-07",
       preparerId: "stf-0005",
@@ -297,7 +305,7 @@ describe("hasOrderFilters / orderFiltersQuery", () => {
     } as const;
     const query = orderFiltersQuery({ ...filters, customerId: "cli-0001" });
     expect(query).toBe(
-      "q=amel+benali&statut=pending&du=2026-09-01&au=2026-09-07&preparateur=stf-0005&livreur=aucun",
+      "q=amel+benali&statut=delivering&du=2026-09-01&au=2026-09-07&preparateur=stf-0005&livreur=aucun",
     );
     expect(
       parseOrderFilters(Object.fromEntries(new URLSearchParams(query))),

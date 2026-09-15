@@ -2,41 +2,38 @@
  * Source de vérité unique des statuts de commande.
  *
  * Pourquoi un fichier à part : le tableau `as const` sert au type OrderStatus, aux
- * libellés, au futur z.enum() des Server Actions et aux <select>. Une seule liste à
+ * libellés, au z.enum() des Server Actions et aux <select>. Une seule liste à
  * modifier, tsc force le reste à suivre (Record<OrderStatus, …> refuse une clé
  * manquante). La machine d'états vit ici aussi : ORDER_TRANSITIONS est une liste
  * blanche (tout passage non listé est refusé, y compris rester sur place ou revenir
  * en arrière), consultée par la Server Action changeOrderStatus (refus) et par la
  * carte Statut du détail (options du <select>).
  *
- * Clés anglaises (identifiants de code), libellés français (interface). Vocabulaire
- * à confirmer avec le client (question 9) ; l'enum Postgres order_status reprend
- * ces clés à l'identique.
+ * Clés anglaises (identifiants de code), libellés français (interface). L'enum
+ * Postgres order_status reprend ces clés à l'identique.
  *
- * Pas de statut « confirmée » (décision du client, 2026-09-15) : une commande
- * reçue est considérée comme déjà prise en charge, « en attente » passe
- * directement à « en préparation ».
+ * Trois états de parcours (décision du client, 2026-09-15) : une commande reçue
+ * est en préparation, puis expédiée, puis livrée. Plus de « confirmée » ni
+ * d'« en attente » (migrations 0003 et 0005). L'annulation reste une issue à
+ * part, possible tant que la commande est en préparation, avec un motif.
  */
 export const ORDER_STATUSES = [
-  "pending",
   "preparing",
   "delivering",
   "delivered",
   "cancelled",
-] as const; //Avec as const, chaque élément garde son type littéral ("pending", "preparing"…) et le tableau devient readonly
+] as const; //Avec as const, chaque élément garde son type littéral ("preparing", "delivering"…) et le tableau devient readonly
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "En attente",
   preparing: "En préparation",
-  delivering: "En livraison",
+  delivering: "Expédiée",
   delivered: "Livrée",
   cancelled: "Annulée",
 };
 
 const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
-  pending: ["preparing", "cancelled"],
   preparing: ["delivering", "cancelled"],
   delivering: ["delivered"],
   delivered: [],
@@ -66,11 +63,11 @@ export function allowedTransitions(from: OrderStatus): OrderStatus[] {
 }
 
 /**
- * Chemin nominal de « en attente » jusqu'à `to`, bornes incluses : sert aux
- * fixtures d'historique. Une annulation part toujours de « en attente ».
- * ["pending", "preparing", "delivering"] pour "delivering".
+ * Chemin nominal de « en préparation » jusqu'à `to`, bornes incluses : sert aux
+ * fixtures d'historique. Une annulation part toujours de « en préparation ».
+ * ["preparing", "delivering"] pour "delivering".
  */
 export function statusPath(to: OrderStatus): OrderStatus[] {
-  if (to === "cancelled") return ["pending", "cancelled"];
+  if (to === "cancelled") return ["preparing", "cancelled"];
   return ORDER_STATUSES.slice(0, ORDER_STATUSES.indexOf(to) + 1);
 }

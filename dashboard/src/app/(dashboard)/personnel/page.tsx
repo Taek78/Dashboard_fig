@@ -13,7 +13,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { getOrders } from "@/data/orders";
+import { getStaffWorkSummaries } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canManageStaff } from "@/domain/auth/roles";
@@ -28,8 +28,8 @@ import { parseStaffSearch } from "@/domain/staff/schemas";
  * Section Personnel : l'équipe du client (livreurs, préparateurs de
  * commandes, gestionnaires). Une recherche automatique (nom, prénom, e-mail,
  * téléphone) et cinq filtres (métier ?type=, disponibilité, créneau, jour
- * travaillé, présence), puis les cartes avec les compteurs d'activité calculés
- * à partir de toutes les commandes. Un rôle qui gère le personnel voit le
+ * travaillé, présence), puis les cartes avec les compteurs d'activité agrégés
+ * par la base pour toute l'équipe (getStaffWorkSummaries, une requête). Un rôle qui gère le personnel voit le
  * bouton de création ; les autres consultent. ?supprime=1 confirme une
  * suppression.
  */
@@ -44,9 +44,9 @@ export default async function PersonnelPage({
   const raw = await searchParams;
   const search = parseStaffSearch(raw);
   const filtered = hasStaffSearch(search);
-  const [everyone, orders, user] = await Promise.all([
+  const [everyone, summaries, user] = await Promise.all([
     listStaff(),
-    getOrders(),
+    getStaffWorkSummaries(),
     getCurrentUser(),
   ]);
   const canManage = canManageStaff(user.role);
@@ -112,7 +112,10 @@ export default async function PersonnelPage({
               <li key={member.id}>
                 <StaffCard
                   member={member}
-                  summary={summarizeStaffWork(orders, member.id)}
+                  summary={
+                    summaries.get(member.id) ??
+                    summarizeStaffWork([], member.id)
+                  }
                   canManage={canManage}
                 />
               </li>

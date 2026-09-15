@@ -32,7 +32,6 @@ import {
  *   (instantané) : supprimer un produit ne touche pas aux commandes passées.
  */
 export const orderStatusEnum = pgEnum("order_status", [
-  "pending",
   "preparing",
   "delivering",
   "delivered",
@@ -232,7 +231,7 @@ export const orders = pgTable(
     id: text("id").primaryKey(),
     reference: text("reference").notNull(),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
-    status: orderStatusEnum("status").notNull().default("pending"),
+    status: orderStatusEnum("status").notNull().default("preparing"),
     customerId: text("customer_id")
       .notNull()
       .references(() => customers.id, { onDelete: "restrict" }),

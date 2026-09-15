@@ -1,0 +1,96 @@
+import { describe, expect, it, vi } from "vitest";
+import { staffFixtures } from "@/domain/staff/fixtures";
+import type { StaffInput } from "@/domain/staff/types";
+
+/* Personnel et communautés sur la base de test, chaque test dans une transaction annulée. */
+vi.mock("server-only", () => ({}));
+vi.mock("@/db/client", () =>
+  import("../support/test-database").then((m) => m.dbClientMock),
+);
+const { isolateEachTest } = await import("../support/test-database");
+isolateEachTest();
+
+const { staffDb } = await import("@/data/staff.db");
+const { communitiesDb } = await import("@/data/communities.db");
+const { ordersDb } = await import("@/data/orders.db");
+
+const input: StaffInput = {
+  kind: "preparateur",
+  firstName: "Nour",
+  lastName: "Sassi",
+  email: "nour.sassi@fig-demo.invalid",
+  phone: "06 39 98 90 50",
+  shift: "matin",
+  availability: "disponible",
+  workDays: ["lun", "mar"],
+  startedAt: "2026-09-14",
+  notes: null,
+  active: true,
+};
+
+describe("staffDb", () => {
+  it("listStaff trie (actifs d'abord) et filtre par métier", async () => {
+    const all = await staffDb.listStaff();
+    expect(all).toHaveLength(staffFixtures.length);
+    expect(all.at(-1)?.active).toBe(false);
+    const drivers = await staffDb.listStaff("livreur");
+    expect(drivers.every((m) => m.kind === "livreur")).toBe(true);
+    expect(await staffDb.getStaff("stf-0001")).toEqual(staffFixtures[0]);
+  });
+
+  it("createStaff attribue un id et refuse un e-mail déjà pris (sans casse)", async () => {
+    const created = await staffDb.createStaff(input);
+    expect(created).toMatchObject({
+      firstName: "Nour",
+      workDays: ["lun", "mar"],
+    });
+    expect(
+      await staffDb.createStaff({
+        ...input,
+        email: "MALIK.DEMBELE@fig-demo.invalid",
+      }),
+    ).toBe("email_taken");
+  });
+
+  it("updateStaff remplace la fiche, garde id et createdAt, détecte le doublon d'e-mail", async () => {
+    expect(await staffDb.updateStaff("stf-0005", input)).toMatchObject({
+      id: "stf-0005",
+      firstName: "Nour",
+      createdAt: staffFixtures[4]!.createdAt,
+    });
+    expect(
+      await staffDb.updateStaff("stf-0005", {
+        ...input,
+        email: "sophie.renard@fig-demo.invalid",
+      }),
+    ).toBe("email_taken");
+    expect(
+      await staffDb.updateStaff("stf-9999", {
+        ...input,
+        email: "personne.inconnue@fig-demo.invalid",
+      }),
+    ).toBeNull();
+  });
+
+  it("deleteStaff supprime et libère ses commandes (SET NULL)", async () => {
+    expect((await ordersDb.getOrder("cmd-0004"))?.driver?.id).toBe("stf-0001");
+    expect(await staffDb.deleteStaff("stf-0001")).toBe(true);
+    expect(await staffDb.getStaff("stf-0001")).toBeNull();
+    expect(await staffDb.deleteStaff("stf-0001")).toBe(false);
+    expect((await ordersDb.getOrder("cmd-0004"))?.driver).toBeNull();
+  });
+});
+
+describe("communitiesDb", () => {
+  it("liste triée et lecture par id", async () => {
+    expect((await communitiesDb.listCommunities()).map((c) => c.id)).toEqual([
+      "com-0003",
+      "com-0001",
+      "com-0002",
+    ]);
+    expect((await communitiesDb.getCommunity("com-0001"))?.name).toBe(
+      "Crèche Les Lucioles",
+    );
+    expect(await communitiesDb.getCommunity("com-9999")).toBeNull();
+  });
+});

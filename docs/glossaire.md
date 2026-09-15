@@ -10,11 +10,11 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Contrat (`OrdersSource`)** : un type TypeScript qui décrit ce qu'une source de données doit savoir faire (`getOrders`, `getOrder`), sans dire comment. Toute implémentation doit le respecter, et `tsc` refuse celle qui oublie une méthode. Dans le projet : `src/domain/orders/source.ts`.
 
-**Implémentation** : une version concrète d'un contrat. `ordersMock` (fixtures) aujourd'hui, `ordersDb` (Drizzle) demain. Les deux ont la même forme, donc interchangeables.
+**Implémentation** : une version concrète d'un contrat. `ordersDb` (Drizzle, PostgreSQL) implémente `OrdersSource` ; `tsc` refuse une implémentation qui oublie une fonction.
 
-**Façade (`src/data/orders.ts`)** : le seul module que le reste de l'app importe pour accéder aux données. Elle choisit l'implémentation en interne et n'expose que les fonctions du contrat. Le jour du branchement à la base, une ligne change dans la façade, zéro dans les pages.
+**Façade (`src/data/orders.ts`)** : le seul module que le reste de l'app importe pour accéder aux données. Elle réexporte l'implémentation PostgreSQL typée par le contrat, avec `server-only` : les pages ne connaissent jamais Drizzle.
 
-**Mock** : une implémentation factice qui imite le comportement de la vraie (délai, forme des données) sans la dépendance réelle. `orders.mock.ts` imite une base avec 400 ms de latence.
+**Mock** (tests) : un remplaçant factice d'un module le temps d'un test (`vi.mock`) : la session, `next/cache`, ou le client de base remplacé par la transaction du test. L'application n'a plus d'implémentation factice des données (2026-09-15).
 
 **Fixtures** : données de test écrites à la main, fixes, sans personne réelle. `ordersFixtures` : 14 commandes inventées, toujours identiques.
 
@@ -22,13 +22,13 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Mapper** (piste B3) : une fonction qui convertit une ligne de la base du client (ses noms de colonnes, ses unités) en type métier `Order`. C'est l'unique endroit où les deux vocabulaires se rencontrent.
 
-**Machine d'états** : la liste des passages autorisés entre statuts (`pending → preparing`, jamais `delivered → pending`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
+**Machine d'états** : la liste des passages autorisés entre statuts (`preparing → delivering`, jamais `delivered → preparing`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
 
 **Idempotent** : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
 
-**`Map`** : structure clé → valeur du langage (`set`, `get`, `values()`, `clear()`), typée `Map<string, Order>` dans le mock : la « table » en mémoire, un objet par id, modifiable.
+**`Map`** : structure clé → valeur du langage (`set`, `get`, `values()`), par exemple `Map<string, StaffWorkSummary>` : les compteurs du personnel agrégés par la base, une entrée par personne.
 
-**Logique pure / fonction pure** : une fonction dont le résultat dépend uniquement de ses arguments et qui ne modifie rien autour d'elle. Testable en isolation, réutilisable partout. `computeOrderTotalCents`, `readSimulationMode`, `assertMockSessionAllowed`.
+**Logique pure / fonction pure** : une fonction dont le résultat dépend uniquement de ses arguments et qui ne modifie rien autour d'elle. Testable en isolation, réutilisable partout. `computeOrderTotalCents`, `pageWindow`, `statsFromTotals`.
 
 ## Sécurité et accès
 
@@ -40,7 +40,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Rôle / RBAC** (Role-Based Access Control) : les droits sont attachés à un rôle (`admin`, `gestionnaire`, `lecture`), pas à chaque personne. On vérifie le rôle, pas le nom.
 
-**Garde (guard)** : un `if` en début de fonction qui refuse tôt un cas interdit, avant tout travail. `assertMockSessionAllowed` lève une erreur hors development/test. Une garde « à l'envers » laisse passer ce qu'elle devait bloquer : d'où les tests des deux côtés.
+**Garde (guard)** : un `if` en début de fonction qui refuse tôt un cas interdit, avant tout travail : un rôle sans droit dans une Server Action, un hôte distant dans le seed (`assertLocalDatabase`). Une garde « à l'envers » laisse passer ce qu'elle devait bloquer : d'où les tests des deux côtés.
 
 **Liste blanche** : n'autoriser que ce qui est explicitement listé, tout le reste est refusé. Plus sûr qu'une liste noire, où tout ce qu'on a oublié de lister passe.
 
@@ -118,7 +118,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Compte d'amorçage** : le premier compte, défini par variables d'environnement, qui permet d'entrer avant que les comptes existent en base.
 
-**Union discriminée** : un type `A | B` où un champ commun (`DATA_SOURCE`) dit lequel des deux on a. En mode `db`, `DATABASE_URL` devient obligatoire ; en `mock`, non.
+**Union discriminée** : un type `A | B` où un champ commun dit lequel des deux on a. `DirectoryEntry` : `kind: "customer"` ou `kind: "community"`, et TypeScript sait alors quels champs existent.
 
 **Pool de connexions** : petit stock de connexions Postgres réutilisées (`max: 5`) au lieu d'en ouvrir une par requête.
 
@@ -136,7 +136,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Enum Postgres** (base) : liste de valeurs fixée en base (`order_status`…). Doit rester identique à la constante `as const` du domaine ; un test le vérifie.
 
-**Docker Compose** : `compose.yaml` décrit les services locaux (ici Postgres) ; `docker compose up -d` les lance, `down` les arrête, `down -v` efface les données.
+**Docker Compose** : `compose.yaml` décrit les services locaux : `db` (PostgreSQL de développement, port 5433) et `test-db` (base de test en mémoire, port 5434). `docker compose up -d --wait test-db` lance la seconde et attend qu'elle réponde (`npm run db:test`) ; `down` arrête, `down -v` efface les données.
 
 **Fil d'Ariane (breadcrumb)** (coquille) : la ligne « Commandes › Détail » du bandeau qui situe la page dans la navigation. Calculé par `breadcrumbFor(pathname)` (pur, testé) et rendu par `site-breadcrumb.tsx` ; le dernier maillon porte `aria-current="page"`.
 
@@ -148,13 +148,12 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Article programmé** (articles) : article visible dont la date de parution est postérieure à aujourd'hui ; l'application ne l'affichera qu'à cette date. Calculé par `publicationState()`.
 
-**Limitation de débit (rate limiting)** (sécurité) : refuser une action répétée trop souvent depuis la même origine. Ici : cinq échecs de connexion rapprochés sur un e-mail verrouillent une minute, puis le verrou double à chaque échec jusqu'à une heure ; vingt par adresse IP. Règles pures dans `src/lib/rate-limit.ts` ; état en mémoire en mode mock, dans la table `login_attempts` en mode db (partagé entre plusieurs instances du dashboard, conservé au redémarrage).
+**Limitation de débit (rate limiting)** (sécurité) : refuser une action répétée trop souvent depuis la même origine. Ici : cinq échecs de connexion rapprochés sur un e-mail verrouillent une minute, puis le verrou double à chaque échec jusqu'à une heure ; vingt par adresse IP. Règles pures dans `src/lib/rate-limit.ts` ; état dans la table `login_attempts` (partagé entre plusieurs instances du dashboard, conservé au redémarrage).
 
 **Verrou de ligne (`SELECT … FOR UPDATE`)** (base) : dans une transaction, réserve les lignes lues jusqu'à la fin de la transaction ; une autre transaction qui veut les mêmes lignes attend. Sert à compter les échecs de connexion simultanés sans en perdre : sans verrou, deux requêtes liraient « 3 échecs » en même temps et écriraient toutes deux « 4 ». `SKIP LOCKED` fait l'inverse : ignorer les lignes déjà réservées au lieu d'attendre (purge).
 
 **Précondition d'écriture (verrouillage optimiste)** (concurrence) : l'écriture ne passe que si la donnée est encore celle que l'écran affichait (`WHERE status = $2`, `WHERE driver_id IS NOT DISTINCT FROM $2`). Sinon rien n'est écrit et l'utilisateur voit « modifié entre-temps ». Pas de verrou tenu pendant qu'on réfléchit : on vérifie au moment d'écrire. `expectedStaffId` est la précondition de l'affectation.
 
-**Test de contrat** (tests) : poser la même question à deux implémentations d'un même contrat (le mock et PostgreSQL) et exiger la même réponse. Détecte qu'un filtre SQL et la règle pure ne disent plus la même chose (`test/contract/`, en CI après le seed).
 
 **Énumération de comptes** (sécurité) : deviner quels e-mails existent en observant la réponse. Le message est identique dans les deux cas, et le temps aussi : un e-mail inconnu vérifie un hachage factice (`dummyPasswordHash`).
 
@@ -198,7 +197,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Période ramenée** (livraisons) : une tournée couvre 7 jours au plus (`TOUR_MAX_DAYS`). Une période plus longue n'est pas refusée : sa fin est ramenée au 7e jour (`tourRange`) et l'écran le signale.
 
-**Barre d'avancement segmentée** (livraisons) : barre découpée en segments proportionnels, un par statut (livrées, annulées, en livraison, en préparation, en attente), accompagnée d'une légende chiffrée. Sur la tournée et sur le tableau de bord (commandes de la période). « Traitée » veut dire livrée ou annulée : il ne reste rien à faire.
+**Barre d'avancement segmentée** (livraisons) : barre découpée en segments proportionnels, un par statut (livrées, annulées, expédiées, en préparation), accompagnée d'une légende chiffrée. Sur la tournée (`tourProgress`) et sur le tableau de bord à partir des totaux agrégés (`tourProgressFromCounts`). « Traitée » veut dire livrée ou annulée : il ne reste rien à faire.
 
 **Source de vérité** (branchement) : le système dont la valeur fait foi quand deux copies divergent. Pour FIG, l'application : le montant d'une remise est celui du paiement, l'horaire de retrait est celui choisi à la commande. Le dashboard affiche ces valeurs, il ne les recalcule pas.
 
@@ -223,3 +222,15 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Thème FIG (crépuscule)** (style) : le troisième mode d'affichage, inspiré des affiches de GTA VI : nuit violette, rose coucher de soleil, orange pêche, bleu lagon, en teintes adoucies.
 
 **Groupes de navigation** (coquille) : les neuf sections du menu rangées sous quatre intitulés (Activité, Offre, Clients et équipe, Pilotage) par `groupNavItems` ; un groupe sans section permise au rôle disparaît.
+
+**Base de test jetable** (tests) : une base PostgreSQL à part (`test-db` de `compose.yaml`, en mémoire, vide à chaque démarrage), migrée et seedée par les tests eux-mêmes. Les tests n'écrivent jamais dans la base de travail.
+
+**Transaction annulée par test (rollback)** (tests) : avant chaque test, `isolateEachTest()` ouvre une transaction et fait de `getDb()` cette transaction ; à la fin du test, elle est annulée. Le code testé écrit normalement (ses propres transactions deviennent des savepoints) et le test suivant repart des données seedées, sans re-seeder.
+
+**Agrégat SQL** (base) : faire calculer les totaux par la base (`count`, `sum`, `max`, `group by`) au lieu de charger toutes les lignes pour compter en JavaScript. `count(*) filter (where status = 'cancelled')` compte une partie des lignes dans la même requête. Les arrondis restent ceux des règles pures (`statsFromTotals`).
+
+**Pagination SQL (`LIMIT` / `OFFSET`)** (base) : la base compte les lignes qui correspondent (`COUNT`), puis ne renvoie que celles de la page demandée. `pageWindow` calcule les bornes, les mêmes que `paginate` en mémoire.
+
+**Test de parité SQL** (tests) : exécuter une requête filtrée ou agrégée sur la base de test seedée et exiger exactement le résultat de la règle pure appliquée à toutes les commandes (`test/data/orders.db.test.ts`). Détecte qu'un filtre, un arrondi ou un seau de semaine ne dit plus la même chose que le domaine.
+
+**Expédiée** (commandes) : libellé du statut `delivering` : la commande a quitté l'atelier et est en cours de livraison. Parcours : en préparation → expédiée → livrée ; l'annulation n'est possible qu'en préparation.

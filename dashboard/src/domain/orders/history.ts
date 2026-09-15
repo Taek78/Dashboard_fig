@@ -33,7 +33,7 @@ import type { StaffMember } from "@/domain/staff/types";
  * - produits de saison plus présents (fruits d'été de mai à septembre, légumes
  *   d'hiver d'octobre à mars), paniers de 2 à 5 lignes, prix du catalogue ;
  * - statuts vraisemblables : le passé est livré (5 % d'annulations motivées),
- *   la journée en cours est en attente, en préparation ou en livraison ;
+ *   la journée en cours est en préparation ou expédiée ;
  * - l'équipe (src/domain/staff/fixtures.ts) affectée aux commandes à partir
  *   de la date d'entrée de chacun : préparateur dès la préparation, livreur
  *   dès la livraison ;
@@ -355,8 +355,7 @@ function statusFor(
     return { status: "delivered", cancellation: null };
   }
   const r = random();
-  const status: OrderStatus =
-    r < 0.3 ? "pending" : r < 0.8 ? "preparing" : "delivering";
+  const status: OrderStatus = r < 0.65 ? "preparing" : "delivering";
   return { status, cancellation: null };
 }
 

@@ -1,17 +1,18 @@
-# Postgres LOCAL de développement (piste B1). Données factices ou anonymisées
-# uniquement : jamais la base du client depuis un poste de dev.
+# Postgres LOCAUX : développement (db) et tests (test-db). Données factices ou
+# anonymisées uniquement : jamais la base du client depuis un poste de dev.
 #
-# - image épinglée en 16 : à réaligner sur `SELECT version();` chez le client (B2),
+# - image épinglée en 16 : à réaligner sur `SELECT version();` chez le client,
 #   une version majeure différente change les types renvoyés par drizzle-kit pull.
-# - fig/fig est un secret de dev volontairement trivial : il ne protège qu'une base
-#   locale joignable sur 127.0.0.1 seulement (pas "5433:5432" sans adresse, qui
-#   publierait le port sur toutes les interfaces). Il ne doit JAMAIS servir ailleurs.
-# - Alternative sans Docker (choix du 2026-09-14) : PostgreSQL 18 installé sur le
-#   poste, base créée par scripts/setup-local.sql, DATABASE_URL sur le port 5432.
-# - volume nommé : les données survivent à `docker compose down` ; `down -v` pour
-#   repartir de zéro.
+# - fig/fig est un secret de dev volontairement trivial : il ne protège que des
+#   bases locales joignables sur 127.0.0.1 seulement (pas "5433:5432" sans
+#   adresse, qui publierait le port sur toutes les interfaces). Jamais ailleurs.
+# - Alternative sans Docker pour le développement (choix du 2026-09-14) :
+#   PostgreSQL installé sur le poste, base créée par scripts/setup-local.sql,
+#   DATABASE_URL sur le port 5432.
 #
-#   docker compose up -d      docker compose ps (healthy)      docker compose down
+#   docker compose up -d db               base de développement (volume nommé)
+#   docker compose up -d --wait test-db   base de test (npm run check, test:e2e)
+#   docker compose down                   arrêt (`down -v` : repartir de zéro)
 services:
   db:
     image: postgres:16-alpine
@@ -20,7 +21,7 @@ services:
       POSTGRES_PASSWORD: fig
       POSTGRES_DB: fig
     ports:
-      # 5433 côté hôte : PostgreSQL 18 installé sur le poste occupe déjà 5432.
+      # 5433 côté hôte : un PostgreSQL installé sur le poste occupe souvent 5432.
       - "127.0.0.1:5433:5432"
     volumes:
       - fig-pgdata:/var/lib/postgresql/data
@@ -29,6 +30,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Base de TEST de Vitest et Playwright : en mémoire (tmpfs), vide à chaque
+  # démarrage, migrée et seedée par les tests eux-mêmes (test/support/global-setup.ts).
+  # Jamais la base de travail : les tests y écrivent.
+  test-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fig
+      POSTGRES_PASSWORD: fig
+      POSTGRES_DB: fig_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fig -d fig_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
 
 volumes:
   fig-pgdata: {}

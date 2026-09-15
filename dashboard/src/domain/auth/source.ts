@@ -6,8 +6,8 @@ import type {
 } from "@/domain/auth/types";
 
 /*
- * CONTRAT des comptes du back-office : mock (comptes de l'environnement) ou
- * table `users` (Drizzle). Types seulement.
+ * CONTRAT des comptes du back-office, implémenté par la table `users`
+ * (src/data/users.db.ts). Types seulement.
  * - findUserByEmail / findUserById renvoient le compte AVEC son hachage, pour la
  *   vérification d'un mot de passe seulement ; findUserByEmail ignore les
  *   comptes désactivés (ils ne se connectent plus).

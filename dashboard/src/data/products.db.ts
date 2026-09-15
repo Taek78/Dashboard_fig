@@ -11,7 +11,7 @@ import type { ProductFilters, ProductInput } from "@/domain/products/types";
 /*
  * Implémentation Drizzle du contrat ProductsSource. Le catalogue est petit
  * (quelques dizaines de références) : on charge tout puis on applique les mêmes
- * règles pures que le mock (recherche sans accents, tri français), plutôt que
+ * règles pures du domaine (recherche sans accents, tri français), plutôt que
  * de réécrire la normalisation en SQL. À revoir si le catalogue dépasse
  * quelques milliers de lignes (extension pg_trgm ou unaccent).
  */

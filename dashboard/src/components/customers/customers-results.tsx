@@ -15,7 +15,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { listCommunities } from "@/data/communities";
 import { getCustomers } from "@/data/customers";
-import { getOrders } from "@/data/orders";
+import { getDirectoryStats } from "@/data/orders";
 import {
   buildDirectory,
   countDirectory,
@@ -30,18 +30,19 @@ import { paginate } from "@/domain/orders/rules";
 /*
  * Résultats de la recherche commune (serveur async, dans un <Suspense> de la
  * page : seul ce bloc affiche son squelette pendant la recherche).
- * Particuliers et communautés en grandes cartes, filtrés et triés par les
- * règles pures de l'annuaire, DIRECTORY_PAGE_SIZE par page ; chaque carte mène
+ * Particuliers et communautés en grandes cartes ; leurs chiffres (commandes,
+ * montants, fidélité) sont agrégés par la base (getDirectoryStats), puis
+ * filtrés et triés par les règles pures de l'annuaire, DIRECTORY_PAGE_SIZE par page ; chaque carte mène
  * à sa fiche par un bouton dédié.
  */
 export async function CustomersResults({ search }: { search: ClientsSearch }) {
-  const [customers, communities, orders] = await Promise.all([
+  const [customers, communities, stats] = await Promise.all([
     getCustomers(),
     listCommunities(),
-    getOrders(),
+    getDirectoryStats(),
   ]);
   const entries = sortDirectory(
-    filterDirectory(buildDirectory(customers, communities, orders), search),
+    filterDirectory(buildDirectory(customers, communities, stats), search),
     search.sort,
   );
   const page = paginate(entries, search.page, DIRECTORY_PAGE_SIZE);
