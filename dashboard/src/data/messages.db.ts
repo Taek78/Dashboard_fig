@@ -5,6 +5,7 @@ import {
   count,
   desc,
   eq,
+  inArray,
   isNotNull,
   isNull,
   sql,
@@ -23,6 +24,7 @@ import {
 } from "@/db/schema";
 import { MESSAGES_PAGE_SIZE } from "@/domain/messages/rules";
 import type { MessagesSource } from "@/domain/messages/source";
+import { CLAIM_SUBJECTS } from "@/domain/messages/subject";
 import type {
   Message,
   MessageFilters,
@@ -244,6 +246,18 @@ export const messagesDb: MessagesSource = {
 
   countMessages: (filters: MessageFilters) =>
     countWhere(getDb(), whereFor(filters)),
+
+  // Métrique « Réclamations » : les objets de CLAIM_SUBJECTS reçus sur la
+  // période, même découpe du jour de réception que le filtre de la liste.
+  countComplaints: (range) =>
+    countWhere(
+      getDb(),
+      and(
+        inArray(customerMessages.subject, [...CLAIM_SUBJECTS]),
+        sql`${receivedDay} >= ${range.from}::date`,
+        sql`${receivedDay} <= ${range.to}::date`,
+      ),
+    ),
 
   getMessage: (id: string) => reload(getDb(), id),
 

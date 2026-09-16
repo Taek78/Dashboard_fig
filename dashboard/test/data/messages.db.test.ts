@@ -2,7 +2,11 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { customerMessages, messageAttachments } from "@/db/schema";
 import { messagesFixtures } from "@/domain/messages/fixtures";
-import { filterMessages, sortMessages } from "@/domain/messages/rules";
+import {
+  countComplaints,
+  filterMessages,
+  sortMessages,
+} from "@/domain/messages/rules";
 import type { MessageFilters } from "@/domain/messages/types";
 import { paginate } from "@/domain/orders/rules";
 
@@ -86,6 +90,27 @@ describe("messagesDb.getMessagesPage", () => {
         expected(filters).length,
       );
     }
+  });
+
+  it("countComplaints compte les réclamations de la période comme la règle pure", async () => {
+    for (const range of [
+      { from: "2026-09-05", to: "2026-09-08" },
+      { from: "2026-09-01", to: "2026-09-30" },
+      { from: "2026-09-06", to: "2026-09-06" },
+      { from: "2026-09-08", to: "2026-09-08" },
+      { from: "2025-01-01", to: "2025-12-31" },
+    ]) {
+      expect(
+        await messagesDb.countComplaints(range),
+        JSON.stringify(range),
+      ).toBe(countComplaints(messagesFixtures, range));
+    }
+    expect(
+      await messagesDb.countComplaints({
+        from: "2026-09-05",
+        to: "2026-09-08",
+      }),
+    ).toBe(4);
   });
 
   it("découpe en pages comme paginate, et ramène un numéro hors bornes", async () => {

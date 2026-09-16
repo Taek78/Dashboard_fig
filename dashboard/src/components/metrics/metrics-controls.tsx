@@ -38,7 +38,7 @@ export function MetricsControls({
         <PeriodForm
           action="/metriques"
           period={query.period}
-          customRange={query.customRange}
+          custom={query.custom}
           range={range}
           hiddenFields={{ tva: query.tax }}
         >

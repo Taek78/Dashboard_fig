@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "@/db/client";
 import { toCustomer, toCustomerNote, toCustomerReferral } from "@/db/mappers";
@@ -84,6 +84,23 @@ export const customersDb: CustomersSource = {
       .where(eq(customers.referredById, customerId))
       .orderBy(asc(customers.createdAt), asc(customers.id));
     return rows.map(toCustomerReferral);
+  },
+
+  // Métrique « Parrainages » : inscrits de la période (jour d'inscription en
+  // UTC, comme signupDay) et, parmi eux, ceux qui portent un parrain.
+  // count(colonne) ignore les NULL : c'est le nombre de parrainés.
+  getSignupStats: async (range) => {
+    const signupDay = sql`(${customers.createdAt} at time zone 'UTC')::date`;
+    const [row] = await getDb()
+      .select({ signups: count(), referred: count(customers.referredById) })
+      .from(customers)
+      .where(
+        and(
+          sql`${signupDay} >= ${range.from}::date`,
+          sql`${signupDay} <= ${range.to}::date`,
+        ),
+      );
+    return { signups: row?.signups ?? 0, referred: row?.referred ?? 0 };
   },
 
   addNote: (customerId: string, note: Omit<CustomerNote, "id">) =>

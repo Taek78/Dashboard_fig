@@ -36,6 +36,7 @@ test.describe("personnel", () => {
     await expect(page.getByText("Aucune commande affectée")).toBeVisible();
 
     // Affectation depuis la carte de commande : le choix écrit aussitôt.
+    // La personne est disponible : gommette verte devant son nom.
     await page.goto("/commandes?date=2026-09-08");
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-005,/,
@@ -43,7 +44,7 @@ test.describe("personnel", () => {
     const field = card.getByRole("form", { name: "Affectation : Livreur" });
     await field
       .getByLabel("Livreur")
-      .selectOption({ label: `Nour Sassi ${stamp}` });
+      .selectOption({ label: `🟢 Nour Sassi ${stamp}` });
     await expect(field.getByRole("status")).toContainText(
       `Livreur : Nour Sassi ${stamp}.`,
     );

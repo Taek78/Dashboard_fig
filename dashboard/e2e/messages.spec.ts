@@ -31,11 +31,33 @@ test.describe("messages", () => {
       "Bonjour, La barquette de fraises",
     );
     await expect(cards.first()).not.toContainText("Merci d'avance");
-    await expect(cards.first()).toContainText("2 pièces jointes");
-    // La commande jointe : livraison et équipe sur la carte.
-    await expect(cards.first()).toContainText("FIG-260907-001");
+    // Les pièces jointes en pastille violette, avant le texte.
+    const attachments = cards.first().getByText("2 pièces jointes");
+    await expect(attachments).toHaveClass(/text-attachment/);
+    // La commande jointe (livraison et équipe) est AU-DESSUS du texte.
+    const order = cards.first().getByText("FIG-260907-001");
+    const preview = cards.first().getByText(/La barquette de fraises/);
+    expect((await order.boundingBox())!.y).toBeLessThan(
+      (await preview.boundingBox())!.y,
+    );
     await expect(cards.first()).toContainText("Préparateur : non affecté");
+    // Le nom mène à la fiche du client, « Lire le message » au message.
+    await expect(
+      cards.first().getByRole("link", { name: "Amel Benali", exact: true }),
+    ).toHaveAttribute("href", "/clients/cli-0001");
     await expect(page.getByRole("status").first()).toContainText("non traité");
+  });
+
+  test("une période de réception sans message le dit dans un bandeau bleu", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/messages?du=2026-08-01&au=2026-08-31");
+    const notice = page.getByRole("status").filter({ hasText: "Aucun" });
+    await expect(notice).toContainText(
+      "Aucun message reçu du sam. 1 août au lun. 31 août.",
+    );
+    await expect(notice).toHaveClass(/text-info/);
   });
 
   test("la recherche et les filtres restreignent la liste par l'URL", async ({

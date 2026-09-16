@@ -374,7 +374,6 @@ describe("toEngagementPoint / toUserAccount", () => {
         month: "2026-09",
         downloads: 10,
         signups: 3,
-        complaints: 1,
         rating: "4.35",
         ratingCount: 12,
       }),
@@ -382,7 +381,6 @@ describe("toEngagementPoint / toUserAccount", () => {
       month: "2026-09",
       downloads: 10,
       signups: 3,
-      complaints: 1,
       rating: 4.35,
       ratingCount: 12,
     });
@@ -391,7 +389,6 @@ describe("toEngagementPoint / toUserAccount", () => {
         month: "2026-01",
         downloads: 0,
         signups: 0,
-        complaints: 0,
         rating: null,
         ratingCount: 0,
       }).rating,

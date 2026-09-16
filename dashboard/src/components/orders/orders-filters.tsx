@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
+import { DateRangeFields } from "@/components/date-range-fields";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NativeInput } from "@/components/ui/input";
@@ -21,22 +22,23 @@ import {
   type OrderFilters,
 } from "@/domain/orders/types";
 import type { StaffFilterOption } from "@/domain/staff/rules";
+import type { DateRangeInput } from "@/lib/days";
 
 /*
- * Recherche et filtres des listes de commandes et de livraisons (serveur ;
- * AutoSubmitForm, client, lance la recherche pendant la saisie avec un
- * anti-rebond). Les champs deviennent l'URL
- * (?q=…&statut=…&du=…&au=…&preparateur=…&livreur=…) : URL partageable, retour
- * arrière gratuit, l'écran reste affiché pendant le chargement.
- * - Reçoit des filtres déjà validés (parseOrderFilters), jamais l'URL brute ;
- *   sur /livraisons, la période effective (aujourd'hui par défaut, 7 jours au
- *   plus).
+ * Recherche et filtres de la liste des commandes (serveur ; AutoSubmitForm,
+ * client, lance la recherche pendant la saisie avec un anti-rebond). Les
+ * champs deviennent l'URL (?q=…&statut=…&du=…&au=…&preparateur=…&livreur=…) :
+ * URL partageable, retour arrière gratuit, l'écran reste affiché pendant le
+ * chargement.
+ * - Reçoit des filtres déjà validés (parseOrderFilters), jamais l'URL brute,
+ *   et la saisie « du / au » telle quelle (parsePeriodInput) pour les deux
+ *   champs de dates, groupés en un seul filtre (DateRangeFields).
  * - Les noms de champs sont les clés françaises que parseOrderFilters attend.
  * - Préparateur et livreur : tout le métier, personnes désactivées comprises
  *   (signalées), plus « Non affecté ».
  * - Page étroite (mobile, tablette sidebar ouverte) : filtres sur deux
- *   colonnes (le statut pleine largeur), aide masquée ; cinq colonnes dès que
- *   la zone de contenu le permet (@4xl/main).
+ *   colonnes (le statut et les dates pleine largeur), aide masquée ; cinq
+ *   colonnes dès que la zone de contenu le permet (@4xl/main).
  * - « Réinitialiser » est un vrai lien : il vide l'URL, AutoSubmitForm remonte
  *   alors les champs.
  */
@@ -49,36 +51,28 @@ const STAFF_FIELDS: Record<
 };
 
 export function OrdersFilters({
-  action,
-  formLabel,
-  searchLabel,
   filters,
+  period,
   staff,
   canReset,
-  rangeHelp,
 }: {
-  action: "/commandes" | "/livraisons";
-  /** Nom accessible du formulaire. */
-  formLabel: string;
-  /** Intitulé visible du champ de recherche. */
-  searchLabel: string;
   filters: OrderFilters;
+  /** La saisie « du / au » de l'URL, avec son erreur éventuelle. */
+  period: DateRangeInput;
   staff: Record<AssignmentRole, StaffFilterOption[]>;
   canReset: boolean;
-  /** Aide sous les filtres (ex. la limite de période des livraisons). */
-  rangeHelp?: string;
 }) {
   return (
     <Card>
       <CardContent>
         <AutoSubmitForm
-          action={action}
-          aria-label={formLabel}
+          action="/commandes"
+          aria-label="Recherche et filtres des commandes"
           className="flex flex-col gap-4"
         >
           <div className="flex flex-col gap-2">
             <Label htmlFor="q" className="text-base">
-              {searchLabel}
+              Rechercher une commande
             </Label>
             <div className="relative">
               <Search
@@ -114,7 +108,7 @@ export function OrdersFilters({
           <div
             role="group"
             aria-label="Filtres"
-            className="grid grid-cols-2 gap-3 border-t pt-4 @4xl/main:grid-cols-5"
+            className="grid grid-cols-2 gap-3 border-t pt-4 @4xl/main:grid-cols-5 @4xl/main:items-start"
           >
             <div className="col-span-2 grid gap-1.5 @4xl/main:col-span-1">
               <Label htmlFor="statut">Statut</Label>
@@ -135,27 +129,14 @@ export function OrdersFilters({
               </NativeSelect>
             </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="du">Livraison du</Label>
-              <NativeInput
-                id="du"
-                type="date"
-                name="du"
-                defaultValue={filters.from ?? ""}
-                className="dark:scheme-dark"
-              />
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="au">Livraison au</Label>
-              <NativeInput
-                id="au"
-                type="date"
-                name="au"
-                defaultValue={filters.to ?? ""}
-                className="dark:scheme-dark"
-              />
-            </div>
+            <DateRangeFields
+              legend="Jour de livraison"
+              fromLabel="Livraison du"
+              toLabel="Livraison au"
+              idPrefix="commandes"
+              period={period}
+              className="col-span-2"
+            />
 
             {ASSIGNMENT_ROLES.map((role) => {
               const field = STAFF_FIELDS[role];
@@ -192,21 +173,17 @@ export function OrdersFilters({
             })}
           </div>
 
-          <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:items-center @xl/main:justify-between">
-            <p className="text-muted-foreground text-xs">
-              {rangeHelp ??
-                "Dates : jour de livraison, bornes incluses. Une seule date suffit."}
-            </p>
-            {canReset ? (
+          {canReset ? (
+            <div>
               <Link
-                href={action}
-                className={`${buttonVariants({ variant: "ghost", size: "sm" })} self-start @xl/main:self-auto`}
+                href="/commandes"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 <RotateCcw />
                 Réinitialiser
               </Link>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </AutoSubmitForm>
       </CardContent>
     </Card>

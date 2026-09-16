@@ -129,8 +129,8 @@ describe("parseStaffHistoryFilters", () => {
         q: " FIG ",
         role: "livraison",
         statut: "delivered",
-        du: "2026-09-07",
-        au: "2026-09-01",
+        du: "2026-09-01",
+        au: "2026-09-07",
       }),
     ).toEqual({
       query: "FIG",
@@ -141,5 +141,15 @@ describe("parseStaffHistoryFilters", () => {
     });
     expect(parseStaffHistoryFilters({ role: "autre" }).role).toBeUndefined();
     expect(parseStaffHistoryFilters({ role: ["a", "b"] })).toEqual({});
+  });
+
+  it("suit la règle commune des périodes : inversée = rien, une date = ce jour-là", () => {
+    expect(
+      parseStaffHistoryFilters({ du: "2026-09-07", au: "2026-09-01" }),
+    ).toEqual({});
+    expect(parseStaffHistoryFilters({ du: "2026-09-07" })).toEqual({
+      from: "2026-09-07",
+      to: "2026-09-07",
+    });
   });
 });

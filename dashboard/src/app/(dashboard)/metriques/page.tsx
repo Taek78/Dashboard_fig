@@ -5,6 +5,7 @@ import {
   Contact,
   Download,
   Euro,
+  Gift,
   MessageSquareWarning,
   ShoppingBasket,
   Star,
@@ -21,6 +22,7 @@ import { RatioPie } from "@/components/metrics/ratio-pie";
 import { StatusChart } from "@/components/metrics/status-chart";
 import { TrendBadge } from "@/components/metrics/trend-badge";
 import { PageHeader } from "@/components/page-header";
+import { PeriodEmptyNotice } from "@/components/period-empty-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -31,7 +33,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getSignupStats } from "@/data/customers";
 import { getEngagement } from "@/data/engagement";
+import { countComplaints } from "@/data/messages";
 import { getOrderSeries, getOrderStats, getTopProducts } from "@/data/orders";
 import { todayInParis } from "@/domain/deliveries/rules";
 import { ratioPercent, summarizeEngagement } from "@/domain/engagement/rules";
@@ -49,27 +53,37 @@ import {
   TAX_MODE_LABELS,
 } from "@/domain/metrics/rules";
 import { parseMetricsQuery } from "@/domain/metrics/schemas";
-import { formatDateFr, formatEuros, formatQuantity } from "@/lib/format";
+import {
+  formatDateFr,
+  formatEuros,
+  formatPeriodFr,
+  formatQuantity,
+} from "@/lib/format";
 
 /*
  * Métriques : période prédéfinie ou plage libre, montants HT ou TTC, référence
  * de comparaison (N-1 ou période précédente), badge de tendance sur chaque KPI.
  * Rangées par thème, chacune dans sa section titrée :
- *   1. Ventes : CA, panier moyen, acheteurs, graphe d'évolution ;
- *   2. Commandes : volume, annulations, part des communautés (indicateur et
- *      tendance), répartition par statut ;
- *   3. Produits : les produits phares ;
- *   4. Usage de l'application sur l'année civile de la période.
+ *   1. Ventes : commandes, CA, panier moyen, acheteurs (les quatre chiffres
+ *      qui se lisent en premier), graphe d'évolution ;
+ *   2. Commandes : annulations, part des communautés (indicateur et
+ *      tendance), RÉCLAMATIONS reçues par messages sur la période (objets de
+ *      CLAIM_SUBJECTS, comptées par la base), répartition par statut ;
+ *   3. Clients : nouveaux inscrits et parrainages de la période ;
+ *   4. Produits : les produits phares ;
+ *   5. Usage de l'application sur l'année civile de la période (stores).
  * Les ratios sont des camemberts pleins, sans pourcentage écrit : au survol,
  * chaque part dit ce qu'elle représente.
  * Composant serveur : les chiffres des deux périodes, les deux séries, les
- * produits phares et les acheteurs de l'année sont AGRÉGÉS par la base (huit
- * requêtes parallèles, quelques lignes chacune), puis mis en forme par les
- * règles pures (statsFromTotals, fillSeries, rankProducts).
+ * produits phares, les réclamations, les inscriptions et les acheteurs de
+ * l'année sont AGRÉGÉS par la base (douze requêtes parallèles, quelques
+ * lignes chacune), puis mis en forme par les règles pures (statsFromTotals,
+ * fillSeries, rankProducts, ratioPercent).
  */
 export const metadata: Metadata = { title: "Métriques" };
 
 const pct = (value: number | null) => (value === null ? "—" : `${value} %`);
+const plural = (n: number) => (n > 1 ? "s" : "");
 
 export default async function MetriquesPage({
   searchParams,
@@ -98,6 +112,10 @@ export default async function MetriquesPage({
     yearStats,
     yearStatsRef,
     engagement,
+    complaints,
+    complaintsRef,
+    signups,
+    signupsRef,
   ] = await Promise.all([
     getOrderStats(range),
     getOrderStats(reference),
@@ -107,6 +125,10 @@ export default async function MetriquesPage({
     getOrderStats(yearRange),
     getOrderStats(yearRef),
     getEngagement(),
+    countComplaints(range),
+    countComplaints(reference),
+    getSignupStats(range),
+    getSignupStats(reference),
   ]);
   const { kpis, share, buyers: buyersInRange } = stats;
   const { kpis: kpisRef, share: shareRef, buyers: buyersInRangeRef } = statsRef;
@@ -128,6 +150,7 @@ export default async function MetriquesPage({
   const signupRateRef = ratioPercent(usageRef.signups, usageRef.downloads);
   const buyerRate = ratioPercent(buyers, usage.signups);
   const buyerRateRef = ratioPercent(buyersRef, usageRef.signups);
+  const referredRate = ratioPercent(signups.referred, signups.signups);
 
   const trend = (
     current: number | null,
@@ -152,12 +175,27 @@ export default async function MetriquesPage({
 
       <MetricsControls query={query} range={range} />
 
+      {query.customRange && kpis.orderCount === 0 ? (
+        <PeriodEmptyNotice
+          text={`Aucune commande livrée ${formatPeriodFr(range.from, range.to)} : les chiffres de la période sont à zéro.`}
+          resetHref={`/metriques?tva=${query.tax}&comparaison=${query.comparison}`}
+          resetLabel="Revenir à ce mois-ci"
+        />
+      ) : null}
+
       <MetricsSection
         id="ventes"
         title="Ventes"
-        description={`Chiffre d'affaires, panier moyen et acheteurs de la période, montants ${taxLabel}, commandes annulées exclues.`}
+        description={`Commandes, chiffre d'affaires, panier moyen et acheteurs de la période, montants ${taxLabel}, commandes annulées exclues du CA.`}
       >
-        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
+        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
+          <KpiCard
+            label="Commandes"
+            value={String(kpis.orderCount)}
+            hint={`${kpis.preparingCount} en préparation`}
+            icon={<ShoppingBasket />}
+            trend={trend(kpis.orderCount, kpisRef.orderCount)}
+          />
           <KpiCard
             label={`CA ${taxLabel}`}
             value={money(kpis.revenueCents)}
@@ -203,16 +241,9 @@ export default async function MetriquesPage({
       <MetricsSection
         id="commandes"
         title="Commandes"
-        description="Volume, annulations et part des commandes passées par les membres d'une communauté."
+        description="Annulations, part des commandes passées par les membres d'une communauté, et réclamations reçues par « Nous contacter » (produit manquant ou abîmé, problème de livraison, erreur sur la commande, remboursement ou avoir)."
       >
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
-          <KpiCard
-            label="Commandes"
-            value={String(kpis.orderCount)}
-            hint={`${kpis.preparingCount} en préparation`}
-            icon={<ShoppingBasket />}
-            trend={trend(kpis.orderCount, kpisRef.orderCount)}
-          />
           <KpiCard
             label="Annulées"
             value={String(kpis.cancelledCount)}
@@ -265,6 +296,13 @@ export default async function MetriquesPage({
               />
             }
           />
+          <KpiCard
+            label="Réclamations"
+            value={String(complaints)}
+            hint={`message${plural(complaints)} reçu${plural(complaints)} sur la période · moins, c'est mieux`}
+            icon={<MessageSquareWarning />}
+            trend={trend(complaints, complaintsRef, true)}
+          />
         </div>
         <Card>
           <CardHeader>
@@ -276,6 +314,50 @@ export default async function MetriquesPage({
             <StatusChart points={statuses} />
           </CardContent>
         </Card>
+      </MetricsSection>
+
+      <MetricsSection
+        id="clients"
+        title="Clients"
+        description="Inscriptions de la période dans l'application, et celles faites avec le code d'un parrain."
+      >
+        <div className="grid gap-4 @xl/main:grid-cols-2">
+          <KpiCard
+            label="Nouveaux clients"
+            value={String(signups.signups)}
+            hint="inscrits sur la période"
+            icon={<UserPlus />}
+            trend={trend(signups.signups, signupsRef.signups)}
+          />
+          <KpiCard
+            label="Parrainages"
+            value={String(signups.referred)}
+            hint={
+              referredRate === null
+                ? "aucune inscription sur la période"
+                : `${pct(referredRate)} des nouveaux clients ont saisi un code`
+            }
+            icon={<Gift />}
+            trend={trend(signups.referred, signupsRef.referred)}
+            visual={
+              <RatioPie
+                label="part des nouveaux clients parrainés"
+                slices={[
+                  {
+                    label: "Parrainés",
+                    value: signups.referred,
+                    tone: "brand",
+                  },
+                  {
+                    label: "Sans code",
+                    value: Math.max(0, signups.signups - signups.referred),
+                    tone: "rest",
+                  },
+                ]}
+              />
+            }
+          />
+        </div>
       </MetricsSection>
 
       <MetricsSection
@@ -336,9 +418,9 @@ export default async function MetriquesPage({
       <MetricsSection
         id="usage"
         title={`Usage de l'application en ${year}`}
-        description={`Année civile de la période choisie, variations par rapport à ${Number(year) - 1}. Téléchargements, inscriptions, réclamations et note viennent des stores et du support.`}
+        description={`Année civile de la période choisie, variations par rapport à ${Number(year) - 1}. Téléchargements, inscriptions et note viennent des stores.`}
       >
-        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3 @6xl/main:grid-cols-5">
+        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
           <KpiCard
             label="Téléchargements"
             value={usage.downloads.toLocaleString("fr-FR")}
@@ -368,7 +450,7 @@ export default async function MetriquesPage({
           <KpiCard
             label="Inscrits ayant commandé"
             value={pct(buyerRate)}
-            hint={`${buyers} acheteur${buyers > 1 ? "s" : ""} distinct${buyers > 1 ? "s" : ""}`}
+            hint={`${buyers} acheteur${plural(buyers)} distinct${plural(buyers)}`}
             icon={<UserCheck />}
             visual={
               <RatioPie
@@ -388,18 +470,6 @@ export default async function MetriquesPage({
               />
             }
             trend={trend(buyerRate, buyerRateRef, false, yearLabel)}
-          />
-          <KpiCard
-            label="Réclamations"
-            value={String(usage.complaints)}
-            hint="moins, c'est mieux"
-            icon={<MessageSquareWarning />}
-            trend={trend(
-              usage.complaints,
-              usageRef.complaints,
-              true,
-              yearLabel,
-            )}
           />
           <KpiCard
             label="Note de l'appli"

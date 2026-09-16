@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
+import { DateRangeFields } from "@/components/date-range-fields";
 import { buttonVariants } from "@/components/ui/button";
 import { NativeInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,22 +16,26 @@ import {
   STAFF_HISTORY_ROLES,
   type StaffHistoryFilters as Filters,
 } from "@/domain/staff/rules";
+import type { DateRangeInput } from "@/lib/days";
 import { cn } from "@/lib/utils";
 
 /*
  * Recherche dans l'historique d'une personne (serveur ; AutoSubmitForm, client,
  * la lance pendant la saisie, vers la fiche elle-même) : référence ou client,
- * rôle tenu (préparation, livraison), statut, période de livraison. Les champs
- * deviennent l'URL de la fiche (?q=&role=&statut=&du=&au=) ; la position de
- * défilement est gardée : la recherche est sous le formulaire de la fiche.
+ * rôle tenu (préparation, livraison), statut, période de livraison en un seul
+ * filtre (DateRangeFields). Les champs deviennent l'URL de la fiche
+ * (?q=&role=&statut=&du=&au=) ; la position de défilement est gardée : la
+ * recherche est sous le formulaire de la fiche.
  */
 export function StaffHistoryFilters({
   staffId,
   filters,
+  period,
   canReset,
 }: {
   staffId: string;
   filters: Filters;
+  period: DateRangeInput;
   canReset: boolean;
 }) {
   return (
@@ -59,7 +64,7 @@ export function StaffHistoryFilters({
           className="pl-8"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3 @4xl/main:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 @4xl/main:grid-cols-4 @4xl/main:items-start">
         <div className="grid gap-1.5">
           <Label htmlFor="historique-role">Rôle</Label>
           <NativeSelect
@@ -92,26 +97,14 @@ export function StaffHistoryFilters({
             ))}
           </NativeSelect>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="historique-du">Livraison du</Label>
-          <NativeInput
-            id="historique-du"
-            name="du"
-            type="date"
-            defaultValue={filters.from ?? ""}
-            className="dark:scheme-dark"
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="historique-au">Livraison au</Label>
-          <NativeInput
-            id="historique-au"
-            name="au"
-            type="date"
-            defaultValue={filters.to ?? ""}
-            className="dark:scheme-dark"
-          />
-        </div>
+        <DateRangeFields
+          legend="Jour de livraison"
+          fromLabel="Livraison du"
+          toLabel="Livraison au"
+          idPrefix="historique"
+          period={period}
+          className="col-span-2"
+        />
       </div>
       {canReset ? (
         <Link

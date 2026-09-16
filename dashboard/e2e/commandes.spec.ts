@@ -33,9 +33,11 @@ test.describe("commandes", () => {
     );
     await expect(notifications).toContainText("en attente d'envoi");
 
-    // Frais de livraison et adresse dans le détail.
+    // Frais de livraison et adresse dans le détail ; le nom du client mène à sa fiche.
     await expect(page.getByText("Frais de livraison")).toBeVisible();
     await expect(page.getByText("12 rue des Lilas")).toBeVisible();
+    await page.getByRole("link", { name: "Amel Benali" }).click();
+    await expect(page).toHaveURL(/\/clients\/cli-0001$/);
   });
 
   test("un client qui n'a pas autorisé les notifications d'état n'en reçoit aucune", async ({
@@ -62,7 +64,57 @@ test.describe("commandes", () => {
   });
 });
 
-test.describe("commandes : cartes et annulation", () => {
+test.describe("commandes : cartes, tournée et annulation", () => {
+  test("la carte porte le créneau en grand, l'itinéraire, le nom cliquable et le geste suivant", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/commandes?du=2026-09-07&au=2026-09-07");
+    await expect(page.getByRole("status").first()).toContainText(
+      "livraison le lun. 7 sept.",
+    );
+    const card = page.getByRole("article", {
+      name: /^Commande FIG-260907-002,/,
+    });
+    await expect(card).toContainText("Créneau");
+    await expect(card).toContainText("En préparation");
+    await expect(
+      card.getByRole("link", { name: /Itinéraire/ }),
+    ).toHaveAttribute("href", /google\.com\/maps/);
+    await expect(card.getByRole("link", { name: /^0[67] / })).toHaveAttribute(
+      "href",
+      /^tel:\+33/,
+    );
+    await expect(
+      card.getByRole("link", { name: "Théo Marchand" }),
+    ).toHaveAttribute("href", "/clients/cli-0002");
+
+    await card.getByRole("button", { name: "Expédier la commande" }).click();
+    await expect(card).toContainText("Expédiée");
+    await expect(
+      card.getByRole("button", { name: "Marquer comme livrée" }),
+    ).toBeVisible();
+  });
+
+  test("les gommettes disent qui est présent dans la liste d'affectation", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?du=2026-09-08&au=2026-09-08");
+    const card = page.getByRole("article", {
+      name: /^Commande FIG-260907-005,/,
+    });
+    const select = card
+      .getByRole("form", { name: "Affectation : Livreur" })
+      .getByLabel("Livreur");
+    await expect(
+      select.locator("option", { hasText: "Malik Dembélé" }),
+    ).toHaveText("🟢 Malik Dembélé");
+    await expect(
+      select.locator("option", { hasText: "Ousmane Diagne" }),
+    ).toHaveText("🔴 Ousmane Diagne · en congé");
+  });
+
   test("annuler depuis la carte exige un motif, affiché ensuite sur la carte", async ({
     page,
   }) => {
@@ -97,7 +149,7 @@ test.describe("commandes : cartes et annulation", () => {
   });
 });
 
-test.describe("commandes : recherche et filtres", () => {
+test.describe("commandes : recherche, dates et raccourcis", () => {
   test("la recherche se lance pendant la saisie et retrouve les commandes du client sur une période", async ({
     page,
   }) => {
@@ -128,6 +180,61 @@ test.describe("commandes : recherche et filtres", () => {
     ).toBeVisible();
   });
 
+  test("une seule date suffit, des dates inversées affichent une erreur sans filtrer", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?du=2026-09-07");
+    const form = page.getByRole("form", {
+      name: "Recherche et filtres des commandes",
+    });
+    // Une seule date : ce jour-là, sans erreur.
+    await expect(page.getByRole("status").first()).toContainText(
+      "5 commandes · livraison le lun. 7 sept.",
+    );
+    await expect(form.getByRole("alert")).toHaveCount(0);
+
+    await page.goto("/commandes?du=2026-09-09&au=2026-09-05");
+    await expect(form.getByRole("alert")).toContainText(
+      "La date de début est après la date de fin",
+    );
+    await expect(form.getByLabel("Livraison du")).toHaveValue("2026-09-09");
+    await expect(form.getByLabel("Livraison au")).toHaveValue("2026-09-05");
+    // Rien n'est filtré : la liste complète, paginée.
+    await expect(page.getByRole("status").first()).toContainText(/page 1 sur/);
+  });
+
+  test("une période sans commande le dit dans un bandeau bleu, sans perdre les autres filtres", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?du=2026-09-20&au=2026-09-21&statut=preparing");
+    const notice = page.getByRole("status").filter({ hasText: "Aucune" });
+    await expect(notice).toContainText(
+      "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. avec ces filtres.",
+    );
+    await expect(notice).toHaveClass(/text-info/);
+    await notice.getByRole("link", { name: "Toutes les dates" }).click();
+    await expect(page).toHaveURL(/\/commandes\?statut=preparing$/);
+  });
+
+  test("les raccourcis des 7 derniers jours gardent la recherche en cours", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?statut=delivered");
+    const shortcuts = page.getByRole("navigation", {
+      name: "7 derniers jours",
+    });
+    await expect(shortcuts.getByRole("link")).toHaveCount(8);
+    const today = shortcuts.getByRole("link", { name: /^Aujourd'hui/ });
+    await expect(today).toBeVisible();
+    await today.click();
+    await expect(page).toHaveURL(/statut=delivered/);
+    await expect(page).toHaveURL(/du=\d{4}-\d{2}-\d{2}&au=\d{4}-\d{2}-\d{2}/);
+    await expect(today).toHaveAttribute("aria-current", "date");
+  });
+
   test("le filtre préparateur garde ses commandes, « Réinitialiser » rend la liste complète", async ({
     page,
   }) => {
@@ -149,5 +256,16 @@ test.describe("commandes : recherche et filtres", () => {
     // Navigation extérieure : les champs reprennent les valeurs de l'URL.
     await expect(form.getByLabel("Préparateur")).toHaveValue("");
     await expect(form.getByLabel("Livraison du")).toHaveValue("");
+  });
+
+  test("l'ancienne adresse des livraisons redirige vers les commandes", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/livraisons?du=2026-09-07&au=2026-09-07");
+    await expect(page).toHaveURL(/\/commandes\?du=2026-09-07&au=2026-09-07$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Commandes" }),
+    ).toBeVisible();
   });
 });

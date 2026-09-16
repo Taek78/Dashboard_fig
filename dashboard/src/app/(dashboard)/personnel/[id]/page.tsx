@@ -17,7 +17,7 @@ import { getOrdersPage, getStaffWorkSummary } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { getStaff } from "@/data/staff";
 import { canManageStaff } from "@/domain/auth/roles";
-import { parsePage } from "@/domain/orders/schemas";
+import { parsePage, parsePeriodInput } from "@/domain/orders/schemas";
 import { STAFF_KIND_LABELS } from "@/domain/staff/kind";
 import {
   hasStaffHistoryFilters,
@@ -52,6 +52,7 @@ export default async function PersonnePage({
   if (!parsed.success) notFound();
   const raw = await searchParams;
   const filters = parseStaffHistoryFilters(raw);
+  const period = parsePeriodInput(raw);
 
   const [member, history, summary, user] = await Promise.all([
     getStaff(parsed.data),
@@ -64,7 +65,7 @@ export default async function PersonnePage({
   ]);
   if (!member) notFound();
   const name = staffFullName(member);
-  const filtered = hasStaffHistoryFilters(filters);
+  const filtered = hasStaffHistoryFilters(filters) || period.error !== null;
   const canManage = canManageStaff(user.role);
 
   return (
@@ -151,11 +152,13 @@ export default async function PersonnePage({
             totalCount={summary.assigned}
             summary={summary}
             filtered={filtered}
+            range={period.range}
             baseParams={staffHistoryQuery(filters)}
             filters={
               <StaffHistoryFilters
                 staffId={member.id}
                 filters={filters}
+                period={period}
                 canReset={filtered}
               />
             }

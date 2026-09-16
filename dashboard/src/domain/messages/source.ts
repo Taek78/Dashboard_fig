@@ -6,6 +6,7 @@ import type {
   MessageStatusChange,
 } from "@/domain/messages/types";
 import type { Page } from "@/domain/orders/rules";
+import type { DateRange } from "@/lib/days";
 
 /*
  * CONTRAT de la boîte de réception, implémenté par PostgreSQL
@@ -20,6 +21,9 @@ import type { Page } from "@/domain/orders/rules";
  *   récents ; filtres, recherche, comptage et découpage faits par la base.
  * - countMessages : le nombre de messages qui passent les filtres (le compteur
  *   « non traités » du menu et de l'en-tête).
+ * - countComplaints : le nombre de réclamations reçues sur une période (les
+ *   objets de CLAIM_SUBJECTS), pour la métrique « Réclamations » ; même règle
+ *   que countComplaints du domaine.
  * - getMessage : un message avec ses pièces jointes et la commande associée.
  *
  * Écritures (toutes CONDITIONNELLES, comme updateOrderStatus) : chaque
@@ -33,6 +37,7 @@ export type MessagesSource = {
     size?: number,
   ): Promise<Page<Message>>;
   countMessages(filters: MessageFilters): Promise<number>;
+  countComplaints(range: DateRange): Promise<number>;
   getMessage(id: string): Promise<Message | null>;
   /**
    * TOUS les messages d'une personne, du plus ancien au plus récent. Borné par

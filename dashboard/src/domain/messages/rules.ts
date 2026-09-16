@@ -1,9 +1,11 @@
+import { isClaimSubject } from "@/domain/messages/subject";
 import {
   IMPORTANT_FILTER,
   MESSAGE_PREVIEW_LINES,
   type Message,
   type MessageFilters,
 } from "@/domain/messages/types";
+import type { DateRange } from "@/lib/days";
 import { normalize } from "@/lib/text";
 
 /*
@@ -82,6 +84,24 @@ export function filterMessages(
       matchesMessageQuery(message, filters.query)
     );
   });
+}
+
+/**
+ * Nombre de RÉCLAMATIONS reçues sur une période (jour de réception, bornes
+ * incluses) : les messages dont l'objet est une réclamation (CLAIM_SUBJECTS),
+ * quel que soit leur statut de traitement. Référence de la requête agrégée
+ * countComplaints (messages.db.ts), affichée par les métriques.
+ */
+export function countComplaints(
+  messages: readonly Message[],
+  range: DateRange,
+): number {
+  return messages.filter((message) => {
+    const day = receivedDay(message);
+    return (
+      isClaimSubject(message.subject) && day >= range.from && day <= range.to
+    );
+  }).length;
 }
 
 /** Vrai si un filtre de la barre (recherche, statut, objet, période, importants) est actif. */

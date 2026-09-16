@@ -7,8 +7,9 @@ import {
   type DirectorySearch,
 } from "@/domain/customers/directory";
 import { NOTE_MAX_LENGTH } from "@/domain/customers/types";
-import { parseOrderFilters } from "@/domain/orders/schemas";
+import { parsePeriodInput } from "@/domain/orders/schemas";
 import type { OrderFilters } from "@/domain/orders/types";
+import type { DateRangeInput } from "@/lib/days";
 
 /* Schémas zod des ENTRÉES des clients : recherche tolérante, note stricte. */
 export const customerIdSchema = z.string().trim().min(1).max(64);
@@ -60,16 +61,24 @@ export function parseClientsSearch(
 /**
  * Période de l'historique d'une fiche client (lecture tolérante) : ?du= et ?au=,
  * jours de livraison, lus par la même règle que la liste des commandes (date
- * invalide ignorée, bornes inversées remises dans l'ordre). Les autres clés
- * (q, statut…) ne s'appliquent pas à la fiche.
+ * invalide ignorée, une seule date = ce jour-là, bornes inversées = erreur
+ * affichée, aucune période). Les autres clés (q, statut…) ne s'appliquent pas
+ * à la fiche. `filters` est ce que la source reçoit, `period` ce que l'écran
+ * affiche.
  */
-export type CustomerHistoryPeriod = Pick<OrderFilters, "from" | "to">;
+export type CustomerHistoryPeriod = {
+  filters: Pick<OrderFilters, "from" | "to">;
+  period: DateRangeInput;
+};
 
 export function parseCustomerHistoryPeriod(
   raw: Record<string, string | string[] | undefined>,
 ): CustomerHistoryPeriod {
-  const { from, to } = parseOrderFilters(raw);
-  return { from, to };
+  const period = parsePeriodInput(raw);
+  return {
+    filters: { from: period.range?.from, to: period.range?.to },
+    period,
+  };
 }
 
 export { NOTE_MAX_LENGTH };

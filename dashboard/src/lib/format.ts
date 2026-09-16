@@ -81,6 +81,15 @@ export function formatPeriodFr(from?: string, to?: string): string {
   return "";
 }
 
+/**
+ * Termine une phrase par un point sans le doubler quand elle finit déjà par
+ * une abréviation : "livrée le lun. 7 sept." reste tel quel, "du 2 au 3 mars"
+ * devient "du 2 au 3 mars.".
+ */
+export function endSentence(text: string): string {
+  return text.endsWith(".") ? text : `${text}.`;
+}
+
 /** Créneau de livraison → date + plage horaire. { date, start: "09:00", end: "11:00" } → "mar. 8 sept., 09:00–11:00" */
 export function formatSlot(slot: {
   date: string;

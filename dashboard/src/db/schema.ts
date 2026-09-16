@@ -612,7 +612,8 @@ export const engagementMonthly = pgTable(
     month: text("month").primaryKey(),
     downloads: integer("downloads").notNull().default(0),
     signups: integer("signups").notNull().default(0),
-    complaints: integer("complaints").notNull().default(0),
+    // Plus de colonne « réclamations » : elles se comptent dans les messages
+    // (migration 0010, décision du 2026-09-16).
     rating: numeric("rating", { precision: 3, scale: 2 }),
     ratingCount: integer("rating_count").notNull().default(0),
   },

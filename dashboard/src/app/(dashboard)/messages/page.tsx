@@ -5,6 +5,7 @@ import { MessageCards } from "@/components/messages/message-cards";
 import { MessagesFilters } from "@/components/messages/messages-filters";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { PageHeader } from "@/components/page-header";
+import { PeriodEmptyNotice } from "@/components/period-empty-notice";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -22,19 +23,22 @@ import {
   messageFiltersQuery,
 } from "@/domain/messages/rules";
 import { parseMessageFilters } from "@/domain/messages/schemas";
-import { parsePage } from "@/domain/orders/schemas";
+import { parsePage, parsePeriodInput } from "@/domain/orders/schemas";
+import { endSentence, formatPeriodFr } from "@/lib/format";
 
 /*
  * Boîte de réception des messages « Nous contacter » de l'application FIG.
  *
- * Composant serveur async : lit l'URL une fois, en tire les filtres validés et
- * la page, puis demande à la façade UNE page (la base filtre, cherche, compte
- * et découpe). Les messages épinglés remontent en tête, puis les plus récents.
+ * Composant serveur async : lit l'URL une fois, en tire les filtres validés,
+ * la saisie de période et la page, puis demande à la façade UNE page (la base
+ * filtre, cherche, compte et découpe). Les messages épinglés remontent en
+ * tête, puis les plus récents.
  *
  * Le compteur « non traités » est un COUNT à part, sur toute la boîte et non
  * sur la page filtrée : c'est le reste à faire, il ne doit pas changer quand on
- * filtre. Deux états vides distincts : « rien ne correspond aux filtres » et
- * « aucun message » n'appellent pas la même action.
+ * filtre. Trois états vides : une période sans message (bandeau bleu), « rien
+ * ne correspond aux filtres » et « aucun message » n'appellent pas la même
+ * action.
  */
 export const metadata: Metadata = { title: "Messages" };
 
@@ -46,7 +50,8 @@ export default async function MessagesPage({
 }: PageProps<"/messages">) {
   const raw = await searchParams;
   const filters = parseMessageFilters(raw);
-  const isFiltered = hasMessageFilters(filters);
+  const period = parsePeriodInput(raw);
+  const isFiltered = hasMessageFilters(filters) || period.error !== null;
 
   const [page, untreated, user] = await Promise.all([
     getMessagesPage(filters, parsePage(raw)),
@@ -54,6 +59,11 @@ export default async function MessagesPage({
     getCurrentUser(),
   ]);
   const canHandle = canHandleMessages(user.role);
+  const withoutDates = messageFiltersQuery({
+    ...filters,
+    from: undefined,
+    to: undefined,
+  });
 
   return (
     <>
@@ -62,10 +72,17 @@ export default async function MessagesPage({
         description="Les demandes envoyées par les clients depuis « Nous contacter » dans l'application."
       />
       <div className="flex flex-col gap-4">
-        <MessagesFilters filters={filters} canReset={isFiltered} />
+        <MessagesFilters
+          filters={filters}
+          period={period}
+          canReset={isFiltered}
+        />
         <p role="status" className="text-base font-semibold">
           {page.total} message{page.total > 1 ? "s" : ""}
           <span className="text-muted-foreground text-sm font-normal">
+            {period.range
+              ? ` · reçu${page.total > 1 ? "s" : ""} ${formatPeriodFr(period.range.from, period.range.to)}`
+              : ""}
             {` · ${untreated} non traité${untreated > 1 ? "s" : ""} en tout`}
             {page.pageCount > 1
               ? `, page ${page.page} sur ${page.pageCount}`
@@ -81,6 +98,15 @@ export default async function MessagesPage({
               path="/messages"
             />
           </>
+        ) : period.range ? (
+          <PeriodEmptyNotice
+            text={endSentence(
+              `Aucun message reçu ${formatPeriodFr(period.range.from, period.range.to)}${
+                withoutDates ? " avec ces filtres" : ""
+              }`,
+            )}
+            resetHref={withoutDates ? `/messages?${withoutDates}` : "/messages"}
+          />
         ) : isFiltered ? (
           <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
             <EmptyHeader>

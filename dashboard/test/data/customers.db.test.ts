@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { customersFixtures } from "@/domain/customers/fixtures";
+import { signupStats } from "@/domain/customers/referral";
 
 /* Clients sur la base de test, chaque test dans une transaction annulée. */
 vi.mock("server-only", () => ({}));
@@ -72,6 +73,28 @@ describe("customersDb", () => {
     );
     expect(await customersDb.getCustomerReferrals("cli-0007")).toEqual([]);
     expect(await customersDb.getCustomerReferrals("cli-9999")).toEqual([]);
+  });
+
+  it("getSignupStats compte inscrits et parrainés de la période comme la règle pure", async () => {
+    for (const range of [
+      { from: "2026-01-01", to: "2026-12-31" },
+      { from: "2025-01-01", to: "2025-12-31" },
+      { from: "2026-09-01", to: "2026-09-30" },
+      { from: "2024-01-01", to: "2026-12-31" },
+      { from: "2030-01-01", to: "2030-12-31" },
+    ]) {
+      expect(
+        await customersDb.getSignupStats(range),
+        JSON.stringify(range),
+      ).toEqual(signupStats(customersFixtures, range));
+    }
+    const all = await customersDb.getSignupStats({
+      from: "2024-01-01",
+      to: "2026-12-31",
+    });
+    expect(all.signups).toBe(customersFixtures.length);
+    expect(all.referred).toBeGreaterThan(0);
+    expect(all.referred).toBeLessThan(all.signups);
   });
 
   it("la base refuse un code de parrainage mal formé, en double, ou un client qui se parraine lui-même", async () => {

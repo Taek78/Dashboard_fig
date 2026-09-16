@@ -6,13 +6,15 @@ import {
 } from "@/domain/orders/assignment";
 import type { Order } from "@/domain/orders/types";
 import type { StaffOption } from "@/domain/staff/rules";
+import { cn } from "@/lib/utils";
 
 /*
  * Bloc « Équipe » d'une commande (serveur) : le préparateur et le livreur
  * affectés. Avec le droit d'affecter, deux listes déroulantes qui écrivent
- * aussitôt ; sinon, les noms en lecture. Les champs ne sont pas remontés
- * après une écriture : le <select> garde le choix fait, et le message de
- * résultat reste visible.
+ * aussitôt ; sinon, les noms en lecture, avec la gommette de présence (verte
+ * = présent, rouge = absent) quand la personne est encore dans les options.
+ * Les champs ne sont pas remontés après une écriture : le <select> garde le
+ * choix fait, et le message de résultat reste visible.
  */
 export type AssignmentOptions = Record<AssignmentRole, StaffOption[]>;
 
@@ -30,25 +32,49 @@ export function OrderTeam({
   order: Order;
   options: AssignmentOptions;
   canAssign: boolean;
-  /** Rôles affichés, dans l'ordre : la tournée met le livreur en premier. */
+  /** Rôles affichés, dans l'ordre. */
   roles?: readonly AssignmentRole[];
 }) {
   if (!canAssign) {
     return (
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-        {roles.map((role) => (
-          <div key={role} className="contents">
-            <dt className="text-muted-foreground flex items-center gap-1.5 [&_svg]:size-3.5">
-              {ICONS[role]}
-              {ASSIGNMENT_ROLE_LABELS[role]}
-            </dt>
-            <dd
-              className={order[role] ? "font-medium" : "text-muted-foreground"}
-            >
-              {order[role]?.name ?? "Non affecté"}
-            </dd>
-          </div>
-        ))}
+        {roles.map((role) => {
+          const assigned = order[role];
+          const option = assigned
+            ? options[role].find((o) => o.id === assigned.id)
+            : undefined;
+          const present = option?.availability === "disponible";
+          return (
+            <div key={role} className="contents">
+              <dt className="text-muted-foreground flex items-center gap-1.5 [&_svg]:size-3.5">
+                {ICONS[role]}
+                {ASSIGNMENT_ROLE_LABELS[role]}
+              </dt>
+              <dd
+                className={cn(
+                  "flex items-center gap-1.5",
+                  assigned ? "font-medium" : "text-muted-foreground",
+                )}
+              >
+                {option ? (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "size-2 shrink-0 rounded-full",
+                      present ? "bg-success" : "bg-destructive",
+                    )}
+                  />
+                ) : null}
+                {assigned?.name ?? "Non affecté"}
+                {option ? (
+                  <span className="sr-only">
+                    {present ? " (présent)" : " (absent)"}
+                  </span>
+                ) : null}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
     );
   }

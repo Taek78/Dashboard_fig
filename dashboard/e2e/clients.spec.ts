@@ -90,6 +90,40 @@ test.describe("clients", () => {
     await period.getByRole("link", { name: "Toutes les dates" }).click();
     await expect(page).not.toHaveURL(/du=/);
     await expect(period.getByLabel("Livraison du")).toHaveValue("");
+
+    // Une période sans commande : bandeau bleu, pas une liste vide.
+    await page.goto("/clients/cli-0001?du=2026-09-20&au=2026-09-21");
+    const notice = page.getByRole("status").filter({ hasText: "Aucune" });
+    await expect(notice).toContainText(
+      "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. pour ce client.",
+    );
+    await expect(notice).toHaveClass(/text-info/);
+  });
+
+  test("les autorisations et le parrainage s'étalent en largeur sur la fiche", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.goto("/clients/cli-0001");
+    const consents = page.getByRole("list", {
+      name: "Autorisations données par le client",
+    });
+    const boxes = await consents
+      .getByRole("listitem")
+      .evaluateAll((items) =>
+        items.map((item) => item.getBoundingClientRect().top),
+      );
+    expect(boxes).toHaveLength(3);
+    expect(new Set(boxes).size).toBe(1); // trois colonnes sur une même ligne
+    const code = page.getByText("Benali#0001");
+    const referrals = page.getByRole("heading", {
+      level: 3,
+      name: "2 filleuls",
+    });
+    expect((await referrals.boundingBox())!.x).toBeGreaterThan(
+      (await code.boundingBox())!.x,
+    );
   });
 
   test("RGPD : l'administrateur exporte les données d'un client puis l'anonymise", async ({

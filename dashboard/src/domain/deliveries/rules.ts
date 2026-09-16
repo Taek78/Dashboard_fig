@@ -1,10 +1,13 @@
 import type { OrderStatus } from "@/domain/orders/status";
 import type { Order } from "@/domain/orders/types";
-import { addDays, daysBetween } from "@/lib/days";
+import { addDays } from "@/lib/days";
 
 /*
- * Règles pures des livraisons : la tournée se lit et se pilote par le statut
- * des commandes, sur une période de quelques jours groupée par jour. Testées
+ * Règles pures des livraisons : le suivi des commandes à livrer se pilote par
+ * leur statut, depuis la liste des commandes (la section Livraisons a été
+ * fondue dans Commandes le 2026-09-16 : elle en était une copie). Restent ici
+ * le jour de Paris, les raccourcis des derniers jours, l'avancement segmenté
+ * par statut (tableau de bord), le geste suivant et l'itinéraire. Testées
  * dans test/domain/deliveries/rules.test.ts.
  */
 
@@ -20,41 +23,22 @@ export function todayInParis(now: Date): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-/* ---------- Période et raccourcis ---------- */
+/* ---------- Raccourcis des derniers jours ---------- */
 
-/** Période maximale de la page Livraisons : une semaine de tournées. */
-export const TOUR_MAX_DAYS = 7;
-
-export type TourRange = { from: string; to: string; clamped: boolean };
-
-/**
- * Période affichée par la page Livraisons à partir des filtres de l'URL (déjà
- * remis dans l'ordre par parseOrderFilters) : aujourd'hui sans date, un seul jour
- * quand une seule borne est donnée, et jamais plus de `maxDays` jours (la fin
- * est ramenée, `clamped` le signale pour l'écran).
- */
-export function tourRange(
-  filters: { from?: string; to?: string },
-  today: string,
-  maxDays = TOUR_MAX_DAYS,
-): TourRange {
-  const from = filters.from ?? filters.to ?? today;
-  const to = filters.to ?? from;
-  if (daysBetween({ from, to }) <= maxDays) return { from, to, clamped: false };
-  return { from, to: addDays(from, maxDays - 1), clamped: true };
-}
+/** Nombre de jours des raccourcis de la liste des commandes : une semaine. */
+export const RECENT_DAYS = 7;
 
 export type DayCount = { date: string; count: number };
 
 /**
- * Raccourcis de la page : les `count` derniers jours jusqu'à aujourd'hui
- * inclus, du plus ancien au plus récent, chacun avec son nombre de livraisons
- * (0 compris : un jour sans commande reste visible et cliquable).
+ * Raccourcis de la liste des commandes : les `count` derniers jours jusqu'à
+ * aujourd'hui inclus, du plus ancien au plus récent, chacun avec son nombre de
+ * livraisons (0 compris : un jour sans commande reste visible et cliquable).
  */
 export function recentDeliveryDays(
   orders: readonly Order[],
   today: string,
-  count = TOUR_MAX_DAYS,
+  count = RECENT_DAYS,
 ): DayCount[] {
   const perDay = new Map<string, number>();
   for (const o of orders) {
@@ -67,27 +51,12 @@ export function recentDeliveryDays(
 export function recentDeliveryDaysFromCounts(
   perDay: ReadonlyMap<string, number>,
   today: string,
-  count = TOUR_MAX_DAYS,
+  count = RECENT_DAYS,
 ): DayCount[] {
   return Array.from({ length: count }, (_, i) => {
     const date = addDays(today, i - count + 1);
     return { date, count: perDay.get(date) ?? 0 };
   });
-}
-
-export type DayGroup = { date: string; orders: Order[] };
-
-/** Regroupe par jour de livraison, jours croissants ; l'ordre des commandes d'un jour est conservé. */
-export function groupOrdersByDay(orders: readonly Order[]): DayGroup[] {
-  const groups = new Map<string, Order[]>();
-  for (const o of orders) {
-    const list = groups.get(o.deliverySlot.date) ?? [];
-    list.push(o);
-    groups.set(o.deliverySlot.date, list);
-  }
-  return [...groups.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, list]) => ({ date, orders: list }));
 }
 
 /* ---------- Avancement ---------- */
@@ -172,13 +141,6 @@ export const DELIVERY_STEP_LABELS: Record<OrderStatus, string> = {
   delivered: "Marquer comme livrée",
   cancelled: "Annuler la commande",
 };
-
-/** Indice de la prochaine livraison à faire (première non terminée), ou -1. */
-export function nextStopIndex(orders: readonly Order[]): number {
-  return orders.findIndex(
-    (o) => o.status !== "delivered" && o.status !== "cancelled",
-  );
-}
 
 /**
  * Lien d'itinéraire vers l'adresse (Google Maps, ouvre l'application sur

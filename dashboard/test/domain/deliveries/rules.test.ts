@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  groupOrdersByDay,
   itineraryUrl,
   nextDeliveryStep,
-  nextStopIndex,
+  RECENT_DAYS,
   recentDeliveryDays,
   recentDeliveryDaysFromCounts,
   todayInParis,
-  TOUR_MAX_DAYS,
   tourProgress,
-  tourRange,
 } from "@/domain/deliveries/rules";
 import { scenarioOrders } from "@/domain/orders/fixtures";
-import { filterOrders, sortOrdersBySlot } from "@/domain/orders/rules";
+import { filterOrders } from "@/domain/orders/rules";
 
 /* Les tournées du scénario : 4 commandes le 6, 5 le 7, 5 le 8 septembre 2026. */
 const day = (date: string) =>
@@ -29,43 +26,9 @@ describe("todayInParis", () => {
   });
 });
 
-describe("tourRange", () => {
-  const today = "2026-09-15";
-
-  it("sans date, la tournée du jour ; une seule borne, un seul jour", () => {
-    expect(tourRange({}, today)).toEqual({
-      from: today,
-      to: today,
-      clamped: false,
-    });
-    expect(tourRange({ from: "2026-09-06" }, today)).toEqual({
-      from: "2026-09-06",
-      to: "2026-09-06",
-      clamped: false,
-    });
-    expect(tourRange({ to: "2026-09-08" }, today)).toEqual({
-      from: "2026-09-08",
-      to: "2026-09-08",
-      clamped: false,
-    });
-  });
-
-  it(`garde une période de ${TOUR_MAX_DAYS} jours, ramène la fin au-delà`, () => {
-    expect(tourRange({ from: "2026-09-01", to: "2026-09-07" }, today)).toEqual({
-      from: "2026-09-01",
-      to: "2026-09-07",
-      clamped: false,
-    });
-    expect(tourRange({ from: "2026-09-01", to: "2026-09-30" }, today)).toEqual({
-      from: "2026-09-01",
-      to: "2026-09-07",
-      clamped: true,
-    });
-  });
-});
-
 describe("recentDeliveryDays", () => {
-  it("donne les 7 derniers jours jusqu'à aujourd'hui, jours vides compris", () => {
+  it(`donne les ${RECENT_DAYS} derniers jours jusqu'à aujourd'hui, jours vides compris`, () => {
+    expect(RECENT_DAYS).toBe(7);
     expect(recentDeliveryDays(scenarioOrders, "2026-09-08")).toEqual([
       { date: "2026-09-02", count: 0 },
       { date: "2026-09-03", count: 0 },
@@ -91,27 +54,6 @@ describe("recentDeliveryDays", () => {
       { date: "2026-09-07", count: 0 },
       { date: "2026-09-08", count: 0 },
     ]);
-  });
-});
-
-describe("groupOrdersByDay", () => {
-  it("groupe par jour croissant en gardant l'ordre des créneaux", () => {
-    const sorted = sortOrdersBySlot(
-      filterOrders(scenarioOrders, { from: "2026-09-06", to: "2026-09-08" }),
-    );
-    const groups = groupOrdersByDay(sorted);
-    expect(groups.map((g) => [g.date, g.orders.length])).toEqual([
-      ["2026-09-06", 4],
-      ["2026-09-07", 5],
-      ["2026-09-08", 5],
-    ]);
-    expect(groups[0]?.orders[0]?.id).toBe("cmd-0007");
-    expect(groupOrdersByDay(sorted.toReversed()).map((g) => g.date)).toEqual([
-      "2026-09-06",
-      "2026-09-07",
-      "2026-09-08",
-    ]);
-    expect(groupOrdersByDay([])).toEqual([]);
   });
 });
 
@@ -157,14 +99,6 @@ describe("nextDeliveryStep", () => {
     expect(nextDeliveryStep("delivering")).toBe("delivered");
     expect(nextDeliveryStep("delivered")).toBeNull();
     expect(nextDeliveryStep("cancelled")).toBeNull();
-  });
-});
-
-describe("nextStopIndex", () => {
-  it("désigne la première commande non terminée, -1 si tout est fait", () => {
-    expect(nextStopIndex(day("2026-09-06"))).toBe(-1);
-    expect(nextStopIndex(day("2026-09-07"))).toBe(0);
-    expect(nextStopIndex([])).toBe(-1);
   });
 });
 

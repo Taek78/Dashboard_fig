@@ -1,4 +1,7 @@
-import type { AssignmentRole } from "@/domain/orders/assignment";
+import {
+  ASSIGNMENT_ROLES,
+  type AssignmentRole,
+} from "@/domain/orders/assignment";
 import {
   filterOrders,
   orderFiltersQuery,
@@ -158,6 +161,26 @@ export function canBeAssigned(
   role: AssignmentRole,
 ): boolean {
   return member.active && member.kind === KIND_FOR_ROLE[role];
+}
+
+/** Présente pour une affectation aujourd'hui : dans l'équipe et « disponible » (peu importe la raison d'une absence). */
+export function isPresent(member: StaffMember): boolean {
+  return member.active && member.availability === "disponible";
+}
+
+/**
+ * Rôles pour lesquels PERSONNE n'est présent : plus aucune préparation, ou
+ * plus aucune livraison, n'est possible. Le tableau de bord l'annonce en
+ * priorité (demande du client). Sur la disponibilité de la fiche seulement,
+ * pas sur les jours travaillés.
+ */
+export function unavailableRoles(
+  members: readonly StaffMember[],
+): AssignmentRole[] {
+  return ASSIGNMENT_ROLES.filter(
+    (role) =>
+      !members.some((m) => isPresent(m) && m.kind === KIND_FOR_ROLE[role]),
+  );
 }
 
 /** Commandes où la personne est préparateur ou livreur, les plus récentes d'abord. */

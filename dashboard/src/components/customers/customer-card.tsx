@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
 /*
  * Grande carte d'un client (serveur), en quatre bandes pour rester lisible
  * malgré tout ce qu'elle porte :
- *   1. identité : initiales teintées par le type, nom, catégorie (étoiles),
+ *   1. identité : initiales teintées par le type, nom (lien vers la fiche,
+ *      comme partout où un nom de client s'affiche), catégorie (étoiles),
  *      type de client, ancienneté ;
  *   2. contact et adresse de livraison en un geste (e-mail, téléphone, rue) ;
  *   3. les trois autorisations, en pastilles ;
@@ -58,7 +59,12 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
-              {customer.fullName}
+              <Link
+                href={`/clients/${customer.id}`}
+                className="underline-offset-4 hover:underline focus-visible:underline"
+              >
+                {customer.fullName}
+              </Link>
             </h3>
             {anonymized ? null : <TierBadge state={tier} />}
           </div>

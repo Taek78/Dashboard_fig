@@ -4,11 +4,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /*
  * État de chargement de /commandes. Next l'affiche automatiquement pendant que
- * page.tsx attend getOrders() (frontière Suspense). Composant serveur.
- * On reproduit la silhouette des cartes (même grille, mêmes bandes, mêmes
- * seuils de largeur de contenu que OrderCard) pour éviter un saut de mise en
- * page quand les données arrivent.
+ * page.tsx attend la base (frontière Suspense). Composant serveur.
+ * On reproduit la silhouette de la recherche, des raccourcis des 7 derniers
+ * jours et des cartes (même grille, mêmes bandes, mêmes seuils de largeur de
+ * contenu que OrderCard) pour éviter un saut de mise en page quand les
+ * données arrivent.
  */
+const SHORTCUTS = [1, 2, 3, 4, 5, 6, 7, 8];
 const ROWS = [1, 2, 3, 4];
 
 export default function CommandesLoading() {
@@ -16,27 +18,37 @@ export default function CommandesLoading() {
     <>
       <PageHeader
         title="Commandes"
-        description="Suivez et préparez les commandes à livrer."
+        description="Suivez, préparez et livrez les commandes : chaque jour est une tournée."
       />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement des commandes…</p>
         {/* Silhouette de la recherche et des filtres : loading.tsx ne connaît pas l'URL. */}
         <OrdersFiltersSkeleton />
+        <div className="bg-card/60 ring-foreground/10 flex flex-wrap items-center gap-1.5 rounded-xl px-3 py-2 ring-1">
+          <Skeleton className="h-4 w-28" />
+          {SHORTCUTS.map((shortcut) => (
+            <Skeleton key={shortcut} className="h-6 w-20" />
+          ))}
+        </div>
         <Skeleton className="h-4 w-28" />
         <ul className="flex flex-col gap-4">
           {ROWS.map((row) => (
             <li
               key={row}
-              className="bg-card ring-foreground/10 grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]"
+              className="bg-card ring-foreground/10 grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]"
             >
               <div className="bg-muted/40 flex flex-col gap-2 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:border-r @4xl/main:border-b-0">
-                <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-7 w-32" />
+                <Skeleton className="h-3 w-28" />
                 <Skeleton className="h-7 w-28 rounded-4xl" />
               </div>
               <div className="flex flex-col gap-3 p-4 @xl/main:p-5">
                 <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-4 w-32" />
+                <div className="flex flex-col gap-2 @xl/main:flex-row">
+                  <Skeleton className="h-10 w-full @xl/main:w-40" />
+                  <Skeleton className="h-10 w-full @xl/main:w-32" />
+                </div>
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-4 w-44" />
               </div>

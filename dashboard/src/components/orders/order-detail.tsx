@@ -87,7 +87,14 @@ export function OrderDetail({
         <CardContent>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Nom</dt>
-            <dd className="font-medium">{order.customer.fullName}</dd>
+            <dd className="font-medium">
+              <Link
+                href={`/clients/${order.customer.id}`}
+                className="underline-offset-4 hover:underline"
+              >
+                {order.customer.fullName}
+              </Link>
+            </dd>
             <dt className="text-muted-foreground">Type</dt>
             <dd>
               <ClientTypeLabel community={order.community} />

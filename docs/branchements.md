@@ -16,7 +16,7 @@ Conventions communes : montants en centimes entiers, quantités en grammes ou pi
 | `getTopProducts(range, limit)` | plage, nombre | `ProductPoint[]` | lignes des commandes non annulées groupées par produit ; `rankProducts` |
 | `getStaffWorkSummaries()` | | `Map<staffId, StaffWorkSummary>` | affectées, préparées, livrées, en cours, dernière activité |
 | `getStaffWorkSummary(staffId)` | identifiant | `StaffWorkSummary` (zéros sans commande) | index préparateur et livreur |
-| `getDeliveryDayCounts(range)` | `{ from, to }` | `Map<jour, nombre>` | raccourcis de la tournée |
+| `getDeliveryDayCounts(range)` | `{ from, to }` | `Map<jour, nombre>` | raccourcis des 7 derniers jours de la liste des commandes |
 | `getDirectoryStats(scope?)` | `{ customerId? , communityId? }` | `DirectoryStats` : chiffres par client, par communauté, compteur de fidélité, date de la dernière catégorie « fidèle », membres par communauté | quatre requêtes agrégées (fenêtres pour la fidélité), tout l'annuaire ou une fiche ; `loyaltyFromCount`, `tierFromReachedAt` |
 | `getCustomerTierEvents(customerId)` | `id` du client | `TierEvent[]` du plus ancien au plus récent | l'historique daté des atteintes « fidèle » (huitième commande de chaque cycle) ; même règle que `loyalTierEvents` |
 | `getOrder(id)`                  | `id`                                                  | `Order \| null`                                      |                                                                                                                                                                               |
@@ -37,7 +37,9 @@ Sources de vérité côté application FIG, à respecter au branchement :
 
 ## Livraisons
 
-Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure ; les raccourcis des 7 derniers jours viennent de `getDeliveryDayCounts`. Les colonnes `search_text` et `phone_digits` sont calculées par la base : l'application FIG ne les écrit jamais. L'itinéraire utilise la rue de livraison quand la commande la porte ; coordonnées GPS et instructions d'accès restent à décider (question 13).
+Pas de source propre ni de section à part (fondue dans Commandes le 2026-09-16) : la tournée est la liste des commandes filtrée sur un jour (`?du=&au=`, une seule date = ce jour-là), avec des règles pures (`recentDeliveryDays`, `tourProgress`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure ; les raccourcis des 7 derniers jours viennent de `getDeliveryDayCounts`. Les colonnes `search_text` et `phone_digits` sont calculées par la base : l'application FIG ne les écrit jamais. L'itinéraire utilise la rue de livraison quand la commande la porte ; coordonnées GPS et instructions d'accès restent à décider (question 13).
+
+Règle des périodes « du / au », commune à toutes les recherches par dates (`readDateRange`, `src/lib/days.ts`) : une seule date = ce jour-là ; `du` ≤ `au` (même jour compris) = la période ; inversées = aucune période, l'écran l'annonce. Un lien vers l'application qui porte `?du=` seul reste donc valide.
 
 ## Catalogue (`ProductsSource`)
 
@@ -58,6 +60,7 @@ Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jour
 | `getCustomers(query?)`      | texte libre                       | `Customer[]` triés par nom | recherche nom, e-mail, chiffres du téléphone, en mémoire après chargement    |
 | `getCustomer(id)`           | `id`                              | `Customer \| null`         | avec ses notes, de la plus ancienne à la plus récente, et son parrain        |
 | `getCustomerReferrals(customerId)` | `id` du client             | `CustomerReferral[]`       | ses filleuls (ceux qui ont saisi son code), du plus ancien au plus récent ; fiche seulement |
+| `getSignupStats(range)`     | `{ from, to }`                    | `{ signups, referred }`    | inscrits de la période (jour UTC de `created_at`) et, parmi eux, ceux qui portent un parrain ; métriques « Nouveaux clients » et « Parrainages », même règle que `signupStats` |
 | `addNote(customerId, note)` | `{ text, authorName, createdAt }` | `CustomerNote \| null`     | auteur et date viennent de l'action (session, horloge), jamais du formulaire |
 
 `Customer` : `id`, `fullName`, `email`, `phone`, `addressLine | null` (rue), `city`, `postalCode`, `createdAt`, `community | null`, `consents { offers, orderStatus, marketing, updatedAt | null }`, `referralCode | null` (« Nom#0000 », unique), `referredBy { id, fullName } | null`, `notes[] { id, text, authorName, createdAt }`, `anonymizedAt` (ISO ou `null`). Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne dans l'application, mais figurent dans l'export de ses données. Un client anonymisé a un nom neutre, un e-mail `anonyme-<id>@anonyme.invalid`, un téléphone vide, ni rue, ni code, ni parrain, ni autorisation : l'application FIG ne doit ni le réécrire ni le recréer depuis sa copie (question 19). La section Clients assemble particuliers et communautés en un annuaire (`buildDirectory`, `filterDirectory`, `sortDirectory`) à partir des chiffres agrégés par la base (`getDirectoryStats`).
@@ -87,6 +90,7 @@ Les messages sont **écrits par l'application FIG** : le contrat n'a aucune fonc
 | ------------------------------------- | -------------------------------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
 | `getMessagesPage(filters, page, size?)` | `query?`, `status?`, `subject?`, `from?`, `to?`, `important?`, `customerId?` | `Page<Message>`    | épinglés d'abord puis les plus récents ; `COUNT` et `LIMIT/OFFSET` par la base             |
 | `countMessages(filters)`              | mêmes filtres                                                  | `number`           | le compteur « non traités » de l'en-tête                                                   |
+| `countComplaints(range)`              | `{ from, to }`                                                 | `number`           | métrique « Réclamations » : messages reçus sur la période dont l'objet est dans `CLAIM_SUBJECTS` (produit manquant ou abîmé, problème de livraison, erreur sur la commande, remboursement ou avoir), quel que soit le statut ; même règle que `countComplaints` du domaine |
 | `getMessage(id)`                      | `id`                                                           | `Message \| null`  | une requête : auteur et commande joints, pièces jointes en JSON                            |
 | `getCustomerMessages(customerId)`     | `id` du client                                                 | `Message[]`        | tout, du plus ancien au plus récent ; pour l'export RGPD, jamais paginé                    |
 | `setMessageStatus(id, change)`        | `{ from, to, actor, at }`                                      | `Message \| null`  | `WHERE status = from` ; écrit aussi qui a traité et quand                                  |
@@ -123,7 +127,7 @@ Le script `npm run rgpd:purge` n'est pas dans le contrat : il appelle directemen
 
 ## Usage de l'application (`EngagementSource`)
 
-`getEngagement()` → `EngagementPoint[]` par mois civil (`month "AAAA-MM"`, `downloads`, `signups`, `complaints`, `rating | null`, `ratingCount`). Source réelle à définir avec le client (question 11 : stores, support).
+`getEngagement()` → `EngagementPoint[]` par mois civil (`month "AAAA-MM"`, `downloads`, `signups`, `rating | null`, `ratingCount`). Source réelle à définir avec le client (question 11 : stores). Les réclamations ne viennent plus d'ici : elles se comptent dans les messages (`countComplaints`, colonne supprimée par la migration 0010).
 
 ## Comptes (`UsersSource`)
 

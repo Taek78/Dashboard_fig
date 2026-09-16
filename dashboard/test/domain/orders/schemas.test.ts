@@ -6,6 +6,7 @@ import {
   orderIdSchema,
   parseOrderFilters,
   parsePage,
+  parsePeriodInput,
 } from "@/domain/orders/schemas";
 
 /*
@@ -169,20 +170,28 @@ describe("parseOrderFilters", () => {
     expect(result.driverId).toBeUndefined();
   });
 
-  it("remet dans l'ordre une période saisie à l'envers", () => {
-    expect(
-      parseOrderFilters({ du: "2026-09-08", au: "2026-09-01" }),
-    ).toMatchObject({ from: "2026-09-01", to: "2026-09-08" });
+  it("une période inversée n'est PAS appliquée (l'écran l'annonce), une seule date = ce jour-là", () => {
+    expect(parseOrderFilters({ du: "2026-09-08", au: "2026-09-01" })).toEqual(
+      {},
+    );
+    expect(parseOrderFilters({ du: "2026-09-08" })).toMatchObject({
+      from: "2026-09-08",
+      to: "2026-09-08",
+    });
+    expect(parseOrderFilters({ au: "2026-09-08" })).toMatchObject({
+      from: "2026-09-08",
+      to: "2026-09-08",
+    });
   });
 
-  it("lit encore ?date= (liens existants) comme un seul jour", () => {
+  it("lit encore ?date= (liens existants) comme un seul jour, du/au prioritaires", () => {
     expect(parseOrderFilters({ date: "2026-09-08" })).toMatchObject({
       from: "2026-09-08",
       to: "2026-09-08",
     });
     expect(
       parseOrderFilters({ date: "2026-09-08", du: "2026-09-01" }),
-    ).toMatchObject({ from: "2026-09-01", to: undefined });
+    ).toMatchObject({ from: "2026-09-01", to: "2026-09-01" });
   });
 
   it("ignore une recherche vide ou trop longue", () => {
@@ -218,6 +227,41 @@ describe("parseOrderFilters", () => {
     expect(
       orderFiltersSchema.parse({ statut: "foo", du: "2026-09-08" }),
     ).toMatchObject({ status: undefined, from: "2026-09-08" });
+  });
+});
+
+describe("parsePeriodInput", () => {
+  it("rend la saisie telle quelle, la période effective et l'erreur", () => {
+    expect(parsePeriodInput({})).toEqual({ range: null, error: null });
+    expect(parsePeriodInput({ du: "2026-09-05", au: "2026-09-09" })).toEqual({
+      from: "2026-09-05",
+      to: "2026-09-09",
+      range: { from: "2026-09-05", to: "2026-09-09" },
+      error: null,
+    });
+    expect(parsePeriodInput({ du: "2026-09-09", au: "2026-09-05" })).toEqual({
+      from: "2026-09-09",
+      to: "2026-09-05",
+      range: null,
+      error: "inverted",
+    });
+  });
+
+  it("ignore une date impossible comme un champ vide, lit ?date= seul", () => {
+    expect(parsePeriodInput({ du: "08/09/2026", au: "2026-09-09" })).toEqual({
+      from: undefined,
+      to: "2026-09-09",
+      range: { from: "2026-09-09", to: "2026-09-09" },
+      error: null,
+    });
+    expect(parsePeriodInput({ date: "2026-09-08" }).range).toEqual({
+      from: "2026-09-08",
+      to: "2026-09-08",
+    });
+    expect(parsePeriodInput({ du: ["2026-09-05", "2026-09-06"] })).toEqual({
+      range: null,
+      error: null,
+    });
   });
 });
 

@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Gift, Percent, Sparkles, Star, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Gift,
+  Percent,
+  Sparkles,
+  Star,
+  Users,
+  X,
+} from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
-import { ConsentPills } from "@/components/customers/consent-pills";
 import { CustomerHistoryFilters } from "@/components/customers/customer-history-filters";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
 import { CustomerPrivacyPanel } from "@/components/customers/customer-privacy-panel";
@@ -12,6 +20,7 @@ import { TierBadge } from "@/components/customers/tier-badge";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { OrdersTable } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
+import { PeriodEmptyNotice } from "@/components/period-empty-notice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomer, getCustomerReferrals } from "@/data/customers";
@@ -43,20 +52,28 @@ import {
   formatPeriodFr,
   toTelHref,
 } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /*
- * Fiche client : coordonnées et adresse de livraison (et communauté),
- * chiffres clés, autorisations données dans l'application, parrainage (code,
- * parrain, filleuls : visibles ICI seulement, jamais sur une carte),
- * catégorie et fidélité (compteur cumulé, historique daté des atteintes),
- * historique des commandes (croisement via OrderFilters.customerId), notes
- * internes et formulaire d'ajout.
+ * Fiche client, en lignes pleine largeur pour rester lisible malgré tout ce
+ * qu'elle porte (demande du client : autorisations et parrainage « à
+ * l'horizontale ») :
+ *   1. coordonnées et adresse de livraison (et communauté), chiffres clés,
+ *      notes internes avec formulaire d'ajout ;
+ *   2. « Notifications et autorisations » : les trois autorisations données
+ *      dans l'application, en trois colonnes ;
+ *   3. « Parrainage » : code et parrain à gauche, filleuls à droite (visibles
+ *      ICI seulement, jamais sur une carte) ;
+ *   4. « Fidélité » : catégorie et compteur cumulé à gauche, historique daté
+ *      des atteintes à droite ;
+ *   5. historique des commandes (croisement via OrderFilters.customerId).
  * Chiffres, compteur et catégorie agrégés par la base (getDirectoryStats
  * restreint au client, mêmes règles que l'annuaire, toujours sur TOUTES ses
  * commandes) ; l'historique des atteintes vient d'une requête à part
  * (getCustomerTierEvents) ; les commandes sont lues page par page (?page=, les
  * plus récentes d'abord), jamais en entier, et se restreignent à une période
- * de livraison (?du=&au=, filtrée par la base) que la pagination garde.
+ * de livraison (?du=&au=, filtrée par la base, une date = ce jour-là) que la
+ * pagination garde ; une période sans commande est dite par un bandeau bleu.
  * En bas, l'encart « Données personnelles » (export et anonymisation RGPD,
  * administrateur seul). Un client anonymisé n'affiche plus ni coordonnées, ni
  * autorisations, ni parrainage, ni formulaire de note.
@@ -74,13 +91,16 @@ export default async function ClientPage({
   if (!parsed.success) notFound();
 
   const raw = await searchParams;
-  const period = parseCustomerHistoryPeriod(raw);
+  const { filters: periodFilters, period } = parseCustomerHistoryPeriod(raw);
 
   const [customer, directory, history, user, referrals, tierEvents] =
     await Promise.all([
       getCustomer(parsed.data),
       getDirectoryStats({ customerId: parsed.data }),
-      getOrdersPage({ customerId: parsed.data, ...period }, parsePage(raw)),
+      getOrdersPage(
+        { customerId: parsed.data, ...periodFilters },
+        parsePage(raw),
+      ),
       getCurrentUser(),
       getCustomerReferrals(parsed.data),
       getCustomerTierEvents(parsed.data),
@@ -94,7 +114,8 @@ export default async function ClientPage({
   )[0]!;
   const { stats, loyalty, tier, nextDiscount, communityDiscountPercent } =
     entry;
-  const periodText = formatPeriodFr(period.from, period.to);
+  const range = period.range;
+  const periodText = range ? formatPeriodFr(range.from, range.to) : "";
   const notes = sortNotesNewestFirst(customer.notes);
   const anonymized = customer.anonymizedAt !== null;
   const reached = tierEvents.toReversed();
@@ -115,6 +136,8 @@ export default async function ClientPage({
         <ClientTypeLabel community={customer.community} />
         {anonymized ? null : <TierBadge state={tier} showUntil />}
       </div>
+
+      {/* 1. Coordonnées, chiffres, notes */}
       <div className="grid gap-4 @4xl/main:grid-cols-3">
         <Card>
           <CardHeader>
@@ -206,7 +229,7 @@ export default async function ClientPage({
           </CardContent>
         </Card>
 
-        <Card className="@4xl/main:row-span-2">
+        <Card>
           <CardHeader>
             <CardTitle>
               <h2>Notes internes</h2>
@@ -237,175 +260,206 @@ export default async function ClientPage({
             {anonymized ? null : <CustomerNoteForm customerId={customer.id} />}
           </CardContent>
         </Card>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <h2>Notifications et autorisations</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            {anonymized ? (
-              <p className="text-muted-foreground">
-                Autorisations retirées lors de l&apos;anonymisation.
-              </p>
-            ) : (
-              <>
-                <ConsentPills consents={customer.consents} />
-                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
-                  {CONSENT_KEYS.map((key) => (
-                    <div key={key} className="contents">
-                      <dt className="font-medium">
-                        {CONSENT_LABELS[key]}
-                        <span className="sr-only"> :</span>
-                      </dt>
-                      <dd className="text-muted-foreground">
-                        {customer.consents[key] ? "Autorisé" : "Refusé"} ·{" "}
-                        {CONSENT_DESCRIPTIONS[key]}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="text-muted-foreground text-xs">
-                  Choix faits dans l&apos;application FIG
-                  {customer.consents.updatedAt
-                    ? `, le ${formatDateTimeFr(customer.consents.updatedAt)}`
-                    : ""}
-                  . Le dashboard les lit, il ne les modifie pas.
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gift className="text-primary size-5" aria-hidden="true" />
-              <h2>Parrainage</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 text-sm">
-            {anonymized ? (
-              <p className="text-muted-foreground">
-                Code de parrainage effacé lors de l&apos;anonymisation.
-              </p>
-            ) : (
-              <>
-                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
-                  <dt className="text-muted-foreground">Code</dt>
-                  <dd>
-                    {customer.referralCode ? (
-                      <code className="bg-muted rounded-md px-2 py-0.5 font-mono text-sm font-semibold">
-                        {customer.referralCode}
-                      </code>
-                    ) : (
-                      "—"
-                    )}
-                  </dd>
-                  <dt className="text-muted-foreground">Parrainé par</dt>
-                  <dd className="font-medium">
-                    {customer.referredBy ? (
-                      <Link
-                        href={`/clients/${customer.referredBy.id}`}
-                        className="underline-offset-4 hover:underline"
+      {/* 2. Autorisations, à l'horizontale */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2>Notifications et autorisations</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          {anonymized ? (
+            <p className="text-muted-foreground">
+              Autorisations retirées lors de l&apos;anonymisation.
+            </p>
+          ) : (
+            <>
+              <ul
+                aria-label="Autorisations données par le client"
+                className="grid gap-3 @2xl/main:grid-cols-3"
+              >
+                {CONSENT_KEYS.map((key) => {
+                  const granted = customer.consents[key];
+                  const Mark = granted ? Check : X;
+                  return (
+                    <li
+                      key={key}
+                      className={cn(
+                        "flex flex-col gap-1 rounded-xl border p-3",
+                        granted
+                          ? "border-success/40 bg-success/5"
+                          : "border-border bg-muted/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex items-center gap-1.5 font-semibold",
+                          granted ? "text-success" : "text-muted-foreground",
+                        )}
                       >
-                        {customer.referredBy.fullName}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground font-normal">
-                        Inscription sans code
+                        <Mark className="size-4 shrink-0" aria-hidden="true" />
+                        {CONSENT_LABELS[key]}
+                        <span className="sr-only">
+                          {granted ? " : autorisé" : " : refusé"}
+                        </span>
                       </span>
-                    )}
-                  </dd>
-                </dl>
-                <section
-                  aria-labelledby="filleuls"
-                  className="flex flex-col gap-2 border-t pt-3"
-                >
-                  <h3 id="filleuls" className="font-semibold">
-                    {referrals.length} filleul{plural(referrals.length)}
-                  </h3>
-                  {referrals.length === 0 ? (
-                    <p className="text-muted-foreground">
-                      Personne n&apos;a encore saisi son code.
-                    </p>
-                  ) : (
-                    <ol className="flex flex-col gap-1.5">
-                      {referrals.map((referral) => (
-                        <li
-                          key={referral.id}
-                          className="flex flex-wrap items-baseline justify-between gap-x-3"
-                        >
-                          <Link
-                            href={`/clients/${referral.id}`}
-                            className="font-medium underline-offset-4 hover:underline"
-                          >
-                            {referral.fullName}
-                          </Link>
-                          <span className="text-muted-foreground text-xs">
-                            inscrit le {formatDateFr(referral.createdAt)}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </section>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="@4xl/main:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="text-loyal size-5" aria-hidden="true" />
-              <h2>Fidélité</h2>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <TierBadge state={tier} showUntil />
-              <span className="text-muted-foreground">
-                {tier.tier === "loyal"
-                  ? `Fidèle depuis le ${formatDateFr(tier.since!)}, pour ${LOYAL_TIER_MONTHS} mois.`
-                  : `Devient fidèle pour ${LOYAL_TIER_MONTHS} mois à la huitième commande cumulée.`}
-              </span>
-            </div>
-            <LoyaltyGauge status={loyalty} />
-            {customer.community ? (
-              <p className="flex flex-wrap items-center gap-1.5 text-sm">
-                {nextDiscount?.kind === "loyalty" ? (
-                  <>
-                    <Sparkles
-                      className="text-success size-4"
-                      aria-hidden="true"
-                    />
-                    Sa remise fidélité −{nextDiscount.percent} % remplace la
-                    remise de sa communauté
-                    {communityDiscountPercent
-                      ? ` (−${communityDiscountPercent} %)`
-                      : ""}{" "}
-                    sur la prochaine commande.
-                  </>
-                ) : (
-                  <>
-                    <Percent
-                      className="text-muted-foreground size-4"
-                      aria-hidden="true"
-                    />
-                    <span className="text-muted-foreground">
-                      {communityDiscountPercent
-                        ? `Remise de sa communauté −${communityDiscountPercent} % sur chaque commande ; la fidélité, plus forte, la remplacera quand elle sera prête.`
-                        : "Sa communauté n'a pas encore de remise ; la fidélité s'appliquera quand elle sera prête."}
-                    </span>
-                  </>
-                )}
+                      <span className="text-muted-foreground text-xs">
+                        <span aria-hidden="true">
+                          {granted ? "Autorisé" : "Refusé"} ·{" "}
+                        </span>
+                        {CONSENT_DESCRIPTIONS[key]}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-muted-foreground text-xs">
+                Choix faits dans l&apos;application FIG
+                {customer.consents.updatedAt
+                  ? `, le ${formatDateTimeFr(customer.consents.updatedAt)}`
+                  : ""}
+                . Le dashboard les lit, il ne les modifie pas.
               </p>
-            ) : null}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 3. Parrainage, à l'horizontale : code et parrain, puis les filleuls */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gift className="text-primary size-5" aria-hidden="true" />
+            <h2>Parrainage</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {anonymized ? (
+            <p className="text-muted-foreground">
+              Code de parrainage effacé lors de l&apos;anonymisation.
+            </p>
+          ) : (
+            <div className="grid gap-4 @2xl/main:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+              <dl className="grid grid-cols-[auto_1fr] content-start gap-x-4 gap-y-2">
+                <dt className="text-muted-foreground">Code</dt>
+                <dd>
+                  {customer.referralCode ? (
+                    <code className="bg-muted rounded-md px-2 py-0.5 font-mono text-sm font-semibold">
+                      {customer.referralCode}
+                    </code>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+                <dt className="text-muted-foreground">Parrainé par</dt>
+                <dd className="font-medium">
+                  {customer.referredBy ? (
+                    <Link
+                      href={`/clients/${customer.referredBy.id}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {customer.referredBy.fullName}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground font-normal">
+                      Inscription sans code
+                    </span>
+                  )}
+                </dd>
+              </dl>
+              <section
+                aria-labelledby="filleuls"
+                className="flex flex-col gap-2 border-t pt-3 @2xl/main:border-t-0 @2xl/main:border-l @2xl/main:pt-0 @2xl/main:pl-4"
+              >
+                <h3 id="filleuls" className="font-semibold">
+                  {referrals.length} filleul{plural(referrals.length)}
+                </h3>
+                {referrals.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    Personne n&apos;a encore saisi son code.
+                  </p>
+                ) : (
+                  <ol className="grid gap-x-6 gap-y-1.5 @4xl/main:grid-cols-2">
+                    {referrals.map((referral) => (
+                      <li
+                        key={referral.id}
+                        className="flex flex-wrap items-baseline justify-between gap-x-3"
+                      >
+                        <Link
+                          href={`/clients/${referral.id}`}
+                          className="font-medium underline-offset-4 hover:underline"
+                        >
+                          {referral.fullName}
+                        </Link>
+                        <span className="text-muted-foreground text-xs">
+                          inscrit le {formatDateFr(referral.createdAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 4. Fidélité : compteur à gauche, historique à droite */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Star className="text-loyal size-5" aria-hidden="true" />
+            <h2>Fidélité</h2>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 @2xl/main:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <TierBadge state={tier} showUntil />
+                <span className="text-muted-foreground">
+                  {tier.tier === "loyal"
+                    ? `Fidèle depuis le ${formatDateFr(tier.since!)}, pour ${LOYAL_TIER_MONTHS} mois.`
+                    : `Devient fidèle pour ${LOYAL_TIER_MONTHS} mois à la huitième commande cumulée.`}
+                </span>
+              </div>
+              <LoyaltyGauge status={loyalty} />
+              {customer.community ? (
+                <p className="flex flex-wrap items-center gap-1.5 text-sm">
+                  {nextDiscount?.kind === "loyalty" ? (
+                    <>
+                      <Sparkles
+                        className="text-success size-4"
+                        aria-hidden="true"
+                      />
+                      Sa remise fidélité −{nextDiscount.percent} % remplace la
+                      remise de sa communauté
+                      {communityDiscountPercent
+                        ? ` (−${communityDiscountPercent} %)`
+                        : ""}{" "}
+                      sur la prochaine commande.
+                    </>
+                  ) : (
+                    <>
+                      <Percent
+                        className="text-muted-foreground size-4"
+                        aria-hidden="true"
+                      />
+                      <span className="text-muted-foreground">
+                        {communityDiscountPercent
+                          ? `Remise de sa communauté −${communityDiscountPercent} % sur chaque commande ; la fidélité, plus forte, la remplacera quand elle sera prête.`
+                          : "Sa communauté n'a pas encore de remise ; la fidélité s'appliquera quand elle sera prête."}
+                      </span>
+                    </>
+                  )}
+                </p>
+              ) : null}
+            </div>
             <section
               aria-labelledby="historique-statuts"
-              className="border-t pt-3"
+              className="border-t pt-3 @2xl/main:border-t-0 @2xl/main:border-l @2xl/main:pt-0 @2xl/main:pl-4"
             >
               <h3
                 id="historique-statuts"
@@ -445,53 +499,52 @@ export default async function ClientPage({
                 </ol>
               )}
             </section>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <div
-          id="historique"
-          className="flex scroll-mt-20 flex-col gap-2 @4xl/main:col-span-3"
-        >
-          <h2 className="text-lg font-semibold tracking-tight">
-            Historique des commandes
-          </h2>
-          {stats.orderCount > 0 || periodText !== "" ? (
-            <>
-              <CustomerHistoryFilters
-                customerId={customer.id}
-                period={period}
-              />
-              <p role="status" className="text-muted-foreground text-sm">
-                {periodText === ""
-                  ? `${history.total} commande${plural(history.total)}, les plus récentes d'abord`
-                  : `${history.total} commande${plural(history.total)} sur ${stats.orderCount}, livraison ${periodText}`}
-                {history.pageCount > 1
-                  ? ` · page ${history.page} sur ${history.pageCount}`
-                  : ""}
-              </p>
-              {history.total > 0 ? (
-                <>
-                  <OrdersTable orders={history.items} />
-                  <OrdersPagination
-                    page={history}
-                    baseParams={orderFiltersQuery(period)}
-                    path={`/clients/${customer.id}`}
-                    hash="historique"
-                  />
-                </>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  Aucune commande livrée sur cette période : élargissez-la ou
-                  affichez toutes les dates.
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              Aucune commande pour ce client.
+      {/* 5. Historique des commandes */}
+      <div id="historique" className="flex scroll-mt-20 flex-col gap-2">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Historique des commandes
+        </h2>
+        {stats.orderCount > 0 || period.from !== undefined ? (
+          <>
+            <CustomerHistoryFilters customerId={customer.id} period={period} />
+            <p role="status" className="text-muted-foreground text-sm">
+              {range
+                ? `${history.total} commande${plural(history.total)} sur ${stats.orderCount}, livraison ${periodText}`
+                : `${history.total} commande${plural(history.total)}, les plus récentes d'abord`}
+              {history.pageCount > 1
+                ? ` · page ${history.page} sur ${history.pageCount}`
+                : ""}
             </p>
-          )}
-        </div>
+            {history.total > 0 ? (
+              <>
+                <OrdersTable orders={history.items} />
+                <OrdersPagination
+                  page={history}
+                  baseParams={orderFiltersQuery(periodFilters)}
+                  path={`/clients/${customer.id}`}
+                  hash="historique"
+                />
+              </>
+            ) : range ? (
+              <PeriodEmptyNotice
+                text={`Aucune commande livrée ${periodText} pour ce client.`}
+                resetHref={`/clients/${customer.id}#historique`}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                Aucune commande pour ce client.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Aucune commande pour ce client.
+          </p>
+        )}
       </div>
 
       <CustomerPrivacyPanel

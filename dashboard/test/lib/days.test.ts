@@ -1,5 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { addDays, addMonths, daysBetween } from "@/lib/days";
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  hasDateRange,
+  readDateRange,
+} from "@/lib/days";
+
+describe("readDateRange (règle commune des recherches par dates)", () => {
+  it("sans date : aucune période, aucune erreur", () => {
+    expect(readDateRange()).toEqual({ range: null, error: null });
+    expect(hasDateRange(readDateRange())).toBe(false);
+  });
+
+  it("une seule date, du ou au : ce jour-là seulement, sans erreur", () => {
+    expect(readDateRange("2026-09-07")).toEqual({
+      from: "2026-09-07",
+      to: undefined,
+      range: { from: "2026-09-07", to: "2026-09-07" },
+      error: null,
+    });
+    expect(readDateRange(undefined, "2026-09-07")).toEqual({
+      from: undefined,
+      to: "2026-09-07",
+      range: { from: "2026-09-07", to: "2026-09-07" },
+      error: null,
+    });
+  });
+
+  it("deux dates ordonnées, le même jour compris : la période", () => {
+    expect(readDateRange("2026-09-05", "2026-09-09").range).toEqual({
+      from: "2026-09-05",
+      to: "2026-09-09",
+    });
+    expect(readDateRange("2026-09-05", "2026-09-05")).toEqual({
+      from: "2026-09-05",
+      to: "2026-09-05",
+      range: { from: "2026-09-05", to: "2026-09-05" },
+      error: null,
+    });
+  });
+
+  it("deux dates inversées : erreur, aucune période, la saisie gardée telle quelle", () => {
+    expect(readDateRange("2026-09-09", "2026-09-05")).toEqual({
+      from: "2026-09-09",
+      to: "2026-09-05",
+      range: null,
+      error: "inverted",
+    });
+    expect(hasDateRange(readDateRange("2026-09-09", "2026-09-05"))).toBe(false);
+  });
+});
 
 describe("addMonths", () => {
   it("décale de mois civils en UTC, jour ramené au dernier du mois comme PostgreSQL", () => {

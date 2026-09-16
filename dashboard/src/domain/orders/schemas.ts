@@ -10,6 +10,7 @@ import {
   UNASSIGNED_FILTER,
   type OrderFilters,
 } from "@/domain/orders/types";
+import { readDateRange, type DateRangeInput } from "@/lib/days";
 
 /*
  * Schémas zod des ENTRÉES des commandes : ce qui arrive du navigateur (FormData,
@@ -64,13 +65,38 @@ export const changeStatusSchema = z
   }));
 
 /*
- * Recherche et filtres des listes de commandes et de livraisons. Clés d'URL en
- * français (?q=…&statut=…&du=…&au=…&preparateur=…&livreur=…), clés de code en
- * anglais : transform. z.object ignore les clés inconnues (simuler, page…) ; un
- * paramètre répété arrive en tableau, échoue et tombe dans catch.
+ * Période « du / au » d'une recherche (?du=&au=, et ?date= ancienne clé d'un
+ * seul jour, encore lue pour les liens existants). Une date impossible est
+ * ignorée comme si le champ était vide ; la règle readDateRange décide ensuite
+ * (une seule date = ce jour-là, dates inversées = erreur sans période).
+ * Partagée avec les messages et la plage libre des métriques : une seule règle
+ * pour toutes les recherches par dates.
+ */
+const periodParamsSchema = z.object({
+  du: z.iso.date().optional().catch(undefined),
+  au: z.iso.date().optional().catch(undefined),
+  date: z.iso.date().optional().catch(undefined),
+});
+
+/** Ce que l'écran affiche (champs, erreur) et ce que le filtre applique (range). */
+export function parsePeriodInput(
+  raw: Record<string, string | string[] | undefined>,
+): DateRangeInput {
+  const { du, au, date } = periodParamsSchema.parse(raw);
+  if (du === undefined && au === undefined && date !== undefined) {
+    return readDateRange(date, date);
+  }
+  return readDateRange(du, au);
+}
+
+/*
+ * Recherche et filtres de la liste des commandes. Clés d'URL en français
+ * (?q=…&statut=…&du=…&au=…&preparateur=…&livreur=…), clés de code en anglais :
+ * transform. z.object ignore les clés inconnues (simuler, page…) ; un paramètre
+ * répété arrive en tableau, échoue et tombe dans catch.
  * - q : trimée ; vide = pas de recherche, trop longue = ignorée ;
- * - du / au : jours de livraison, remis dans l'ordre s'ils sont inversés ;
- * - date : ancienne clé d'un seul jour, encore lue pour les liens existants ;
+ * - du / au : jours de livraison (parsePeriodInput) ; `from` et `to` ne sont
+ *   posés que quand la période est effective, jamais inversés ;
  * - preparateur / livreur : l'id d'une personne, ou « aucun »
  *   (UNASSIGNED_FILTER) pour les commandes sans personne affectée.
  */
@@ -101,21 +127,19 @@ export const orderFiltersSchema = z
   })
   .transform(
     ({ q, statut, du, au, date, preparateur, livreur }): OrderFilters => {
-      const from = du ?? (au === undefined ? date : undefined);
-      const to = au ?? (du === undefined ? date : undefined);
-      const inverted = from !== undefined && to !== undefined && from > to;
+      const period = parsePeriodInput({ du, au, date });
       return {
         query: q,
         status: statut,
-        from: inverted ? to : from,
-        to: inverted ? from : to,
+        from: period.range?.from,
+        to: period.range?.to,
         preparerId: preparateur,
         driverId: livreur,
       };
     },
   );
 
-/** Seule porte d'entrée des pages Commandes et Livraisons : searchParams déjà await → OrderFilters.
+/** Seule porte d'entrée de la page Commandes : searchParams déjà await → OrderFilters.
  *  parse et non safeParse : avec un catch sur chaque champ, ce schéma ne peut
  *  pas échouer sur un objet, il n'y a aucun cas d'erreur à traiter. */
 export function parseOrderFilters(

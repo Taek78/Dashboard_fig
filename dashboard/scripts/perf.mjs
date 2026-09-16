@@ -16,7 +16,7 @@ if (!email || !password) {
 const PAGES = [
   "/",
   "/commandes",
-  "/livraisons?date=2026-09-07",
+  "/commandes?du=2026-09-07&au=2026-09-07",
   "/catalogue",
   "/articles",
   "/clients?tous=1",

@@ -11,6 +11,7 @@ import type { MessagesSource } from "@/domain/messages/source";
 export const {
   getMessagesPage,
   countMessages,
+  countComplaints,
   getMessage,
   getCustomerMessages,
   setMessageStatus,

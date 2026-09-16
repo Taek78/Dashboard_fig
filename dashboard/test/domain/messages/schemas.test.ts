@@ -56,10 +56,16 @@ describe("parseMessageFilters (lecture tolérante)", () => {
     ).toBeUndefined();
   });
 
-  it("remet les bornes de période dans l'ordre si elles sont inversées", () => {
-    const filters = parseMessageFilters({ du: "2026-09-08", au: "2026-09-01" });
-    expect(filters.from).toBe("2026-09-01");
-    expect(filters.to).toBe("2026-09-08");
+  it("n'applique pas une période inversée ; une seule date = ce jour-là (règle commune)", () => {
+    const inverted = parseMessageFilters({
+      du: "2026-09-08",
+      au: "2026-09-01",
+    });
+    expect(inverted.from).toBeUndefined();
+    expect(inverted.to).toBeUndefined();
+    const single = parseMessageFilters({ au: "2026-09-08" });
+    expect(single.from).toBe("2026-09-08");
+    expect(single.to).toBe("2026-09-08");
   });
 
   it("seule la valeur « oui » active le filtre des importants", () => {

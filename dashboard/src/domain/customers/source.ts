@@ -1,9 +1,11 @@
+import type { SignupStats } from "@/domain/customers/referral";
 import type {
   Customer,
   CustomerFilters,
   CustomerNote,
   CustomerReferral,
 } from "@/domain/customers/types";
+import type { DateRange } from "@/lib/days";
 
 /*
  * CONTRAT des clients, implémenté par PostgreSQL (src/data/customers.db.ts).
@@ -11,12 +13,14 @@ import type {
  * de l'action (horloge du serveur), jamais du formulaire.
  * getCustomerReferrals : les filleuls d'un client (ceux qui ont saisi son code),
  * du plus ancien au plus récent ; lus par la fiche seulement, jamais par une
- * carte.
+ * carte. getSignupStats : inscrits et parrainés d'une période, agrégés par la
+ * base (métriques), même règle que signupStats du domaine.
  */
 export type CustomersSource = {
   getCustomers(filters?: CustomerFilters): Promise<Customer[]>;
   getCustomer(id: string): Promise<Customer | null>;
   getCustomerReferrals(customerId: string): Promise<CustomerReferral[]>;
+  getSignupStats(range: DateRange): Promise<SignupStats>;
   addNote(
     customerId: string,
     note: Omit<CustomerNote, "id">,

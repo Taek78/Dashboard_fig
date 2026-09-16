@@ -3,7 +3,12 @@ import type { ReactNode } from "react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
-import { mobileCardFrame, tableFrame } from "@/components/orders/orders-table";
+import {
+  CustomerNameLink,
+  mobileCardFrame,
+  tableFrame,
+} from "@/components/orders/orders-table";
+import { PeriodEmptyNotice } from "@/components/period-empty-notice";
 import {
   Table,
   TableBody,
@@ -16,7 +21,13 @@ import {
 import type { Page } from "@/domain/orders/rules";
 import type { Order } from "@/domain/orders/types";
 import type { StaffWorkSummary } from "@/domain/staff/rules";
-import { formatDateFr, formatEuros, formatSlot } from "@/lib/format";
+import type { DateRange } from "@/lib/days";
+import {
+  formatDateFr,
+  formatEuros,
+  formatPeriodFr,
+  formatSlot,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
@@ -25,7 +36,9 @@ import { cn } from "@/lib/utils";
  * UNE page des commandes qui correspondent, les plus récentes d'abord, et la
  * pagination (ancre #historique : la liste est sous le formulaire de la fiche).
  * Sous 768 px une pile de cartes, au-dessus le tableau. Le rôle tenu
- * (préparation, livraison, les deux) et le type de client sont explicités.
+ * (préparation, livraison, les deux) et le type de client sont explicités ;
+ * le nom du client mène à sa fiche. Une période sans commande est dite par
+ * un bandeau bleu (PeriodEmptyNotice), pas par une liste vide.
  */
 const plural = (n: number) => (n > 1 ? "s" : "");
 
@@ -45,6 +58,7 @@ export function StaffHistory({
   totalCount,
   summary,
   filtered,
+  range = null,
   baseParams,
   filters,
 }: {
@@ -56,6 +70,8 @@ export function StaffHistory({
   summary: StaffWorkSummary;
   /** Une recherche est active. */
   filtered: boolean;
+  /** Période de livraison appliquée par la recherche, s'il y en a une. */
+  range?: DateRange | null;
   /** Recherche en cours en paramètres d'URL, gardée par la pagination. */
   baseParams: string;
   /** Formulaire de recherche, rendu sous les compteurs. */
@@ -104,7 +120,12 @@ export function StaffHistory({
               </span>
             ) : null}
           </p>
-          {orders.length === 0 ? (
+          {orders.length === 0 && range ? (
+            <PeriodEmptyNotice
+              text={`Aucune commande livrée ${formatPeriodFr(range.from, range.to)} pour cette personne.`}
+              resetHref={`/personnel/${staffId}#historique`}
+            />
+          ) : orders.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               Aucune commande ne correspond : modifiez ou réinitialisez la
               recherche.
@@ -123,7 +144,7 @@ export function StaffHistory({
                           {order.reference}
                         </Link>
                         <p className="truncate font-medium">
-                          {order.customer.fullName}
+                          <CustomerNameLink customer={order.customer} />
                         </p>
                       </div>
                       <OrderStatusBadge status={order.status} />
@@ -169,7 +190,7 @@ export function StaffHistory({
                           </Link>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {order.customer.fullName}
+                          <CustomerNameLink customer={order.customer} />
                         </TableCell>
                         <TableCell>
                           <ClientTypeLabel

@@ -6,8 +6,10 @@ import {
   assignmentOptions,
   canBeAssigned,
   filterStaff,
+  isPresent,
   KIND_FOR_ROLE,
   sortStaff,
+  unavailableRoles,
   staffFilterOptions,
   staffFullName,
   staffOrders,
@@ -152,6 +154,45 @@ describe("assignableStaff / canBeAssigned / assignmentOptions", () => {
       "Julien Carpentier",
     );
     expect(options.preparer[0]).toMatchObject({ availability: "disponible" });
+  });
+});
+
+describe("isPresent / unavailableRoles (alerte du tableau de bord)", () => {
+  const withAvailability = (
+    kind: StaffMember["kind"],
+    availability: StaffMember["availability"],
+  ) => staffFixtures.map((m) => (m.kind === kind ? { ...m, availability } : m));
+
+  it("présent = dans l'équipe et disponible, quelle que soit la raison sinon", () => {
+    expect(isPresent(byId("stf-0001"))).toBe(true);
+    expect(isPresent(byId("stf-0003"))).toBe(false); // en congé
+    expect(isPresent(byId("stf-0007"))).toBe(false); // indisponible
+    expect(isPresent({ ...byId("stf-0001"), active: false })).toBe(false);
+  });
+
+  it("aucun rôle manquant avec l'équipe de démonstration", () => {
+    expect(unavailableRoles(staffFixtures)).toEqual([]);
+  });
+
+  it("signale le rôle dont plus personne n'est présent, ou les deux, ou tout sans équipe", () => {
+    expect(
+      unavailableRoles(withAvailability("preparateur", "indisponible")),
+    ).toEqual(["preparer"]);
+    expect(unavailableRoles(withAvailability("livreur", "conge"))).toEqual([
+      "driver",
+    ]);
+    expect(
+      unavailableRoles(
+        withAvailability("livreur", "conge").map((m) =>
+          m.kind === "preparateur" ? { ...m, active: false } : m,
+        ),
+      ),
+    ).toEqual(["preparer", "driver"]);
+    expect(unavailableRoles([])).toEqual(["preparer", "driver"]);
+    // Un gestionnaire disponible ne remplace ni préparateur ni livreur.
+    expect(
+      unavailableRoles(staffFixtures.filter((m) => m.kind === "gestionnaire")),
+    ).toEqual(["preparer", "driver"]);
   });
 });
 

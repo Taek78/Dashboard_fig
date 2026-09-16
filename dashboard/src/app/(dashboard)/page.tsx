@@ -6,7 +6,9 @@ import { PeriodForm } from "@/components/metrics/period-form";
 import { TaxModeSwitch } from "@/components/metrics/tax-mode-switch";
 import { OrdersCards } from "@/components/orders/orders-cards";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { PeriodEmptyNotice } from "@/components/period-empty-notice";
+import { StaffShortageAlert } from "@/components/staff/staff-shortage-alert";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { countOrders, getOrderStats, getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
@@ -23,18 +25,27 @@ import {
   TAX_MODE_LABELS,
 } from "@/domain/metrics/rules";
 import { parsePeriodQuery } from "@/domain/metrics/schemas";
-import { assignmentOptions } from "@/domain/staff/rules";
-import { formatDateFr, formatEuros } from "@/lib/format";
+import { assignmentOptions, unavailableRoles } from "@/domain/staff/rules";
+import {
+  endSentence,
+  formatDateFr,
+  formatEuros,
+  formatPeriodFr,
+} from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /*
- * Tableau de bord, route « / » : l'activité
- * de la période choisie (défaut : aujourd'hui, mêmes périodes prédéfinies et
- * plage libre que les métriques) et ce qui attend une action, toutes dates.
+ * Tableau de bord, route « / » : EN PRIORITÉ l'alerte si aucun préparateur ou
+ * aucun livreur n'est présent (rien ne peut être préparé ou livré), puis
+ * l'activité de la période choisie (défaut : aujourd'hui, mêmes périodes
+ * prédéfinies et plage libre que les métriques) et ce qui attend une action,
+ * toutes dates.
  * Les chiffres de la période sont agrégés par la base (getOrderStats : une
  * requête, quelques nombres) puis mis en forme par les règles pures ; montants
  * HT par défaut, TTC par l'interrupteur (même URL ?tva= que les métriques).
  * Sous les KPI, la barre d'avancement des commandes de la période
- * (TourProgress, la même que la tournée : segments par statut, légende chiffrée).
+ * (TourProgress : segments par statut, légende chiffrée) ; une plage libre
+ * sans commande est dite par un bandeau bleu.
  * En bas, les commandes en préparation toutes dates : le nombre (compté par la
  * base) et les PREPARING_SHOWN créneaux les plus proches, jamais la liste
  * entière (elle grandit avec l'activité) ; le lien mène à la liste complète.
@@ -74,12 +85,14 @@ export default async function TableauDeBordPage({
         description={`${title} · montants ${taxLabel}.`}
       />
 
+      <StaffShortageAlert roles={unavailableRoles(staff)} />
+
       <Card>
         <CardContent className="flex flex-col gap-4">
           <PeriodForm
             action="/"
             period={query.period}
-            customRange={query.customRange}
+            custom={query.custom}
             range={range}
             hiddenFields={{ tva: query.tax }}
           />
@@ -125,6 +138,14 @@ export default async function TableauDeBordPage({
               progress={tourProgressFromCounts(stats.statusCounts)}
               label="Avancement des commandes de la période"
             />
+          ) : query.customRange ? (
+            <PeriodEmptyNotice
+              text={endSentence(
+                `Aucune commande livrée ${formatPeriodFr(range.from, range.to)}`,
+              )}
+              resetHref={`/?tva=${query.tax}`}
+              resetLabel="Revenir à aujourd'hui"
+            />
           ) : (
             <p className="text-muted-foreground text-sm">
               Aucune commande sur la période.
@@ -133,32 +154,29 @@ export default async function TableauDeBordPage({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
-        <Button
-          variant="outline"
-          className="justify-between @xl/main:justify-center"
-          render={<Link href="/commandes?statut=preparing" />}
-        >
-          Commandes en préparation
-          <ArrowRight />
-        </Button>
-        <Button
-          variant="outline"
-          className="justify-between @xl/main:justify-center"
-          render={<Link href="/livraisons" />}
-        >
-          Tournée du jour
-          <ArrowRight />
-        </Button>
-        <Button
-          variant="outline"
-          className="justify-between @xl/main:justify-center"
-          render={<Link href="/metriques" />}
-        >
-          Métriques
-          <ArrowRight />
-        </Button>
-      </div>
+      {/* De vrais liens habillés en bouton : ils NAVIGUENT, un <Button render> serait annoncé « bouton ». */}
+      <nav
+        aria-label="Raccourcis"
+        className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap"
+      >
+        {[
+          ["/commandes?statut=preparing", "Commandes en préparation"],
+          [`/commandes?du=${today}&au=${today}`, "Livraisons du jour"],
+          ["/metriques", "Métriques"],
+        ].map(([href, label]) => (
+          <Link
+            key={href}
+            href={href!}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "justify-between @xl/main:justify-center",
+            )}
+          >
+            {label}
+            <ArrowRight />
+          </Link>
+        ))}
+      </nav>
 
       <div className="flex flex-col gap-2">
         <h2 className="text-lg font-semibold tracking-tight">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  endSentence,
   formatDateFr,
   formatDateTimeFr,
   formatDayLongFr,
@@ -10,6 +11,22 @@ import {
   formatSlot,
   toTelHref,
 } from "@/lib/format";
+
+describe("endSentence", () => {
+  it("ajoute un point, sauf après une abréviation qui en porte déjà un", () => {
+    expect(endSentence("Aucune commande livrée du 2 au 3 mars")).toBe(
+      "Aucune commande livrée du 2 au 3 mars.",
+    );
+    expect(endSentence("livrée le lun. 7 sept.")).toBe(
+      "livrée le lun. 7 sept.",
+    );
+    expect(
+      endSentence(
+        `Aucune commande livrée ${formatPeriodFr("2026-09-05", "2026-09-09")}`,
+      ),
+    ).not.toMatch(/\.\.$/);
+  });
+});
 
 describe("formatPeriodFr", () => {
   it("deux bornes, un seul jour, une borne ou aucune", () => {

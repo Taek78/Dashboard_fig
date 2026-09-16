@@ -21,6 +21,8 @@
  * --decor-art-opacity : opacité du motif de fond (public/fond/verger.svg).
  * --individual / --community : type de client (particulier, communauté).
  * --loyal : catégorie « fidèle » d'un client (or) ; « basique » reste neutre.
+ * --attachment : pièce jointe d'un message (violet), pour qu'elle ne se rate
+ *   pas ; teinte réservée, distincte des quatre signaux de la boîte de réception.
  */
 @custom-variant dark (&:where(
   [data-theme="dark"],
@@ -58,6 +60,7 @@
   --color-individual: var(--individual);
   --color-community: var(--community);
   --color-loyal: var(--loyal);
+  --color-attachment: var(--attachment);
   --color-brand-from: var(--brand-from);
   --color-brand-to: var(--brand-to);
   --color-fruit: var(--fruit);
@@ -174,6 +177,7 @@
   --community: oklch(0.56 0.18 355);
   /* Catégorie fidèle : or chaud, lisible en texte sur fond clair. */
   --loyal: oklch(0.6 0.13 85);
+  --attachment: oklch(0.52 0.18 300);
   --halo-1: color-mix(in oklch, var(--primary) 12%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 10%, transparent);
   --halo-3: color-mix(in oklch, var(--individual) 7%, transparent);
@@ -227,6 +231,7 @@
   --individual: oklch(0.78 0.1 210);
   --community: oklch(0.76 0.15 355);
   --loyal: oklch(0.85 0.13 90);
+  --attachment: oklch(0.8 0.14 300);
   --halo-1: color-mix(in oklch, var(--primary) 16%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 12%, transparent);
   --halo-3: color-mix(in oklch, var(--individual) 8%, transparent);
@@ -286,6 +291,7 @@
   --individual: oklch(0.8 0.08 205);
   --community: oklch(0.82 0.1 50);
   --loyal: oklch(0.87 0.11 88);
+  --attachment: oklch(0.82 0.12 305);
   --halo-1: color-mix(in oklch, var(--brand-from) 20%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 15%, transparent);
   --halo-3: color-mix(in oklch, var(--individual) 10%, transparent);

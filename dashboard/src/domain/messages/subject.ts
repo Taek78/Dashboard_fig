@@ -31,19 +31,22 @@ export const MESSAGE_SUBJECT_LABELS: Record<MessageSubject, string> = {
 };
 
 /**
- * Objets qui portent un préjudice à réparer : ils passent devant dans la
- * lecture d'un coup d'œil (code couleur de la carte). « Question sur un
- * produit » et « Autre » sont des demandes d'information, pas des réclamations.
- * Le classement est une règle d'INTERFACE, mais il vit ici : c'est du métier
- * (ce que le client considère comme une réclamation), pas une couleur.
+ * Les RÉCLAMATIONS : objets qui portent un préjudice à réparer (décision du
+ * client, 2026-09-16 : produit manquant ou abîmé, problème de livraison,
+ * erreur sur la commande, remboursement ou avoir). Elles passent devant dans
+ * la lecture d'un coup d'œil (code couleur de la carte) et sont comptées par
+ * la métrique « Réclamations ». « Question sur un produit » et « Autre » sont
+ * des demandes d'information. Le classement vit ici et non dans l'interface :
+ * c'est du métier (ce que le client considère comme une réclamation), pas une
+ * couleur.
  */
-const CLAIM_SUBJECTS: readonly MessageSubject[] = [
+export const CLAIM_SUBJECTS = [
   "missing_or_damaged",
   "delivery_issue",
   "order_error",
   "refund",
-];
+] as const satisfies readonly MessageSubject[];
 
 export function isClaimSubject(subject: MessageSubject): boolean {
-  return CLAIM_SUBJECTS.includes(subject);
+  return (CLAIM_SUBJECTS as readonly MessageSubject[]).includes(subject);
 }

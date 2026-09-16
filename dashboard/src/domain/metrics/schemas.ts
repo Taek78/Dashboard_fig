@@ -10,12 +10,16 @@ import {
   type MetricPeriod,
   type TaxMode,
 } from "@/domain/metrics/rules";
+import { parsePeriodInput } from "@/domain/orders/schemas";
+import type { DateRangeInput } from "@/lib/days";
 
 /*
  * Entrées de la page Métriques (lecture tolérante) :
  *   ?periode=ce-mois          période prédéfinie (défaut : ce mois-ci)
- *   ?du=AAAA-MM-JJ&au=…       plage libre, prioritaire si les deux bornes sont
- *                             valides et ordonnées
+ *   ?du=AAAA-MM-JJ&au=…       plage libre, prioritaire quand elle est
+ *                             effective (règle commune parsePeriodInput : une
+ *                             seule date = ce jour-là, inversées = aucune,
+ *                             l'écran dit alors pourquoi)
  *   ?tva=ttc|ht               mode d'affichage des montants (défaut : TTC)
  *   ?comparaison=n-1|precedente  référence des variations (défaut : N-1)
  */
@@ -27,16 +31,23 @@ const metricsQuerySchema = z
     tva: z.enum(TAX_MODES).optional().catch(undefined),
     comparaison: z.enum(COMPARISONS).optional().catch(undefined),
   })
-  .transform(({ periode, du, au, tva, comparaison }) => ({
-    period: periode ?? DEFAULT_PERIOD,
-    customRange: du && au && du <= au ? { from: du, to: au } : null,
-    tax: tva ?? DEFAULT_TAX_MODE,
-    comparison: comparaison ?? "n-1",
-  }));
+  .transform(({ periode, du, au, tva, comparaison }) => {
+    const custom = parsePeriodInput({ du, au });
+    return {
+      period: periode ?? DEFAULT_PERIOD,
+      customRange: custom.range,
+      custom,
+      tax: tva ?? DEFAULT_TAX_MODE,
+      comparison: comparaison ?? "n-1",
+    };
+  });
 
 export type MetricsQuery = {
   period: MetricPeriod;
+  /** Plage libre effective, ou null (période prédéfinie). */
   customRange: DateRange | null;
+  /** La saisie « du / au » telle quelle, pour les champs et l'erreur. */
+  custom: DateRangeInput;
   tax: TaxMode;
   comparison: Comparison;
 };
@@ -54,6 +65,7 @@ export function parseMetricsQuery(
 export type PeriodQuery = {
   period: MetricPeriod;
   customRange: DateRange | null;
+  custom: DateRangeInput;
   tax: TaxMode;
 };
 
@@ -69,9 +81,11 @@ export function parsePeriodQuery(
   defaultPeriod: MetricPeriod = "aujourdhui",
 ): PeriodQuery {
   const { periode, du, au, tva } = periodQuerySchema.parse(raw);
+  const custom = parsePeriodInput({ du, au });
   return {
     period: periode ?? defaultPeriod,
-    customRange: du && au && du <= au ? { from: du, to: au } : null,
+    customRange: custom.range,
+    custom,
     tax: tva ?? DEFAULT_TAX_MODE,
   };
 }

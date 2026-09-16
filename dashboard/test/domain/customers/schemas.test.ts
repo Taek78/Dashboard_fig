@@ -7,28 +7,43 @@ import {
 } from "@/domain/customers/schemas";
 
 describe("parseCustomerHistoryPeriod", () => {
-  it("lit les deux bornes, ou une seule", () => {
+  it("lit les deux bornes ; une seule borne = ce jour-là", () => {
     expect(
       parseCustomerHistoryPeriod({ du: "2026-09-05", au: "2026-09-09" }),
-    ).toEqual({ from: "2026-09-05", to: "2026-09-09" });
-    expect(parseCustomerHistoryPeriod({ du: "2026-09-05" })).toEqual({
-      from: "2026-09-05",
-      to: undefined,
+    ).toEqual({
+      filters: { from: "2026-09-05", to: "2026-09-09" },
+      period: {
+        from: "2026-09-05",
+        to: "2026-09-09",
+        range: { from: "2026-09-05", to: "2026-09-09" },
+        error: null,
+      },
     });
-    expect(parseCustomerHistoryPeriod({ au: "2026-09-09" })).toEqual({
-      from: undefined,
+    expect(parseCustomerHistoryPeriod({ du: "2026-09-05" }).filters).toEqual({
+      from: "2026-09-05",
+      to: "2026-09-05",
+    });
+    expect(parseCustomerHistoryPeriod({ au: "2026-09-09" }).filters).toEqual({
+      from: "2026-09-09",
       to: "2026-09-09",
     });
   });
 
-  it("remet dans l'ordre des bornes inversées", () => {
-    expect(
-      parseCustomerHistoryPeriod({ du: "2026-09-09", au: "2026-09-05" }),
-    ).toEqual({ from: "2026-09-05", to: "2026-09-09" });
+  it("des bornes inversées ne filtrent rien et portent l'erreur pour l'écran", () => {
+    const result = parseCustomerHistoryPeriod({
+      du: "2026-09-09",
+      au: "2026-09-05",
+    });
+    expect(result.filters).toEqual({ from: undefined, to: undefined });
+    expect(result.period.error).toBe("inverted");
+    expect(result.period.from).toBe("2026-09-09");
   });
 
   it("ignore les dates invalides, répétées et les autres clés", () => {
-    const none = { from: undefined, to: undefined };
+    const none = {
+      filters: { from: undefined, to: undefined },
+      period: { range: null, error: null },
+    };
     expect(parseCustomerHistoryPeriod({})).toEqual(none);
     expect(parseCustomerHistoryPeriod({ du: "", au: "hier" })).toEqual(none);
     expect(parseCustomerHistoryPeriod({ du: "2026-02-30" })).toEqual(none);

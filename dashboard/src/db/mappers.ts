@@ -426,7 +426,6 @@ export function toEngagementPoint(row: EngagementRow): EngagementPoint {
     month: row.month,
     downloads: row.downloads,
     signups: row.signups,
-    complaints: row.complaints,
     // numeric arrive en chaîne depuis postgres.js : on retourne au nombre.
     rating: row.rating === null ? null : Number(row.rating),
     ratingCount: row.ratingCount,

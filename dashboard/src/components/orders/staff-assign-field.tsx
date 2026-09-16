@@ -12,7 +12,7 @@ import {
   type AssignmentRole,
   type StaffRef,
 } from "@/domain/orders/assignment";
-import { AVAILABILITY_LABELS } from "@/domain/staff/kind";
+import { AVAILABILITY_LABELS, type Availability } from "@/domain/staff/kind";
 import type { StaffOption } from "@/domain/staff/rules";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
@@ -22,11 +22,33 @@ import { cn } from "@/lib/utils";
  * useActionState). Choisir une option envoie aussitôt le formulaire (pas de
  * bouton « Enregistrer » : un geste, une écriture) ; l'option vide retire
  * l'affectation. Les options viennent de la page (règle pure côté serveur :
- * bon métier, actives) et l'action les revérifie de toute façon. Une personne
- * en congé ou indisponible reste proposée, signalée dans son libellé.
+ * bon métier, actives) et l'action les revérifie de toute façon.
+ *
+ * Chaque personne porte une GOMMETTE : verte si elle est présente, rouge
+ * sinon (congé ou indisponible, la raison suit en texte). Une liste
+ * déroulante native n'accepte ni icône ni couleur CSS dans ses options,
+ * surtout sur téléphone : la gommette est donc un caractère, lisible partout,
+ * gardé dans la valeur choisie (le <select> fermé l'affiche aussi).
  * Après un succès, la page se re-rend avec la nouvelle valeur : la key posée
  * par le parent remet le <select> en phase.
  */
+export const PRESENCE_DOTS = { present: "🟢", absent: "🔴" } as const;
+
+export function presenceDot(availability: Availability): string {
+  return availability === "disponible"
+    ? PRESENCE_DOTS.present
+    : PRESENCE_DOTS.absent;
+}
+
+/** « 🟢 Malik Dembélé » ou « 🔴 Ousmane Diagne · en congé ». */
+export function staffOptionLabel(option: StaffOption): string {
+  const reason =
+    option.availability === "disponible"
+      ? ""
+      : ` · ${AVAILABILITY_LABELS[option.availability].toLowerCase()}`;
+  return `${presenceDot(option.availability)} ${option.name}${reason}`;
+}
+
 export function StaffAssignField({
   orderId,
   role,
@@ -88,10 +110,7 @@ export function StaffAssignField({
           ) : null}
           {options.map((o) => (
             <NativeSelectOption key={o.id} value={o.id}>
-              {o.name}
-              {o.availability === "disponible"
-                ? ""
-                : ` · ${AVAILABILITY_LABELS[o.availability].toLowerCase()}`}
+              {staffOptionLabel(o)}
             </NativeSelectOption>
           ))}
         </NativeSelect>

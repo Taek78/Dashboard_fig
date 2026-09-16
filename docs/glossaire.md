@@ -233,11 +233,23 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Rafraîchissement de session (glissant)** (sécurité) : Auth.js re-signe le jeton et re-pose le cookie à chaque lecture de session, pour prolonger une session active. Effet de bord : une réponse de préchargement encore en vol après la déconnexion re-posait un cookie valide. Le proxy retire ce cookie des réponses de préchargement et tant que le jeton a moins de la moitié de sa vie (`src/lib/session-refresh.ts`).
 
-**Recherche et filtres d'URL** (commandes, livraisons) : la barre `OrdersFilters` est un formulaire GET automatique (`AutoSubmitForm`), chaque champ devient un paramètre (`?q=benali&du=2026-09-01&au=2026-09-07&livreur=aucun`). L'URL est la source de vérité : partageable, retour arrière gratuit, relue par `parseOrderFilters` (tolérant) et réécrite par `orderFiltersQuery` pour la pagination et les raccourcis. `aucun` demande les commandes sans personne affectée.
+**Recherche et filtres d'URL** (commandes) : la barre `OrdersFilters` est un formulaire GET automatique (`AutoSubmitForm`), chaque champ devient un paramètre (`?q=benali&du=2026-09-01&au=2026-09-07&livreur=aucun`). L'URL est la source de vérité : partageable, retour arrière gratuit, relue par `parseOrderFilters` (tolérant) et réécrite par `orderFiltersQuery` pour la pagination et les raccourcis. `aucun` demande les commandes sans personne affectée.
 
-**Période ramenée** (livraisons) : une tournée couvre 7 jours au plus (`TOUR_MAX_DAYS`). Une période plus longue n'est pas refusée : sa fin est ramenée au 7e jour (`tourRange`) et l'écran le signale.
+**Période « du / au »** (toutes les recherches par dates) : les deux champs de dates forment UN filtre, groupés dans un même cadre (`DateRangeFields`). Règle commune (`readDateRange`, `parsePeriodInput`) : une seule date = ce jour-là ; deux dates ordonnées (le même jour compris) = la période ; deux dates inversées = erreur en rouge et aucune période appliquée, la saisie n'est jamais corrigée en silence. Décision du client, 2026-09-16.
 
-**Barre d'avancement segmentée** (livraisons) : barre découpée en segments proportionnels, un par statut (livrées, annulées, expédiées, en préparation), accompagnée d'une légende chiffrée. Sur la tournée (`tourProgress`) et sur le tableau de bord à partir des totaux agrégés (`tourProgressFromCounts`). « Traitée » veut dire livrée ou annulée : il ne reste rien à faire.
+**Bandeau de période vide** (toutes les recherches par dates) : le message bleu (`PeriodEmptyNotice`, token `--info`, `role="status"`) qui dit qu'une période valide n'a rien trouvé (« Aucune commande livrée du … au … »), avec un lien vers toutes les dates qui garde les autres filtres. Ni une erreur ni une liste vide : une absence d'activité, visible d'un coup d'œil.
+
+**Raccourcis des 7 derniers jours** (commandes) : une rangée de liens, un par jour jusqu'à aujourd'hui, chacun avec son nombre de livraisons compté par la base (`getDeliveryDayCounts`, `recentDeliveryDaysFromCounts`), plus « Les 7 jours ». Hérités de l'ancienne section Livraisons, fondue dans Commandes le 2026-09-16 (`/livraisons` redirige) ; chaque lien garde la recherche en cours.
+
+**Barre d'avancement segmentée** (tableau de bord) : barre découpée en segments proportionnels, un par statut (livrées, annulées, expédiées, en préparation), accompagnée d'une légende chiffrée, à partir des totaux agrégés (`tourProgressFromCounts`). « Traitée » veut dire livrée ou annulée : il ne reste rien à faire.
+
+**Gommette de présence** (affectation) : le caractère 🟢 ou 🔴 devant chaque nom dans les listes déroulantes de préparateur et de livreur (`staffOptionLabel`) : vert si la personne est « disponible », rouge sinon, quelle que soit la raison (congé, indisponible), la raison suivant en texte. Un `<select>` natif n'accepte ni icône ni couleur CSS dans ses options, surtout sur téléphone : un caractère passe partout.
+
+**Alerte de personnel** (tableau de bord) : le bandeau rouge (`StaffShortageAlert`, `role="alert"`) placé avant tout le reste quand aucun préparateur, ou aucun livreur, n'est présent (`unavailableRoles` : dans l'équipe et « disponible »). Rien ne peut alors être préparé ou livré ; un lien mène au métier concerné dans le personnel.
+
+**Réclamations (métrique)** (métriques) : le nombre de messages « Nous contacter » reçus sur la période dont l'objet est une réclamation (`CLAIM_SUBJECTS` : produit manquant ou abîmé, problème de livraison, erreur sur la commande, remboursement ou avoir), quel que soit leur statut (`countComplaints`, règle pure et requête SQL). Remplace le chiffre venu des stores (colonne supprimée en 0010).
+
+**Parrainages (métrique)** (métriques) : parmi les clients inscrits sur la période (jour d'inscription), ceux qui ont saisi le code d'un parrain (`signupStats`, `getSignupStats`) ; affichés avec le nombre de nouveaux clients et la part parrainée en camembert.
 
 **Source de vérité** (branchement) : le système dont la valeur fait foi quand deux copies divergent. Pour FIG, l'application : le montant d'une remise est celui du paiement, l'horaire de retrait est celui choisi à la commande. Le dashboard affiche ces valeurs, il ne les recalcule pas.
 

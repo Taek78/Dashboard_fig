@@ -71,6 +71,13 @@
       "when": 1789552897683,
       "tag": "0009_fidelite-frais-consentements",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789560213611,
+      "tag": "0010_reclamations-depuis-messages",
+      "breakpoints": true
     }
   ]
 }

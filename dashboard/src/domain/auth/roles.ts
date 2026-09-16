@@ -85,7 +85,6 @@ export function canHandleMessages(role: Role): boolean {
 export const SECTIONS = [
   "/",
   "/commandes",
-  "/livraisons",
   "/catalogue",
   "/articles",
   "/clients",
@@ -104,13 +103,14 @@ const TEAM_SECTIONS: readonly Section[] = SECTIONS.filter(
 /**
  * Matrice de lecture : la première section est la page d'accueil du rôle.
  * /comptes (gestion des comptes) est réservé à l'administrateur ; /profil
- * (son propre mot de passe) est ouvert à tous.
+ * (son propre mot de passe) est ouvert à tous. Le livreur suit ses tournées
+ * depuis Commandes (raccourcis des derniers jours).
  */
 export const SECTION_ACCESS: Record<Role, readonly Section[]> = {
   admin: SECTIONS,
   gestionnaire: TEAM_SECTIONS,
   lecture: TEAM_SECTIONS,
-  livreur: ["/livraisons", "/commandes", "/profil"],
+  livreur: ["/commandes", "/profil"],
 };
 
 /** Section d'un chemin : "/commandes/cmd-1" → "/commandes" ; inconnu → null. */

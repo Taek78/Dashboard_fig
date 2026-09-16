@@ -32,6 +32,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  // La section Livraisons a été fondue dans Commandes (2026-09-16) : les
+  // favoris et liens existants y arrivent, avec leurs paramètres (?du=&au=…).
+  async redirects() {
+    return [
+      { source: "/livraisons", destination: "/commandes", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

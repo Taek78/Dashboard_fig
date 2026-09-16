@@ -87,9 +87,11 @@ describe("lecture des sections", () => {
     expect(canManageUsers("gestionnaire")).toBe(false);
   });
 
-  it("le livreur ne voit que livraisons, commandes et son profil ; les autres tout sauf /comptes", () => {
-    expect(canViewSection("livreur", "/livraisons?date=2026-09-07")).toBe(true);
+  it("le livreur ne voit que les commandes (sa tournée) et son profil ; les autres tout sauf /comptes", () => {
+    expect(canViewSection("livreur", "/commandes?du=2026-09-07")).toBe(true);
     expect(canViewSection("livreur", "/commandes/cmd-0001")).toBe(true);
+    // Ancienne section : plus une section connue, laissée à la redirection.
+    expect(sectionOf("/livraisons")).toBeNull();
     expect(canViewSection("livreur", "/")).toBe(false);
     expect(canViewSection("livreur", "/metriques")).toBe(false);
     expect(canViewSection("livreur", "/clients/cli-0001")).toBe(false);
@@ -112,7 +114,7 @@ describe("lecture des sections", () => {
     for (const role of ROLES) {
       expect(SECTION_ACCESS[role]).toContain(homeFor(role));
     }
-    expect(homeFor("livreur")).toBe("/livraisons");
+    expect(homeFor("livreur")).toBe("/commandes");
     expect(homeFor("admin")).toBe("/");
   });
 });

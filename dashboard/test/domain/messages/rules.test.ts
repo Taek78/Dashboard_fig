@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { messagesFixtures } from "@/domain/messages/fixtures";
 import {
+  countComplaints,
   filterMessages,
   hasMessageFilters,
   matchesMessageQuery,
@@ -9,6 +10,7 @@ import {
   receivedDay,
   sortMessages,
 } from "@/domain/messages/rules";
+import { CLAIM_SUBJECTS, isClaimSubject } from "@/domain/messages/subject";
 import type { Message } from "@/domain/messages/types";
 
 const byId = (id: string): Message =>
@@ -123,6 +125,46 @@ describe("filterMessages", () => {
     // Le même mot sans les autres critères ne suffit pas à changer le résultat.
     expect(ids(filterMessages(messagesFixtures, { query: "tournée" }))).toEqual(
       ["msg-0002"],
+    );
+  });
+});
+
+describe("countComplaints", () => {
+  it("les quatre objets de réclamation, remboursement compris ; question et autre non", () => {
+    expect(CLAIM_SUBJECTS).toEqual([
+      "missing_or_damaged",
+      "delivery_issue",
+      "order_error",
+      "refund",
+    ]);
+    expect(isClaimSubject("refund")).toBe(true);
+    expect(isClaimSubject("product_question")).toBe(false);
+    expect(isClaimSubject("other")).toBe(false);
+  });
+
+  it("compte les réclamations reçues sur la période, bornes incluses, quel que soit le statut", () => {
+    // msg-0001 et 0002 le 8, 0003 le 7, 0005 le 5 (remboursement, traité),
+    // 0007 le 2 ; 0004 (question) et 0006 (autre) ne comptent pas.
+    expect(
+      countComplaints(messagesFixtures, {
+        from: "2026-09-05",
+        to: "2026-09-08",
+      }),
+    ).toBe(4);
+    expect(
+      countComplaints(messagesFixtures, {
+        from: "2026-09-01",
+        to: "2026-09-30",
+      }),
+    ).toBe(5);
+    expect(
+      countComplaints(messagesFixtures, {
+        from: "2026-09-06",
+        to: "2026-09-06",
+      }),
+    ).toBe(0);
+    expect(countComplaints([], { from: "2026-09-01", to: "2026-09-30" })).toBe(
+      0,
     );
   });
 });

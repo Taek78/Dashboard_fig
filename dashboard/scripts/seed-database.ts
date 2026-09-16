@@ -309,7 +309,6 @@ export async function seedDatabase(
         month: e.month,
         downloads: e.downloads,
         signups: e.signups,
-        complaints: e.complaints,
         rating: e.rating === null ? null : e.rating.toFixed(2),
         ratingCount: e.ratingCount,
       })),

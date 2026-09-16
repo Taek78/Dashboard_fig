@@ -11,5 +11,6 @@ export const {
   getCustomers,
   getCustomer,
   getCustomerReferrals,
+  getSignupStats,
   addNote,
 }: CustomersSource = customersDb;

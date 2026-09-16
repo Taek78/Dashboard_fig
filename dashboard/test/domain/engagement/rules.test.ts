@@ -14,7 +14,6 @@ describe("engagementFixtures", () => {
     for (const p of engagementFixtures) {
       expect(p.downloads).toBeGreaterThan(0);
       expect(p.signups).toBeLessThanOrEqual(p.downloads);
-      expect(p.complaints).toBeGreaterThanOrEqual(0);
       expect(p.rating).not.toBeNull();
       expect(p.rating!).toBeLessThanOrEqual(5);
     }
@@ -49,7 +48,6 @@ describe("summarizeEngagement", () => {
         month: "2026-01",
         downloads: 100,
         signups: 30,
-        complaints: 2,
         rating: 4,
         ratingCount: 10,
       },
@@ -57,7 +55,6 @@ describe("summarizeEngagement", () => {
         month: "2026-02",
         downloads: 200,
         signups: 80,
-        complaints: 3,
         rating: 5,
         ratingCount: 30,
       },
@@ -65,7 +62,6 @@ describe("summarizeEngagement", () => {
         month: "2026-03",
         downloads: 999,
         signups: 999,
-        complaints: 99,
         rating: 1,
         ratingCount: 99,
       },
@@ -77,7 +73,6 @@ describe("summarizeEngagement", () => {
     expect(s).toEqual({
       downloads: 300,
       signups: 110,
-      complaints: 5,
       rating: 4.75,
       ratingCount: 40,
     });
@@ -92,7 +87,6 @@ describe("summarizeEngagement", () => {
     ).toEqual({
       downloads: 0,
       signups: 0,
-      complaints: 0,
       rating: null,
       ratingCount: 0,
     });

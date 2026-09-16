@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { parseMetricsQuery, parsePeriodQuery } from "@/domain/metrics/schemas";
 
+const NO_CUSTOM = { range: null, error: null };
+
 describe("parseMetricsQuery", () => {
   it("défauts : ce mois-ci, pas de plage libre, HT", () => {
     expect(parseMetricsQuery({})).toEqual({
       period: "ce-mois",
       customRange: null,
+      custom: NO_CUSTOM,
       tax: "ht",
       comparison: "n-1",
     });
@@ -15,6 +18,7 @@ describe("parseMetricsQuery", () => {
     expect(parseMetricsQuery({ periode: "n-2", tva: "ttc" })).toEqual({
       period: "n-2",
       customRange: null,
+      custom: NO_CUSTOM,
       tax: "ttc",
       comparison: "n-1",
     });
@@ -25,25 +29,34 @@ describe("parseMetricsQuery", () => {
     expect(parseMetricsQuery({ periode: "7", tva: "TTC" })).toEqual({
       period: "ce-mois",
       customRange: null,
+      custom: NO_CUSTOM,
       tax: "ht",
       comparison: "n-1",
     });
   });
 
-  it("accepte une plage libre ordonnée, la refuse sinon", () => {
+  it("plage libre : ordonnée appliquée, une date = ce jour-là, inversée refusée avec son erreur", () => {
     expect(
       parseMetricsQuery({ du: "2026-07-13", au: "2026-07-19" }).customRange,
     ).toEqual({
       from: "2026-07-13",
       to: "2026-07-19",
     });
-    expect(
-      parseMetricsQuery({ du: "2026-07-19", au: "2026-07-13" }).customRange,
-    ).toBeNull();
-    expect(parseMetricsQuery({ du: "2026-07-13" }).customRange).toBeNull();
+    const inverted = parseMetricsQuery({ du: "2026-07-19", au: "2026-07-13" });
+    expect(inverted.customRange).toBeNull();
+    expect(inverted.custom).toEqual({
+      from: "2026-07-19",
+      to: "2026-07-13",
+      range: null,
+      error: "inverted",
+    });
+    expect(parseMetricsQuery({ du: "2026-07-13" }).customRange).toEqual({
+      from: "2026-07-13",
+      to: "2026-07-13",
+    });
     expect(
       parseMetricsQuery({ du: "13/07/2026", au: "2026-07-19" }).customRange,
-    ).toBeNull();
+    ).toEqual({ from: "2026-07-19", to: "2026-07-19" });
   });
 });
 
@@ -52,6 +65,7 @@ describe("parsePeriodQuery", () => {
     expect(parsePeriodQuery({})).toEqual({
       period: "aujourdhui",
       customRange: null,
+      custom: NO_CUSTOM,
       tax: "ht",
     });
     expect(parsePeriodQuery({ tva: "ttc" }).tax).toBe("ttc");
@@ -61,12 +75,12 @@ describe("parsePeriodQuery", () => {
     expect(parsePeriodQuery({ periode: "7" }).period).toBe("aujourdhui");
   });
 
-  it("lit une plage libre ordonnée seulement", () => {
+  it("lit une plage libre par la règle commune des périodes", () => {
     expect(
       parsePeriodQuery({ du: "2026-07-13", au: "2026-07-19" }).customRange,
     ).toEqual({ from: "2026-07-13", to: "2026-07-19" });
-    expect(
-      parsePeriodQuery({ du: "2026-07-19", au: "2026-07-13" }).customRange,
-    ).toBeNull();
+    const inverted = parsePeriodQuery({ du: "2026-07-19", au: "2026-07-13" });
+    expect(inverted.customRange).toBeNull();
+    expect(inverted.custom.error).toBe("inverted");
   });
 });

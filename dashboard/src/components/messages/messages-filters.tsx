@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
+import { DateRangeFields } from "@/components/date-range-fields";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NativeInput } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   MESSAGE_SEARCH_MAX_LENGTH,
   type MessageFilters,
 } from "@/domain/messages/types";
+import type { DateRangeInput } from "@/lib/days";
 
 /*
  * Recherche et filtres de la boîte de réception (serveur ; AutoSubmitForm,
@@ -29,7 +31,9 @@ import {
  * (?q=…&statut=…&objet=…&du=…&au=…&important=oui) : URL partageable, retour
  * arrière gratuit, l'écran reste affiché pendant le chargement.
  *
- * - Reçoit des filtres déjà validés (parseMessageFilters), jamais l'URL brute.
+ * - Reçoit des filtres déjà validés (parseMessageFilters), jamais l'URL brute,
+ *   et la saisie « du / au » telle quelle pour les deux champs de dates,
+ *   groupés en un seul filtre (DateRangeFields).
  * - Les noms de champs sont les clés françaises que parseMessageFilters attend.
  * - La case « importants » n'a pas d'état « non » : décochée, elle n'envoie
  *   rien et il n'y a donc pas de filtre (une case cochée applique tout de
@@ -38,9 +42,11 @@ import {
  */
 export function MessagesFilters({
   filters,
+  period,
   canReset,
 }: {
   filters: MessageFilters;
+  period: DateRangeInput;
   canReset: boolean;
 }) {
   return (
@@ -89,7 +95,7 @@ export function MessagesFilters({
           <div
             role="group"
             aria-label="Filtres"
-            className="grid grid-cols-2 gap-3 border-t pt-4 @4xl/main:grid-cols-4"
+            className="grid grid-cols-2 gap-3 border-t pt-4 @4xl/main:grid-cols-4 @4xl/main:items-start"
           >
             <div className="grid gap-1.5">
               <Label htmlFor="statut">Statut</Label>
@@ -127,27 +133,14 @@ export function MessagesFilters({
               </NativeSelect>
             </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="du">Reçu du</Label>
-              <NativeInput
-                id="du"
-                type="date"
-                name="du"
-                defaultValue={filters.from ?? ""}
-                className="dark:scheme-dark"
-              />
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="au">Reçu au</Label>
-              <NativeInput
-                id="au"
-                type="date"
-                name="au"
-                defaultValue={filters.to ?? ""}
-                className="dark:scheme-dark"
-              />
-            </div>
+            <DateRangeFields
+              legend="Jour de réception"
+              fromLabel="Reçu du"
+              toLabel="Reçu au"
+              idPrefix="messages"
+              period={period}
+              className="col-span-2"
+            />
           </div>
 
           <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:items-center @xl/main:justify-between">
@@ -175,9 +168,6 @@ export function MessagesFilters({
               </Link>
             ) : null}
           </div>
-          <p className="text-muted-foreground text-xs">
-            Dates : jour de réception, bornes incluses. Une seule date suffit.
-          </p>
         </AutoSubmitForm>
       </CardContent>
     </Card>

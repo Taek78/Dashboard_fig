@@ -15,7 +15,7 @@ const PAGES = [
   "/commandes",
   "/commandes?q=benali",
   "/commandes/cmd-0001",
-  "/livraisons",
+  "/commandes?du=2026-09-07&au=2026-09-07",
   "/catalogue",
   "/catalogue/prd-0001",
   "/articles",

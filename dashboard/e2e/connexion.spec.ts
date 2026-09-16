@@ -34,7 +34,6 @@ test.describe("connexion et accès", () => {
     for (const section of [
       "Tableau de bord",
       "Commandes",
-      "Livraisons",
       "Catalogue",
       "Articles",
       "Clients",

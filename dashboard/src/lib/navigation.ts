@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Newspaper,
   ShoppingBasket,
-  Truck,
   UserCog,
   Users,
 } from "lucide-react";
@@ -18,7 +17,8 @@ import {
  * Les icônes sont les composants lucide eux-mêmes (pas leur nom en chaîne),
  * pour que nav-main.tsx les rende directement avec <item.icon />.
  * Chaque entrée appartient à un groupe : le menu les range sous un intitulé,
- * plus lisible qu'une liste de neuf liens.
+ * plus lisible qu'une liste de neuf liens. Les livraisons se suivent depuis
+ * Commandes (raccourcis des 7 derniers jours) : plus de section à part.
  */
 export const NAV_GROUPS = [
   "activite",
@@ -47,7 +47,6 @@ export const NAV_ITEMS = [
     icon: ShoppingBasket,
     group: "activite",
   },
-  { title: "Livraisons", href: "/livraisons", icon: Truck, group: "activite" },
   { title: "Catalogue", href: "/catalogue", icon: Carrot, group: "offre" },
   { title: "Articles", href: "/articles", icon: Newspaper, group: "offre" },
   { title: "Clients", href: "/clients", icon: Users, group: "relations" },

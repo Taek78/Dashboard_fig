@@ -49,3 +49,49 @@ export function daysBetween(range: DateRange): number {
     ) + 1
   );
 }
+
+/* ---------- Période saisie « du… au… » ---------- */
+
+/** La seule erreur possible : un début après la fin. */
+export type DateRangeError = "inverted";
+
+/**
+ * Ce qu'une saisie « du / au » donne, pour l'écran ET pour le filtre :
+ * - `from` / `to` : les jours tels qu'ils ont été tapés (déjà valides), pour
+ *   réafficher les champs sans les corriger à l'insu de la personne ;
+ * - `range` : la période effective, ou null quand la saisie est inversée ;
+ * - `error` : ce que l'écran doit dire en rouge, ou null.
+ */
+export type DateRangeInput = {
+  from?: string;
+  to?: string;
+  range: DateRange | null;
+  error: DateRangeError | null;
+};
+
+/**
+ * Règle commune à toutes les recherches par dates (commandes, messages,
+ * historiques des fiches, plage libre du tableau de bord et des métriques),
+ * décidée avec le client le 2026-09-16 :
+ * - aucune date : pas de période ;
+ * - une seule date : ce jour-là seulement (du = au) ;
+ * - deux dates ordonnées (le même jour compris) : la période ;
+ * - deux dates inversées : erreur, aucune période (l'écran garde la saisie,
+ *   ne l'échange pas, et dit pourquoi rien n'est filtré).
+ */
+export function readDateRange(from?: string, to?: string): DateRangeInput {
+  if (from === undefined && to === undefined) {
+    return { range: null, error: null };
+  }
+  if (from === undefined || to === undefined) {
+    const day = (from ?? to) as string;
+    return { from, to, range: { from: day, to: day }, error: null };
+  }
+  if (from > to) return { from, to, range: null, error: "inverted" };
+  return { from, to, range: { from, to }, error: null };
+}
+
+/** Vrai si une période effective est appliquée. */
+export function hasDateRange(input: DateRangeInput): boolean {
+  return input.range !== null;
+}

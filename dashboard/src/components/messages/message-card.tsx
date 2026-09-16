@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Paperclip } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { MessageActions } from "@/components/messages/message-actions";
+import { AttachmentBadge } from "@/components/messages/message-attachments";
 import {
   ImportantBadge,
   MESSAGE_STATUS_ACCENT,
@@ -18,18 +19,20 @@ import { cn } from "@/lib/utils";
 
 /*
  * Carte d'un message dans la boîte de réception (serveur). Ce qu'on lit d'un
- * coup d'œil, dans l'ordre : QUI a écrit, sur QUEL objet, les DEUX PREMIÈRES
- * LIGNES de sa demande, puis de quoi agir.
+ * coup d'œil, dans l'ordre : QUI a écrit, sur QUEL objet, la COMMANDE jointe
+ * (quand, qui s'en occupe), les DEUX PREMIÈRES LIGNES de sa demande, puis de
+ * quoi agir.
  *
  * La bordure gauche porte le statut (ambre = non traité, vert = traité) et un
  * message signalé important prend un fond en dégradé rouge : deux signaux
- * différents, jamais la même couleur pour deux choses. Si le client a joint
- * une commande, une ligne dit quand elle est livrée et qui s'en occupe.
+ * différents, jamais la même couleur pour deux choses. Une pièce jointe se
+ * signale en violet (AttachmentBadge, token --attachment) : sa présence ne
+ * doit pas se rater.
  *
- * Le nom mène au MESSAGE (c'est l'objet de la liste) ; un second lien discret
- * mène à la fiche du client. Pas de carte entièrement cliquable : elle
- * contient des boutons, et un lien qui les recouvre les rendrait
- * inatteignables au clavier.
+ * Le nom mène à la FICHE DU CLIENT (comme tout nom de client dans le
+ * dashboard) ; « Lire le message » mène au message. Pas de carte entièrement
+ * cliquable : elle contient des boutons, et un lien qui les recouvre les
+ * rendrait inatteignables au clavier.
  */
 export function MessageCard({
   message,
@@ -39,7 +42,6 @@ export function MessageCard({
   canHandle: boolean;
 }) {
   const preview = messagePreview(message.body);
-  const files = message.attachments.length;
 
   return (
     <article
@@ -54,7 +56,7 @@ export function MessageCard({
         <div className="flex min-w-0 flex-col gap-1.5">
           <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
             <Link
-              href={`/messages/${message.id}`}
+              href={`/clients/${message.customer.id}`}
               className="underline-offset-4 hover:underline focus-visible:underline"
             >
               {message.customer.fullName}
@@ -63,10 +65,10 @@ export function MessageCard({
           <span className="text-muted-foreground truncate text-sm">
             {message.customer.email}
           </span>
-          <MessageSubjectBadge
-            subject={message.subject}
-            className="self-start"
-          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            <MessageSubjectBadge subject={message.subject} />
+            <AttachmentBadge count={message.attachments.length} />
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 @2xl/main:justify-end">
           {message.pinnedAt ? <PinnedBadge /> : null}
@@ -75,32 +77,19 @@ export function MessageCard({
         </div>
       </div>
 
-      {/* Les deux premières lignes : l'aperçu est une règle pure, le CSS ne fait que borner la hauteur. */}
-      <p className="line-clamp-2 text-sm [overflow-wrap:anywhere]">{preview}</p>
-
-      <dl className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        <div className="flex items-center gap-1.5">
-          <dt className="sr-only">Reçu le</dt>
-          <dd>{formatDateTimeFr(message.receivedAt)}</dd>
-        </div>
-        {files > 0 ? (
-          <div className="flex items-center gap-1.5">
-            <dt>
-              <Paperclip className="size-3.5" aria-hidden="true" />
-              <span className="sr-only">Pièces jointes</span>
-            </dt>
-            <dd>
-              {files} pièce{files > 1 ? "s" : ""} jointe{files > 1 ? "s" : ""}
-            </dd>
-          </div>
-        ) : null}
-      </dl>
-
       {message.order ? (
         <div className="bg-muted/40 rounded-lg px-3 py-2 text-xs">
           <MessageOrderLine order={message.order} />
         </div>
       ) : null}
+
+      {/* Les deux premières lignes : l'aperçu est une règle pure, le CSS ne fait que borner la hauteur. */}
+      <p className="line-clamp-2 text-sm [overflow-wrap:anywhere]">{preview}</p>
+
+      <p className="text-muted-foreground text-xs">
+        <span className="sr-only">Reçu le </span>
+        {formatDateTimeFr(message.receivedAt)}
+      </p>
 
       <div className="flex flex-col gap-3 border-t pt-3 @2xl/main:flex-row @2xl/main:items-center @2xl/main:justify-between">
         {canHandle ? (

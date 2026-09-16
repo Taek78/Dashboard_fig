@@ -6,6 +6,7 @@ import {
   MESSAGE_SEARCH_MAX_LENGTH,
   type MessageFilters,
 } from "@/domain/messages/types";
+import { parsePeriodInput } from "@/domain/orders/schemas";
 
 /*
  * Schémas zod des ENTRÉES de la boîte de réception. Deux régimes, comme
@@ -25,7 +26,8 @@ export const messageIdSchema = z.string().trim().min(1).max(64);
  * transform. z.object ignore les clés inconnues (page…) ; un paramètre répété
  * arrive en tableau, échoue et tombe dans catch.
  * - q : trimée ; vide = pas de recherche, trop longue = ignorée ;
- * - du / au : jours de RÉCEPTION, remis dans l'ordre s'ils sont inversés ;
+ * - du / au : jours de RÉCEPTION, lus par la règle commune des périodes
+ *   (parsePeriodInput : une seule date = ce jour-là, inversées = aucune) ;
  * - important : seule la valeur « oui » filtre ; tout le reste est ignoré.
  */
 const messageFiltersSchema = z
@@ -44,13 +46,13 @@ const messageFiltersSchema = z
     important: z.literal(IMPORTANT_FILTER).optional().catch(undefined),
   })
   .transform(({ q, statut, objet, du, au, important }): MessageFilters => {
-    const inverted = du !== undefined && au !== undefined && du > au;
+    const period = parsePeriodInput({ du, au });
     return {
       query: q,
       status: statut,
       subject: objet,
-      from: inverted ? au : du,
-      to: inverted ? du : au,
+      from: period.range?.from,
+      to: period.range?.to,
       important: important === undefined ? undefined : true,
     };
   });

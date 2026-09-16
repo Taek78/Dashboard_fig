@@ -117,7 +117,9 @@ export const deleteStaffSchema = z.object({
 
 /**
  * Recherche dans l'historique d'une fiche (lecture tolérante) : ?q=, ?statut=,
- * ?du=, ?au= comme la liste des commandes, et ?role=preparation|livraison.
+ * ?du=, ?au= comme la liste des commandes (même règle des périodes), et
+ * ?role=preparation|livraison. La saisie « du / au » telle quelle se relit à
+ * part, pour l'écran (parsePeriodInput).
  */
 export function parseStaffHistoryFilters(
   raw: Record<string, string | string[] | undefined>,

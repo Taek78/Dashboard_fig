@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, MapPin, Package, Phone, User } from "lucide-react";
+import {
+  ArrowRight,
+  Mail,
+  MapPin,
+  Navigation,
+  Package,
+  Phone,
+} from "lucide-react";
 import {
   CLIENT_TYPE_TINT,
   ClientTypeLabel,
@@ -14,8 +21,9 @@ import {
   OrderTeam,
   type AssignmentOptions,
 } from "@/components/orders/order-team";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { clientTypeOf } from "@/domain/customers/client-type";
+import { itineraryUrl } from "@/domain/deliveries/rules";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { computeOrderSubtotalCents } from "@/domain/orders/rules";
 import type { Order } from "@/domain/orders/types";
@@ -23,13 +31,17 @@ import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Carte d'une commande (serveur), même silhouette que la carte de livraison,
- * en trois bandes :
- *   1. la référence, le jour et le créneau, le type de client (particulier ou
- *      communauté, en couleur, la bande est teintée de même), le statut (et le
- *      motif si annulée), la remise éventuelle (communauté, fidélité) ;
- *   2. le client (fiche, téléphone), l'adresse ou le point de retrait, le
- *      contenu et le montant (remise déduite), le lien vers le détail ;
+ * Carte d'une commande (serveur), pensée pour le bureau ET le terrain depuis
+ * que la section Livraisons y a été fondue (2026-09-16). Trois bandes :
+ *   1. le jour et le CRÉNEAU EN GRAND (c'est ce qu'on cherche des yeux en
+ *      tournée), la référence, le type de client (particulier ou communauté,
+ *      en couleur, la bande est teintée de même), le statut (et le motif si
+ *      annulée), la remise éventuelle (communauté, fidélité) ;
+ *   2. le client (son nom mène à sa fiche), deux gestes en un tap : appeler,
+ *      ouvrir l'itinéraire (de vrais <a> habillés en bouton : Base UI
+ *      donnerait role="button" à un lien rendu par <Button>) ; puis
+ *      l'adresse ou le point de retrait, le contenu et le montant (remise et
+ *      frais détaillés), l'e-mail, le lien vers le détail ;
  *   3. le suivi : l'équipe (préparateur, livreur, en listes déroulantes qui
  *      écrivent aussitôt), puis le geste suivant et l'annulation avec motif.
  * Disposition selon la largeur de la ZONE DE CONTENU (@container/main du
@@ -56,12 +68,12 @@ export function OrderCard({
     <article
       aria-label={`Commande ${order.reference}, ${order.customer.fullName}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[13rem_minmax(0,1fr)_20rem]",
+        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]",
         STATUS_ACCENT[order.status],
         done && "opacity-80",
       )}
     >
-      {/* 1. Référence, créneau, statut, remise */}
+      {/* 1. Créneau en grand, référence, statut, remise */}
       <div
         className={cn(
           "flex flex-row items-start justify-between gap-3 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:flex-col @4xl/main:justify-start @4xl/main:border-r @4xl/main:border-b-0",
@@ -69,18 +81,23 @@ export function OrderCard({
         )}
       >
         <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-sm font-medium first-letter:uppercase">
+            {formatDateFr(order.deliverySlot.date)}
+          </span>
+          <span className="text-2xl leading-none font-semibold tabular-nums">
+            <span className="sr-only">Créneau </span>
+            {order.deliverySlot.start}
+            <span className="text-muted-foreground text-base font-normal">
+              {" "}
+              → {order.deliverySlot.end}
+            </span>
+          </span>
           <Link
             href={`/commandes/${order.id}`}
-            className="font-mono text-sm font-semibold underline-offset-4 hover:underline focus-visible:underline"
+            className="text-muted-foreground mt-1 font-mono text-xs font-semibold underline-offset-4 hover:underline focus-visible:underline"
           >
             {order.reference}
           </Link>
-          <span className="text-sm">
-            {formatDateFr(order.deliverySlot.date)}
-          </span>
-          <span className="text-muted-foreground text-sm tabular-nums">
-            {order.deliverySlot.start} → {order.deliverySlot.end}
-          </span>
           <ClientTypeLabel community={order.community} className="mt-1" />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5 @4xl/main:items-start">
@@ -94,7 +111,7 @@ export function OrderCard({
         </div>
       </div>
 
-      {/* 2. Client et contenu */}
+      {/* 2. Client, gestes rapides et contenu */}
       <div className="flex min-w-0 flex-col gap-3 p-4 @xl/main:p-5">
         <p className="truncate text-lg font-semibold">
           <Link
@@ -104,24 +121,39 @@ export function OrderCard({
             {order.customer.fullName}
           </Link>
         </p>
-        <dl className="grid grid-cols-[1.25rem_1fr] gap-x-2 gap-y-1.5 text-sm">
+        <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
           {/* Téléphone vide : client anonymisé (RGPD). */}
           {order.customer.phone ? (
-            <>
-              <dt className="text-muted-foreground">
-                <Phone className="size-4" aria-hidden="true" />
-                <span className="sr-only">Téléphone</span>
-              </dt>
-              <dd>
-                <a
-                  href={toTelHref(order.customer.phone)}
-                  className="tabular-nums underline-offset-4 hover:underline"
-                >
-                  {order.customer.phone}
-                </a>
-              </dd>
-            </>
+            <a
+              href={toTelHref(order.customer.phone)}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "justify-start tabular-nums @xl/main:justify-center",
+              )}
+            >
+              <Phone />
+              {order.customer.phone}
+            </a>
           ) : null}
+          <a
+            href={itineraryUrl(
+              order.deliveryPostalCode,
+              order.deliveryCity,
+              order.deliveryAddressLine,
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "justify-start @xl/main:justify-center",
+            )}
+          >
+            <Navigation />
+            Itinéraire
+            <span className="sr-only"> (nouvel onglet)</span>
+          </a>
+        </div>
+        <dl className="grid grid-cols-[1.25rem_1fr] gap-x-2 gap-y-1.5 text-sm">
           <dt className="text-muted-foreground">
             <MapPin className="size-4" aria-hidden="true" />
             <span className="sr-only">
@@ -179,8 +211,8 @@ export function OrderCard({
             )}
           </dd>
           <dt className="text-muted-foreground">
-            <User className="size-4" aria-hidden="true" />
-            <span className="sr-only">Contact</span>
+            <Mail className="size-4" aria-hidden="true" />
+            <span className="sr-only">E-mail</span>
           </dt>
           <dd className="truncate">{order.customer.email}</dd>
         </dl>

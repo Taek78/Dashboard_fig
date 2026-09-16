@@ -8,7 +8,6 @@ import type { DateRange } from "@/domain/metrics/rules";
 export type EngagementSummary = {
   downloads: number;
   signups: number;
-  complaints: number;
   /** Moyenne pondérée par le nombre d'avis sur la plage ; null sans avis. */
   rating: number | null;
   ratingCount: number;
@@ -42,7 +41,6 @@ export function summarizeEngagement(
   return {
     downloads: selected.reduce((s, p) => s + p.downloads, 0),
     signups: selected.reduce((s, p) => s + p.signups, 0),
-    complaints: selected.reduce((s, p) => s + p.complaints, 0),
     rating:
       ratingCount === 0
         ? null
