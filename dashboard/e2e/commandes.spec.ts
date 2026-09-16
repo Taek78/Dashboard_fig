@@ -204,6 +204,78 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     await expect(page.getByRole("status").first()).toContainText(/page 1 sur/);
   });
 
+  test("le calendrier s'ouvre sur le mois de la date saisie, grise les jours voisins et écrit la date", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?du=2026-03-04");
+    const form = page.getByRole("form", {
+      name: "Recherche et filtres des commandes",
+    });
+    const openFrom = form.getByRole("button", {
+      name: "Calendrier, date de début",
+    });
+    await openFrom.click();
+    const picker = page.locator("[data-slot=date-picker]");
+    await expect(picker.getByRole("heading")).toHaveText("mars 2026");
+    // Mars 2026 commence un dimanche : la grille part du lundi 23 février, grisé.
+    const days = picker.getByRole("grid").getByRole("button");
+    await expect(days).toHaveCount(42);
+    await expect(days.first()).toHaveAccessibleName("lundi 23 février 2026");
+    await expect(days.first()).toHaveAttribute("data-outside", "");
+    await expect(days.first()).toHaveClass(/text-muted-foreground/);
+    // Le focus est sur la date saisie ; le clavier avance d'un jour.
+    const selected = picker.getByRole("button", {
+      name: "mercredi 4 mars 2026",
+    });
+    await expect(selected).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      picker.getByRole("button", { name: "jeudi 5 mars 2026" }),
+    ).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(picker).toHaveCount(0);
+
+    // « Au » est vide : il s'ouvre sur le mois de « du » ; un clic écrit la date.
+    await form.getByRole("button", { name: "Calendrier, date de fin" }).click();
+    await expect(picker.getByRole("heading")).toHaveText("mars 2026");
+    await picker.getByRole("button", { name: "lundi 9 mars 2026" }).click();
+    await expect(form.getByLabel("Livraison au")).toHaveValue("2026-03-09");
+    await expect(page).toHaveURL(/du=2026-03-04&au=2026-03-09/);
+
+    // Sans date, chaque ouverture revient au mois actuel.
+    await page.goto("/commandes");
+    await openFrom.click();
+    const now = new Intl.DateTimeFormat("fr-FR", {
+      month: "long",
+      year: "numeric",
+      timeZone: "Europe/Paris",
+    }).format(new Date());
+    await expect(picker.getByRole("heading")).toHaveText(now);
+    await picker.getByRole("button", { name: "Mois suivant" }).click();
+    await page.keyboard.press("Escape");
+    await openFrom.click();
+    await expect(picker.getByRole("heading")).toHaveText(now);
+  });
+
+  test("sur téléphone, le sélecteur de date natif reste, sans bouton de calendrier", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 400, height: 860 });
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes");
+    const form = page.getByRole("form", {
+      name: "Recherche et filtres des commandes",
+    });
+    await expect(
+      form.getByRole("button", { name: "Calendrier, date de début" }),
+    ).toBeHidden();
+    await expect(form.getByLabel("Livraison du")).toHaveAttribute(
+      "type",
+      "date",
+    );
+  });
+
   test("une période sans commande le dit dans un bandeau bleu, sans perdre les autres filtres", async ({
     page,
   }) => {

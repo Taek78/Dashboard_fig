@@ -160,7 +160,7 @@ test.describe("messages", () => {
       order.getByRole("link", { name: "FIG-260907-001" }),
     ).toBeVisible();
     await expect(order).toContainText("Commandée le");
-    await expect(order).toContainText("09:00–10:00");
+    await expect(order).toContainText("10:00–11:00");
     await expect(order).toContainText("12 rue des Lilas, 75011 Paris");
     await expect(order).toContainText("Préparateur");
     await expect(order).toContainText("Livreur");

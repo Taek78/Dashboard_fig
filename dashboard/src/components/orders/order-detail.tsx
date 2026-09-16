@@ -1,4 +1,4 @@
-import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CustomerTypeLabels } from "@/components/customers/client-type-label";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderStatusForm } from "@/components/orders/order-status-form";
@@ -97,7 +97,7 @@ export function OrderDetail({
             </dd>
             <dt className="text-muted-foreground">Type</dt>
             <dd>
-              <ClientTypeLabel community={order.community} />
+              <CustomerTypeLabels community={order.community} />
             </dd>
             <dt className="text-muted-foreground">E-mail</dt>
             <dd className="font-medium break-all">

@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import * as schema from "@/db/schema";
 import { ARTICLE_CATEGORIES } from "@/domain/articles/category";
 import { ROLES } from "@/domain/auth/roles";
-import { COMMUNITY_KINDS } from "@/domain/communities/kind";
+import {
+  COMMUNITY_KINDS,
+  COMMUNITY_VISIBILITIES,
+} from "@/domain/communities/kind";
 import { ATTACHMENT_CONTENT_TYPES } from "@/domain/messages/attachment";
 import { MESSAGE_STATUSES } from "@/domain/messages/status";
 import { MESSAGE_SUBJECTS } from "@/domain/messages/subject";
@@ -47,6 +50,11 @@ describe("enums du schéma = constantes du domaine", () => {
       AVAILABILITIES,
     ],
     ["community_kind", schema.communityKindEnum.enumValues, COMMUNITY_KINDS],
+    [
+      "community_visibility",
+      schema.communityVisibilityEnum.enumValues,
+      COMMUNITY_VISIBILITIES,
+    ],
     ["discount_kind", schema.discountKindEnum.enumValues, DISCOUNT_KINDS],
     ["message_subject", schema.messageSubjectEnum.enumValues, MESSAGE_SUBJECTS],
     ["message_status", schema.messageStatusEnum.enumValues, MESSAGE_STATUSES],

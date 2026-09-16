@@ -109,6 +109,8 @@ test.describe("clients", () => {
     const consents = page.getByRole("list", {
       name: "Autorisations données par le client",
     });
+    // evaluateAll n'attend rien : on attend d'abord les trois autorisations.
+    await expect(consents.getByRole("listitem")).toHaveCount(3);
     const boxes = await consents
       .getByRole("listitem")
       .evaluateAll((items) =>
@@ -201,10 +203,15 @@ test.describe("clients", () => {
     await shown.getByRole("radio", { name: "Communautés" }).check();
     await expect(page).toHaveURL(/type=communautes/);
 
-    await form.getByLabel("Trier par").selectOption("membres-decroissant");
-    await expect(page).toHaveURL(/tri=membres-decroissant/);
+    await form.getByLabel("Trier par").selectOption("membres");
+    await expect(page).toHaveURL(/tri=membres/);
+    await expect(page).not.toHaveURL(/sens=/);
     const cards = page.getByRole("article", { name: /^Communauté / });
     await expect(cards).toHaveCount(3);
+    // Les cartes des communautés seulement, jamais leurs membres.
+    await expect(page.getByRole("article", { name: /^Client / })).toHaveCount(
+      0,
+    );
     await expect(cards.nth(0)).toHaveAccessibleName(
       "Communauté Crèche Les Lucioles",
     );
@@ -212,8 +219,20 @@ test.describe("clients", () => {
       "Communauté Atelier Bricole & Co",
     );
 
-    await form.getByLabel("Trier par").selectOption("membres-croissant");
-    await expect(page).toHaveURL(/tri=membres-croissant/);
+    // Le bouton de sens : chiffres 1 / 9, la flèche passe du haut (décroissant) au bas.
+    const toggle = form.getByRole("button", { name: /Inverser l'ordre/ });
+    await expect(toggle).toHaveAccessibleName(/Membres, du plus grand groupe/);
+    await expect(toggle.locator("svg")).toHaveAttribute(
+      "data-order",
+      "decroissant",
+    );
+    await expect(toggle).toContainText("19");
+    await toggle.click();
+    await expect(page).toHaveURL(/tri=membres&sens=croissant/);
+    await expect(toggle.locator("svg")).toHaveAttribute(
+      "data-order",
+      "croissant",
+    );
     await expect(cards.nth(0)).toHaveAccessibleName(
       "Communauté Atelier Bricole & Co",
     );
@@ -225,12 +244,19 @@ test.describe("clients", () => {
     await expect(creche).toContainText("−10 % sur chaque commande");
     await expect(creche).toContainText("Livraison offerte");
     await expect(creche).toContainText("Horaire choisi par chaque membre");
-    await expect(
-      page.getByRole("article", { name: /École Jules-Verne/ }),
-    ).toContainText("−5 % sur chaque commande");
+    // Bandeau du type et de la visibilité en tête de chaque carte.
+    await expect(creche).toContainText("Type : Point relais");
+    await expect(creche).toContainText("Visibilité : Public");
+    const voisins = page.getByRole("article", {
+      name: "Communauté Voisins de la résidence Jules-Verne",
+    });
+    await expect(voisins).toContainText("−5 % sur chaque commande");
+    await expect(voisins).toContainText("Type : Voisinage");
+    await expect(voisins).toContainText("Visibilité : Privé");
     const atelier = page.getByRole("article", {
       name: "Communauté Atelier Bricole & Co",
     });
+    await expect(atelier).toContainText("Type : Entreprise");
     await expect(atelier).toContainText("Pas encore de remise");
     await expect(atelier).toContainText("−5 % à partir de 4 membres");
 
@@ -239,6 +265,13 @@ test.describe("clients", () => {
       page.getByRole("heading", { level: 1, name: "Crèche Les Lucioles" }),
     ).toBeVisible();
     await expect(page.getByText("−10 % sur chaque commande")).toBeVisible();
+    const main = page.getByRole("main");
+    await expect(
+      main.getByText("Type : Point relais", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      main.getByText("Visibilité : Public", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "Membres" }),
     ).toBeVisible();
@@ -258,8 +291,19 @@ test.describe("clients", () => {
     await expect(
       page.getByRole("article", { name: /^Communauté / }),
     ).toHaveCount(0);
-    await form.getByLabel("Trier par").selectOption("nom-decroissant");
-    await expect(page).toHaveURL(/tri=nom-decroissant/);
+    // Un membre de communauté reste un particulier : il figure ici, avec son
+    // badge « Communauté » à côté de « Particulier ».
+    const member = page
+      .getByRole("article", { name: /^Client / })
+      .filter({ hasText: "Membre : Communauté" })
+      .first();
+    await expect(member).toContainText("Particulier");
+    await expect(member).toContainText(/Membre : Communauté · \S/);
+    const toggle = form.getByRole("button", { name: /Inverser l'ordre/ });
+    await expect(toggle).toContainText("AZ");
+    await toggle.click();
+    await expect(page).toHaveURL(/sens=decroissant/);
+    await expect(toggle).toHaveAccessibleName(/Nom, de Z à A/);
     const names = page.getByRole("article").getByRole("heading", { level: 3 });
     await expect(names.first()).not.toHaveText("Amel Benali");
     const [first, second] = await names.allTextContents();

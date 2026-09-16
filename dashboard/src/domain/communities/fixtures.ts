@@ -1,7 +1,7 @@
 import type { Community } from "@/domain/communities/types";
 
 /*
- * Trois communautés factices, existantes dès le début de l'historique généré
+ * Trois communautés factices, une par type et les deux visibilités, existantes dès le début de l'historique généré
  * (orders/history.ts leur rattache des clients et des commandes : onze, huit
  * et trois membres, pour couvrir les trois paliers de remise de
  * communities/discount.ts). Aucune personne ni établissement réels : noms
@@ -12,7 +12,8 @@ export const communitiesFixtures: readonly Community[] = [
   {
     id: "com-0001",
     name: "Crèche Les Lucioles",
-    kind: "creche",
+    kind: "point_relais",
+    visibility: "public",
     contactName: "Marion Tessier",
     contactEmail: "contact.lucioles@example.invalid",
     contactPhone: "06 39 98 80 01",
@@ -24,12 +25,13 @@ export const communitiesFixtures: readonly Community[] = [
   },
   {
     id: "com-0002",
-    name: "École Jules-Verne (parents d'élèves)",
-    kind: "ecole",
+    name: "Voisins de la résidence Jules-Verne",
+    kind: "voisinage",
+    visibility: "private",
     contactName: "Hakim Zerrouki",
     contactEmail: "ape.julesverne@example.invalid",
     contactPhone: "06 39 98 80 02",
-    pickupPlace: "Préau, à la sortie des classes",
+    pickupPlace: "Local à vélos de la résidence",
     pickupCity: "Montreuil",
     pickupPostalCode: "93100",
     active: true,
@@ -39,6 +41,7 @@ export const communitiesFixtures: readonly Community[] = [
     id: "com-0003",
     name: "Atelier Bricole & Co",
     kind: "entreprise",
+    visibility: "private",
     contactName: "Élodie Rambert",
     contactEmail: "accueil.bricole@example.invalid",
     contactPhone: "06 39 98 80 03",

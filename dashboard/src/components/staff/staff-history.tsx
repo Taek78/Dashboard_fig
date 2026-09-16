@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CustomerTypeLabels } from "@/components/customers/client-type-label";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
 import {
@@ -149,7 +149,7 @@ export function StaffHistory({
                       </div>
                       <OrderStatusBadge status={order.status} />
                     </div>
-                    <ClientTypeLabel
+                    <CustomerTypeLabels
                       community={order.community}
                       className="self-start"
                     />
@@ -193,7 +193,7 @@ export function StaffHistory({
                           <CustomerNameLink customer={order.customer} />
                         </TableCell>
                         <TableCell>
-                          <ClientTypeLabel
+                          <CustomerTypeLabels
                             community={order.community}
                             showName={false}
                           />

@@ -7,10 +7,7 @@ import {
   Package,
   Phone,
 } from "lucide-react";
-import {
-  CLIENT_TYPE_TINT,
-  ClientTypeLabel,
-} from "@/components/customers/client-type-label";
+import { CustomerTypeLabels } from "@/components/customers/client-type-label";
 import { OrderActions } from "@/components/orders/order-actions";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
@@ -22,7 +19,6 @@ import {
   type AssignmentOptions,
 } from "@/components/orders/order-team";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { clientTypeOf } from "@/domain/customers/client-type";
 import { itineraryUrl } from "@/domain/deliveries/rules";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { computeOrderSubtotalCents } from "@/domain/orders/rules";
@@ -77,7 +73,9 @@ export function OrderCard({
       <div
         className={cn(
           "flex flex-row items-start justify-between gap-3 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:flex-col @4xl/main:justify-start @4xl/main:border-r @4xl/main:border-b-0",
-          CLIENT_TYPE_TINT[clientTypeOf(order.community)],
+          // Couleur « particulier » : une commande est toujours celle d'une
+          // personne ; l'appartenance à une communauté a son propre badge.
+          "bg-individual/8",
         )}
       >
         <div className="flex min-w-0 flex-col gap-1">
@@ -98,7 +96,7 @@ export function OrderCard({
           >
             {order.reference}
           </Link>
-          <ClientTypeLabel community={order.community} className="mt-1" />
+          <CustomerTypeLabels community={order.community} className="mt-1" />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5 @4xl/main:items-start">
           <OrderStatusBadge status={order.status} />

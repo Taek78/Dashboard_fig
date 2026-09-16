@@ -1,4 +1,5 @@
 import { CircleAlert } from "lucide-react";
+import { DatePickerButton } from "@/components/date-picker-button";
 import { NativeInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { DateRangeError, DateRangeInput } from "@/lib/days";
@@ -15,7 +16,13 @@ import { cn } from "@/lib/utils";
  * qu'aucune période n'est appliquée. Une seule date remplie n'est pas une
  * erreur : ce jour-là est cherché (readDateRange), l'aide le rappelle.
  * NativeInput : les champs restent montés pendant la saisie automatique.
+ * Sur tablette et PC, chaque champ reçoit le calendrier maison
+ * (DatePickerButton : jours hors du mois grisés, ouverture sur le mois de la
+ * date saisie) ; sur téléphone, le sélecteur natif du système reste.
  */
+/** Sur tablette et PC, l'icône native laisse la place au bouton du calendrier. */
+const DATE_INPUT =
+  "dark:scheme-dark md:pr-9 md:[&::-webkit-calendar-picker-indicator]:hidden";
 const ERROR_LABELS: Record<DateRangeError, string> = {
   inverted:
     "La date de début est après la date de fin : corrigez-les, aucune période n'est appliquée.",
@@ -77,30 +84,44 @@ export function DateRangeFields({
             ) : null}
             {from.shown}
           </Label>
-          <NativeInput
-            id={fromId}
-            name="du"
-            type="date"
-            defaultValue={period.from ?? ""}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={messageId}
-            className="dark:scheme-dark"
-          />
+          <div className="relative min-w-0">
+            <NativeInput
+              id={fromId}
+              name="du"
+              type="date"
+              defaultValue={period.from ?? ""}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={messageId}
+              className={DATE_INPUT}
+            />
+            <DatePickerButton
+              inputId={fromId}
+              otherInputId={toId}
+              label="Calendrier, date de début"
+            />
+          </div>
         </div>
         <div className="grid min-w-0 gap-1">
           <Label htmlFor={toId} className="text-muted-foreground text-xs">
             {to.hidden ? <span className="sr-only">{to.hidden}</span> : null}
             {to.shown}
           </Label>
-          <NativeInput
-            id={toId}
-            name="au"
-            type="date"
-            defaultValue={period.to ?? ""}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={messageId}
-            className="dark:scheme-dark"
-          />
+          <div className="relative min-w-0">
+            <NativeInput
+              id={toId}
+              name="au"
+              type="date"
+              defaultValue={period.to ?? ""}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={messageId}
+              className={DATE_INPUT}
+            />
+            <DatePickerButton
+              inputId={toId}
+              otherInputId={fromId}
+              label="Calendrier, date de fin"
+            />
+          </div>
         </div>
       </div>
       {error ? (

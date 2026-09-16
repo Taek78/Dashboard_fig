@@ -475,6 +475,7 @@ export function toCommunity(row: CommunityRow): Community {
     id: row.id,
     name: row.name,
     kind: row.kind,
+    visibility: row.visibility,
     contactName: row.contactName,
     contactEmail: row.contactEmail,
     contactPhone: row.contactPhone,

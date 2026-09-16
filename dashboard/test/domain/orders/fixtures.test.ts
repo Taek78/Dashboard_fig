@@ -17,7 +17,7 @@ import {
   computeOrderSubtotalCents,
   computeOrderTotalCents,
 } from "@/domain/orders/rules";
-import { isOneHourSlot } from "@/domain/orders/slot";
+import { isDeliverySlot } from "@/domain/orders/slot";
 import { staffFixtures } from "@/domain/staff/fixtures";
 import { ORDER_STATUSES, statusPath } from "@/domain/orders/status";
 
@@ -112,7 +112,7 @@ describe("ordersFixtures (scénario + historique généré)", () => {
       expect(order.deliverySlot.date).toMatch(ISO_DATE);
       expect(order.deliverySlot.start).toMatch(HOUR);
       expect(order.deliverySlot.end).toMatch(HOUR);
-      expect(isOneHourSlot(order.deliverySlot)).toBe(true);
+      expect(isDeliverySlot(order.deliverySlot)).toBe(true);
       expect(order.deliveryAddressLine).toBeTruthy();
       expect(order.customer.email).toMatch(/@example\.invalid$/);
       expect(order.customer.phone).toMatch(/^06 39 98 \d{2} \d{2}$/);

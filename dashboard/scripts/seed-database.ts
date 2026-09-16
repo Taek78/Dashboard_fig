@@ -116,6 +116,7 @@ export async function seedDatabase(
         id: c.id,
         name: c.name,
         kind: c.kind,
+        visibility: c.visibility,
         contactName: c.contactName,
         contactEmail: c.contactEmail,
         contactPhone: c.contactPhone,

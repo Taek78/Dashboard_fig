@@ -73,7 +73,7 @@ export type Customer = {
 
 /*
  * Filtres de la liste, déjà validés (parseCustomerSearch). `membership` sépare
- * les particuliers (sans communauté) des membres d'une communauté ;
+ * les clients sans communauté des membres d'une communauté (tous particuliers) ;
  * `communityId` restreint à une communauté précise (fiche communauté).
  */
 export type CustomerFilters = {

@@ -9,16 +9,17 @@ import {
   Users,
 } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CommunityBanner } from "@/components/customers/community-banner";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { nextCommunityDiscountTier } from "@/domain/communities/discount";
-import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
 import type { CommunityEntry } from "@/domain/customers/directory";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Grande carte d'une communauté (serveur) : type, remise déduite du nombre de
+ * Grande carte d'une communauté (serveur) : bandeau du type et de la
+ * visibilité en tête, remise déduite du nombre de
  * membres et livraison offerte, point de retrait, contact, chiffres (membres,
  * commandes, remises accordées) et un bouton dédié vers la fiche. L'horaire
  * de retrait n'appartient pas à la communauté : chaque membre le choisit à la
@@ -65,10 +66,15 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
     <article
       aria-label={`Communauté ${community.name}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
+        // Fond nuancé de la couleur « communauté » du thème (token --community).
+        "bg-card from-community/12 to-community/4 text-card-foreground ring-foreground/10 card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl bg-linear-to-b p-4 shadow-sm ring-1 @2xl/main:p-5",
         !community.active && "opacity-70",
       )}
     >
+      <CommunityBanner
+        community={community}
+        className="-mx-4 -mt-4 rounded-t-2xl @2xl/main:-mx-5 @2xl/main:-mt-5"
+      />
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
@@ -81,13 +87,7 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
             {community.name}
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            <ClientTypeLabel
-              community={{ id: community.id, name: community.name }}
-              showName={false}
-            />
-            <Badge variant="secondary">
-              {COMMUNITY_KIND_LABELS[community.kind]}
-            </Badge>
+            <ClientTypeLabel type="communaute" />
             {!community.active ? (
               <Badge variant="destructive">Inactive</Badge>
             ) : null}

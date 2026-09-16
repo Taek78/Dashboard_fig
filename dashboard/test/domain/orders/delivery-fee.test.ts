@@ -4,7 +4,12 @@ import {
   deliveryFeeCents,
 } from "@/domain/orders/delivery-fee";
 import { computeOrderTotalCents } from "@/domain/orders/rules";
-import { isOneHourSlot, slotEndFor } from "@/domain/orders/slot";
+import {
+  DELIVERY_SLOT_STARTS,
+  isDeliverySlot,
+  isOneHourSlot,
+  slotEndFor,
+} from "@/domain/orders/slot";
 
 describe("deliveryFeeCents", () => {
   it("suit le barème du client sur le panier avant remise", () => {
@@ -72,5 +77,25 @@ describe("créneaux d'une heure", () => {
     expect(isOneHourSlot({ start: "14:30", end: "15:30" })).toBe(false);
     expect(isOneHourSlot({ start: "23:00", end: "24:00" })).toBe(false);
     expect(isOneHourSlot({ start: "9:00", end: "10:00" })).toBe(false);
+  });
+
+  it("FIG livre entre 10:00 et 20:00 : dix créneaux, de 10:00 à 19:00", () => {
+    expect(DELIVERY_SLOT_STARTS).toEqual([
+      "10:00",
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+      "19:00",
+    ]);
+    expect(isDeliverySlot({ start: "10:00", end: "11:00" })).toBe(true);
+    expect(isDeliverySlot({ start: "19:00", end: "20:00" })).toBe(true);
+    expect(isDeliverySlot({ start: "09:00", end: "10:00" })).toBe(false);
+    expect(isDeliverySlot({ start: "20:00", end: "21:00" })).toBe(false);
+    expect(isDeliverySlot({ start: "14:00", end: "16:00" })).toBe(false);
   });
 });

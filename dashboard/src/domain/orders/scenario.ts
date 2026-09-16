@@ -63,7 +63,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "amel.benali@example.invalid",
       phone: "06 39 98 00 01",
     },
-    deliverySlot: slot("2026-09-07", "09:00"),
+    deliverySlot: slot("2026-09-07", "10:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75011",
     lines: [
@@ -102,7 +102,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "theo.marchand@example.invalid",
       phone: "06 39 98 00 02",
     },
-    deliverySlot: slot("2026-09-07", "09:00"),
+    deliverySlot: slot("2026-09-07", "10:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75020",
     lines: [
@@ -290,7 +290,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "samuel.nkemelu@example.invalid",
       phone: "06 39 98 00 07",
     },
-    deliverySlot: slot("2026-09-06", "09:00"),
+    deliverySlot: slot("2026-09-06", "10:00"),
     deliveryCity: "Saint-Mandé",
     deliveryPostalCode: "94160",
     lines: [
@@ -375,7 +375,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "elise.moreau@example.invalid",
       phone: "06 39 98 00 08",
     },
-    deliverySlot: slot("2026-09-08", "09:00"),
+    deliverySlot: slot("2026-09-08", "10:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75003",
     lines: [
@@ -545,7 +545,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "mathis.petit@example.invalid",
       phone: "06 39 98 00 11",
     },
-    deliverySlot: slot("2026-09-08", "09:00"),
+    deliverySlot: slot("2026-09-08", "10:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75020",
     lines: [
@@ -577,7 +577,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "sofia.haddad@example.invalid",
       phone: "06 39 98 00 12",
     },
-    deliverySlot: slot("2026-09-07", "09:00"),
+    deliverySlot: slot("2026-09-07", "10:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75012",
     lines: [

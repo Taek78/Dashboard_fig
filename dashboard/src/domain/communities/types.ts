@@ -1,4 +1,7 @@
-import type { CommunityKind } from "@/domain/communities/kind";
+import type {
+  CommunityKind,
+  CommunityVisibility,
+} from "@/domain/communities/kind";
 
 /*
  * Types métier des communautés : le vocabulaire du FRONT (les lignes Postgres y
@@ -17,7 +20,10 @@ import type { CommunityKind } from "@/domain/communities/kind";
 export type Community = {
   id: string;
   name: string;
+  /** Voisinage, entreprise ou point relais ; jamais vide. */
   kind: CommunityKind;
+  /** Public (on l'intègre directement) ou privé (sur invitation), posé par l'application ; jamais vide. */
+  visibility: CommunityVisibility;
   /** Personne référente côté communauté (données personnelles). */
   contactName: string;
   contactEmail: string;

@@ -80,6 +80,18 @@ describe("parseClientsSearch", () => {
       sort: "nom",
       order: "decroissant",
     });
+    // Le bouton de sens : ?sens= l'emporte, un sens inconnu est ignoré.
+    expect(
+      parseClientsSearch({ tri: "commandes", sens: "croissant" }),
+    ).toMatchObject({ sort: "commandes", order: "croissant" });
+    expect(parseClientsSearch({ sens: "decroissant" })).toMatchObject({
+      sort: "nom",
+      order: "decroissant",
+    });
+    expect(parseClientsSearch({ tri: "montant", sens: "haut" })).toMatchObject({
+      sort: "montant",
+      order: "decroissant",
+    });
   });
 
   it("par défaut : tout le monde, par nom croissant, première page", () => {

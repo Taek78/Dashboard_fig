@@ -5,7 +5,7 @@ import type { Order } from "@/domain/orders/types";
 /*
  * Badge de la remise appliquée par l'application FIG au paiement (serveur) :
  * remise de communauté ou fidélité, avec son pourcentage. Rien si la commande
- * n'a pas de remise. Le nom de la communauté est porté par ClientTypeLabel :
+ * n'a pas de remise. Le nom de la communauté est porté par CustomerTypeLabels :
  * le badge reste court, et passe à la ligne plutôt que de déborder.
  */
 const wrap = "h-auto max-w-full whitespace-normal text-left";

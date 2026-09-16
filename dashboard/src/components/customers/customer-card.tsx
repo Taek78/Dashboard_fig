@@ -8,7 +8,7 @@ import {
   Phone,
   Sparkles,
 } from "lucide-react";
-import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CustomerTypeLabels } from "@/components/customers/client-type-label";
 import { ConsentPills } from "@/components/customers/consent-pills";
 import { LoyaltyBadge } from "@/components/customers/loyalty-badge";
 import { TierBadge } from "@/components/customers/tier-badge";
@@ -39,7 +39,9 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
     <article
       aria-label={`Client ${customer.fullName}`}
       className={cn(
-        "bg-card text-card-foreground card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
+        // Fond nuancé de la couleur « particulier » du thème (token --individual) :
+        // une carte client se distingue d'une carte communauté d'un coup d'œil.
+        "bg-card from-individual/12 to-individual/4 text-card-foreground card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl bg-linear-to-b p-4 shadow-sm ring-1 @2xl/main:p-5",
         tier.tier === "loyal" ? "ring-loyal/40" : "ring-foreground/10",
       )}
     >
@@ -47,12 +49,9 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className={cn(
-            "flex size-12 shrink-0 items-center justify-center rounded-full text-base font-semibold",
-            customer.community
-              ? "bg-community/15 text-community"
-              : "bg-individual/15 text-individual",
-          )}
+          // Toujours la couleur « particulier », membre d'une communauté ou non :
+          // seul le badge d'appartenance porte la couleur communauté.
+          className="bg-individual/15 text-individual flex size-12 shrink-0 items-center justify-center rounded-full text-base font-semibold"
         >
           {initials(customer.fullName)}
         </span>
@@ -68,7 +67,7 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
             </h3>
             {anonymized ? null : <TierBadge state={tier} />}
           </div>
-          <ClientTypeLabel
+          <CustomerTypeLabels
             community={customer.community}
             className="self-start"
           />

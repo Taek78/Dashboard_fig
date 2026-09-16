@@ -328,9 +328,8 @@ function pickWeighted<T>(
   return items[items.length - 1]!;
 }
 
-/** Débuts des créneaux d'une heure proposés par l'application. */
+/** Débuts des créneaux d'une heure proposés par l'application (entre 10:00 et 20:00). */
 const SLOT_STARTS = [
-  "09:00",
   "10:00",
   "11:00",
   "14:00",
@@ -338,6 +337,7 @@ const SLOT_STARTS = [
   "16:00",
   "17:00",
   "18:00",
+  "19:00",
 ] as const;
 const GRAMS = [500, 750, 1000, 1500, 2000, 3000];
 const OTHER_DETAILS = [

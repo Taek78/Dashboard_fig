@@ -25,6 +25,7 @@ import {
   type StaffHistoryFilters,
 } from "@/domain/staff/rules";
 import type { OrderStatus } from "@/domain/orders/status";
+import { slotEndFor } from "@/domain/orders/slot";
 import type { OrderFilters } from "@/domain/orders/types";
 
 /*
@@ -375,6 +376,42 @@ describe("contraintes de la base sur les commandes", () => {
         tx.insert(ordersTable).values({ ...draft, id: "cmd-test-ok" }),
       ),
     ).toBeNull();
+  });
+
+  it("refuse un créneau hors de 10:00 à 20:00, accepte le premier et le dernier", async () => {
+    expect(
+      await refusedBy((tx) =>
+        tx.insert(ordersTable).values({
+          ...draft,
+          id: "cmd-test-09",
+          deliveryStart: "09:00",
+          deliveryEnd: "10:00",
+        }),
+      ),
+    ).toBe("orders_slot_hours");
+    expect(
+      await refusedBy((tx) =>
+        tx.insert(ordersTable).values({
+          ...draft,
+          id: "cmd-test-20",
+          deliveryStart: "20:00",
+          deliveryEnd: "21:00",
+        }),
+      ),
+    ).toBe("orders_slot_hours");
+    for (const start of ["10:00", "19:00"]) {
+      expect(
+        await refusedBy((tx) =>
+          tx.insert(ordersTable).values({
+            ...draft,
+            id: `cmd-test-${start.slice(0, 2)}`,
+            reference: `FIG-TEST-${start.slice(0, 2)}`,
+            deliveryStart: start,
+            deliveryEnd: slotEndFor(start),
+          }),
+        ),
+      ).toBeNull();
+    }
   });
 
   it("refuse des frais de livraison à une commande de communauté, ou négatifs", async () => {

@@ -82,7 +82,7 @@ export const messagesFixtures: readonly Message[] = [
     id: "msg-0002",
     customer: customerOf("cli-0004"),
     subject: "delivery_issue",
-    body: "Personne n'est passé jeudi entre 9 h et 11 h alors que j'étais chez moi.\nJ'ai attendu toute la matinée. Est-ce que la tournée a été décalée ?",
+    body: "Personne n'est passé jeudi entre 10 h et 11 h alors que j'étais chez moi.\nJ'ai attendu toute la matinée. Est-ce que la tournée a été décalée ?",
     order: firstOrderOf("cli-0004"),
     attachments: [],
     status: "untreated",

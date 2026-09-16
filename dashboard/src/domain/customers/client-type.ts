@@ -1,9 +1,10 @@
-import type { CommunityRef } from "@/domain/communities/types";
-
 /*
- * Type de client d'une commande ou d'une fiche : particulier (commande pour
- * soi, livrée à son adresse) ou communauté (membre d'un groupe, retrait au
- * point de la communauté). Déduit de la communauté portée, jamais stocké.
+ * Type de client (décision du client, 2026-09-16) : une PERSONNE est toujours
+ * un particulier, qu'elle soit membre d'une communauté ou non ; une communauté
+ * est un GROUPE de particuliers, jamais une personne. Être membre d'une
+ * communauté s'affiche à part, par un badge « Communauté » à côté de
+ * « Particulier » (COMMUNITY_MEMBER_LABEL). Rien n'est stocké : l'appartenance
+ * se lit dans la communauté portée par le client ou la commande.
  */
 export const CLIENT_TYPES = ["particulier", "communaute"] as const;
 export type ClientType = (typeof CLIENT_TYPES)[number];
@@ -13,6 +14,5 @@ export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
   communaute: "Communauté",
 };
 
-export function clientTypeOf(community: CommunityRef | null): ClientType {
-  return community === null ? "particulier" : "communaute";
-}
+/** Libellé du badge d'appartenance d'une personne à une communauté. */
+export const COMMUNITY_MEMBER_LABEL = "Communauté";

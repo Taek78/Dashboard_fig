@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
+import { SortOrderToggle } from "@/components/sort-order-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NativeInput } from "@/components/ui/input";
@@ -17,9 +18,12 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import {
+  DEFAULT_DIRECTORY_ORDER,
+  DIRECTORY_SORT_SCALES,
   DIRECTORY_TYPE_DESCRIPTIONS,
   DIRECTORY_TYPE_LABELS,
   DIRECTORY_TYPES,
+  SORT_ORDER_LABELS,
   sortOptions,
   type DirectoryType,
 } from "@/domain/customers/directory";
@@ -31,8 +35,10 @@ import { cn } from "@/lib/utils";
  * la lance pendant la saisie) : un seul champ pour les particuliers ET les
  * communautés, un COMMUTATEUR de type à trois positions (particuliers,
  * communautés, tous), chacune dans sa couleur (tokens --individual,
- * --community, marque pour « tous »), et un tri dont chaque critère existe
- * dans les deux sens. Les champs deviennent l'URL (?q=&type=&tri=) :
+ * --community, marque pour « tous »), et un tri en deux gestes : le critère
+ * dans la liste, le sens par le bouton à côté (SortOrderToggle : flèche qui
+ * pivote, A / Z pour le nom, 1 / 9 pour les nombres). Les champs deviennent
+ * l'URL (?q=&type=&tri=&sens=) :
  * partageable, retour arrière gratuit ; une nouvelle recherche revient en
  * page 1.
  *
@@ -143,18 +149,28 @@ export function CustomersSearch({
             </fieldset>
             <div className="grid gap-1.5">
               <Label htmlFor="tri">Trier par</Label>
-              <NativeSelect
-                id="tri"
-                name="tri"
-                defaultValue={`${search.sort}-${search.order}`}
-                className="w-full"
-              >
-                {sortOptions(search.type).map((option) => (
-                  <NativeSelectOption key={option.value} value={option.value}>
-                    {option.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              <div className="flex min-w-0 items-center gap-2">
+                <NativeSelect
+                  id="tri"
+                  name="tri"
+                  defaultValue={search.sort}
+                  className="min-w-0 flex-1"
+                >
+                  {sortOptions(search.type).map((option) => (
+                    <NativeSelectOption key={option.value} value={option.value}>
+                      {option.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+                <SortOrderToggle
+                  selectId="tri"
+                  sort={search.sort}
+                  order={search.order}
+                  naturalOrders={DEFAULT_DIRECTORY_ORDER}
+                  scales={DIRECTORY_SORT_SCALES}
+                  labels={SORT_ORDER_LABELS}
+                />
+              </div>
             </div>
             {canReset ? (
               <Link

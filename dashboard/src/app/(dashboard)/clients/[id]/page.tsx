@@ -11,7 +11,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CustomerTypeLabels } from "@/components/customers/client-type-label";
 import { CustomerHistoryFilters } from "@/components/customers/customer-history-filters";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
 import { CustomerPrivacyPanel } from "@/components/customers/customer-privacy-panel";
@@ -133,7 +133,7 @@ export default async function ClientPage({
         }
       />
       <div className="flex flex-wrap items-center gap-2">
-        <ClientTypeLabel community={customer.community} />
+        <CustomerTypeLabels community={customer.community} />
         {anonymized ? null : <TierBadge state={tier} showUntil />}
       </div>
 

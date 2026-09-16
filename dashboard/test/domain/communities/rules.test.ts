@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import {
+  COMMUNITY_KIND_LABELS,
+  COMMUNITY_KINDS,
+  COMMUNITY_VISIBILITIES,
+  COMMUNITY_VISIBILITY_LABELS,
+} from "@/domain/communities/kind";
+import {
   communityMembers,
   communityOrders,
   sortCommunities,
@@ -19,6 +25,24 @@ describe("communitiesFixtures", () => {
       expect(c.contactPhone).toMatch(/^06 39 98 80 \d{2}$/);
       expect(c).not.toHaveProperty("pickupTime");
     }
+  });
+
+  it("couvrent les trois types et les deux visibilités, chacun libellé", () => {
+    expect(new Set(communitiesFixtures.map((c) => c.kind))).toEqual(
+      new Set(COMMUNITY_KINDS),
+    );
+    expect(new Set(communitiesFixtures.map((c) => c.visibility))).toEqual(
+      new Set(COMMUNITY_VISIBILITIES),
+    );
+    expect(Object.values(COMMUNITY_KIND_LABELS)).toEqual([
+      "Voisinage",
+      "Entreprise",
+      "Point relais",
+    ]);
+    expect(COMMUNITY_VISIBILITY_LABELS).toEqual({
+      public: "Public",
+      private: "Privé",
+    });
   });
 });
 

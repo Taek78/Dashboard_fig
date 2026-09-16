@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { communities } from "@/db/schema";
+import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
 import type { StaffInput } from "@/domain/staff/types";
 
@@ -7,7 +9,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/db/client", () =>
   import("../support/test-database").then((m) => m.dbClientMock),
 );
-const { isolateEachTest } = await import("../support/test-database");
+const { isolateEachTest, testDb } = await import("../support/test-database");
 isolateEachTest();
 
 const { staffDb } = await import("@/data/staff.db");
@@ -92,5 +94,38 @@ describe("communitiesDb", () => {
       "Crèche Les Lucioles",
     );
     expect(await communitiesDb.getCommunity("com-9999")).toBeNull();
+  });
+
+  it("chaque communauté lue a un type et une visibilité", async () => {
+    for (const c of await communitiesDb.listCommunities()) {
+      expect(["voisinage", "entreprise", "point_relais"]).toContain(c.kind);
+      expect(["public", "private"]).toContain(c.visibility);
+    }
+  });
+
+  it("la base refuse un type ou une visibilité absents ou vides", async () => {
+    const { id, createdAt, ...base } = communitiesFixtures[0]!;
+    void id;
+    void createdAt;
+    /** Code d'erreur Postgres de l'insertion, ou null si elle passe. */
+    const refused = async (values: Record<string, unknown>) => {
+      try {
+        await testDb().transaction((tx) =>
+          tx
+            .insert(communities)
+            .values({ ...base, id: "com-test", ...values } as never),
+        );
+        return null;
+      } catch (error) {
+        return (error as { cause?: { code?: string } }).cause?.code ?? "?";
+      }
+    };
+    // 23502 : NOT NULL violé ; 22P02 : valeur hors de l'enum (la chaîne vide comprise).
+    expect(await refused({ visibility: undefined })).toBe("23502");
+    expect(await refused({ visibility: null })).toBe("23502");
+    expect(await refused({ kind: null })).toBe("23502");
+    expect(await refused({ visibility: "" })).toBe("22P02");
+    expect(await refused({ kind: "" })).toBe("22P02");
+    expect(await refused({})).toBeNull();
   });
 });

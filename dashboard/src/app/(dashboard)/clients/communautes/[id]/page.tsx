@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CommunityBanner } from "@/components/customers/community-banner";
 import { CommunityDiscountBadges } from "@/components/customers/community-card";
 import { CustomerCard } from "@/components/customers/customer-card";
 import { OrdersTable } from "@/components/orders/orders-table";
@@ -14,14 +15,18 @@ import { getCommunity } from "@/data/communities";
 import { getCustomers } from "@/data/customers";
 import { getDirectoryStats, getOrdersPage } from "@/data/orders";
 import { communityDiscountPercent } from "@/domain/communities/discount";
-import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
+import {
+  COMMUNITY_KIND_LABELS,
+  COMMUNITY_VISIBILITY_LABELS,
+} from "@/domain/communities/kind";
 import { summarizeCommunity } from "@/domain/communities/rules";
 import { buildCustomerEntries } from "@/domain/customers/directory";
 import { customerIdSchema } from "@/domain/customers/schemas";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 
 /*
- * Fiche d'une communauté (lecture) : point de retrait, remise déduite du
+ * Fiche d'une communauté (lecture) : bandeau du type et de la visibilité,
+ * point de retrait, remise déduite du
  * nombre de membres et livraison offerte, contact, chiffres, ses membres
  * (liste de clients) et ses commandes récentes (croisement par
  * OrderFilters.communityId). Chiffres de la communauté et de ses membres
@@ -55,7 +60,7 @@ export default async function CommunautePage({
     <>
       <PageHeader
         title={community.name}
-        description={`${COMMUNITY_KIND_LABELS[community.kind]} · communauté depuis le ${formatDateFr(community.createdAt)}`}
+        description={`${COMMUNITY_KIND_LABELS[community.kind]} · ${COMMUNITY_VISIBILITY_LABELS[community.visibility]} · communauté depuis le ${formatDateFr(community.createdAt)}`}
         actions={
           <Button
             variant="outline"
@@ -67,11 +72,12 @@ export default async function CommunautePage({
           </Button>
         }
       />
+      <CommunityBanner
+        community={community}
+        className="ring-community/25 rounded-xl ring-1"
+      />
       <div className="flex flex-wrap items-center gap-1.5">
-        <ClientTypeLabel
-          community={{ id: community.id, name: community.name }}
-          showName={false}
-        />
+        <ClientTypeLabel type="communaute" />
         {!community.active ? (
           <Badge variant="destructive">Inactive</Badge>
         ) : null}

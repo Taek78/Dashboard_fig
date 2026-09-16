@@ -1,5 +1,8 @@
 import { communityDiscountPercent } from "@/domain/communities/discount";
-import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
+import {
+  COMMUNITY_KIND_LABELS,
+  COMMUNITY_VISIBILITY_LABELS,
+} from "@/domain/communities/kind";
 import {
   summarizeCommunity,
   type CommunitySummary,
@@ -29,8 +32,9 @@ import { digitsOnly, isPhoneLike, normalize } from "@/lib/text";
  * liste, cherchée, filtrée et triée par des règles pures (testées dans
  * test/domain/customers/directory.test.ts). Les chiffres de chaque entrée sont
  * calculés une fois, à partir de toutes les commandes.
- * Filtre « communautés » : les groupes ET leurs membres (une personne membre
- * reste une personne, rattachée à sa communauté).
+ * Filtre « particuliers » : toutes les personnes, membres de communauté
+ * compris (une personne membre reste un particulier). Filtre « communautés » :
+ * les groupes seulement, jamais leurs membres.
  */
 export const DIRECTORY_TYPES = ["tous", "particuliers", "communautes"] as const;
 export type DirectoryType = (typeof DIRECTORY_TYPES)[number];
@@ -43,8 +47,8 @@ export const DIRECTORY_TYPE_LABELS: Record<DirectoryType, string> = {
 /** Phrase d'aide de chaque position du commutateur. */
 export const DIRECTORY_TYPE_DESCRIPTIONS: Record<DirectoryType, string> = {
   tous: "Particuliers et communautés",
-  particuliers: "Les clients sans communauté",
-  communautes: "Les communautés et leurs membres",
+  particuliers: "Tous les clients, membres de communauté compris",
+  communautes: "Les cartes des communautés, sans leurs membres",
 };
 
 export const DIRECTORY_SORTS = [
@@ -63,7 +67,7 @@ export const DIRECTORY_SORT_LABELS: Record<DirectorySort, string> = {
   membres: "Nombre de membres",
 };
 
-/** Sens d'un tri (?ordre=) ; chaque tri a son sens naturel par défaut. */
+/** Sens d'un tri (?sens=) ; chaque tri a son sens naturel par défaut. */
 export const DIRECTORY_ORDERS = ["croissant", "decroissant"] as const;
 export type DirectoryOrder = (typeof DIRECTORY_ORDERS)[number];
 export const DIRECTORY_ORDER_LABELS: Record<DirectoryOrder, string> = {
@@ -78,25 +82,43 @@ export const DEFAULT_DIRECTORY_ORDER: Record<DirectorySort, DirectoryOrder> = {
   membres: "decroissant",
 };
 
+/**
+ * Nature des valeurs triées, qui choisit l'icône du bouton de sens : lettres
+ * (A / Z) pour le nom, chiffres (1 / 9) pour les nombres, montants et dates.
+ */
+export type DirectorySortScale = "alpha" | "numeric";
+export const DIRECTORY_SORT_SCALES: Record<DirectorySort, DirectorySortScale> =
+  {
+    nom: "alpha",
+    commandes: "numeric",
+    montant: "numeric",
+    recent: "numeric",
+    membres: "numeric",
+  };
+
+/** Le sens contraire. */
+export function oppositeOrder(order: DirectoryOrder): DirectoryOrder {
+  return order === "croissant" ? "decroissant" : "croissant";
+}
+
 /** Le tri par membres n'a de sens que sur les communautés. */
 export function isSortAvailable(sort: DirectorySort, type: DirectoryType) {
   return sort !== "membres" || type === "communautes";
 }
 
 /**
- * Chaque tri existe dans les deux sens, en une seule liste déroulante (?tri=) :
- * une option par couple, le sens naturel du tri en premier. Libellés qui
- * disent le sens sans jargon.
+ * Le tri se choisit en deux gestes : le CRITÈRE dans une liste déroulante
+ * (?tri=), le SENS par le bouton à côté (?sens=), écrit seulement s'il diffère
+ * du sens naturel du critère. Libellés du sens, sans jargon, pour le nom
+ * accessible de ce bouton.
  */
 export type DirectorySortOption = {
-  sort: DirectorySort;
-  order: DirectoryOrder;
-  /** Valeur d'URL : « commandes-croissant ». */
-  value: string;
+  /** Valeur d'URL : « commandes ». */
+  value: DirectorySort;
   label: string;
 };
 
-const SORT_OPTION_LABELS: Record<
+export const SORT_ORDER_LABELS: Record<
   DirectorySort,
   Record<DirectoryOrder, string>
 > = {
@@ -119,12 +141,10 @@ const SORT_OPTION_LABELS: Record<
   },
 };
 
-/** Valeur d'URL d'un tri et de son sens ; le sens naturel s'omet (« commandes »). */
-export function sortParam(sort: DirectorySort, order: DirectoryOrder): string {
-  return order === DEFAULT_DIRECTORY_ORDER[sort] ? sort : `${sort}-${order}`;
-}
-
-/** Lit « commandes », « commandes-croissant »… ; undefined si inconnu. */
+/**
+ * Lit ?tri= : « commandes », ou l'ancienne forme « commandes-croissant »
+ * (liens enregistrés avant le bouton de sens) ; undefined si inconnu.
+ */
 export function parseSortParam(
   value: string | undefined,
 ): { sort: DirectorySort; order: DirectoryOrder } | undefined {
@@ -144,20 +164,19 @@ export function parseSortParam(
   return { sort: found, order: order as DirectoryOrder };
 }
 
-/** Options de la liste déroulante pour un type affiché, sens naturel en premier. */
+/** Lit ?sens= ; undefined si absent ou inconnu. */
+export function parseOrderParam(
+  value: string | undefined,
+): DirectoryOrder | undefined {
+  return (DIRECTORY_ORDERS as readonly string[]).includes(value ?? "")
+    ? (value as DirectoryOrder)
+    : undefined;
+}
+
+/** Critères de la liste déroulante pour un type affiché. */
 export function sortOptions(type: DirectoryType): DirectorySortOption[] {
-  return DIRECTORY_SORTS.filter((sort) => isSortAvailable(sort, type)).flatMap(
-    (sort) => {
-      const natural = DEFAULT_DIRECTORY_ORDER[sort];
-      const other: DirectoryOrder =
-        natural === "croissant" ? "decroissant" : "croissant";
-      return [natural, other].map((order) => ({
-        sort,
-        order,
-        value: `${sort}-${order}`,
-        label: SORT_OPTION_LABELS[sort][order],
-      }));
-    },
+  return DIRECTORY_SORTS.filter((sort) => isSortAvailable(sort, type)).map(
+    (sort) => ({ value: sort, label: DIRECTORY_SORT_LABELS[sort] }),
   );
 }
 
@@ -352,6 +371,7 @@ export function matchesDirectoryQuery(
       : [
           entry.community.name,
           COMMUNITY_KIND_LABELS[entry.community.kind],
+          COMMUNITY_VISIBILITY_LABELS[entry.community.visibility],
           entry.community.pickupPlace,
           entry.community.pickupCity,
           entry.community.pickupPostalCode,
@@ -371,10 +391,10 @@ export function matchesDirectoryQuery(
 
 function typeMatches(entry: DirectoryEntry, type: DirectoryType): boolean {
   if (type === "tous") return true;
-  if (type === "particuliers") {
-    return entry.kind === "customer" && entry.customer.community === null;
-  }
-  return entry.kind === "community" || entry.customer.community !== null;
+  // Une personne est toujours un particulier, membre d'une communauté ou non ;
+  // la position « communautés » ne montre que les groupes, jamais leurs membres.
+  if (type === "particuliers") return entry.kind === "customer";
+  return entry.kind === "community";
 }
 
 /** Garde les entrées du type demandé qui correspondent à la recherche. Ne trie pas. */
@@ -400,7 +420,8 @@ const lastDate = (e: DirectoryEntry) =>
 /**
  * Copie triée selon le tri et son sens (par défaut, le sens naturel du tri) ;
  * à égalité, par nom (ordre français, toujours croissant). Le tri par membres
- * range les communautés entre elles et laisse leurs membres après, par nom.
+ * n'est proposé qu'en position « communautés » (des groupes seulement) ; s'il
+ * reçoit malgré tout des personnes, il les laisse après les groupes, par nom.
  */
 export function sortDirectory(
   entries: readonly DirectoryEntry[],
@@ -449,7 +470,9 @@ export function directorySearchQuery(search: DirectorySearch): string {
   const params = new URLSearchParams();
   if (search.query) params.set("q", search.query);
   if (search.type !== "tous") params.set("type", search.type);
-  const tri = sortParam(search.sort, search.order);
-  if (tri !== "nom") params.set("tri", tri);
+  if (search.sort !== "nom") params.set("tri", search.sort);
+  if (search.order !== DEFAULT_DIRECTORY_ORDER[search.sort]) {
+    params.set("sens", search.order);
+  }
   return params.toString();
 }

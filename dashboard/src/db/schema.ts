@@ -84,11 +84,13 @@ export const staffAvailabilityEnum = pgEnum("staff_availability", [
   "conge",
 ]);
 export const communityKindEnum = pgEnum("community_kind", [
-  "creche",
-  "ecole",
+  "voisinage",
   "entreprise",
-  "association",
-  "autre",
+  "point_relais",
+]);
+export const communityVisibilityEnum = pgEnum("community_visibility", [
+  "public",
+  "private",
 ]);
 export const discountKindEnum = pgEnum("discount_kind", [
   "community",
@@ -180,6 +182,8 @@ export const communities = pgTable("communities", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   kind: communityKindEnum("kind").notNull(),
+  /** Posée par l'application, sans valeur par défaut : elle doit la choisir. */
+  visibility: communityVisibilityEnum("visibility").notNull(),
   contactName: text("contact_name").notNull(),
   contactEmail: text("contact_email").notNull(),
   contactPhone: text("contact_phone").notNull(),
@@ -321,7 +325,7 @@ export const orders = pgTable(
       .notNull()
       .references(() => customers.id, { onDelete: "restrict" }),
     deliveryDate: date("delivery_date", { mode: "string" }).notNull(),
-    /** Créneau d'UNE heure, sur l'heure pile (contrainte orders_slot_one_hour). */
+    /** Créneau d'UNE heure pile entre 10:00 et 20:00 (orders_slot_one_hour, orders_slot_hours). */
     deliveryStart: text("delivery_start").notNull(),
     deliveryEnd: text("delivery_end").notNull(),
     /** Rue de livraison, instantané ; NULL si inconnue ou effacée par l'anonymisation. */
@@ -383,6 +387,12 @@ export const orders = pgTable(
     check(
       "orders_slot_one_hour",
       sql`${t.deliveryStart} ~ '^([01][0-9]|2[0-2]):00$' AND ${t.deliveryEnd} = lpad((substr(${t.deliveryStart}, 1, 2)::int + 1)::text, 2, '0') || ':00'`,
+    ),
+    // Livraisons entre 10:00 et 20:00 (décision du client, 2026-09-16) : dernier
+    // créneau 19:00 → 20:00. Comparaison de textes sûre, le format HH:mm étant imposé.
+    check(
+      "orders_slot_hours",
+      sql`${t.deliveryStart} >= '10:00' AND ${t.deliveryStart} <= '19:00'`,
     ),
     check(
       "orders_cancellation_consistent",

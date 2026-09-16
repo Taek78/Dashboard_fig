@@ -31,7 +31,7 @@ Sources de vérité côté application FIG, à respecter au branchement :
 
 - la **remise** (`discount`) est celle réellement appliquée au **paiement** dans l'application ; le dashboard l'affiche et ne la calcule jamais. Il annonce ce qu'il attend : le taux d'une communauté selon ses membres (rien jusqu'à 3, −5 % de 4 à 9, −10 % dès 10), la fidélité −15 % à la commande qui suit huit commandes cumulées, et **la plus forte des deux seulement** ;
 - les **frais de livraison** (`deliveryFeeCents`) sont ceux facturés par l'application, au barème du panier avant remise (4,90 € sous 5 €, 3,90 € dès 5 €, 2,90 € dès 10 €, 1,90 € dès 20 €), toujours 0 pour une communauté (la base le refuse sinon) ;
-- le **créneau** (`deliverySlot`) est d'une heure pile (la base refuse le reste) ; pour une commande de communauté, c'est l'horaire de retrait choisi par le client **à chaque commande**, une communauté n'a pas d'heure fixe ;
+- le **créneau** (`deliverySlot`) est d'une heure pile entre 10:00 et 20:00, dernier créneau 19:00 → 20:00 (la base refuse le reste) ; pour une commande de communauté, c'est l'horaire de retrait choisi par le client **à chaque commande**, une communauté n'a pas d'heure fixe ;
 - la **rue de livraison** (`deliveryAddressLine`) est copiée sur la commande par l'application (celle du client, ou le lieu de retrait) ;
 - une commande reçue est **en préparation** d'emblée (ni « confirmée » ni « en attente ») ; elle passe à **expédiée** (`delivering`) puis **livrée** ; l'annulation, avec motif, n'est possible qu'en préparation.
 

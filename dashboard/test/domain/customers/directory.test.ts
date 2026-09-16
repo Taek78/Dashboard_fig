@@ -5,15 +5,18 @@ import {
   buildDirectory,
   countDirectory,
   DEFAULT_DIRECTORY_ORDER,
+  DIRECTORY_SORT_SCALES,
   DIRECTORY_SORTS,
   directorySearchQuery,
   directoryStatsFromOrders,
   filterDirectory,
   matchesDirectoryQuery,
+  oppositeOrder,
+  parseOrderParam,
   parseSortParam,
+  SORT_ORDER_LABELS,
   sortDirectory,
   sortOptions,
-  sortParam,
   type DirectoryEntry,
 } from "@/domain/customers/directory";
 import { customersFixtures } from "@/domain/customers/fixtures";
@@ -129,13 +132,16 @@ describe("matchesDirectoryQuery / filterDirectory", () => {
     expect(matchesDirectoryQuery(amel, "   ")).toBe(true);
   });
 
-  it("cherche une communauté par nom, type, ville ou référent", () => {
-    const ecole = communityEntry("com-0002");
-    expect(matchesDirectoryQuery(ecole, "ecole jules")).toBe(true);
-    expect(matchesDirectoryQuery(ecole, "Montreuil")).toBe(true);
-    expect(matchesDirectoryQuery(communityEntry("com-0001"), "crèche")).toBe(
-      true,
-    );
+  it("cherche une communauté par nom, type, visibilité, ville ou référent", () => {
+    const voisins = communityEntry("com-0002");
+    expect(matchesDirectoryQuery(voisins, "residence jules")).toBe(true);
+    expect(matchesDirectoryQuery(voisins, "Montreuil")).toBe(true);
+    expect(matchesDirectoryQuery(voisins, "voisinage")).toBe(true);
+    expect(matchesDirectoryQuery(voisins, "prive")).toBe(true);
+    expect(matchesDirectoryQuery(voisins, "public")).toBe(false);
+    const lucioles = communityEntry("com-0001");
+    expect(matchesDirectoryQuery(lucioles, "point relais")).toBe(true);
+    expect(matchesDirectoryQuery(lucioles, "Public")).toBe(true);
   });
 
   it("le nom d'une communauté retrouve le groupe et ses membres", () => {
@@ -153,20 +159,25 @@ describe("matchesDirectoryQuery / filterDirectory", () => {
     expect(found.length).toBe(1 + communityEntry("com-0001").memberCount);
   });
 
-  it("particuliers sans communauté ; communautés avec leurs membres ; tous", () => {
+  it("particuliers = toutes les personnes, membres compris ; communautés = les groupes seulement ; tous", () => {
     const individuals = filterDirectory(directory, { type: "particuliers" });
+    expect(individuals.every((e) => e.kind === "customer")).toBe(true);
+    expect(individuals).toHaveLength(
+      directory.filter((e) => e.kind === "customer").length,
+    );
+    // Un membre de communauté reste un particulier.
     expect(
-      individuals.every(
-        (e) => e.kind === "customer" && e.customer.community === null,
+      individuals.some(
+        (e) => e.kind === "customer" && e.customer.community !== null,
       ),
     ).toBe(true);
     const communities = filterDirectory(directory, { type: "communautes" });
+    expect(communities.every((e) => e.kind === "community")).toBe(true);
+    expect(communities).toHaveLength(3);
+    // Même en cherchant le nom d'un groupe, ses membres n'y apparaissent pas.
     expect(
-      communities.every(
-        (e) => e.kind === "community" || e.customer.community !== null,
-      ),
-    ).toBe(true);
-    expect(individuals.length + communities.length).toBe(directory.length);
+      filterDirectory(directory, { type: "communautes", query: "lucioles" }),
+    ).toHaveLength(1);
     expect(filterDirectory(directory, { type: "tous" })).toHaveLength(
       directory.length,
     );
@@ -226,21 +237,18 @@ describe("sortDirectory", () => {
     }
   });
 
-  it("par membres : les communautés d'abord, du plus grand groupe, puis leurs membres par nom", () => {
+  it("par membres : les communautés seules, du plus grand groupe au plus petit, et l'inverse", () => {
     const list = filterDirectory(directory, { type: "communautes" });
     const sorted = sortDirectory(list, "membres");
-    const groups = sorted.filter((e) => e.kind === "community");
-    expect(sorted.slice(0, groups.length)).toEqual(groups);
-    const counts = groups.map((e) =>
+    expect(sorted.every((e) => e.kind === "community")).toBe(true);
+    const counts = sorted.map((e) =>
       e.kind === "community" ? e.memberCount : -1,
     );
     expect(counts).toEqual(counts.toSorted((a, b) => b - a));
-    const members = sorted.slice(groups.length);
-    for (let i = 1; i < members.length; i += 1) {
-      expect(
-        members[i - 1]!.name.localeCompare(members[i]!.name, "fr"),
-      ).toBeLessThanOrEqual(0);
-    }
+    // Des personnes passées malgré tout au tri restent après les groupes.
+    const mixed = sortDirectory(directory, "membres");
+    const firstPerson = mixed.findIndex((e) => e.kind === "customer");
+    expect(firstPerson).toBe(3);
     const reversed = sortDirectory(list, "membres", "croissant")
       .filter((e) => e.kind === "community")
       .map((e) => (e.kind === "community" ? e.memberCount : -1));
@@ -248,12 +256,8 @@ describe("sortDirectory", () => {
   });
 });
 
-describe("sortParam / parseSortParam / sortOptions", () => {
-  it("le sens naturel s'omet dans l'URL, l'autre s'écrit", () => {
-    expect(sortParam("nom", "croissant")).toBe("nom");
-    expect(sortParam("nom", "decroissant")).toBe("nom-decroissant");
-    expect(sortParam("commandes", "decroissant")).toBe("commandes");
-    expect(sortParam("commandes", "croissant")).toBe("commandes-croissant");
+describe("parseSortParam / parseOrderParam / sortOptions", () => {
+  it("lit le critère, l'ancienne forme critère-sens, et le sens seul", () => {
     for (const sort of DIRECTORY_SORTS) {
       expect(parseSortParam(sort)).toEqual({
         sort,
@@ -268,24 +272,34 @@ describe("sortParam / parseSortParam / sortOptions", () => {
     expect(parseSortParam("prix")).toBeUndefined();
     expect(parseSortParam("nom-aleatoire")).toBeUndefined();
     expect(parseSortParam("nom-croissant-x")).toBeUndefined();
+    expect(parseOrderParam("croissant")).toBe("croissant");
+    expect(parseOrderParam("decroissant")).toBe("decroissant");
+    expect(parseOrderParam("haut")).toBeUndefined();
+    expect(parseOrderParam(undefined)).toBeUndefined();
+    expect(oppositeOrder("croissant")).toBe("decroissant");
+    expect(oppositeOrder("decroissant")).toBe("croissant");
   });
 
-  it("propose chaque tri dans les deux sens, naturel en premier ; membres pour les communautés seulement", () => {
+  it("la liste ne propose que les critères ; membres pour les communautés seulement", () => {
     const all = sortOptions("tous");
     expect(all.map((o) => o.value)).toEqual([
-      "nom-croissant",
-      "nom-decroissant",
-      "commandes-decroissant",
-      "commandes-croissant",
-      "montant-decroissant",
-      "montant-croissant",
-      "recent-decroissant",
-      "recent-croissant",
+      "nom",
+      "commandes",
+      "montant",
+      "recent",
     ]);
-    expect(sortOptions("communautes").map((o) => o.value)).toContain(
-      "membres-decroissant",
-    );
+    expect(sortOptions("communautes").map((o) => o.value)).toContain("membres");
     expect(new Set(all.map((o) => o.label)).size).toBe(all.length);
+  });
+
+  it("lettres pour le nom, chiffres pour le reste ; chaque sens a son libellé", () => {
+    expect(DIRECTORY_SORT_SCALES.nom).toBe("alpha");
+    for (const sort of DIRECTORY_SORTS) {
+      if (sort !== "nom") expect(DIRECTORY_SORT_SCALES[sort]).toBe("numeric");
+      expect(SORT_ORDER_LABELS[sort].croissant).not.toBe(
+        SORT_ORDER_LABELS[sort].decroissant,
+      );
+    }
   });
 });
 
@@ -308,6 +322,9 @@ describe("directorySearchQuery", () => {
         sort: "membres",
         order: "croissant",
       }),
-    ).toBe("type=communautes&tri=membres-croissant");
+    ).toBe("type=communautes&tri=membres&sens=croissant");
+    expect(
+      directorySearchQuery({ type: "tous", sort: "nom", order: "decroissant" }),
+    ).toBe("sens=decroissant");
   });
 });
