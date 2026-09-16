@@ -5,9 +5,16 @@ Dernière mise à jour : 2026-09-15.
 ## Livré
 
 - **Écrans** : tableau de bord (période et HT/TTC, avancement des commandes), commandes (recherche par référence, client ou coordonnées, filtres statut, période, préparateur et livreur, cartes, détail, historique des statuts, annulation avec motif, affectation d'un préparateur et d'un livreur, remises affichées), livraisons (tournées sur 7 jours au plus groupées par jour, même recherche et mêmes filtres que les commandes, avancement détaillé par statut, livreur affecté), catalogue (grille avec modifier / dupliquer / supprimer, fiche, création, suppression confirmée), articles, clients (recherche commune particuliers et communautés, filtre et tri, grandes cartes, fidélité, notes), personnel (recherche par nom, prénom et coordonnées, filtres métier, disponibilité, créneau, jour et présence, cartes avec modifier, dupliquer et supprimer, fiche modifiable en haut, historique de traitement filtrable), métriques (rangées par thème, part des commandes de communauté, camemberts pleins, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
+- **Messages** (`/messages`) : boîte de réception des demandes « Nous contacter » écrites dans l'application FIG — recherche libre, filtres objet, statut, période de réception et « importants », cartes triées épinglés d'abord puis les plus récents avec les deux premières lignes, fiche complète précédée de la fiche du client, pièces jointes (photos et PDF, dix au plus, limite et formats tenus par la base), statut traité / non traité, épingle et drapeau « important », tous en écriture conditionnelle et réservés à l'admin et au gestionnaire.
 - **Données** : domaine pur par section, façades sur PostgreSQL (Drizzle), recherche, pagination et agrégats faits par la base, schéma et migrations possédés par le dashboard, seed (développement et tests), sauvegardes.
 - **Sécurité** : Auth.js Credentials, rôles et matrice d'accès en lecture et en écriture, limitation de débit, CSP à nonce, journal de sécurité en base, gardes de production.
-- **Qualité** : 511 tests Vitest (règles pures, couche données et Server Actions sur une base de test PostgreSQL jetable, parité SQL = règles pures), 33 parcours Playwright sur la même base (dont tablette 768 px et menu replié), CI (check et Playwright contre un PostgreSQL de service, audit).
+- **RGPD** (`docs/rgpd.md`) :
+  - inventaire des données personnelles et brouillon du registre des traitements ;
+  - export JSON complet d'un client (droit d'accès et portabilité) et anonymisation irréversible (droit à l'effacement), administrateur seul et journalisés ;
+  - durées de conservation appliquées par `npm run rgpd:purge` (aperçu puis `--apply`) ;
+  - consignes de minimisation sous les notes libres ;
+  - procédure en cas de violation de données.
+- **Qualité** : 613 tests Vitest (règles pures, couche données et Server Actions sur une base de test PostgreSQL jetable, parité SQL = règles pures), 42 parcours Playwright (dont l'absence de violation CSP au chargement de chaque section) sur la même base (dont tablette 768 px et menu replié), CI (check et Playwright contre un PostgreSQL de service, audit).
 
 ## Reste à faire
 
@@ -21,6 +28,8 @@ Dernière mise à jour : 2026-09-15.
 | 4   | Adresse de livraison complète pour l'itinéraire, instructions d'accès            | question 13                                |
 | 5   | Source des statistiques d'usage (stores, support)                                | question 11                                |
 | 6   | Hébergement du dashboard et de PostgreSQL, nom de domaine                        | question 8                                 |
+| 7   | RGPD : durées de conservation, propagation de l'anonymisation à l'application, contrat de sous-traitance | questions 18 à 21 ; purge planifiée après validation |
+| 8   | Messages : stockage et URL des pièces jointes, durée de conservation d'une demande traitée | question 22                                |
 
 ### Peut se faire sans le client
 
@@ -49,8 +58,36 @@ Dernière mise à jour : 2026-09-15.
 15. **Communautés** : l'application crée-t-elle les communautés et l'adhésion des clients (hypothèse actuelle : le dashboard les lit, ne les modifie pas) ? Faut-il pouvoir en créer ou en modifier la remise depuis le back-office ?
 16. **Fidélité** : « huit commandes d'affilée » se compte-t-il comme ici (une annulation remet à zéro, la commande remisée repart de zéro, une commande en cours compte) ? La remise fidélité se cumule-t-elle avec celle d'une communauté (hypothèse : non) ?
 17. **Personnel** : les gestionnaires du personnel doivent-ils être reliés aux comptes du back-office (même personne, même e-mail) ? Un livreur doit-il ne voir que ses propres livraisons ?
+18. **RGPD, durées** : les hypothèses conviennent-elles ?
+    - client sans activité depuis 3 ans : anonymisé ;
+    - journal de sécurité : 12 mois ;
+    - tentatives de connexion : 24 h.
+
+    Il reste aussi à fixer :
+    - la durée des preuves des demandes traitées et celle des sauvegardes ;
+    - avec le comptable, si les commandes du dashboard sont des pièces justificatives à garder 10 ans ;
+    - les bases légales à retenir pour le registre.
+19. **RGPD, application** : l'application FIG anonymise-t-elle aussi sa copie d'un client ? Ne recrée-t-elle pas un client anonymisé ici ? Qui reçoit les demandes des personnes, et par quel canal ?
+20. **RGPD, équipe** : combien de temps garder la fiche d'une personne partie (`active = false`) ?
+21. **RGPD, cadre** : il faut fixer quatre points :
+    - le contrat de sous-traitance (article 28) ;
+    - l'hébergeur et le lieu des données (Union européenne) ;
+    - le contact RGPD ou DPO du client ;
+    - les mentions d'information dans l'application.
 
 ## Décisions prises
+
+- Messages « Nous contacter » (2026-09-16) : la boîte de réception est en **lecture seule sur le contenu**. Les messages et leurs pièces jointes sont écrits par l'application FIG ; le dashboard ne pose que trois marques (statut, épingle, « important »).
+  - Les **fichiers** joints restent hébergés par l'application : la base ne garde que nom, format, taille et URL (question 22). Le dashboard ne téléverse rien.
+  - La **limite de dix pièces jointes** et la **liste blanche de formats** (PDF et images, ni vidéo ni audio) sont tenues par la BASE et non par un écran, puisque l'application écrira peut-être en SQL direct (question 14).
+  - Un message est une donnée personnelle : il entre dans l'export RGPD et **disparaît à l'anonymisation** du client, pièces jointes comprises.
+
+- RGPD (2026-09-15) : un client n'est jamais supprimé. Il est **anonymisé** de façon irréversible : ses commandes restent, pseudonymes, pour la comptabilité (10 ans si le comptable le confirme).
+  - L'anonymisation est refusée tant qu'une commande est en préparation ou expédiée.
+  - Export et anonymisation sont réservés à l'administrateur et journalisés sans donnée de la personne ; ces preuves ne sont jamais purgées.
+  - L'export exclut les noms de l'équipe (droits des tiers) et se relit avant envoi.
+  - Les durées de conservation sont des hypothèses, appliquées par un script à aperçu. Aucun `--apply` planifié avant les réponses aux questions 14, 18 et 19.
+  - Relecture de sécurité faite le même jour : course avec les notes (verrou partagé), annulation après anonymisation, export déclenché depuis un site tiers, procédure de restauration, formulations juridiques.
 
 - La base n'existe pas chez le client : le dashboard la crée et la possède (2026-09-14).
 - Plus de statut « confirmée » (migration 0003), puis plus d'« en attente » (migration 0005) : trois états, en préparation → expédiée → livrée ; l'annulation avec motif reste possible en préparation ; données reprises par les migrations (2026-09-15).

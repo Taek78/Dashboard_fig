@@ -1,0 +1,79 @@
+import { toIso } from "@/lib/days";
+
+/*
+ * Durées de conservation des données personnelles (RGPD, article 5.1.e : pas
+ * plus longtemps que nécessaire). Ce sont des HYPOTHÈSES à faire valider par
+ * le client, responsable du traitement (question 18 du backlog) :
+ * - un client sans aucune activité depuis 3 ans est anonymisé (référentiel
+ *   « gestion commerciale » de la CNIL) ; ses commandes restent ;
+ * - le journal de sécurité (e-mails, adresses IP) est gardé 12 mois (la CNIL
+ *   recommande 6 mois à 1 an pour les journaux), sauf les preuves des demandes
+ *   RGPD traitées, gardées jusqu'à ce que leur durée soit fixée ;
+ * - une tentative de connexion échouée est oubliée après 24 heures, sauf
+ *   verrou encore actif (choix technique, pas une recommandation).
+ * Appliquées par `npm run rgpd:purge` (scripts/rgpd-purge.ts), jamais en
+ * silence : aperçu d'abord, --apply pour écrire.
+ */
+export const RETENTION = {
+  inactiveCustomerYears: 3,
+  securityEventMonths: 12,
+  loginAttemptHours: 24,
+} as const;
+
+export type Retention = { [K in keyof typeof RETENTION]: number };
+
+export type RetentionCutoffs = {
+  /** Jour "AAAA-MM-JJ" : un client sans activité depuis ce jour inclus est inactif. */
+  customerActivitySince: string;
+  /** Événements du journal de sécurité antérieurs : supprimés. */
+  securityEventsBefore: Date;
+  /** Tentatives de connexion dont le dernier échec est antérieur : supprimées. */
+  loginAttemptsBefore: Date;
+};
+
+/**
+ * Bornes de conservation à l'instant `now`, en UTC. Un 29 février reculé d'un
+ * an tombe le 1er mars (règle de Date) : un jour d'écart, sans conséquence.
+ */
+export function retentionCutoffs(
+  now: Date,
+  retention: Retention = RETENTION,
+): RetentionCutoffs {
+  const customers = new Date(now);
+  customers.setUTCFullYear(
+    customers.getUTCFullYear() - retention.inactiveCustomerYears,
+  );
+  const events = new Date(now);
+  events.setUTCMonth(events.getUTCMonth() - retention.securityEventMonths);
+  return {
+    customerActivitySince: toIso(customers),
+    securityEventsBefore: events,
+    loginAttemptsBefore: new Date(
+      now.getTime() - retention.loginAttemptHours * 3_600_000,
+    ),
+  };
+}
+
+/**
+ * Vrai si le client n'a plus d'activité depuis `since` : ni création de compte
+ * ni jour de livraison (même futur, même annulée) à partir de ce jour, et
+ * aucune commande encore en préparation ou expédiée (l'anonymisation la
+ * refuserait). Règle pure reproduite en SQL par findInactiveCustomers
+ * (src/db/privacy.ts) et testée contre elle.
+ */
+export function isCustomerInactive(
+  customer: {
+    createdAt: string;
+    lastDeliveryDate: string | null;
+    hasOpenOrders?: boolean;
+  },
+  since: string,
+): boolean {
+  if (customer.hasOpenOrders) return false;
+  const created = customer.createdAt.slice(0, 10);
+  const last =
+    customer.lastDeliveryDate !== null && customer.lastDeliveryDate > created
+      ? customer.lastDeliveryDate
+      : created;
+  return last < since;
+}

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
 import { login } from "./helpers";
@@ -43,6 +44,65 @@ test.describe("clients", () => {
     await period.getByRole("link", { name: "Toutes les dates" }).click();
     await expect(page).not.toHaveURL(/du=/);
     await expect(period.getByLabel("Livraison du")).toHaveValue("");
+  });
+
+  test("RGPD : l'administrateur exporte les données d'un client puis l'anonymise", async ({
+    page,
+  }) => {
+    // Client généré qu'aucun autre parcours n'utilise : l'anonymisation reste en base.
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/clients/cli-g-001");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Noah Okafor" }),
+    ).toBeVisible();
+    const panel = page.locator("#donnees-personnelles");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      panel.getByRole("link", { name: "Exporter les données" }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(
+      /^fig-client-cli-g-001-\d{4}-\d{2}-\d{2}\.json$/,
+    );
+    const exported = JSON.parse(await readFile(await download.path(), "utf8"));
+    expect(exported.format).toBe("fig-donnees-client/1");
+    expect(exported.customer.fullName).toBe("Noah Okafor");
+    expect(exported.orders.length).toBeGreaterThan(0);
+
+    await panel.getByRole("button", { name: "Anonymiser ce client" }).click();
+    const confirm = panel.getByRole("button", {
+      name: "Anonymiser définitivement",
+    });
+    await expect(confirm).toBeDisabled();
+    await panel
+      .getByLabel("Tapez ANONYMISER pour confirmer")
+      .fill("anonymiser");
+    await confirm.click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Client anonymisé" }),
+    ).toBeVisible();
+    await expect(panel).toContainText("Client anonymisé le");
+    await expect(page.getByText("Noah Okafor")).toHaveCount(0);
+    await expect(page.getByLabel("Nouvelle note interne")).toHaveCount(0);
+  });
+
+  test("RGPD : le gestionnaire ne peut ni exporter ni anonymiser", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/clients/cli-0001");
+    const panel = page.locator("#donnees-personnelles");
+    await expect(panel).toContainText("traitée par un administrateur");
+    await expect(
+      panel.getByRole("link", { name: "Exporter les données" }),
+    ).toHaveCount(0);
+    await expect(
+      panel.getByRole("button", { name: "Anonymiser ce client" }),
+    ).toHaveCount(0);
+    expect((await page.request.get("/clients/cli-0001/export")).status()).toBe(
+      403,
+    );
   });
 
   test("le filtre communautés et le tri gardent les communautés et leur remise", async ({

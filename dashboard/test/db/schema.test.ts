@@ -4,6 +4,9 @@ import * as schema from "@/db/schema";
 import { ARTICLE_CATEGORIES } from "@/domain/articles/category";
 import { ROLES } from "@/domain/auth/roles";
 import { COMMUNITY_KINDS } from "@/domain/communities/kind";
+import { ATTACHMENT_CONTENT_TYPES } from "@/domain/messages/attachment";
+import { MESSAGE_STATUSES } from "@/domain/messages/status";
+import { MESSAGE_SUBJECTS } from "@/domain/messages/subject";
 import { DISCOUNT_KINDS } from "@/domain/orders/discount";
 import { AVAILABILITIES, SHIFTS, STAFF_KINDS } from "@/domain/staff/kind";
 import { CANCELLATION_REASONS } from "@/domain/orders/cancellation";
@@ -44,6 +47,13 @@ describe("enums du schéma = constantes du domaine", () => {
     ],
     ["community_kind", schema.communityKindEnum.enumValues, COMMUNITY_KINDS],
     ["discount_kind", schema.discountKindEnum.enumValues, DISCOUNT_KINDS],
+    ["message_subject", schema.messageSubjectEnum.enumValues, MESSAGE_SUBJECTS],
+    ["message_status", schema.messageStatusEnum.enumValues, MESSAGE_STATUSES],
+    [
+      "attachment_content_type",
+      schema.attachmentContentTypeEnum.enumValues,
+      ATTACHMENT_CONTENT_TYPES,
+    ],
   ])("%s", (_name, enumValues, domainValues) => {
     expect([...enumValues]).toEqual([...domainValues]);
   });
@@ -54,7 +64,7 @@ describe("enums du schéma = constantes du domaine", () => {
 });
 
 describe("tables", () => {
-  it("expose les douze tables du dashboard", () => {
+  it("expose les quatorze tables du dashboard", () => {
     const names = [
       schema.users,
       schema.staff,
@@ -65,6 +75,8 @@ describe("tables", () => {
       schema.orders,
       schema.orderLines,
       schema.orderEvents,
+      schema.customerMessages,
+      schema.messageAttachments,
       schema.articles,
       schema.engagementMonthly,
       schema.securityEvents,
@@ -79,6 +91,8 @@ describe("tables", () => {
       "orders",
       "order_lines",
       "order_events",
+      "customer_messages",
+      "message_attachments",
       "articles",
       "engagement_monthly",
       "security_events",

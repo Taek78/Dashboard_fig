@@ -93,6 +93,36 @@ export const discountKindEnum = pgEnum("discount_kind", [
   "community",
   "loyalty",
 ]);
+export const messageSubjectEnum = pgEnum("message_subject", [
+  "missing_or_damaged",
+  "delivery_issue",
+  "order_error",
+  "product_question",
+  "refund",
+  "other",
+]);
+export const messageStatusEnum = pgEnum("message_status", [
+  "untreated",
+  "treated",
+]);
+/**
+ * Formats acceptés en pièce jointe. C'est une LISTE BLANCHE tenue par la base,
+ * et non par un formulaire : les messages sont écrits par l'application FIG,
+ * qui écrira peut-être directement ici (question 14). Ni vidéo ni audio, par
+ * décision du client.
+ */
+export const attachmentContentTypeEnum = pgEnum("attachment_content_type", [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/avif",
+  "image/heic",
+  "image/heif",
+  "image/tiff",
+  "image/bmp",
+]);
 
 const timestampTz = (name: string) =>
   timestamp(name, { withTimezone: true, mode: "date" });
@@ -168,6 +198,12 @@ export const customers = pgTable(
       onDelete: "set null",
     }),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
+    /**
+     * Anonymisation RGPD (droit à l'effacement ou durée de conservation
+     * dépassée, src/db/privacy.ts) : identité et coordonnées remplacées,
+     * notes supprimées, commandes conservées. null = données intactes.
+     */
+    anonymizedAt: timestampTz("anonymized_at"),
     /**
      * Recherche des commandes, calculée par la base à chaque écriture : nom et
      * e-mail normalisés (fig_normalize, migration 0006), séparés par chr(1)
@@ -344,6 +380,88 @@ export const orderEvents = pgTable(
     at: timestampTz("at").notNull().defaultNow(),
   },
   (t) => [index("order_events_order_idx").on(t.orderId, t.at)],
+);
+
+/* ---------- Boîte de réception « Nous contacter » ---------- */
+/*
+ * Messages envoyés par les clients depuis l'application FIG. Le dashboard ne
+ * les crée ni ne les modifie : il ne pose que les trois marques de l'équipe
+ * (`status`, `pinned_at`, `important`). `order_id` est le contexte que le
+ * client a choisi d'attacher à sa demande.
+ *
+ * RGPD : le corps est du texte libre écrit par la personne sur elle-même. Il
+ * entre dans son export (droit d'accès) et disparaît à son anonymisation
+ * (src/db/privacy.ts), avec ses pièces jointes par cascade.
+ */
+export const customerMessages = pgTable(
+  "customer_messages",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    subject: messageSubjectEnum("subject").notNull(),
+    body: text("body").notNull(),
+    /** Commande associée par le client ; une commande effacée ne perd pas le message. */
+    orderId: text("order_id").references(() => orders.id, {
+      onDelete: "set null",
+    }),
+    status: messageStatusEnum("status").notNull().default("untreated"),
+    receivedAt: timestampTz("received_at").notNull().defaultNow(),
+    /** Épinglé en haut de la liste par l'équipe, sinon NULL. */
+    pinnedAt: timestampTz("pinned_at"),
+    important: boolean("important").notNull().default(false),
+    /** Dernier changement de statut : instant et nom, posés par la Server Action. */
+    handledAt: timestampTz("handled_at"),
+    handledByName: text("handled_by_name"),
+    /** Recherche dans le corps, normalisée par la base (fig_normalize, migration 0006). */
+    searchText: text("search_text")
+      .notNull()
+      .generatedAlwaysAs(sql`fig_normalize(body)`),
+  },
+  (t) => [
+    index("customer_messages_received_idx").on(t.receivedAt),
+    index("customer_messages_customer_idx").on(t.customerId),
+    index("customer_messages_status_idx").on(t.status),
+    index("customer_messages_order_idx").on(t.orderId),
+    check(
+      "customer_messages_handled_consistent",
+      sql`(${t.handledAt} IS NULL) = (${t.handledByName} IS NULL)`,
+    ),
+  ],
+);
+
+/*
+ * Pièces jointes : seulement des MÉTADONNÉES. Le fichier lui-même est stocké
+ * par l'application FIG, qui écrit ici son URL (question 22) ; le dashboard ne
+ * téléverse rien et n'héberge rien.
+ *
+ * La limite de dix documents par message est tenue par la base, et non par un
+ * écran : `position` bornée à 0..9 et unique par message. Elle doit rester
+ * égale à MAX_ATTACHMENTS (src/domain/messages/attachment.ts).
+ */
+export const messageAttachments = pgTable(
+  "message_attachments",
+  {
+    id: text("id").primaryKey(),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => customerMessages.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: attachmentContentTypeEnum("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    url: text("url").notNull(),
+  },
+  (t) => [
+    uniqueIndex("message_attachments_position_idx").on(t.messageId, t.position),
+    check(
+      "message_attachments_position_range",
+      sql`${t.position} >= 0 AND ${t.position} < 10`,
+    ),
+    check("message_attachments_size_positive", sql`${t.sizeBytes} > 0`),
+    check("message_attachments_url_https", sql`${t.url} ~ '^https://'`),
+  ],
 );
 
 /* ---------- Articles « à lire » ---------- */

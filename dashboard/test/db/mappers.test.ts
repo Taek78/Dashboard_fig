@@ -5,6 +5,7 @@ import {
   toArticle,
   toCustomer,
   toEngagementPoint,
+  toMessage,
   toOrder,
   toOrderEvent,
   toProduct,
@@ -15,6 +16,8 @@ import {
   type ArticleRow,
   type CustomerNoteRow,
   type CustomerRow,
+  type MessageAttachmentRow,
+  type MessageRow,
   type OrderEventRow,
   type OrderLineRow,
   type OrderRow,
@@ -23,6 +26,7 @@ import {
 import { articlesFixtures } from "@/domain/articles/fixtures";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
+import { messagesFixtures } from "@/domain/messages/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { productsFixtures } from "@/domain/products/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
@@ -75,6 +79,7 @@ describe("toOrder / toOrderEvent", () => {
         postalCode: o.deliveryPostalCode,
         communityId: o.community?.id ?? null,
         createdAt: new Date(o.createdAt),
+        anonymizedAt: null,
       };
       const person = (ref: { id: string; name: string } | null) =>
         ref === null
@@ -124,6 +129,48 @@ describe("toOrder / toOrderEvent", () => {
   });
 });
 
+describe("toMessage", () => {
+  it("reconstitue chaque message des fixtures, pièces jointes remises en ordre", () => {
+    for (const m of messagesFixtures) {
+      const row: MessageRow = {
+        id: m.id,
+        customerId: m.customer.id,
+        subject: m.subject,
+        body: m.body,
+        orderId: m.order?.id ?? null,
+        status: m.status,
+        receivedAt: new Date(m.receivedAt),
+        pinnedAt: m.pinnedAt === null ? null : new Date(m.pinnedAt),
+        important: m.important,
+        handledAt: m.handledAt === null ? null : new Date(m.handledAt),
+        handledByName: m.handledByName,
+      };
+      // Pièces jointes fournies dans le désordre : le mapper remet les positions.
+      const attachments: MessageAttachmentRow[] = m.attachments
+        .map((a, position) => ({
+          id: a.id,
+          messageId: m.id,
+          position,
+          fileName: a.fileName,
+          contentType: a.contentType,
+          sizeBytes: a.sizeBytes,
+          url: a.url,
+        }))
+        .toReversed();
+      expect(
+        toMessage(row, attachments, {
+          customer: {
+            id: m.customer.id,
+            fullName: m.customer.fullName,
+            email: m.customer.email,
+          },
+          order: m.order,
+        }),
+      ).toEqual(m);
+    }
+  });
+});
+
 describe("toProduct / productToRow", () => {
   it("fait l'aller-retour sur chaque produit des fixtures", () => {
     for (const p of productsFixtures) {
@@ -167,6 +214,7 @@ describe("toCustomer", () => {
         postalCode: c.postalCode,
         communityId: c.community?.id ?? null,
         createdAt: new Date(c.createdAt),
+        anonymizedAt: null,
       };
       const notes: CustomerNoteRow[] = c.notes
         .map((n) => ({
@@ -179,6 +227,24 @@ describe("toCustomer", () => {
         .toReversed();
       expect(toCustomer(row, notes, c.community)).toEqual(c);
     }
+  });
+
+  it("rend la date d'anonymisation en ISO", () => {
+    const [c] = customersFixtures;
+    const row: CustomerRow = {
+      id: c!.id,
+      fullName: "Client anonymisé",
+      email: `anonyme-${c!.id}@anonyme.invalid`,
+      phone: "",
+      city: "",
+      postalCode: "",
+      communityId: null,
+      createdAt: new Date(c!.createdAt),
+      anonymizedAt: new Date("2026-09-15T10:00:00.000Z"),
+    };
+    expect(toCustomer(row, [], null).anonymizedAt).toBe(
+      "2026-09-15T10:00:00.000Z",
+    );
   });
 });
 

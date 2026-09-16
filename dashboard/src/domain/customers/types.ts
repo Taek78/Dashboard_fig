@@ -29,6 +29,11 @@ export type Customer = {
   /** Communauté dont la personne est membre (adhésion gérée par l'application), sinon null. */
   community: CommunityRef | null;
   notes: CustomerNote[];
+  /**
+   * ISO 8601 : date de l'anonymisation RGPD (identité, coordonnées et notes
+   * effacées, commandes conservées ; domain/privacy/anonymization.ts), sinon null.
+   */
+  anonymizedAt: string | null;
 };
 
 /*

@@ -25,6 +25,7 @@ const c = (
   createdAt,
   community: null,
   notes,
+  anonymizedAt: null,
 });
 
 export const scenarioCustomers: readonly Customer[] = [

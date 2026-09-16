@@ -1,4 +1,4 @@
-import { OrdersFiltersSkeleton } from "@/components/orders/orders-filters";
+import { OrdersFiltersSkeleton } from "@/components/orders/orders-filters-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 

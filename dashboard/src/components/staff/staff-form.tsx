@@ -226,8 +226,14 @@ export function StaffForm({
           maxLength={STAFF_NOTES_MAX_LENGTH}
           defaultValue={member?.notes ?? ""}
           placeholder="Véhicule, secteur, remarques. Visible uniquement par l'équipe."
+          aria-describedby="notes-aide"
           className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
         />
+        <p id="notes-aide" className="text-muted-foreground text-xs">
+          Seulement ce qui sert à l&apos;organisation. Jamais de santé, de
+          sanction ni de jugement : la personne peut demander à lire ces notes
+          (RGPD).
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

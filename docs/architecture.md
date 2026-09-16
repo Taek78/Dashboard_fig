@@ -51,7 +51,7 @@ Dashboard_fig/
     ├── test/                    tests Vitest, en miroir de src/
     ├── e2e/                     parcours navigateur Playwright
     ├── drizzle/                 migrations SQL générées
-    ├── scripts/                 seed, création de la base locale, sauvegarde, restauration
+    ├── scripts/                 seed, création de la base locale, sauvegarde, restauration, purge RGPD
     ├── compose.yaml             PostgreSQL Docker : développement (db, 5433) et tests (test-db, 5434)
     └── playwright.config.ts     serveur de test, comptes de test
 ```
@@ -60,7 +60,7 @@ Dashboard_fig/
 
 ### 3.1 `src/domain/<domaine>/` : le métier pur
 
-Un dossier par domaine : `orders` (commandes, avec `assignment.ts` pour l'affectation de l'équipe et `discount.ts` pour les remises), `deliveries` (tournée), `products` (catalogue), `customers` (clients, avec `loyalty.ts` pour la série de fidélité, `client-type.ts` pour particulier ou communauté, `directory.ts` pour la recherche commune), `communities` (groupes de clients livrés à un même point de retrait), `staff` (personnel : livreurs, préparateurs, gestionnaires), `articles`, `metrics` (agrégations), `engagement` (usage de l'appli), `auth` (rôles et comptes). Chaque dossier suit le même patron :
+Un dossier par domaine : `orders` (commandes, avec `assignment.ts` pour l'affectation de l'équipe et `discount.ts` pour les remises), `deliveries` (tournée), `products` (catalogue), `customers` (clients, avec `loyalty.ts` pour la série de fidélité, `client-type.ts` pour particulier ou communauté, `directory.ts` pour la recherche commune), `communities` (groupes de clients livrés à un même point de retrait), `staff` (personnel : livreurs, préparateurs, gestionnaires), `articles`, `metrics` (agrégations), `engagement` (usage de l'appli), `auth` (rôles et comptes), `messages` (boîte de réception « Nous contacter » : objets, statut, pièces jointes, aperçu et tri), `privacy` (RGPD : durées de conservation, anonymisation, export des données d'un client ; voir [rgpd.md](rgpd.md)). Chaque dossier suit le même patron :
 
 | Fichier                     | Rôle                                                               | Exemple                                        |
 | --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
@@ -82,13 +82,14 @@ Pour chaque domaine, trois fichiers :
 - `<domaine>.ts` : la **façade**, seul module que les pages et les actions importent. Elle commence par `import "server-only"` (impossible de l'embarquer dans le navigateur) et réexporte l'implémentation typée par le contrat ; aucun module ne lit l'environnement à son chargement : `next build` importe les pages sans `.env` (`test/app/facades.test.ts`).
 - `<domaine>.db.ts` : l'implémentation Drizzle. Les filtres deviennent des `WHERE`, la recherche lit des colonnes calculées par la base et indexées (trigrammes), les tris des `ORDER BY`. Une liste se lit en une requête : les identifiants de la page d'abord (tri + `LIMIT/OFFSET` sur la seule table), puis les jointures et les lignes agrégées en JSON pour ces commandes-là ; le total est compté en parallèle. Les écritures conditionnelles sont des `UPDATE … WHERE id = $1 AND status = $2` (statut) ou `… AND driver_id IS NOT DISTINCT FROM $2` (affectation), les opérations couplées des transactions. Les chiffres (KPI, séries, jours de tournée, produits phares, compteurs du personnel, annuaire) sont agrégés par la base dans `orders-aggregates.db.ts` et mis en forme par les règles pures. Les lignes ne sortent jamais telles quelles : `src/db/mappers.ts` les convertit en types métier.
 
-Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation, table `login_attempts`, partagée entre instances), `security-log.ts` (journal).
+Fichiers transverses : `session.ts` (utilisateur courant), `credentials.ts` (vérification d'un mot de passe avec limitation de débit), `login-attempts.ts` (état de la limitation, table `login_attempts`, partagée entre instances), `security-log.ts` (journal), `privacy.ts` (export complet et anonymisation d'un client, contrat `PrivacySource`).
 
 ### 3.3 `src/db/` : PostgreSQL
 
 - `schema.ts` : les tables, enums et contraintes, source de vérité des migrations. Le schéma n'importe pas le domaine (drizzle-kit doit pouvoir le charger seul) ; un test vérifie que ses enums restent identiques aux constantes du domaine.
 - `client.ts` : `getDb()`, client paresseux (aucune connexion avant le premier appel), pool de dix connexions (la page Métriques lance huit agrégats en parallèle).
 - `mappers.ts` : fonctions pures ligne → type métier et entrée → colonnes, testées en aller-retour sur toutes les fixtures.
+- `privacy.ts` : anonymisation d'un client et purge des données hors durée, en SQL. Sans `server-only`, car le script `npm run rgpd:purge` l'importe hors de Next ; la Server Action y passe par `src/data/privacy.ts`.
 
 Le détail des tables, des migrations, du seed et des sauvegardes est dans [base-de-donnees.md](base-de-donnees.md).
 
@@ -106,9 +107,10 @@ Next associe un dossier à une URL. Le groupe `(dashboard)` regroupe toutes les 
 | `commandes/error.tsx`             | frontière d'erreur du segment (composant client, prop `retry`)                         |
 | `<section>/actions.ts`            | Server Actions du domaine                                                              |
 | `api/health/route.ts`             | `{ ok: true }` ou 503 si la base ne répond pas                                         |
+| `clients/[id]/export/route.ts`    | export JSON des données d'un client (RGPD), administrateur seul, `no-store`, journalisé |
 | `api/auth/[...nextauth]/route.ts` | points d'entrée d'Auth.js                                                              |
 
-Sections : `/` tableau de bord, `/commandes`, `/livraisons`, `/catalogue`, `/articles`, `/clients` (recherche commune particuliers et communautés, fiches `/clients/[id]` et `/clients/communautes/[id]`), `/personnel` (équipe, fiche `/personnel/[id]`), `/metriques`, `/comptes` (admin), `/profil`.
+Sections : `/` tableau de bord, `/commandes`, `/livraisons`, `/catalogue`, `/articles`, `/clients` (recherche commune particuliers et communautés, fiches `/clients/[id]` et `/clients/communautes/[id]`), `/messages` (boîte de réception, fiche `/messages/[id]`), `/personnel` (équipe, fiche `/personnel/[id]`), `/metriques`, `/comptes` (admin), `/profil`.
 
 ### 3.5 `src/components/` : les composants
 
@@ -171,6 +173,7 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 | Gardes de démarrage : base PostgreSQL et secret obligatoires, `AUTH_URL` obligatoire en production                 | `src/lib/env-schema.ts`, `src/instrumentation.ts`  |
 | Mots de passe hachés par scrypt, jamais journalisés                                                              | `src/lib/password.ts`                              |
 | Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                       | schémas zod des domaines                           |
+| RGPD : export et anonymisation d'un client (administrateur, mot `ANONYMISER`, journal sans donnée de la personne), durées de conservation appliquées par un script à aperçu | `src/domain/privacy/`, `src/db/privacy.ts`, `scripts/rgpd-purge.ts`, [rgpd.md](rgpd.md) |
 
 ## 7. Tests
 

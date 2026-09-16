@@ -45,6 +45,16 @@ export function canManageUsers(role: Role): boolean {
   return role === "admin";
 }
 
+/**
+ * Traiter une demande RGPD d'un client : exporter toutes ses données (droit
+ * d'accès et portabilité) ou les anonymiser (droit à l'effacement).
+ * Administrateur seul : une anonymisation est irréversible et un export fait
+ * sortir toutes les données d'une personne.
+ */
+export function canHandlePrivacyRequest(role: Role): boolean {
+  return role === "admin";
+}
+
 /** Ajouter une note interne sur un client. */
 export function canAddCustomerNote(role: Role): boolean {
   return WRITERS.includes(role);
@@ -60,6 +70,15 @@ export function canAssignStaff(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
+/**
+ * Traiter un message client : changer son statut, l'épingler, le signaler
+ * important. Le rôle lecture voit la boîte de réception sans pouvoir y toucher ;
+ * le livreur n'y a pas accès du tout (SECTION_ACCESS).
+ */
+export function canHandleMessages(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
 /* ---------- Lecture : quelles sections chaque rôle peut ouvrir ---------- */
 
 /** Les sections du back-office, par préfixe d'URL (la racine n'est que "/"). */
@@ -70,6 +89,7 @@ export const SECTIONS = [
   "/catalogue",
   "/articles",
   "/clients",
+  "/messages",
   "/personnel",
   "/metriques",
   "/comptes",

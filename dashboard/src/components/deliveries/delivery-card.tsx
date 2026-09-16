@@ -120,16 +120,19 @@ export function DeliveryCard({
           {order.customer.fullName}
         </p>
         <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
-          <a
-            href={toTelHref(order.customer.phone)}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "lg" }),
-              "justify-start @xl/main:justify-center",
-            )}
-          >
-            <Phone />
-            {order.customer.phone}
-          </a>
+          {/* Téléphone vide : client anonymisé (RGPD). */}
+          {order.customer.phone ? (
+            <a
+              href={toTelHref(order.customer.phone)}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "justify-start @xl/main:justify-center",
+              )}
+            >
+              <Phone />
+              {order.customer.phone}
+            </a>
+          ) : null}
           <a
             href={itineraryUrl(order.deliveryPostalCode, order.deliveryCity)}
             target="_blank"

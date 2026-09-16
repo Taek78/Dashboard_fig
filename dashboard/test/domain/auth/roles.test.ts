@@ -6,9 +6,11 @@ import {
   canAddCustomerNote,
   canAssignStaff,
   canChangeOrderStatus,
+  canHandleMessages,
   canManageStaff,
   canEditArticle,
   canEditProduct,
+  canHandlePrivacyRequest,
   canManageUsers,
   canViewSection,
   homeFor,
@@ -29,6 +31,7 @@ describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
     canAddCustomerNote,
     canManageStaff,
     canAssignStaff,
+    canHandleMessages,
   };
   for (const [name, rule] of Object.entries(rules)) {
     it.each([
@@ -46,6 +49,18 @@ describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
     expect(canChangeOrderStatus("gestionnaire")).toBe(true);
     expect(canChangeOrderStatus("lecture")).toBe(false);
   });
+
+  it.each([
+    ["admin", true],
+    ["gestionnaire", false],
+    ["lecture", false],
+    ["livreur", false],
+  ] as const)(
+    "canHandlePrivacyRequest(%s) → %s : export et anonymisation RGPD, administrateur seul",
+    (role, expected) => {
+      expect(canHandlePrivacyRequest(role)).toBe(expected);
+    },
+  );
 });
 
 describe("lecture des sections", () => {
@@ -79,6 +94,9 @@ describe("lecture des sections", () => {
     expect(canViewSection("livreur", "/metriques")).toBe(false);
     expect(canViewSection("livreur", "/clients/cli-0001")).toBe(false);
     expect(canViewSection("livreur", "/personnel")).toBe(false);
+    // La boîte de réception parle des clients : le livreur n'y a pas accès.
+    expect(canViewSection("livreur", "/messages")).toBe(false);
+    expect(canViewSection("lecture", "/messages/msg-0001")).toBe(true);
     expect(canViewSection("lecture", "/personnel/stf-0001")).toBe(true);
     expect(canViewSection("livreur", "/inconnu")).toBe(true);
     for (const section of SECTIONS) {

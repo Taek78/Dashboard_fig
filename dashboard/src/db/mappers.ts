@@ -1,9 +1,11 @@
 import type {
   articles,
   communities,
+  customerMessages,
   customerNotes,
   customers,
   engagementMonthly,
+  messageAttachments,
   orderEvents,
   orderLines,
   orders,
@@ -20,6 +22,7 @@ import type { ManagedUser, UserAccount } from "@/domain/auth/types";
 import type { Community, CommunityRef } from "@/domain/communities/types";
 import type { Customer, CustomerNote } from "@/domain/customers/types";
 import type { EngagementPoint } from "@/domain/engagement/types";
+import type { Message, MessageAttachment } from "@/domain/messages/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
 import type { OrderDiscount } from "@/domain/orders/discount";
@@ -45,6 +48,12 @@ export type CustomerRow = Omit<
   "searchText" | "phoneDigits"
 >;
 export type CustomerNoteRow = typeof customerNotes.$inferSelect;
+// Sans la colonne de recherche calculée par la base : jamais lue, jamais mappée.
+export type MessageRow = Omit<
+  typeof customerMessages.$inferSelect,
+  "searchText"
+>;
+export type MessageAttachmentRow = typeof messageAttachments.$inferSelect;
 export type ProductRow = typeof products.$inferSelect;
 export type ArticleRow = typeof articles.$inferSelect;
 export type EngagementRow = typeof engagementMonthly.$inferSelect;
@@ -160,6 +169,54 @@ export function toOrderEvent(row: OrderEventRow): OrderEvent {
   };
 }
 
+export function toMessageAttachment(
+  row: MessageAttachmentRow,
+): MessageAttachment {
+  return {
+    id: row.id,
+    fileName: row.fileName,
+    contentType: row.contentType,
+    sizeBytes: row.sizeBytes,
+    url: row.url,
+  };
+}
+
+/** Ce qu'un message porte de son auteur et de la commande qu'il cite. */
+export type MessageJoins = {
+  customer: Pick<CustomerRow, "id" | "fullName" | "email">;
+  order: Pick<OrderRow, "id" | "reference"> | null;
+};
+
+export function toMessage(
+  row: MessageRow,
+  attachments: readonly MessageAttachmentRow[],
+  joins: MessageJoins,
+): Message {
+  return {
+    id: row.id,
+    customer: {
+      id: joins.customer.id,
+      fullName: joins.customer.fullName,
+      email: joins.customer.email,
+    },
+    subject: row.subject,
+    body: row.body,
+    order:
+      joins.order === null
+        ? null
+        : { id: joins.order.id, reference: joins.order.reference },
+    attachments: [...attachments]
+      .toSorted((a, b) => a.position - b.position)
+      .map(toMessageAttachment),
+    status: row.status,
+    receivedAt: row.receivedAt.toISOString(),
+    pinnedAt: row.pinnedAt?.toISOString() ?? null,
+    important: row.important,
+    handledAt: row.handledAt?.toISOString() ?? null,
+    handledByName: row.handledByName,
+  };
+}
+
 export function toCustomerNote(row: CustomerNoteRow): CustomerNote {
   return {
     id: row.id,
@@ -186,6 +243,7 @@ export function toCustomer(
     notes: [...notes]
       .toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
       .map(toCustomerNote),
+    anonymizedAt: row.anonymizedAt?.toISOString() ?? null,
   };
 }
 

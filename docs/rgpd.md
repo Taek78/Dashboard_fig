@@ -1,0 +1,186 @@
+# RGPD : données personnelles du back-office FIG (2026-09-15)
+
+Ce document dit quelles données personnelles la base contient, pourquoi, combien de temps, et comment répondre à une demande d'une personne. Il sert aussi de brouillon pour les pièces que le client doit valider : registre des traitements, durées de conservation, contrat de sous-traitance. Tout ce qui est marqué **hypothèse** reste à confirmer par le client. Ce n'est pas un avis juridique : à faire relire par le conseil ou le DPO du client avant la mise en ligne.
+
+## 1. Qui est responsable de quoi
+
+- **Responsable du traitement** : le client, FIG. Il décide des finalités et des durées, informe les personnes (mentions dans l'application) et reçoit leurs demandes.
+- **Sous-traitant** (article 28) : l'auteur du dashboard. Il traite les données pour le compte de FIG, seulement sur ses instructions documentées (article 28.3.a) :
+  - il aide FIG à répondre aux demandes des personnes (article 28.3.e) ;
+  - il prévient FIG d'une violation dans les meilleurs délais (article 33.2) ;
+  - il tient le registre des traitements faits pour son compte (article 30.2).
+- **Sous-traitant ultérieur** : le futur hébergeur de l'application et de PostgreSQL (question 8). Il faut :
+  - l'autorisation écrite préalable de FIG (article 28.2) ;
+  - de préférence un hébergement dans l'Union européenne ;
+  - un contrat de sous-traitance qui reprend les mêmes obligations (article 28.4).
+
+## 2. Inventaire des données personnelles
+
+| Table ou lieu     | Personnes                 | Données                                                                                          | Remarque                                                                    |
+| ----------------- | ------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `customers`       | clients de l'application  | nom, e-mail, téléphone, ville, code postal, communauté, date de création                         | anonymisables (`anonymized_at`, migration 0007)                             |
+| `customer_notes`  | clients, parfois des tiers | texte libre écrit par l'équipe, nom de l'auteur                                                 | supprimées à l'anonymisation ; consigne de minimisation sous le champ       |
+| `orders`          | clients                   | produits, montants, créneau, ville et code postal de livraison, précision libre d'une annulation | conservées après anonymisation (voir 3) ; précisions effacées               |
+| `order_events`    | clients, équipe           | changements de statut, nom de la personne de l'équipe, précision d'annulation                    | précisions effacées à l'anonymisation du client                             |
+| `customer_messages` | clients, parfois des tiers | objet, texte libre écrit par la personne, commande citée, date ; qui l'a traité et quand      | exportés (droit d'accès) puis **supprimés** à l'anonymisation                |
+| `message_attachments` | clients, parfois des tiers | nom de fichier, format, taille, URL ; le FICHIER est chez l'application FIG                 | supprimées avec leur message ; les fichiers restent à effacer par l'application (question 19) |
+| `communities`     | référents des communautés | nom, e-mail, téléphone du contact                                                                | lecture seule dans le dashboard (question 15)                               |
+| `staff`           | équipe du client          | nom, e-mail, téléphone, métier, créneau, jours travaillés, disponibilité, notes                  | consigne de minimisation sous les notes ; durée à fixer (question 20)       |
+| `users`           | utilisateurs du dashboard | nom, e-mail, rôle, hachage scrypt du mot de passe                                                | jamais le mot de passe                                                      |
+| `security_events` | utilisateurs, visiteurs   | e-mail saisi, adresse IP, identifiants, action                                                   | 12 mois (hypothèse), sauf preuves des demandes RGPD                         |
+| `login_attempts`  | visiteurs                 | e-mail saisi, adresse IP, nombre d'échecs                                                        | 24 h sans verrou actif (choix technique), purgé aussi à chaque échec        |
+| sortie standard   | utilisateurs              | mêmes lignes que `security_events`                                                               | conservation fixée chez l'hébergeur                                         |
+| sauvegardes       | tous                      | copie complète de la base (`npm run db:backup`)                                                  | rotation à définir (question 18) ; voir 4.3                                 |
+
+Ce que la base ne contient pas, volontairement :
+- ni adresse complète, ni coordonnées GPS (question 13) ;
+- ni moyen de paiement, ni date de naissance, ni donnée de santé.
+
+Aucune donnée réelle ne se trouve sur un poste de développement : les fixtures sont inventées et les adresses utilisent le domaine `.invalid`.
+
+## 3. Registre des traitements (brouillon)
+
+| Traitement                                    | Finalité                                                          | Base légale (hypothèse)                                                                 | Personnes                | Durée de conservation (hypothèse)                                                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Commandes et livraisons                       | préparer, livrer, suivre les commandes, servir le client          | exécution du contrat (article 6.1.b)                                                    | clients, référents       | tant que la relation dure, puis 3 ans sans activité avant anonymisation                                               |
+| Commandes conservées après anonymisation      | justifier la comptabilité                                         | obligation légale (article 6.1.c), exception au droit à l'effacement (article 17.3.b)   | anciens clients          | 10 ans (article L123-22 du Code de commerce), **si** le comptable confirme que ces commandes sont des pièces justificatives ; accès restreint à l'équipe |
+| Notes internes sur les clients                | qualité du service (accès, préférences de livraison)              | intérêt légitime (article 6.1.f)                                                        | clients                  | comme le client ; supprimées à l'anonymisation                                                                        |
+| Messages « Nous contacter » et pièces jointes | traiter les réclamations et les questions des clients             | exécution du contrat (article 6.1.b)                                                    | clients                  | comme le client ; supprimés à l'anonymisation. Durée propre à fixer (question 22) : une réclamation traitée n'a pas à être gardée aussi longtemps qu'une facture |
+| Organisation de l'équipe                      | affecter préparateurs et livreurs, plannings                      | exécution du contrat de travail (article 6.1.b)                                         | équipe                   | à définir avec le client (question 20)                                                                                |
+| Comptes et sécurité du back-office            | authentifier, limiter les accès, détecter et analyser un incident | intérêt légitime (article 6.1.f), au service de l'obligation de sécurité (article 32)    | utilisateurs, visiteurs  | journal de sécurité 12 mois, tentatives de connexion 24 h                                                              |
+| Preuves des demandes RGPD traitées            | démontrer le respect des droits (article 5.2)                     | obligation légale (article 6.1.c)                                                       | clients                  | à fixer (question 18) ; identifiant et date seulement                                                                  |
+
+Destinataires : l'équipe de FIG selon son rôle (matrice de `src/domain/auth/roles.ts`), l'auteur du dashboard pour la maintenance, l'hébergeur. Aucun transfert hors de l'Union européenne prévu.
+
+**Anonymisation ou pseudonymisation.** L'écran parle d'« anonymiser » un client : son identité est effacée sans copie. Les commandes gardées restent pourtant rattachées à un identifiant technique, qui existe aussi dans l'application FIG et dans les sauvegardes. Au sens strict du RGPD (considérant 26), elles sont **pseudonymes**, donc toujours des données personnelles : d'où leur ligne au registre, leur base légale et leur durée.
+
+## 4. Répondre à une demande
+
+La demande arrive chez FIG. Le délai de réponse est d'un mois, prolongeable de deux mois si la demande est complexe ou si elles sont nombreuses, à condition de prévenir la personne dans le premier mois (article 12.3). Les gestes ci-dessous sont réservés à l'**administrateur** et laissent une trace dans `security_events` avec le seul identifiant du client. L'écriture du journal ne bloque pas l'action : si la base du journal est indisponible, la ligne n'est que sur la sortie standard (point à renforcer, section 7).
+
+### 4.1 Droit d'accès et portabilité (articles 15 et 20)
+
+Fiche client → encart « Données personnelles (RGPD) » → **Exporter les données**. Le fichier JSON `fig-client-<id>-<jour>.json` contient :
+
+- la fiche du client ;
+- les notes internes (la personne a le droit d'en avoir connaissance) ;
+- toutes les commandes, avec leurs lignes, remises, annulations et l'historique de leurs statuts ;
+- tous ses messages « Nous contacter », avec l'objet en clair, le texte, la commande qu'elle avait jointe, la liste de ses pièces jointes (nom, format, taille, URL) et le fait que la demande ait été traitée.
+
+Il ne contient pas les noms des membres de l'équipe, qui sont les données d'autres personnes (article 15.4) — y compris le nom de la personne qui a traité un message. Il ne contient pas non plus les marques d'organisation interne de la boîte de réception (épingle, « important ») : elles disent comment l'équipe range son travail, pas ce qu'elle sait de la personne.
+
+**Relire avant envoi.** Les notes et les précisions d'annulation sont du texte libre : elles peuvent nommer un tiers ou un membre de l'équipe. Il faut masquer ces passages avant de transmettre le fichier.
+
+Transmettre le fichier par un canal sûr, puis le supprimer du poste.
+- Journal : `customer_exported`.
+- Route : `GET /clients/[id]/export`, sans mise en cache, refusée si la navigation vient d'un autre site.
+
+### 4.2 Rectification (article 16)
+
+Les coordonnées d'un client viennent de l'application FIG, qui en est la source : on les corrige dans l'application. Le dashboard ne modifie pas un client. Il n'existe pas encore d'outil pour corriger ou supprimer **une seule** note interne à la demande de la personne : aujourd'hui, seule l'anonymisation complète le permet (à outiller si le cas se présente).
+
+### 4.3 Effacement (article 17)
+
+Fiche client → **Anonymiser ce client** → taper `ANONYMISER`. L'opération est irréversible et se fait en une transaction (`src/db/privacy.ts`).
+
+- **Refus si commande ouverte** : l'anonymisation est **refusée tant qu'une commande est en préparation ou expédiée**. La livraison a besoin des coordonnées, et une annulation postérieure pourrait réécrire un texte nominatif. Il faut attendre la livraison ou l'annulation.
+- **Effacé** : nom, e-mail, téléphone, ville et code postal, adhésion à une communauté, notes internes, précisions libres des annulations, et **tous ses messages « Nous contacter »** avec leurs pièces jointes (un message est du texte écrit par la personne, souvent nominatif : le garder viderait l'anonymisation de son sens). Les fichiers joints, eux, sont hébergés par l'application FIG : à elle de les effacer (question 19).
+- **Conservé** : les commandes, leurs produits, montants, créneaux, ville et code postal de livraison, leur historique, et l'identifiant technique (voir section 3).
+- **Rejouer la demande** sur un client déjà anonymisé refait le nettoyage des textes libres.
+- **Journal** : `customer_anonymized`, jamais supprimé par la purge.
+
+Ensuite :
+
+- **Application FIG** : elle doit effacer ou anonymiser sa propre copie, et ne pas recréer le client (question 19). Sinon l'effacement n'est pas complet.
+- **Sauvegardes** : les sauvegardes antérieures contiennent encore la personne. L'effacement s'y applique à leur expiration, d'où la rotation à définir.
+- **Restauration d'une sauvegarde** : elle ramène les clients anonymisés depuis. Procédure :
+  1. **avant** de restaurer, extraire de la base courante la liste `select id from customers where anonymized_at is not null` ;
+  2. après la restauration, anonymiser à nouveau ces identifiants ;
+  3. à défaut de liste, la reconstituer depuis les lignes `customer_anonymized` de `security_events` (hors de la sauvegarde restaurée, par exemple dans les journaux de l'hébergeur).
+
+### 4.4 Autres droits
+
+Opposition et limitation : à traiter par FIG. Pour l'équipe et les comptes du back-office, il n'existe pas d'écran d'export : une demande se traite par une requête SQL sur `staff` ou `users`, à outiller si elle devient fréquente.
+
+## 5. Durées de conservation et purge
+
+Les durées sont des hypothèses (question 18), définies dans `src/domain/privacy/retention.ts` :
+
+| Donnée                                                      | Durée                                          | Effet          | Source                                                     |
+| ----------------------------------------------------------- | ---------------------------------------------- | -------------- | ---------------------------------------------------------- |
+| client sans création, livraison ni commande ouverte récente | 3 ans après la dernière activité               | anonymisation  | référentiel « gestion commerciale » de la CNIL             |
+| journal de sécurité                                         | 12 mois, sauf preuves des demandes RGPD        | suppression    | la CNIL recommande 6 mois à 1 an pour les journaux          |
+| tentative de connexion                                      | 24 h, sauf verrou encore actif                 | suppression    | choix technique                                            |
+
+```bash
+cd dashboard
+npm run rgpd:purge              # aperçu : ce qui serait supprimé ou anonymisé, rien n'est écrit
+npm run rgpd:purge -- --apply   # applique, irréversible ; chaque anonymisation est journalisée (acteur rgpd-purge)
+```
+
+Le script refuse une base non locale sans `RGPD_ALLOW_REMOTE=1`. Attention : `localhost` peut être un tunnel vers la production, il faut lire l'hôte affiché avant `--apply`. Le script n'affiche que des nombres et des identifiants techniques, avec l'avancement. Un arrêt en cours de route se relance sans risque : tout est conditionnel.
+
+**Ne pas planifier `--apply` avant les réponses aux questions 14, 18 et 19.**
+- Le dashboard ne voit pas l'activité d'un client dans l'application : il peut se connecter sans commander.
+- Anonymiser remplace son e-mail et lui ferait perdre son compte si l'application partage la table.
+
+Une fois ces points validés, le lancer chaque mois par une tâche planifiée chez l'hébergeur, en gardant la sortie comme preuve.
+
+## 6. Minimisation
+
+- Sous chaque note libre (client, équipe), une consigne rappelle la règle :
+  - seulement ce qui sert au service ;
+  - jamais de santé, d'opinions, de religion, de sanction ni de jugement ;
+  - la personne peut demander à lire ces notes.
+- Un export ou un dump ne reste pas sur un poste. Un dump de production ne sort jamais sans avoir été anonymisé.
+- Nouveau champ ou nouvelle table : l'ajouter à l'inventaire (section 2) avec sa durée, ou renoncer à la donnée.
+
+## 7. Sécurité (article 32), en bref
+
+- Rôles vérifiés côté serveur à chaque écran et chaque écriture.
+- Mots de passe hachés (scrypt), limitation de débit de la connexion.
+- CSP à nonce, journal de sécurité, gardes de production.
+- Base de test jetable, aucune donnée réelle en développement.
+
+Voir `docs/architecture.md` (section 6).
+
+Restent à régler avant la mise en ligne :
+- TLS vers la base ;
+- chiffrement des disques et des sauvegardes chez l'hébergeur ;
+- rôle PostgreSQL à privilèges réduits ;
+- rotation des sauvegardes ;
+- **révocation immédiate des droits** : le rôle vit dans le jeton de session (8 h), donc un administrateur rétrogradé garde l'export et l'anonymisation jusqu'à l'expiration (backlog) ;
+- écriture attendue (et non lancée sans attente) des deux événements RGPD du journal.
+
+## 8. Violation de données (articles 33 et 34)
+
+1. **Contenir** : couper l'accès en cause (désactiver un compte, changer `AUTH_SECRET`, isoler la base).
+2. **Qualifier** : quelles données, combien de personnes, depuis quand. S'appuyer sur `security_events` et les journaux de l'hébergeur.
+3. **Prévenir FIG dans les meilleurs délais** (article 33.2).
+4. **Notifier la CNIL (FIG)** : si possible dans les 72 heures, sauf si la violation n'est pas susceptible d'engendrer un risque pour les personnes (article 33.1).
+5. **Informer les personnes (FIG)** : obligatoire si le risque est élevé, sauf exceptions de l'article 34.3 (données chiffrées, mesures qui suppriment le risque…).
+6. **Documenter toute violation**, même non notifiée (article 33.5) : nature, catégories et nombre approximatif de personnes, conséquences probables, mesures prises.
+
+## 9. À décider avec le client
+
+Ces questions sont reprises dans `docs/backlog.md`.
+
+- **Question 18** : durées de conservation, à savoir :
+  - clients ;
+  - journal ;
+  - preuves des demandes RGPD ;
+  - sauvegardes ;
+  - avec le comptable, le statut de pièce justificative des commandes.
+
+  Aussi : les bases légales du registre.
+- **Question 19** : l'application FIG applique-t-elle l'anonymisation à sa copie des clients ? Qui reçoit les demandes, et par quel canal ?
+- **Question 20** : durée de conservation des données de l'équipe après un départ.
+- **Question 22**, messages « Nous contacter » :
+  - où l'application stocke-t-elle les pièces jointes, et sous quelles URL (publiques mais imprévisibles, ou signées à durée limitée) ? Le dashboard n'en garde que l'adresse ;
+  - combien de temps garder un message traité, et ses fichiers ?
+  - l'application efface-t-elle les fichiers quand un client est anonymisé ici ?
+- **Question 21** :
+  - contrat de sous-traitance (article 28) ;
+  - hébergeur et localisation des données ;
+  - contact RGPD ou DPO du client ;
+  - mentions d'information dans l'application.

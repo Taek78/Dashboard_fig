@@ -2,6 +2,7 @@ import {
   Carrot,
   ChartColumn,
   Contact,
+  Inbox,
   LayoutDashboard,
   Newspaper,
   ShoppingBasket,
@@ -50,6 +51,7 @@ export const NAV_ITEMS = [
   { title: "Catalogue", href: "/catalogue", icon: Carrot, group: "offre" },
   { title: "Articles", href: "/articles", icon: Newspaper, group: "offre" },
   { title: "Clients", href: "/clients", icon: Users, group: "relations" },
+  { title: "Messages", href: "/messages", icon: Inbox, group: "relations" },
   { title: "Personnel", href: "/personnel", icon: Contact, group: "relations" },
   {
     title: "Métriques",

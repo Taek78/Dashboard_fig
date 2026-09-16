@@ -107,6 +107,28 @@ export function formatQuantity(quantity: number, unit: "piece" | "g"): string {
   return `${kilos.format(quantity / 1000)}${NBSP}kg`;
 }
 
+/**
+ * Taille d'un fichier en octets → texte court. 0 → "0 o", 940 → "940 o",
+ * 128 940 → "126 ko", 842 310 → "822 ko", 5 242 880 → "5 Mo". Unités binaires
+ * (1 ko = 1024 o), comme les explorateurs de fichiers de Windows et de macOS :
+ * l'équipe compare ce nombre à ce que son système affiche.
+ */
+export function formatFileSize(bytes: number): string {
+  const units = ["o", "ko", "Mo", "Go"];
+  let value = Math.max(0, bytes);
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  // Une décimale seulement sous 10 Mo/Go : « 1,5 Mo » informe, « 822,4 ko » non.
+  const rounded =
+    unit >= 2 && value < 10
+      ? kilos.format(Math.round(value * 10) / 10)
+      : String(Math.round(value));
+  return `${rounded}${NBSP}${units[unit]}`;
+}
+
 /** Numéro affiché "06 39 98 00 01" → href "tel:+33639980001" (espaces retirés, 0 initial → +33). */
 export function toTelHref(phone: string): string {
   const digits = phone.replace(/\s/g, "");

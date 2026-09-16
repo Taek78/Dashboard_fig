@@ -5,6 +5,7 @@ import { ArrowLeft, Users } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { CustomerHistoryFilters } from "@/components/customers/customer-history-filters";
 import { CustomerNoteForm } from "@/components/customers/customer-note-form";
+import { CustomerPrivacyPanel } from "@/components/customers/customer-privacy-panel";
 import { LoyaltyGauge } from "@/components/customers/loyalty-badge";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { OrdersTable } from "@/components/orders/orders-table";
@@ -13,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomer } from "@/data/customers";
 import { getDirectoryStats, getOrdersPage } from "@/data/orders";
+import { getCurrentUser } from "@/data/session";
+import { canHandlePrivacyRequest } from "@/domain/auth/roles";
 import { loyaltyFromStreak } from "@/domain/customers/loyalty";
 import {
   computeCustomerStats,
@@ -40,6 +43,9 @@ import {
  * commandes) ; l'historique est lu page par page (?page=, les plus récentes
  * d'abord), jamais en entier, et se restreint à une période de livraison
  * (?du=&au=, filtrée par la base) que la pagination garde.
+ * En bas, l'encart « Données personnelles » (export et anonymisation RGPD,
+ * administrateur seul). Un client anonymisé n'affiche plus ni coordonnées ni
+ * formulaire de note.
  */
 export const metadata: Metadata = { title: "Fiche client" };
 
@@ -57,10 +63,11 @@ export default async function ClientPage({
   const raw = await searchParams;
   const period = parseCustomerHistoryPeriod(raw);
 
-  const [customer, directory, history] = await Promise.all([
+  const [customer, directory, history, user] = await Promise.all([
     getCustomer(parsed.data),
     getDirectoryStats({ customerId: parsed.data }),
     getOrdersPage({ customerId: parsed.data, ...period }, parsePage(raw)),
+    getCurrentUser(),
   ]);
   if (!customer) notFound();
 
@@ -92,44 +99,51 @@ export default async function ClientPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">E-mail</dt>
-              <dd className="font-medium break-all">
-                <a
-                  href={`mailto:${customer.email}`}
-                  className="underline-offset-4 hover:underline"
-                >
-                  {customer.email}
-                </a>
-              </dd>
-              <dt className="text-muted-foreground">Téléphone</dt>
-              <dd className="font-medium">
-                <a
-                  href={toTelHref(customer.phone)}
-                  className="underline-offset-4 hover:underline"
-                >
-                  {customer.phone}
-                </a>
-              </dd>
-              <dt className="text-muted-foreground">Adresse</dt>
-              <dd className="font-medium">
-                {customer.postalCode} {customer.city}
-              </dd>
-              {customer.community ? (
-                <>
-                  <dt className="text-muted-foreground">Communauté</dt>
-                  <dd className="font-medium">
-                    <Link
-                      href={`/clients/communautes/${customer.community.id}`}
-                      className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
-                    >
-                      <Users className="size-4" aria-hidden="true" />
-                      {customer.community.name}
-                    </Link>
-                  </dd>
-                </>
-              ) : null}
-            </dl>
+            {customer.anonymizedAt ? (
+              <p className="text-muted-foreground text-sm">
+                Coordonnées effacées le {formatDateFr(customer.anonymizedAt)}{" "}
+                (anonymisation RGPD).
+              </p>
+            ) : (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                <dt className="text-muted-foreground">E-mail</dt>
+                <dd className="font-medium break-all">
+                  <a
+                    href={`mailto:${customer.email}`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {customer.email}
+                  </a>
+                </dd>
+                <dt className="text-muted-foreground">Téléphone</dt>
+                <dd className="font-medium">
+                  <a
+                    href={toTelHref(customer.phone)}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {customer.phone}
+                  </a>
+                </dd>
+                <dt className="text-muted-foreground">Adresse</dt>
+                <dd className="font-medium">
+                  {customer.postalCode} {customer.city}
+                </dd>
+                {customer.community ? (
+                  <>
+                    <dt className="text-muted-foreground">Communauté</dt>
+                    <dd className="font-medium">
+                      <Link
+                        href={`/clients/communautes/${customer.community.id}`}
+                        className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
+                      >
+                        <Users className="size-4" aria-hidden="true" />
+                        {customer.community.name}
+                      </Link>
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+            )}
           </CardContent>
         </Card>
 
@@ -166,7 +180,9 @@ export default async function ClientPage({
           <CardContent className="flex flex-col gap-4">
             {notes.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                Aucune note pour l&apos;instant.
+                {customer.anonymizedAt
+                  ? "Notes supprimées lors de l'anonymisation."
+                  : "Aucune note pour l'instant."}
               </p>
             ) : (
               <ul className="flex flex-col gap-3">
@@ -183,7 +199,9 @@ export default async function ClientPage({
                 ))}
               </ul>
             )}
-            <CustomerNoteForm customerId={customer.id} />
+            {customer.anonymizedAt ? null : (
+              <CustomerNoteForm customerId={customer.id} />
+            )}
           </CardContent>
         </Card>
 
@@ -251,6 +269,11 @@ export default async function ClientPage({
           )}
         </div>
       </div>
+
+      <CustomerPrivacyPanel
+        customer={customer}
+        canHandle={canHandlePrivacyRequest(user.role)}
+      />
     </>
   );
 }

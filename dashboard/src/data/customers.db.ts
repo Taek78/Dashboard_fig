@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { toCustomer, toCustomerNote } from "@/db/mappers";
 import { communities, customerNotes, customers } from "@/db/schema";
@@ -62,24 +62,33 @@ export const customersDb: CustomersSource = {
     return customer ?? null;
   },
 
-  addNote: async (customerId: string, note: Omit<CustomerNote, "id">) => {
-    const db = getDb();
-    const [exists] = await db
-      .select({ id: customers.id })
-      .from(customers)
-      .where(eq(customers.id, customerId))
-      .limit(1);
-    if (!exists) return null;
-    const [row] = await db
-      .insert(customerNotes)
-      .values({
-        id: randomUUID(),
-        customerId,
-        text: note.text,
-        authorName: note.authorName,
-        createdAt: new Date(note.createdAt),
-      })
-      .returning();
-    return row ? toCustomerNote(row) : null;
-  },
+  addNote: (customerId: string, note: Omit<CustomerNote, "id">) =>
+    getDb().transaction(async (tx) => {
+      // Verrou partagé (FOR SHARE) sur la ligne du client, pour ne jamais
+      // laisser une note à un client anonymisé :
+      // - anonymisation en cours (UPDATE) : on attend sa fin, la ligne relue
+      //   porte anonymized_at, la note est refusée ;
+      // - note arrivée la première : l'anonymisation attend la fin de cette
+      //   transaction, puis supprime aussi cette note.
+      const [exists] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(
+          and(eq(customers.id, customerId), isNull(customers.anonymizedAt)),
+        )
+        .limit(1)
+        .for("share");
+      if (!exists) return null;
+      const [row] = await tx
+        .insert(customerNotes)
+        .values({
+          id: randomUUID(),
+          customerId,
+          text: note.text,
+          authorName: note.authorName,
+          createdAt: new Date(note.createdAt),
+        })
+        .returning();
+      return row ? toCustomerNote(row) : null;
+    }),
 };

@@ -49,39 +49,46 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
         </div>
       </div>
 
-      <dl className="grid grid-cols-[1.25rem_1fr] gap-x-2 gap-y-1.5 text-sm">
-        <dt className="text-muted-foreground">
-          <Mail className="size-4" aria-hidden="true" />
-          <span className="sr-only">E-mail</span>
-        </dt>
-        <dd className="min-w-0 truncate">
-          <a
-            href={`mailto:${customer.email}`}
-            className="underline-offset-4 hover:underline"
-          >
-            {customer.email}
-          </a>
-        </dd>
-        <dt className="text-muted-foreground">
-          <Phone className="size-4" aria-hidden="true" />
-          <span className="sr-only">Téléphone</span>
-        </dt>
-        <dd>
-          <a
-            href={toTelHref(customer.phone)}
-            className="tabular-nums underline-offset-4 hover:underline"
-          >
-            {customer.phone}
-          </a>
-        </dd>
-        <dt className="text-muted-foreground">
-          <MapPin className="size-4" aria-hidden="true" />
-          <span className="sr-only">Ville</span>
-        </dt>
-        <dd>
-          {customer.postalCode} {customer.city}
-        </dd>
-      </dl>
+      {customer.anonymizedAt ? (
+        <p className="text-muted-foreground text-sm">
+          Données personnelles anonymisées le{" "}
+          {formatDateFr(customer.anonymizedAt)}.
+        </p>
+      ) : (
+        <dl className="grid grid-cols-[1.25rem_1fr] gap-x-2 gap-y-1.5 text-sm">
+          <dt className="text-muted-foreground">
+            <Mail className="size-4" aria-hidden="true" />
+            <span className="sr-only">E-mail</span>
+          </dt>
+          <dd className="min-w-0 truncate">
+            <a
+              href={`mailto:${customer.email}`}
+              className="underline-offset-4 hover:underline"
+            >
+              {customer.email}
+            </a>
+          </dd>
+          <dt className="text-muted-foreground">
+            <Phone className="size-4" aria-hidden="true" />
+            <span className="sr-only">Téléphone</span>
+          </dt>
+          <dd>
+            <a
+              href={toTelHref(customer.phone)}
+              className="tabular-nums underline-offset-4 hover:underline"
+            >
+              {customer.phone}
+            </a>
+          </dd>
+          <dt className="text-muted-foreground">
+            <MapPin className="size-4" aria-hidden="true" />
+            <span className="sr-only">Ville</span>
+          </dt>
+          <dd>
+            {customer.postalCode} {customer.city}
+          </dd>
+        </dl>
+      )}
 
       <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-xl p-3 text-center">
         <div>

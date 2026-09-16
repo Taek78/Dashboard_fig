@@ -20,6 +20,7 @@ describe("façades de données", () => {
     ["communities", () => import("@/data/communities")],
     ["customers", () => import("@/data/customers")],
     ["engagement", () => import("@/data/engagement")],
+    ["messages", () => import("@/data/messages")],
     ["orders", () => import("@/data/orders")],
     ["products", () => import("@/data/products")],
     ["staff", () => import("@/data/staff")],

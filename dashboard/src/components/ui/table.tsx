@@ -1,5 +1,6 @@
-"use client";
-
+// Pas de "use client" (retiré de la version shadcn) : simple balisage, sans
+// hook ni événement. Composant client, il ferait écrire par Next un script
+// sans nonce dans le <head> des pages dont le loading.tsx l'importe (CSP).
 import * as React from "react";
 import { cn } from "cn";
 

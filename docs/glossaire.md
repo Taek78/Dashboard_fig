@@ -102,6 +102,28 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Sous-traitant (RGPD)** : celui qui traite des données personnelles pour le compte d'un autre (le client, responsable du traitement). Il n'a le droit de faire que ce que le client a autorisé par écrit.
 
+**Responsable du traitement (RGPD)** : celui qui décide pourquoi et comment des données personnelles sont traitées. Ici le client FIG : il fixe les durées, informe les personnes et reçoit leurs demandes. Voir `docs/rgpd.md`.
+
+**Donnée personnelle (RGPD)** : toute information qui permet d'identifier une personne, directement (nom, e-mail, téléphone) ou en la recoupant (adresse IP, identifiant rattaché à un nom). Une note interne sur un client en est une.
+
+**Anonymisation (RGPD)** : rendre des données définitivement impossibles à rattacher à une personne, par quiconque. Des données vraiment anonymes ne sont plus des données personnelles. Dans le dashboard, « anonymiser un client » (`anonymizeCustomerRows`) remplace nom, e-mail, téléphone, ville et code postal, supprime les notes et efface les précisions libres. Refusé tant qu'une commande est en préparation ou expédiée.
+
+**Pseudonymisation (RGPD)** : remplacer l'identité par un identifiant qui permet encore, avec une information gardée ailleurs, de retrouver la personne. Ce sont toujours des données personnelles. Les commandes d'un client anonymisé en sont : elles gardent un identifiant qui existe aussi dans l'application FIG et dans les sauvegardes. D'où leur base légale et leur durée au registre.
+
+**Durée de conservation (RGPD)** : le temps pendant lequel une donnée peut être gardée pour sa finalité ; au-delà, on la supprime ou on l'anonymise. Hypothèses du projet dans `src/domain/privacy/retention.ts`, appliquées par `npm run rgpd:purge`.
+
+**Droit d'accès / portabilité (RGPD, articles 15 et 20)** : une personne peut obtenir toutes les données gardées sur elle, dans un format lisible et réutilisable. Bouton « Exporter les données » de la fiche client (JSON), administrateur seul. Réponse sous un mois.
+
+**Droit à l'effacement (RGPD, article 17)** : une personne peut demander la suppression de ses données, sauf ce qu'une obligation légale impose de garder (factures et pièces comptables : 10 ans). D'où l'anonymisation plutôt que la suppression d'un client qui a des commandes.
+
+**Minimisation (RGPD)** : ne collecter et n'écrire que ce qui sert. La consigne sous les champs de notes libres en est l'application : jamais de santé, d'opinions ou de jugement.
+
+**Registre des traitements (RGPD, article 30)** : la liste écrite des traitements (finalité, personnes, données, destinataires, durée). Le client tient le sien ; le sous-traitant tient celui des traitements faits pour le client. Brouillon dans `docs/rgpd.md`.
+
+**Violation de données (RGPD, article 33)** : accès, perte ou divulgation non autorisés de données personnelles. Le sous-traitant prévient le client sans délai ; le client notifie la CNIL dans les 72 heures si un risque existe.
+
+**Aperçu à blanc (dry run)** : exécuter une opération en ne faisant que compter ce qu'elle changerait. `npm run rgpd:purge` s'arrête là tant qu'on ne passe pas `--apply`.
+
 ## Autres notions
 
 **Upsert** : écrire « en remplaçant si ça existe déjà ». `assignOrder` remplace l'attribution d'une commande au lieu d'en ajouter une seconde.
@@ -158,6 +180,8 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Énumération de comptes** (sécurité) : deviner quels e-mails existent en observant la réponse. Le message est identique dans les deux cas, et le temps aussi : un e-mail inconnu vérifie un hachage factice (`dummyPasswordHash`).
 
 **En-têtes de sécurité / CSP** (HTTP) : en-têtes envoyés avec chaque réponse pour brider le navigateur. La Content-Security-Policy dit d'où scripts, styles et images peuvent venir et interdit d'afficher le site dans un cadre (`frame-ancestors 'none'`, contre le détournement de clic). HSTS force le HTTPS. Posés dans `next.config.ts`.
+
+**`'strict-dynamic'`** (CSP) : dans `script-src`, ne fait confiance qu'aux scripts portant le nonce de la requête et à ceux qu'ils créent eux-mêmes. Les listes d'hôtes, `'self'` compris, sont alors ignorées. Conséquence : une balise `<script src>` écrite dans le HTML sans nonce est bloquée, même servie par notre propre site. D'où la règle « un `loading.tsx` n'importe aucun module contenant un composant client » (`e2e/csp.spec.ts`).
 
 **Journal de sécurité** (exploitation) : une ligne JSON par événement sensible (connexion réussie ou échouée, verrou, refus, changement de statut, suppression) sur la sortie standard, sans secret. Sert à détecter une attaque et à comprendre un incident.
 
@@ -221,7 +245,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Thème FIG (crépuscule)** (style) : le troisième mode d'affichage, inspiré des affiches de GTA VI : nuit violette, rose coucher de soleil, orange pêche, bleu lagon, en teintes adoucies.
 
-**Groupes de navigation** (coquille) : les neuf sections du menu rangées sous quatre intitulés (Activité, Offre, Clients et équipe, Pilotage) par `groupNavItems` ; un groupe sans section permise au rôle disparaît.
+**Groupes de navigation** (coquille) : les dix sections du menu rangées sous quatre intitulés (Activité, Offre, Clients et équipe, Pilotage) par `groupNavItems` ; un groupe sans section permise au rôle disparaît.
 
 **Base de test jetable** (tests) : une base PostgreSQL à part (`test-db` de `compose.yaml`, en mémoire, vide à chaque démarrage), migrée et seedée par les tests eux-mêmes. Les tests n'écrivent jamais dans la base de travail.
 
@@ -248,5 +272,15 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Chargement à la demande (`next/dynamic`)** (Next.js) : un composant client sorti du JavaScript initial, téléchargé seulement quand il s'affiche. Le panneau mobile de la sidebar n'est chargé que sur petit écran.
 
 **`content-visibility: auto`** (CSS) : le navigateur saute la mise en page et le dessin d'un élément tant qu'il est hors de l'écran, en gardant sa taille réservée. Utilitaire `cv-auto` sur les cartes des longues listes.
+
+**Boîte de réception (messages)** (métier) : la section `/messages`, où arrivent les demandes écrites par les clients dans « Nous contacter » de l'application FIG (six objets possibles, commande citée facultative, dix pièces jointes au plus). Le dashboard ne crée ni ne modifie jamais un message : il ne pose que trois marques de l'équipe.
+
+**Épingler / « important »** (messages) : deux marques distinctes, volontairement. **Épingler** (`pinned_at`) remonte un message en tête de liste — un geste d'organisation, qui ne se filtre pas. **Important** est une étiquette rouge qui, elle, se filtre (`?important=oui`). Un message peut être l'un, l'autre, les deux ou aucun.
+
+**Aperçu d'un message** (messages) : les deux premières lignes NON VIDES du corps, calculées par la règle pure `messagePreview` (le CSS ne fait que borner la hauteur). Sauter une ligne après « Bonjour, » ne gaspille donc pas l'aperçu.
+
+**Métadonnées de pièce jointe** (messages) : le dashboard ne stocke pas les fichiers, seulement leur nom, format, taille et URL ; le fichier vit chez l'application FIG. Conséquence : effacer un message ici n'efface pas le fichier là-bas (question 22).
+
+**Garde tenue par la base** (base) : une règle écrite comme contrainte SQL plutôt que dans un écran, parce que l'écran n'est pas le seul à écrire. Les dix pièces jointes au plus (`position` bornée à 0..9 et unique par message) et la liste blanche de formats (enum `attachment_content_type`) tiennent même si l'application FIG écrit en SQL direct.
 
 **Motif LIKE échappé** (base) : dans `LIKE`, `%` et `_` sont des jokers. `containsPattern` les échappe (`\%`, `\_`) pour qu'une saisie « 100% » cherche vraiment « 100% ».

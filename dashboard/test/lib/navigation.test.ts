@@ -7,7 +7,7 @@ import {
 } from "@/lib/navigation";
 
 describe("NAV_ITEMS", () => {
-  it("pointe vers les neuf sections du back-office, racine en premier", () => {
+  it("pointe vers les dix sections du back-office, racine en premier", () => {
     expect(NAV_ITEMS.map((i) => i.href)).toEqual([
       "/",
       "/commandes",
@@ -15,6 +15,7 @@ describe("NAV_ITEMS", () => {
       "/catalogue",
       "/articles",
       "/clients",
+      "/messages",
       "/personnel",
       "/metriques",
       "/comptes",
@@ -82,7 +83,7 @@ describe("breadcrumbFor", () => {
 });
 
 describe("groupNavItems", () => {
-  it("range les neuf sections sous quatre intitulés, dans l'ordre du menu", () => {
+  it("range les dix sections sous quatre intitulés, dans l'ordre du menu", () => {
     const groups = groupNavItems(NAV_ITEMS);
     expect(groups.map((g) => g.label)).toEqual([
       "Activité",

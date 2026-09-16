@@ -195,7 +195,9 @@ function slug(text: string): string {
     .toLowerCase();
 }
 
-type Draft = Omit<Customer, "createdAt" | "notes"> & { weight: number };
+type Draft = Omit<Customer, "createdAt" | "notes" | "anonymizedAt"> & {
+  weight: number;
+};
 
 function communityFor(rank: number): Community | null {
   for (const community of communitiesFixtures) {
@@ -532,6 +534,7 @@ function build(): { customers: Customer[]; orders: Order[] } {
       createdAt: `${addDays(firstOrderDate.get(d.id)!, -(5 + Math.floor(random() * 55)))}T09:00:00.000Z`,
       community: d.community,
       notes: [],
+      anonymizedAt: null,
     }));
   return { customers, orders };
 }

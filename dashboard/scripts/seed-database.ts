@@ -4,6 +4,7 @@ import { articlesFixtures } from "@/domain/articles/fixtures";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import { engagementFixtures } from "@/domain/engagement/fixtures";
+import { messagesFixtures } from "@/domain/messages/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { productsFixtures } from "@/domain/products/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
@@ -72,6 +73,9 @@ export async function seedDatabase(
   }
 
   await db.transaction(async (tx) => {
+    // Messages avant les commandes et les clients qu'ils référencent.
+    await tx.delete(schema.messageAttachments);
+    await tx.delete(schema.customerMessages);
     await tx.delete(schema.orderEvents);
     await tx.delete(schema.orderLines);
     await tx.delete(schema.orders);
@@ -132,6 +136,7 @@ export async function seedDatabase(
         postalCode: c.postalCode,
         communityId: c.community?.id ?? null,
         createdAt: new Date(c.createdAt),
+        anonymizedAt: c.anonymizedAt === null ? null : new Date(c.anonymizedAt),
       })),
       (part) => tx.insert(schema.customers).values(part),
     );
@@ -224,6 +229,37 @@ export async function seedDatabase(
       (part) => tx.insert(schema.orderEvents).values(part),
     );
 
+    // Après les commandes et les clients : un message cite les deux.
+    await tx.insert(schema.customerMessages).values(
+      messagesFixtures.map((m) => ({
+        id: m.id,
+        customerId: m.customer.id,
+        subject: m.subject,
+        body: m.body,
+        orderId: m.order?.id ?? null,
+        status: m.status,
+        receivedAt: new Date(m.receivedAt),
+        pinnedAt: m.pinnedAt === null ? null : new Date(m.pinnedAt),
+        important: m.important,
+        handledAt: m.handledAt === null ? null : new Date(m.handledAt),
+        handledByName: m.handledByName,
+      })),
+    );
+    const attachments = messagesFixtures.flatMap((m) =>
+      m.attachments.map((a, position) => ({
+        id: a.id,
+        messageId: m.id,
+        position,
+        fileName: a.fileName,
+        contentType: a.contentType,
+        sizeBytes: a.sizeBytes,
+        url: a.url,
+      })),
+    );
+    if (attachments.length > 0) {
+      await tx.insert(schema.messageAttachments).values(attachments);
+    }
+
     await tx.insert(schema.articles).values(
       articlesFixtures.map((a) => ({
         id: a.id,
@@ -250,5 +286,5 @@ export async function seedDatabase(
     );
   });
 
-  return `${accounts.length} compte(s), ${staffFixtures.length} personnes, ${communitiesFixtures.length} communautés, ${customersFixtures.length} clients, ${productsFixtures.length} produits, ${ordersFixtures.length} commandes, ${orderEventsFixtures.length} événements, ${articlesFixtures.length} articles, ${engagementFixtures.length} mois d'usage`;
+  return `${accounts.length} compte(s), ${staffFixtures.length} personnes, ${communitiesFixtures.length} communautés, ${customersFixtures.length} clients, ${productsFixtures.length} produits, ${ordersFixtures.length} commandes, ${orderEventsFixtures.length} événements, ${messagesFixtures.length} messages, ${articlesFixtures.length} articles, ${engagementFixtures.length} mois d'usage`;
 }

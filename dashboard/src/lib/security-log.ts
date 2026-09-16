@@ -41,6 +41,27 @@ export type SecurityEvent =
   | { type: "account_deactivated"; userId: string; targetId: string }
   | { type: "account_reactivated"; userId: string; targetId: string }
   | { type: "password_reset"; userId: string; targetId: string }
+  | { type: "customer_exported"; userId: string; customerId: string }
+  | { type: "customer_anonymized"; userId: string; customerId: string }
+  | {
+      type: "message_status_changed";
+      userId: string;
+      messageId: string;
+      from: string;
+      to: string;
+    }
+  | {
+      type: "message_pinned";
+      userId: string;
+      messageId: string;
+      pinned: boolean;
+    }
+  | {
+      type: "message_flagged";
+      userId: string;
+      messageId: string;
+      important: boolean;
+    }
   | { type: "password_changed"; userId: string };
 
 export function formatSecurityEvent(event: SecurityEvent, now: Date): string {

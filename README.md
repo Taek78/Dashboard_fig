@@ -9,6 +9,7 @@ Stack : Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4, s
 - [État du projet et reste à faire](docs/backlog.md) : ce qui est livré, ce qui attend le client.
 - [Glossaire](docs/glossaire.md) : les termes techniques employés, en une phrase chacun.
 - [Contrat de données](docs/branchements.md) : ce que le front consomme, fonction par fonction.
+- [RGPD](docs/rgpd.md) : données personnelles, durées de conservation, réponse aux demandes, violation de données.
 
 ## Démarrer en local
 
@@ -59,6 +60,7 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 | `npm run db:seed`                               | vide et remplit la base locale avec les données de démo               |
 | `npm run db:studio`                             | explore les tables dans le navigateur                                 |
 | `npm run db:backup` / `db:restore -- <fichier>` | sauvegarde et restauration (`pg_dump`, base locale)                   |
+| `npm run rgpd:purge` (`-- --apply`)             | durées de conservation RGPD : aperçu, puis application                |
 
 ## Ce que fait le back-office
 
@@ -69,7 +71,8 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 | Livraisons      | même recherche et mêmes filtres, période de 7 jours au plus groupée par jour, raccourcis des 7 derniers jours, avancement détaillé par statut, appel, itinéraire et statut en un geste                          |
 | Catalogue       | grille de produits (prix unitaire et au kilo, origine, calibre, saison, bio), fiche complète, création, suppression confirmée                                                                                   |
 | Articles        | contenus « à lire » de l'application : rédaction, historique, visibilité, modification, suppression                                                                                                             |
-| Clients         | recherche commune particuliers et communautés, filtre de type et tri, grandes cartes avec bouton vers la fiche, fidélité, notes internes                                                                        |
+| Clients         | recherche commune particuliers et communautés, filtre de type et tri, grandes cartes avec bouton vers la fiche, fidélité, notes internes, historique par période, export et anonymisation RGPD (administrateur) |
+| Messages        | boîte de réception des demandes « Nous contacter » : recherche, filtres objet, statut, période et importants, cartes avec les deux premières lignes, fiche complète précédée de la fiche client, pièces jointes (photos et PDF), traité / non traité, épingle et drapeau « important »                            |
 | Personnel       | livreurs, préparateurs et gestionnaires : cartes avec modifier, dupliquer et supprimer, fiche modifiable en haut, historique de traitement filtrable                                                            |
 | Métriques       | rangées par thème (ventes, commandes, produits, usage), part des commandes de communauté, camemberts pleins avec étiquette au survol, comparaison N-1 ou période précédente                                     |
 | Comptes         | gestion des comptes du back-office (administrateur) ; chacun change son mot de passe sur son profil                                                                                                             |
@@ -78,7 +81,7 @@ Quatre rôles : administrateur, gestionnaire, lecture seule, livreur (ne voit qu
 
 ## Sécurité, en bref
 
-Authentification par e-mail et mot de passe (scrypt), session JWT de 8 heures, limitation de débit sur la connexion, autorisation vérifiée côté serveur pour chaque écran et chaque écriture, Content-Security-Policy avec nonce, journal de sécurité en base, gardes de démarrage en production. Détail dans [docs/architecture.md](docs/architecture.md#sécurité).
+Authentification par e-mail et mot de passe (scrypt), session JWT de 8 heures, limitation de débit sur la connexion, autorisation vérifiée côté serveur pour chaque écran et chaque écriture, Content-Security-Policy avec nonce, journal de sécurité en base, gardes de démarrage en production. Données personnelles : export et anonymisation d'un client, durées de conservation appliquées par script ([docs/rgpd.md](docs/rgpd.md)). Détail dans [docs/architecture.md](docs/architecture.md#sécurité).
 
 ## Vérification
 

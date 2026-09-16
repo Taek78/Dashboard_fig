@@ -104,18 +104,23 @@ export function OrderCard({
           </Link>
         </p>
         <dl className="grid grid-cols-[1.25rem_1fr] gap-x-2 gap-y-1.5 text-sm">
-          <dt className="text-muted-foreground">
-            <Phone className="size-4" aria-hidden="true" />
-            <span className="sr-only">Téléphone</span>
-          </dt>
-          <dd>
-            <a
-              href={toTelHref(order.customer.phone)}
-              className="tabular-nums underline-offset-4 hover:underline"
-            >
-              {order.customer.phone}
-            </a>
-          </dd>
+          {/* Téléphone vide : client anonymisé (RGPD). */}
+          {order.customer.phone ? (
+            <>
+              <dt className="text-muted-foreground">
+                <Phone className="size-4" aria-hidden="true" />
+                <span className="sr-only">Téléphone</span>
+              </dt>
+              <dd>
+                <a
+                  href={toTelHref(order.customer.phone)}
+                  className="tabular-nums underline-offset-4 hover:underline"
+                >
+                  {order.customer.phone}
+                </a>
+              </dd>
+            </>
+          ) : null}
           <dt className="text-muted-foreground">
             <MapPin className="size-4" aria-hidden="true" />
             <span className="sr-only">

@@ -94,12 +94,17 @@ export function OrderDetail({
             </dd>
             <dt className="text-muted-foreground">Téléphone</dt>
             <dd className="font-medium">
-              <a
-                href={toTelHref(order.customer.phone)}
-                className="underline-offset-4 hover:underline"
-              >
-                {order.customer.phone}
-              </a>
+              {/* Téléphone vide : client anonymisé (RGPD). */}
+              {order.customer.phone ? (
+                <a
+                  href={toTelHref(order.customer.phone)}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {order.customer.phone}
+                </a>
+              ) : (
+                "—"
+              )}
             </dd>
           </dl>
         </CardContent>
