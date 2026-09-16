@@ -182,10 +182,16 @@ export function nextStopIndex(orders: readonly Order[]): number {
 
 /**
  * Lien d'itinéraire vers l'adresse (Google Maps, ouvre l'application sur
- * téléphone). Les fixtures n'ont que le code postal et la ville ; la rue
- * viendra avec la base du client.
+ * téléphone) : la rue quand la commande la porte, sinon le code postal et la
+ * ville seuls.
  */
-export function itineraryUrl(postalCode: string, city: string): string {
-  const query = encodeURIComponent(`${postalCode} ${city}`);
+export function itineraryUrl(
+  postalCode: string,
+  city: string,
+  addressLine: string | null = null,
+): string {
+  const query = encodeURIComponent(
+    `${addressLine ? `${addressLine}, ` : ""}${postalCode} ${city}`,
+  );
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
 }

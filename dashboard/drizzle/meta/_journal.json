@@ -64,6 +64,13 @@
       "when": 1789514267398,
       "tag": "0008_messagerie-clients",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789552897683,
+      "tag": "0009_fidelite-frais-consentements",
+      "breakpoints": true
     }
   ]
 }

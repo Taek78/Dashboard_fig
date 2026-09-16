@@ -31,7 +31,19 @@ function firstOrderOf(customerId: string): Message["order"] {
   if (!order) {
     throw new Error(`Fixture message : aucune commande pour ${customerId}`);
   }
-  return { id: order.id, reference: order.reference };
+  return {
+    id: order.id,
+    reference: order.reference,
+    createdAt: order.createdAt,
+    status: order.status,
+    deliverySlot: order.deliverySlot,
+    deliveryAddressLine: order.deliveryAddressLine,
+    deliveryCity: order.deliveryCity,
+    deliveryPostalCode: order.deliveryPostalCode,
+    community: order.community,
+    preparer: order.preparer,
+    driver: order.driver,
+  };
 }
 
 function photo(

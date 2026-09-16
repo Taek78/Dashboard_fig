@@ -20,6 +20,7 @@ import { getDb, type DbExecutor } from "@/db/client";
 import { toOrder, toOrderEvent, type OrderLineRow } from "@/db/mappers";
 import {
   communities,
+  customerNotifications,
   customers,
   orderEvents,
   orders,
@@ -53,7 +54,10 @@ import {
  * - getOrdersPage lit la page et le total EN PARALLÈLE (deux connexions du pool).
  * - updateOrderStatus est une mise à jour CONDITIONNELLE dans une transaction :
  *   `UPDATE … WHERE id = $1 AND status = $2`, 0 ligne → null, sinon l'événement
- *   d'historique est inséré dans la même transaction.
+ *   d'historique est inséré dans la même transaction, puis la notification
+ *   pour le client par un `INSERT … SELECT … WHERE notify_order_status` : le
+ *   consentement est relu par la base au moment d'écrire, et rien n'est déposé
+ *   pour qui ne l'a pas donné.
  * - assignStaff aussi : `UPDATE … WHERE id = $1 AND status NOT IN ('delivered',
  *   'cancelled') AND driver_id IS NOT DISTINCT FROM $2` (colonne du rôle, la
  *   personne que l'écran affichait) : une commande terminée entre la relecture
@@ -261,6 +265,21 @@ const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
         cancellationReason: change.cancellation?.reason ?? null,
         cancellationDetail: change.cancellation?.detail ?? null,
       });
+
+      if (change.notification) {
+        // Déposée seulement si le client a autorisé les notifications d'état :
+        // la condition est lue par la base dans la même transaction.
+        await tx.execute(sql`
+          insert into ${customerNotifications}
+            (id, customer_id, order_id, kind, order_status, title, body)
+          select ${randomUUID()}, o.customer_id, o.id, 'order_status',
+            ${change.to}::order_status,
+            ${change.notification.title}, ${change.notification.body}
+          from ${orders} o
+          join ${customers} c on c.id = o.customer_id
+          where o.id = ${id} and c.notify_order_status
+        `);
+      }
 
       const [order] = await loadOrders(tx, eq(orders.id, id));
       return order ?? null;

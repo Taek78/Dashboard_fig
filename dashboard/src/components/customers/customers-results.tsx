@@ -41,9 +41,12 @@ export async function CustomersResults({ search }: { search: ClientsSearch }) {
     listCommunities(),
     getDirectoryStats(),
   ]);
+  // La catégorie d'un client dépend de l'instant : celui de la lecture.
+  const now = new Date().toISOString();
   const entries = sortDirectory(
-    filterDirectory(buildDirectory(customers, communities, stats), search),
+    filterDirectory(buildDirectory(customers, communities, stats, now), search),
     search.sort,
+    search.order,
   );
   const page = paginate(entries, search.page, DIRECTORY_PAGE_SIZE);
   const counts = countDirectory(entries);

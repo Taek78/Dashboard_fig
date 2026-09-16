@@ -22,6 +22,24 @@ export function addDays(day: string, n: number): string {
   return toIso(d);
 }
 
+/**
+ * Décale un instant ISO de `months` mois civils, en UTC, comme PostgreSQL
+ * (`+ interval 'n months'`) : le jour est ramené au dernier jour du mois
+ * d'arrivée s'il n'existe pas. "2026-12-31T10:00:00.000Z", 2 →
+ * "2027-02-28T10:00:00.000Z". Sert à la durée d'une catégorie de client.
+ */
+export function addMonths(iso: string, months: number): string {
+  const d = new Date(iso);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const lastDay = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d.toISOString();
+}
+
 /** Nombre de jours d'une période, bornes incluses : du 1er au 30 septembre → 30. */
 export function daysBetween(range: DateRange): number {
   return (

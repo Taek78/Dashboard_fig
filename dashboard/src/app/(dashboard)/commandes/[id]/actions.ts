@@ -5,6 +5,7 @@ import { assignStaff, getOrder, updateOrderStatus } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { getStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
+import { orderStatusNotification } from "@/domain/notifications/rules";
 import { ASSIGNMENT_ROLE_LABELS } from "@/domain/orders/assignment";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { assignStaffSchema, changeStatusSchema } from "@/domain/orders/schemas";
@@ -91,12 +92,15 @@ export async function changeOrderStatus(
     }
 
     // 7. Écriture conditionnelle : `from` est le statut RELU, jamais une valeur du
-    //    client ; l'acteur vient de la session et entre dans l'historique.
+    //    client ; l'acteur vient de la session et entre dans l'historique. La
+    //    notification pour le client est composée ici (texte figé) et déposée
+    //    par la source dans la même transaction, seulement s'il l'a autorisée.
     const updated = await updateOrderStatus(order.id, {
       from: order.status,
       to: nextStatus,
       actor: { id: user.id, name: user.name },
       cancellation,
+      notification: orderStatusNotification(order, nextStatus, cancellation),
     });
     if (!updated) {
       revalidatePath("/", "layout");

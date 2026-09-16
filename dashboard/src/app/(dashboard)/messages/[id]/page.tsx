@@ -47,7 +47,11 @@ export default async function MessagePage({
   // Le client existe forcément (clé étrangère), mais la source peut renvoyer
   // null si quelqu'un l'a supprimé entre les deux lectures.
   if (!customer) notFound();
-  const entry = buildCustomerEntries([customer], directory)[0]!;
+  const entry = buildCustomerEntries(
+    [customer],
+    directory,
+    new Date().toISOString(),
+  )[0]!;
 
   return (
     <>

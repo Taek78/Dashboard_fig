@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
+import { CommunityDiscountBadges } from "@/components/customers/community-card";
 import { CustomerCard } from "@/components/customers/customer-card";
 import { OrdersTable } from "@/components/orders/orders-table";
 import { PageHeader } from "@/components/page-header";
@@ -12,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCommunity } from "@/data/communities";
 import { getCustomers } from "@/data/customers";
 import { getDirectoryStats, getOrdersPage } from "@/data/orders";
+import { communityDiscountPercent } from "@/domain/communities/discount";
 import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
 import { summarizeCommunity } from "@/domain/communities/rules";
 import { buildCustomerEntries } from "@/domain/customers/directory";
@@ -19,11 +21,12 @@ import { customerIdSchema } from "@/domain/customers/schemas";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 
 /*
- * Fiche d'une communauté (lecture) : point de retrait, remise, contact,
- * chiffres, ses membres (liste de clients) et ses commandes récentes
- * (croisement par OrderFilters.communityId). Chiffres de la communauté et de
- * ses membres agrégés par la base (getDirectoryStats restreint à la
- * communauté) ; seules les RECENT dernières commandes sont lues.
+ * Fiche d'une communauté (lecture) : point de retrait, remise déduite du
+ * nombre de membres et livraison offerte, contact, chiffres, ses membres
+ * (liste de clients) et ses commandes récentes (croisement par
+ * OrderFilters.communityId). Chiffres de la communauté et de ses membres
+ * agrégés par la base (getDirectoryStats restreint à la communauté) ; seules
+ * les RECENT dernières commandes sont lues.
  */
 export const metadata: Metadata = { title: "Fiche communauté" };
 const RECENT = 30;
@@ -45,6 +48,8 @@ export default async function CommunautePage({
   ]);
   const summary = directory.communities.get(community.id) ?? NO_SUMMARY;
   const recent = latest.items;
+  const discountPercent = communityDiscountPercent(members.length);
+  const now = new Date().toISOString();
 
   return (
     <>
@@ -62,19 +67,26 @@ export default async function CommunautePage({
           </Button>
         }
       />
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <ClientTypeLabel
           community={{ id: community.id, name: community.name }}
           showName={false}
         />
-        <Badge variant="success">
-          −{community.discountPercent} % appliqués par l&apos;application sur
-          chaque commande
-        </Badge>
         {!community.active ? (
           <Badge variant="destructive">Inactive</Badge>
         ) : null}
+        <CommunityDiscountBadges
+          memberCount={members.length}
+          discountPercent={discountPercent}
+        />
       </div>
+      <p className="text-muted-foreground text-sm">
+        La remise dépend du nombre de membres (aucune jusqu&apos;à 3, −5 % de 4
+        à 9, −10 % à partir de 10) et la livraison est offerte ; l&apos;une et
+        l&apos;autre sont appliquées par l&apos;application au paiement. Un
+        membre dont la remise fidélité est prête la reçoit à la place, sur cette
+        commande-là.
+      </p>
 
       <div className="grid gap-4 @4xl/main:grid-cols-3">
         <Card>
@@ -166,7 +178,7 @@ export default async function CommunautePage({
         <h2 className="text-lg font-semibold tracking-tight">Membres</h2>
         {members.length > 0 ? (
           <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-            {buildCustomerEntries(members, directory).map((entry) => (
+            {buildCustomerEntries(members, directory, now).map((entry) => (
               <li key={entry.id}>
                 <CustomerCard entry={entry} />
               </li>

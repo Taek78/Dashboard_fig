@@ -1,3 +1,10 @@
+import { scenarioCustomers } from "@/domain/customers/scenario";
+import { deliveryFeeCents } from "@/domain/orders/delivery-fee";
+import {
+  computeOrderSubtotalCents,
+  computeOrderTotalCents,
+} from "@/domain/orders/rules";
+import { slotEndFor } from "@/domain/orders/slot";
 import type { Order } from "@/domain/orders/types";
 
 /*
@@ -10,8 +17,10 @@ import type { Order } from "@/domain/orders/types";
  * Math.random()), sinon un test passe un jour et échoue le lendemain.
  *
  * Aucune personne réelle : emails en @example.invalid (RFC 2606), téléphones
- * 06 39 98 00 xx (tranche réservée à la fiction), adresses réduites à ville + code
- * postal. Deux clientes reviennent (cli-0001, cli-0005) pour la future page Clients.
+ * 06 39 98 00 xx (tranche réservée à la fiction), rues inventées reprises de la
+ * fiche client (customers/scenario.ts). Deux clientes reviennent (cli-0001,
+ * cli-0005) pour la page Clients. Les frais de livraison suivent le barème
+ * (orders/delivery-fee.ts) et le total est calculé, jamais écrit à la main.
  * Vérifié par test/domain/orders/fixtures.test.ts.
  */
 export const FIXTURE_TODAY = "2026-09-07";
@@ -22,10 +31,23 @@ const PREPARER_FATOU = { id: "stf-0006", name: "Fatou Ndiaye" };
 const DRIVER_MALIK = { id: "stf-0001", name: "Malik Dembélé" };
 const DRIVER_SOPHIE = { id: "stf-0002", name: "Sophie Renard" };
 
-/** Les champs d'équipe, de communauté et de remise sont posés plus bas. */
+/** Créneau d'une heure à partir de son début. */
+const slot = (date: string, start: string) => ({
+  date,
+  start,
+  end: slotEndFor(start),
+});
+
+/** Les champs d'équipe, de communauté, de remise, d'adresse et de montant sont posés plus bas. */
 type ScenarioSeed = Omit<
   Order,
-  "community" | "discount" | "preparer" | "driver"
+  | "community"
+  | "discount"
+  | "preparer"
+  | "driver"
+  | "deliveryAddressLine"
+  | "deliveryFeeCents"
+  | "totalCents"
 >;
 
 const seeds: readonly ScenarioSeed[] = [
@@ -41,7 +63,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "amel.benali@example.invalid",
       phone: "06 39 98 00 01",
     },
-    deliverySlot: { date: "2026-09-07", start: "09:00", end: "11:00" },
+    deliverySlot: slot("2026-09-07", "09:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75011",
     lines: [
@@ -67,7 +89,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 180,
       },
     ],
-    totalCents: 995,
   },
   {
     id: "cmd-0002",
@@ -81,7 +102,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "theo.marchand@example.invalid",
       phone: "06 39 98 00 02",
     },
-    deliverySlot: { date: "2026-09-07", start: "09:00", end: "11:00" },
+    deliverySlot: slot("2026-09-07", "09:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75020",
     lines: [
@@ -100,7 +121,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 450,
       },
     ],
-    totalCents: 750,
   },
   {
     id: "cmd-0003",
@@ -114,7 +134,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "ines.rocher@example.invalid",
       phone: "06 39 98 00 03",
     },
-    deliverySlot: { date: "2026-09-07", start: "11:00", end: "13:00" },
+    deliverySlot: slot("2026-09-07", "11:00"),
     deliveryCity: "Montreuil",
     deliveryPostalCode: "93100",
     lines: [
@@ -147,7 +167,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 700,
       },
     ],
-    totalCents: 1710,
   },
   {
     id: "cmd-0004",
@@ -161,7 +180,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "karim.lefevre@example.invalid",
       phone: "06 39 98 00 04",
     },
-    deliverySlot: { date: "2026-09-07", start: "11:00", end: "13:00" },
+    deliverySlot: slot("2026-09-07", "11:00"),
     deliveryCity: "Vincennes",
     deliveryPostalCode: "94300",
     lines: [
@@ -187,7 +206,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 315,
       },
     ],
-    totalCents: 935,
   },
   {
     id: "cmd-0005",
@@ -201,7 +219,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "lucie.gauthier@example.invalid",
       phone: "06 39 98 00 05",
     },
-    deliverySlot: { date: "2026-09-06", start: "14:00", end: "16:00" },
+    deliverySlot: slot("2026-09-06", "14:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75012",
     lines: [
@@ -220,7 +238,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 420,
       },
     ],
-    totalCents: 810,
   },
   {
     id: "cmd-0006",
@@ -234,7 +251,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "nadia.ferreira@example.invalid",
       phone: "06 39 98 00 06",
     },
-    deliverySlot: { date: "2026-09-06", start: "16:00", end: "18:00" },
+    deliverySlot: slot("2026-09-06", "16:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75019",
     lines: [
@@ -260,7 +277,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 180,
       },
     ],
-    totalCents: 980,
   },
   {
     id: "cmd-0007",
@@ -274,7 +290,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "samuel.nkemelu@example.invalid",
       phone: "06 39 98 00 07",
     },
-    deliverySlot: { date: "2026-09-06", start: "09:00", end: "11:00" },
+    deliverySlot: slot("2026-09-06", "09:00"),
     deliveryCity: "Saint-Mandé",
     deliveryPostalCode: "94160",
     lines: [
@@ -314,7 +330,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 300,
       },
     ],
-    totalCents: 1115,
   },
   {
     id: "cmd-0008",
@@ -328,7 +343,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "lucie.gauthier@example.invalid",
       phone: "06 39 98 00 05",
     },
-    deliverySlot: { date: "2026-09-06", start: "11:00", end: "13:00" },
+    deliverySlot: slot("2026-09-06", "11:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75012",
     lines: [
@@ -347,7 +362,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 780,
       },
     ],
-    totalCents: 1830,
   },
   {
     id: "cmd-0009",
@@ -361,7 +375,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "elise.moreau@example.invalid",
       phone: "06 39 98 00 08",
     },
-    deliverySlot: { date: "2026-09-08", start: "09:00", end: "11:00" },
+    deliverySlot: slot("2026-09-08", "09:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75003",
     lines: [
@@ -387,7 +401,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 360,
       },
     ],
-    totalCents: 1330,
   },
   {
     id: "cmd-0010",
@@ -401,7 +414,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "yanis.cohen@example.invalid",
       phone: "06 39 98 00 09",
     },
-    deliverySlot: { date: "2026-09-08", start: "11:00", end: "13:00" },
+    deliverySlot: slot("2026-09-08", "11:00"),
     deliveryCity: "Bagnolet",
     deliveryPostalCode: "93170",
     lines: [
@@ -434,7 +447,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 315,
       },
     ],
-    totalCents: 1080,
   },
   {
     id: "cmd-0011",
@@ -448,7 +460,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "chloe.dasilva@example.invalid",
       phone: "06 39 98 00 10",
     },
-    deliverySlot: { date: "2026-09-08", start: "14:00", end: "16:00" },
+    deliverySlot: slot("2026-09-08", "14:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75010",
     lines: [
@@ -467,7 +479,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 150,
       },
     ],
-    totalCents: 500,
   },
   {
     id: "cmd-0012",
@@ -481,7 +492,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "amel.benali@example.invalid",
       phone: "06 39 98 00 01",
     },
-    deliverySlot: { date: "2026-09-08", start: "16:00", end: "18:00" },
+    deliverySlot: slot("2026-09-08", "16:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75011",
     lines: [
@@ -521,7 +532,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 290,
       },
     ],
-    totalCents: 1960,
   },
   {
     id: "cmd-0013",
@@ -535,7 +545,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "mathis.petit@example.invalid",
       phone: "06 39 98 00 11",
     },
-    deliverySlot: { date: "2026-09-08", start: "09:00", end: "11:00" },
+    deliverySlot: slot("2026-09-08", "09:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75020",
     lines: [
@@ -554,7 +564,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 350,
       },
     ],
-    totalCents: 740,
   },
   {
     id: "cmd-0014",
@@ -568,7 +577,7 @@ const seeds: readonly ScenarioSeed[] = [
       email: "sofia.haddad@example.invalid",
       phone: "06 39 98 00 12",
     },
-    deliverySlot: { date: "2026-09-07", start: "09:00", end: "11:00" },
+    deliverySlot: slot("2026-09-07", "09:00"),
     deliveryCity: "Paris",
     deliveryPostalCode: "75012",
     lines: [
@@ -594,7 +603,6 @@ const seeds: readonly ScenarioSeed[] = [
         lineTotalCents: 130,
       },
     ],
-    totalCents: 970,
   },
 ];
 
@@ -612,9 +620,24 @@ const ASSIGNMENTS: Record<string, Pick<Order, "preparer" | "driver">> = {
   "cmd-0014": { preparer: PREPARER_JULIEN, driver: DRIVER_MALIK },
 };
 
-export const scenarioOrders: readonly Order[] = seeds.map((seed) => ({
-  ...seed,
-  community: null,
-  discount: null,
-  ...(ASSIGNMENTS[seed.id] ?? { preparer: null, driver: null }),
-}));
+/** Rue de livraison : celle de la fiche du client (aucune communauté dans le scénario). */
+function addressOf(customerId: string): string {
+  const customer = scenarioCustomers.find((c) => c.id === customerId);
+  if (!customer?.addressLine) {
+    throw new Error(`Fixture commande : adresse de ${customerId} introuvable`);
+  }
+  return customer.addressLine;
+}
+
+export const scenarioOrders: readonly Order[] = seeds.map((seed) => {
+  const fee = deliveryFeeCents(computeOrderSubtotalCents(seed.lines), false);
+  return {
+    ...seed,
+    deliveryAddressLine: addressOf(seed.customer.id),
+    deliveryFeeCents: fee,
+    totalCents: computeOrderTotalCents(seed.lines, null, fee),
+    community: null,
+    discount: null,
+    ...(ASSIGNMENTS[seed.id] ?? { preparer: null, driver: null }),
+  };
+});

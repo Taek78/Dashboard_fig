@@ -61,13 +61,7 @@ export async function GET(
   }
 
   const now = new Date();
-  const body = buildCustomerExport(
-    data.customer,
-    data.orders,
-    data.events,
-    data.messages,
-    now,
-  );
+  const body = buildCustomerExport(data, now);
   logSecurity({
     type: "customer_exported",
     userId: user.id,

@@ -32,6 +32,7 @@ isolateEachTest();
 const { assignOrderStaff, changeOrderStatus } =
   await import("@/app/(dashboard)/commandes/[id]/actions");
 const { getOrder, getOrderEvents } = await import("@/data/orders");
+const { getOrderNotifications } = await import("@/data/notifications");
 const { idleActionResult } = await import("@/lib/action-result");
 
 function form(fields: Record<string, string | string[]>): FormData {
@@ -77,6 +78,38 @@ describe("changeOrderStatus", () => {
         actor: { id: "usr-0002", name: "Gestion E2E" },
       },
     ]);
+  });
+
+  it("dépose une notification pour le client qui l'a autorisée, avec le motif d'une annulation", async () => {
+    // cli-0001 (Amel) : autorisée. cmd-0001 est en préparation.
+    await run({ orderId: "cmd-0001", nextStatus: "delivering" });
+    expect(await getOrderNotifications("cmd-0001")).toMatchObject([
+      {
+        customerId: "cli-0001",
+        orderStatus: "delivering",
+        title: "Commande FIG-260907-001",
+        body: "Votre commande FIG-260907-001 est en route : votre livreur arrive sur le créneau choisi.",
+        sentAt: null,
+      },
+    ]);
+    // cli-0002 (Théo) : autorisée ; l'annulation reprend le motif.
+    await run({
+      orderId: "cmd-0002",
+      nextStatus: "cancelled",
+      reason: "other",
+      detail: "Client absent",
+    });
+    expect((await getOrderNotifications("cmd-0002"))[0]?.body).toBe(
+      "Votre commande FIG-260907-002 a été annulée. Motif : Autre : Client absent.",
+    );
+  });
+
+  it("ne dépose rien pour un client qui n'a pas autorisé les notifications d'état", async () => {
+    // cli-0009 (Yanis) : offres seulement. cmd-0010 est en préparation.
+    expect(
+      (await run({ orderId: "cmd-0010", nextStatus: "delivering" })).status,
+    ).toBe("success");
+    expect(await getOrderNotifications("cmd-0010")).toEqual([]);
   });
 
   it("refuse une transition hors liste blanche avec un message français", async () => {

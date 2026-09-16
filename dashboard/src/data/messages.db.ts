@@ -10,13 +10,16 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getDb, type DbExecutor } from "@/db/client";
 import { toMessage, type MessageAttachmentRow } from "@/db/mappers";
 import {
+  communities,
   customerMessages,
   customers,
   messageAttachments,
   orders,
+  staff,
 } from "@/db/schema";
 import { MESSAGES_PAGE_SIZE } from "@/domain/messages/rules";
 import type { MessagesSource } from "@/domain/messages/source";
@@ -33,8 +36,10 @@ import { containsPattern, normalize } from "@/lib/text";
 /*
  * Implémentation Drizzle du contrat MessagesSource.
  *
- * - Un message se lit en UNE requête : auteur et commande citée joints, pièces
- *   jointes agrégées en JSON par une sous-requête (ordonnées par position).
+ * - Un message se lit en UNE requête : auteur et commande citée joints (avec
+ *   la communauté, le préparateur et le livreur de la commande : staff deux
+ *   fois sous alias), pièces jointes agrégées en JSON par une sous-requête
+ *   (ordonnées par position).
  *   Pour une page, les identifiants sont choisis d'abord (tri + LIMIT sur la
  *   seule table customer_messages) : jointures et pièces jointes ne sont
  *   calculées que pour les messages affichés.
@@ -75,6 +80,9 @@ const listOrder = [
   asc(customerMessages.id),
 ];
 
+const preparer = alias(staff, "preparer");
+const driver = alias(staff, "driver");
+
 async function loadMessages(
   db: DbExecutor,
   where: SQL | undefined,
@@ -88,12 +96,37 @@ async function loadMessages(
         fullName: customers.fullName,
         email: customers.email,
       },
-      order: { id: orders.id, reference: orders.reference },
+      order: {
+        id: orders.id,
+        reference: orders.reference,
+        createdAt: orders.createdAt,
+        status: orders.status,
+        deliveryDate: orders.deliveryDate,
+        deliveryStart: orders.deliveryStart,
+        deliveryEnd: orders.deliveryEnd,
+        deliveryAddressLine: orders.deliveryAddressLine,
+        deliveryCity: orders.deliveryCity,
+        deliveryPostalCode: orders.deliveryPostalCode,
+      },
+      community: { id: communities.id, name: communities.name },
+      preparer: {
+        id: preparer.id,
+        firstName: preparer.firstName,
+        lastName: preparer.lastName,
+      },
+      driver: {
+        id: driver.id,
+        firstName: driver.firstName,
+        lastName: driver.lastName,
+      },
       attachments: attachmentsJson,
     })
     .from(customerMessages)
     .innerJoin(customers, eq(customerMessages.customerId, customers.id))
     .leftJoin(orders, eq(customerMessages.orderId, orders.id))
+    .leftJoin(communities, eq(orders.communityId, communities.id))
+    .leftJoin(preparer, eq(orders.preparerId, preparer.id))
+    .leftJoin(driver, eq(orders.driverId, driver.id))
     .$dynamic();
   if (limit === undefined) {
     query = query.where(where);
@@ -112,7 +145,15 @@ async function loadMessages(
   return rows.map((r) =>
     toMessage(r.message, r.attachments, {
       customer: r.customer,
-      order: r.order,
+      order:
+        r.order === null
+          ? null
+          : {
+              order: r.order,
+              community: r.community,
+              preparer: r.preparer,
+              driver: r.driver,
+            },
     }),
   );
 }

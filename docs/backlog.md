@@ -1,11 +1,12 @@
 # État du projet et reste à faire
 
-Dernière mise à jour : 2026-09-15.
+Dernière mise à jour : 2026-09-16.
 
 ## Livré
 
-- **Écrans** : tableau de bord (période et HT/TTC, avancement des commandes), commandes (recherche par référence, client ou coordonnées, filtres statut, période, préparateur et livreur, cartes, détail, historique des statuts, annulation avec motif, affectation d'un préparateur et d'un livreur, remises affichées), livraisons (tournées sur 7 jours au plus groupées par jour, même recherche et mêmes filtres que les commandes, avancement détaillé par statut, livreur affecté), catalogue (grille avec modifier / dupliquer / supprimer, fiche, création, suppression confirmée), articles, clients (recherche commune particuliers et communautés, filtre et tri, grandes cartes, fidélité, notes), personnel (recherche par nom, prénom et coordonnées, filtres métier, disponibilité, créneau, jour et présence, cartes avec modifier, dupliquer et supprimer, fiche modifiable en haut, historique de traitement filtrable), métriques (rangées par thème, part des commandes de communauté, camemberts pleins, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
-- **Messages** (`/messages`) : boîte de réception des demandes « Nous contacter » écrites dans l'application FIG — recherche libre, filtres objet, statut, période de réception et « importants », cartes triées épinglés d'abord puis les plus récents avec les deux premières lignes, fiche complète précédée de la fiche du client, pièces jointes (photos et PDF, dix au plus, limite et formats tenus par la base), statut traité / non traité, épingle et drapeau « important », tous en écriture conditionnelle et réservés à l'admin et au gestionnaire.
+- **Écrans** : tableau de bord (période et HT/TTC, avancement des commandes), commandes (recherche par référence, client ou coordonnées, filtres statut, période, préparateur et livreur, cartes, détail avec adresse, frais de livraison et notifications déposées pour le client, historique des statuts, annulation avec motif, affectation d'un préparateur et d'un livreur, remises affichées), livraisons (tournées sur 7 jours au plus groupées par jour, même recherche et mêmes filtres que les commandes, avancement détaillé par statut, livreur affecté, itinéraire vers la rue), catalogue (grille avec modifier / dupliquer / supprimer, fiche, création, suppression confirmée), articles, clients (recherche commune particuliers et communautés, commutateur de type coloré, tris dans les deux sens dont le nombre de membres, grandes cartes avec adresse, autorisations, catégorie basique ou fidèle en étoiles et fidélité ; fiche avec parrainage, historique daté des statuts, notes ; remise de communauté déduite du nombre de membres, livraison offerte), personnel (recherche par nom, prénom et coordonnées, filtres métier, disponibilité, créneau, jour et présence, cartes avec modifier, dupliquer et supprimer, fiche modifiable en haut, historique de traitement filtrable), métriques (rangées par thème, part des commandes de communauté, camemberts pleins, tendances, comparaison N-1, usage de l'appli), comptes (admin), profil.
+- **Messages** (`/messages`) : boîte de réception des demandes « Nous contacter » écrites dans l'application FIG — recherche libre, filtres objet, statut, période de réception et « importants », épinglés dans leur propre groupe puis les plus récents, cartes avec les deux premières lignes et la commande jointe (livraison, préparateur, livreur), dégradé rouge des importants, fiche complète précédée de la fiche du client avec la commande jointe en détail (dates, adresse, équipe), pièces jointes (photos et PDF, dix au plus, limite et formats tenus par la base), statut traité / non traité, épingle et drapeau « important », tous en écriture conditionnelle et réservés à l'admin et au gestionnaire.
+- **Clients, règles du 2026-09-16** : compteur de fidélité cumulé (annulées non comptées, membres compris), catégorie « fidèle » deux mois après huit commandes, déduite des commandes avec son historique ; la meilleure remise l'emporte (fidélité ou communauté) ; frais de livraison au barème, offerts aux communautés ; créneaux d'une heure ; trois autorisations lues dans l'application ; file de notifications d'état déposées à chaque changement de statut pour les clients qui l'ont autorisé, envoyées par l'application ; codes de parrainage, parrain et filleuls.
 - **Données** : domaine pur par section, façades sur PostgreSQL (Drizzle), recherche, pagination et agrégats faits par la base, schéma et migrations possédés par le dashboard, seed (développement et tests), sauvegardes.
 - **Sécurité** : Auth.js Credentials, rôles et matrice d'accès en lecture et en écriture, limitation de débit, CSP à nonce, journal de sécurité en base, gardes de production.
 - **RGPD** (`docs/rgpd.md`) :
@@ -14,7 +15,7 @@ Dernière mise à jour : 2026-09-15.
   - durées de conservation appliquées par `npm run rgpd:purge` (aperçu puis `--apply`) ;
   - consignes de minimisation sous les notes libres ;
   - procédure en cas de violation de données.
-- **Qualité** : 613 tests Vitest (règles pures, couche données et Server Actions sur une base de test PostgreSQL jetable, parité SQL = règles pures), 42 parcours Playwright (dont l'absence de violation CSP au chargement de chaque section) sur la même base (dont tablette 768 px et menu replié), CI (check et Playwright contre un PostgreSQL de service, audit).
+- **Qualité** : 667 tests Vitest (règles pures, couche données et Server Actions sur une base de test PostgreSQL jetable, parité SQL = règles pures, contraintes de la base vérifiées), 46 parcours Playwright (dont l'absence de violation CSP au chargement de chaque section) sur la même base (dont tablette 768 px et menu replié), CI (check et Playwright contre un PostgreSQL de service, audit).
 
 ## Reste à faire
 
@@ -30,6 +31,7 @@ Dernière mise à jour : 2026-09-15.
 | 6   | Hébergement du dashboard et de PostgreSQL, nom de domaine                        | question 8                                 |
 | 7   | RGPD : durées de conservation, propagation de l'anonymisation à l'application, contrat de sous-traitance | questions 18 à 21 ; purge planifiée après validation |
 | 8   | Messages : stockage et URL des pièces jointes, durée de conservation d'une demande traitée | question 22                                |
+| 9   | Notifications d'état : canal d'envoi par l'application, lecture de la file et pose de `sent_at`, durée de conservation | question 23                                |
 
 ### Peut se faire sans le client
 
@@ -37,7 +39,8 @@ Dernière mise à jour : 2026-09-15.
 - Rotation et révocation de session côté serveur.
 - Recherche catalogue et clients en SQL (`pg_trgm`) si les tables grossissent.
 - Téléversement d'images produit et article (stockage à définir).
-- Export CSV, impression de bons de livraison, notifications.
+- Export CSV, impression de bons de livraison.
+- Envoi des notifications par le dashboard lui-même (e-mail ou SMS), si l'application ne lit pas la file : prestataire, dépendance et secrets à décider avec le client.
 
 ## Questions à poser au client
 
@@ -53,10 +56,10 @@ Dernière mise à jour : 2026-09-15.
 10. **TVA** : montants TTC ou HT ? Taux (5,5 %, 20 % sur certains produits) ?
 11. **Usage de l'appli** : d'où viennent téléchargements, inscriptions, réclamations, notes ? Export mensuel ou API ?
 12. **Articles** : l'application affiche-t-elle déjà des articles ? Format du texte, images, planification ?
-13. **Adresse de livraison** : rue, coordonnées GPS, instructions d'accès ?
+13. **Adresse de livraison** : la rue est désormais une colonne (`address_line`, `delivery_address_line`, migration 0009), transmise par l'application ; restent les coordonnées GPS et les instructions d'accès.
 14. **Branchement de l'application FIG** : API HTTP exposée par le dashboard (recommandé : un seul propriétaire du schéma) ou accès SQL direct avec un rôle dédié ?
-15. **Communautés** : l'application crée-t-elle les communautés et l'adhésion des clients (hypothèse actuelle : le dashboard les lit, ne les modifie pas) ? Faut-il pouvoir en créer ou en modifier la remise depuis le back-office ?
-16. **Fidélité** : « huit commandes d'affilée » se compte-t-il comme ici (une annulation remet à zéro, la commande remisée repart de zéro, une commande en cours compte) ? La remise fidélité se cumule-t-elle avec celle d'une communauté (hypothèse : non) ?
+15. **Communautés** : l'application crée-t-elle les communautés et l'adhésion des clients (hypothèse actuelle : le dashboard les lit, ne les modifie pas) ? Faut-il pouvoir en créer depuis le back-office ? (La remise n'est plus saisie : elle se déduit du nombre de membres, décision du 2026-09-16.)
+16. **Fidélité** : tranché le 2026-09-16 (huit commandes cumulées, annulées non comptées, la commande remisée repart de zéro, une commande en cours compte ; la remise la plus forte l'emporte, sans cumul). Reste à vérifier que l'application applique la même règle au paiement, membres de communauté compris.
 17. **Personnel** : les gestionnaires du personnel doivent-ils être reliés aux comptes du back-office (même personne, même e-mail) ? Un livreur doit-il ne voir que ses propres livraisons ?
 18. **RGPD, durées** : les hypothèses conviennent-elles ?
     - client sans activité depuis 3 ans : anonymisé ;
@@ -74,8 +77,24 @@ Dernière mise à jour : 2026-09-15.
     - l'hébergeur et le lieu des données (Union européenne) ;
     - le contact RGPD ou DPO du client ;
     - les mentions d'information dans l'application.
+22. **Messages, pièces jointes** : où l'application stocke-t-elle les fichiers et sous quelles URL ? Combien de temps garder une demande traitée ? L'application efface-t-elle les fichiers à l'anonymisation ?
+23. **Notifications d'état de commande** : par quel canal l'application les envoie-t-elle (notification du téléphone, e-mail, SMS) ? Lit-elle la file `customer_notifications` (lignes sans `sent_at`, dans l'ordre de dépôt) et pose-t-elle `sent_at` ? Combien de temps garder une notification envoyée ? Transmet-elle la date de chaque choix d'autorisation (`consents_updated_at`) ?
+24. **Frais de livraison et barème** : le barème (4,90 € sous 5 €, 3,90 € dès 5 €, 2,90 € dès 10 €, 1,90 € dès 20 € de panier avant remise, offerts aux communautés) est-il bien celui que l'application facture, et les frais sont-ils au même taux de TVA que les produits (question 10) ?
+25. **Parrainage** : le code « Nom#0000 » est attribué par l'application ; y a-t-il une récompense pour le parrain ou le filleul (rien n'est prévu dans le dashboard), et le code d'un client anonymisé est-il réattribuable ?
 
 ## Décisions prises
+
+- Clients (2026-09-16) :
+  - **Fidélité** : compteur CUMULÉ (une annulée ne compte pas et ne remet pas à zéro), membres de communauté compris ; à huit, la prochaine commande est à −15 % et le client devient **fidèle** deux mois, puis basique. Deux catégories seulement (le « premium » envisagé a été abandonné). La catégorie et son historique sont **déduits des commandes** (règle pure et requête SQL à fenêtres), jamais stockés : personne dans le dashboard n'assiste à la création d'une commande.
+  - **La meilleure remise l'emporte** : la fidélité prête (−15 %) remplace la remise de la communauté sur cette commande-là ; jamais de cumul.
+  - **Remise de communauté déduite du nombre de membres** (rien jusqu'à 3, −5 % de 4 à 9, −10 % dès 10) ; colonne `discount_percent` supprimée. **Livraison offerte** à toute communauté, imposé par la base.
+  - **Frais de livraison** au barème du panier avant remise, ajoutés après la remise, conservés sur chaque commande.
+  - **Créneaux d'une heure pile**, imposés par la base (migration 0009, qui réécrit les créneaux existants).
+  - **Autorisations** (offres, état de commande, marketing) recueillies et datées par l'application, lues par le dashboard.
+  - **Notifications d'état** : le dashboard n'a aucun canal vers le client ; il **dépose** une notification dans une file, dans la transaction du changement de statut, seulement si la personne l'a autorisé ; l'application l'envoie et pose `sent_at` (question 23). Le texte ne nomme jamais la personne.
+  - **Parrainage** : code « Nom#0000 » attribué par l'application, format et unicité tenus par la base ; parrain et filleuls visibles dans la fiche seulement ; l'export RGPD ne nomme aucun tiers.
+  - **Section Clients** : commutateur de type à trois positions colorées ; chaque tri existe dans les deux sens ; tri par membres pour les communautés (groupes d'abord, puis leurs membres par nom).
+  - **RGPD** : rue, code, parrain et autorisations effacés à l'anonymisation, notifications supprimées, rue de livraison effacée des commandes ; tout entre dans l'export.
 
 - Messages « Nous contacter » (2026-09-16) : la boîte de réception est en **lecture seule sur le contenu**. Les messages et leurs pièces jointes sont écrits par l'application FIG ; le dashboard ne pose que trois marques (statut, épingle, « important »).
   - Les **fichiers** joints restent hébergés par l'application : la base ne garde que nom, format, taille et URL (question 22). Le dashboard ne téléverse rien.

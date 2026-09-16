@@ -13,6 +13,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 /*
@@ -123,6 +124,9 @@ export const attachmentContentTypeEnum = pgEnum("attachment_content_type", [
   "image/tiff",
   "image/bmp",
 ]);
+export const notificationKindEnum = pgEnum("notification_kind", [
+  "order_status",
+]);
 
 const timestampTz = (name: string) =>
   timestamp(name, { withTimezone: true, mode: "date" });
@@ -167,7 +171,11 @@ export const staff = pgTable(
   ],
 );
 
-/* ---------- Communautés (créées par l'application FIG) ---------- */
+/*
+ * ---------- Communautés (créées par l'application FIG) ----------
+ * Pas de taux de remise stocké (colonne supprimée en 0009) : il se déduit du
+ * nombre de membres (src/domain/communities/discount.ts). Livraison offerte.
+ */
 export const communities = pgTable("communities", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -178,7 +186,6 @@ export const communities = pgTable("communities", {
   pickupPlace: text("pickup_place").notNull(),
   pickupCity: text("pickup_city").notNull(),
   pickupPostalCode: text("pickup_postal_code").notNull(),
-  discountPercent: integer("discount_percent").notNull().default(0),
   active: boolean("active").notNull().default(true),
   createdAt: timestampTz("created_at").notNull().defaultNow(),
 });
@@ -191,12 +198,34 @@ export const customers = pgTable(
     fullName: text("full_name").notNull(),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
+    /** Rue de livraison ; NULL si l'application ne l'a pas fournie (question 13) ou après anonymisation. */
+    addressLine: text("address_line"),
     city: text("city").notNull(),
     postalCode: text("postal_code").notNull(),
     /** Adhésion gérée par l'application ; une communauté supprimée libère ses membres. */
     communityId: text("community_id").references(() => communities.id, {
       onDelete: "set null",
     }),
+    /**
+     * Autorisations données par la personne dans l'application (lues, jamais
+     * écrites par le dashboard) ; consents_updated_at date le dernier choix
+     * (preuve du consentement, RGPD article 7.1).
+     */
+    notifyOffers: boolean("notify_offers").notNull().default(false),
+    notifyOrderStatus: boolean("notify_order_status").notNull().default(false),
+    marketingConsent: boolean("marketing_consent").notNull().default(false),
+    consentsUpdatedAt: timestampTz("consents_updated_at"),
+    /**
+     * Parrainage : code « Nom#0000 » attribué par l'application, unique ;
+     * referred_by_id = le client dont le code a été saisi à l'inscription. Un
+     * parrain anonymisé garde ses filleuls (ligne pseudonyme) ; un parrain
+     * supprimé les libère.
+     */
+    referralCode: text("referral_code"),
+    referredById: text("referred_by_id").references(
+      (): AnyPgColumn => customers.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
     /**
      * Anonymisation RGPD (droit à l'effacement ou durée de conservation
@@ -221,6 +250,13 @@ export const customers = pgTable(
   (t) => [
     uniqueIndex("customers_email_lower_idx").on(sql`lower(${t.email})`),
     index("customers_community_idx").on(t.communityId),
+    uniqueIndex("customers_referral_code_idx").on(t.referralCode),
+    index("customers_referred_by_idx").on(t.referredById),
+    check(
+      "customers_referral_code_format",
+      sql`${t.referralCode} ~ '^[^#]+#[0-9]{4}$'`,
+    ),
+    check("customers_not_own_referrer", sql`${t.referredById} <> ${t.id}`),
   ],
 );
 
@@ -285,11 +321,16 @@ export const orders = pgTable(
       .notNull()
       .references(() => customers.id, { onDelete: "restrict" }),
     deliveryDate: date("delivery_date", { mode: "string" }).notNull(),
+    /** Créneau d'UNE heure, sur l'heure pile (contrainte orders_slot_one_hour). */
     deliveryStart: text("delivery_start").notNull(),
     deliveryEnd: text("delivery_end").notNull(),
+    /** Rue de livraison, instantané ; NULL si inconnue ou effacée par l'anonymisation. */
+    deliveryAddressLine: text("delivery_address_line"),
     deliveryCity: text("delivery_city").notNull(),
     deliveryPostalCode: text("delivery_postal_code").notNull(),
-    /** Total dû : sous-total des lignes moins la remise. */
+    /** Frais de livraison facturés par l'application ; 0 pour une communauté (contrainte). */
+    deliveryFeeCents: integer("delivery_fee_cents").notNull().default(0),
+    /** Total dû : sous-total des lignes moins la remise, plus les frais de livraison. */
     totalCents: integer("total_cents").notNull(),
     cancellationReason: cancellationReasonEnum("cancellation_reason"),
     cancellationDetail: text("cancellation_detail"),
@@ -337,9 +378,21 @@ export const orders = pgTable(
       "orders_slot_format",
       sql`${t.deliveryStart} ~ '^[0-9]{2}:[0-9]{2}$' AND ${t.deliveryEnd} ~ '^[0-9]{2}:[0-9]{2}$'`,
     ),
+    // Créneau d'une heure pile (src/domain/orders/slot.ts) : la fin est l'heure
+    // de début plus un, en texte, sans fonction dépendant du fuseau.
+    check(
+      "orders_slot_one_hour",
+      sql`${t.deliveryStart} ~ '^([01][0-9]|2[0-2]):00$' AND ${t.deliveryEnd} = lpad((substr(${t.deliveryStart}, 1, 2)::int + 1)::text, 2, '0') || ':00'`,
+    ),
     check(
       "orders_cancellation_consistent",
       sql`(${t.status} = 'cancelled') = (${t.cancellationReason} IS NOT NULL)`,
+    ),
+    check("orders_fee_non_negative", sql`${t.deliveryFeeCents} >= 0`),
+    // Toute communauté a la livraison offerte (décision du client, 2026-09-16).
+    check(
+      "orders_community_delivery_free",
+      sql`${t.communityId} IS NULL OR ${t.deliveryFeeCents} = 0`,
     ),
   ],
 );
@@ -380,6 +433,44 @@ export const orderEvents = pgTable(
     at: timestampTz("at").notNull().defaultNow(),
   },
   (t) => [index("order_events_order_idx").on(t.orderId, t.at)],
+);
+
+/*
+ * ---------- File de notifications pour les clients ----------
+ * Déposées par le dashboard à chaque changement de statut fait par l'équipe,
+ * dans la même transaction (updateOrderStatus), SEULEMENT si le client a
+ * autorisé les notifications d'état (customers.notify_order_status). Le
+ * dashboard n'envoie rien lui-même : l'application FIG lit les lignes sans
+ * sent_at, envoie par son canal et pose sent_at (question 23).
+ * RGPD : supprimées à l'anonymisation du client (src/db/privacy.ts) ; le corps
+ * ne nomme jamais la personne (src/domain/notifications/rules.ts).
+ */
+export const customerNotifications = pgTable(
+  "customer_notifications",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    kind: notificationKindEnum("kind").notNull().default("order_status"),
+    orderStatus: orderStatusEnum("order_status").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+    /** Posé par l'application quand la notification est partie ; NULL = en attente. */
+    sentAt: timestampTz("sent_at"),
+  },
+  (t) => [
+    index("customer_notifications_order_idx").on(t.orderId, t.createdAt),
+    index("customer_notifications_customer_idx").on(t.customerId),
+    // Ce que l'application relit : la file d'attente, dans l'ordre de dépôt.
+    index("customer_notifications_pending_idx")
+      .on(t.createdAt)
+      .where(sql`${t.sentAt} is null`),
+  ],
 );
 
 /* ---------- Boîte de réception « Nous contacter » ---------- */

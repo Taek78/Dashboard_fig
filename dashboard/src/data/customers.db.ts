@@ -1,8 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "@/db/client";
-import { toCustomer, toCustomerNote } from "@/db/mappers";
+import { toCustomer, toCustomerNote, toCustomerReferral } from "@/db/mappers";
 import { communities, customerNotes, customers } from "@/db/schema";
 import { filterCustomers, sortCustomersByName } from "@/domain/customers/rules";
 import type { CustomersSource } from "@/domain/customers/source";
@@ -15,18 +16,23 @@ import type {
 /*
  * Implémentation Drizzle du contrat CustomersSource. La recherche (nom,
  * e-mail, chiffres du téléphone, sans accents) reste la règle pure du domaine,
- * appliquée après chargement.
+ * appliquée après chargement. Le parrain est joint sur la table elle-même
+ * (alias « referrer ») ; les filleuls se lisent à part, pour la fiche seule.
  * À passer en SQL (pg_trgm) si la table dépasse quelques milliers de clients.
  */
+const referrer = alias(customers, "referrer");
+
 async function loadCustomers(ids?: readonly string[]): Promise<Customer[]> {
   const db = getDb();
   const base = db
     .select({
       customer: customers,
       community: { id: communities.id, name: communities.name },
+      referrer: { id: referrer.id, fullName: referrer.fullName },
     })
     .from(customers)
-    .leftJoin(communities, eq(customers.communityId, communities.id));
+    .leftJoin(communities, eq(customers.communityId, communities.id))
+    .leftJoin(referrer, eq(customers.referredById, referrer.id));
   const rows =
     ids === undefined
       ? await base
@@ -49,7 +55,12 @@ async function loadCustomers(ids?: readonly string[]): Promise<Customer[]> {
     byCustomer.set(note.customerId, list);
   }
   return rows.map((r) =>
-    toCustomer(r.customer, byCustomer.get(r.customer.id) ?? [], r.community),
+    toCustomer(
+      r.customer,
+      byCustomer.get(r.customer.id) ?? [],
+      r.community,
+      r.referrer,
+    ),
   );
 }
 
@@ -60,6 +71,19 @@ export const customersDb: CustomersSource = {
   getCustomer: async (id: string) => {
     const [customer] = await loadCustomers([id]);
     return customer ?? null;
+  },
+
+  getCustomerReferrals: async (customerId: string) => {
+    const rows = await getDb()
+      .select({
+        id: customers.id,
+        fullName: customers.fullName,
+        createdAt: customers.createdAt,
+      })
+      .from(customers)
+      .where(eq(customers.referredById, customerId))
+      .orderBy(asc(customers.createdAt), asc(customers.id));
+    return rows.map(toCustomerReferral);
   },
 
   addNote: (customerId: string, note: Omit<CustomerNote, "id">) =>

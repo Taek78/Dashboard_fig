@@ -44,11 +44,18 @@ describe("GET /clients/[id]/export", () => {
       /^attachment; filename="fig-client-cli-0001-\d{4}-\d{2}-\d{2}\.json"$/,
     );
     const body = await response.json();
-    expect(body.format).toBe("fig-donnees-client/1");
+    expect(body.format).toBe("fig-donnees-client/2");
     expect(body.customer.id).toBe("cli-0001");
+    expect(body.customer.referralCode).toBe("Benali#0001");
+    expect(body.customer.referralCount).toBe(2);
     expect(body.orders).toHaveLength(
       (await getOrders({ customerId: "cli-0001" })).length,
     );
+    expect(body.notifications).toEqual([]);
+    expect(body.tier.currentLabel).toBeDefined();
+    const lucie = await (await call("cli-0005")).json();
+    expect(lucie.notifications.length).toBeGreaterThan(0);
+    expect(lucie.customer.referred).toBe(false);
   });
 
   it("refuse les autres rôles (403)", async () => {

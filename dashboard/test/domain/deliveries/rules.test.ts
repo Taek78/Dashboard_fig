@@ -169,9 +169,15 @@ describe("nextStopIndex", () => {
 });
 
 describe("itineraryUrl", () => {
-  it("encode code postal et ville dans une recherche Google Maps", () => {
+  it("encode code postal et ville dans une recherche Google Maps, la rue devant quand elle est connue", () => {
     expect(itineraryUrl("75011", "Paris")).toBe(
       "https://www.google.com/maps/search/?api=1&query=75011%20Paris",
+    );
+    expect(itineraryUrl("75011", "Paris", null)).toBe(
+      "https://www.google.com/maps/search/?api=1&query=75011%20Paris",
+    );
+    expect(itineraryUrl("75011", "Paris", "12 rue des Lilas")).toBe(
+      "https://www.google.com/maps/search/?api=1&query=12%20rue%20des%20Lilas%2C%2075011%20Paris",
     );
   });
 });

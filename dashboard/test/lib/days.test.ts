@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { addDays, daysBetween } from "@/lib/days";
+import { addDays, addMonths, daysBetween } from "@/lib/days";
+
+describe("addMonths", () => {
+  it("décale de mois civils en UTC, jour ramené au dernier du mois comme PostgreSQL", () => {
+    expect(addMonths("2026-01-08T10:00:00.000Z", 2)).toBe(
+      "2026-03-08T10:00:00.000Z",
+    );
+    expect(addMonths("2026-12-31T08:00:00.000Z", 2)).toBe(
+      "2027-02-28T08:00:00.000Z",
+    );
+    expect(addMonths("2026-01-31T08:00:00.000Z", 1)).toBe(
+      "2026-02-28T08:00:00.000Z",
+    );
+    expect(addMonths("2026-03-31T08:00:00.000Z", -1)).toBe(
+      "2026-02-28T08:00:00.000Z",
+    );
+    expect(addMonths("2026-11-30T23:59:59.000Z", 3)).toBe(
+      "2027-02-28T23:59:59.000Z",
+    );
+  });
+});
 
 describe("addDays / daysBetween", () => {
   it("traverse fins de mois et d'année, en jours civils", () => {

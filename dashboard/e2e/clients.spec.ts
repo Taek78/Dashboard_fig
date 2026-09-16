@@ -18,11 +18,54 @@ test.describe("clients", () => {
     const card = page.getByRole("article", { name: "Client Amel Benali" });
     await expect(card).toContainText("Particulier");
     await expect(card).toContainText("Commandes");
+    // Adresse, catégorie (étoiles) et autorisations sur la carte ; pas le code.
+    await expect(card).toContainText("12 rue des Lilas");
+    await expect(card).toContainText(/Catégorie : (Fidèle|Basique)/);
+    const consents = card.getByRole("list", {
+      name: "Autorisations données par le client",
+    });
+    await expect(consents).toContainText("Offres et promos : autorisé");
+    await expect(consents).toContainText("Marketing : autorisé");
+    await expect(card).not.toContainText("Benali#0001");
+
     await card.getByRole("link", { name: /Voir le détail/ }).click();
     await expect(
       page.getByRole("heading", { level: 2, name: "Fidélité" }),
     ).toBeVisible();
-    await expect(page.getByText(/d'affilée/).first()).toBeVisible();
+    await expect(page.getByText(/commandes? cumulée/).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 3, name: "Historique des statuts" }),
+    ).toBeVisible();
+    // Le parrainage n'apparaît que dans la fiche : code, parrain, filleuls.
+    const referral = page.getByRole("heading", {
+      level: 2,
+      name: "Parrainage",
+    });
+    await expect(referral).toBeVisible();
+    await expect(page.getByText("Benali#0001")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 3, name: "2 filleuls" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Théo Marchand" }),
+    ).toBeVisible();
+    await expect(page.getByText("Inscription sans code")).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: "Notifications et autorisations",
+      }),
+    ).toBeVisible();
+    await expect(page.getByText("12 rue des Lilas")).toBeVisible();
+  });
+
+  test("un filleul mène à son parrain depuis sa fiche", async ({ page }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/clients/cli-0002");
+    await page.getByRole("link", { name: "Amel Benali" }).click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Amel Benali" }),
+    ).toBeVisible();
   });
 
   test("l'historique d'une fiche client se restreint à une période de livraison", async ({
@@ -39,7 +82,10 @@ test.describe("clients", () => {
     const status = page.getByRole("status").filter({ hasText: "livraison" });
     await expect(status).toContainText("2 commandes sur");
     await expect(status).toContainText("du sam. 5 sept. au mer. 9 sept.");
-    await expect(page.getByRole("link", { name: /FIG-/ })).toHaveCount(2);
+    // Dans l'historique des commandes seulement : la carte Fidélité cite aussi des références.
+    await expect(
+      page.locator("#historique").getByRole("link", { name: /FIG-/ }),
+    ).toHaveCount(2);
 
     await period.getByRole("link", { name: "Toutes les dates" }).click();
     await expect(page).not.toHaveURL(/du=/);
@@ -65,9 +111,11 @@ test.describe("clients", () => {
       /^fig-client-cli-g-001-\d{4}-\d{2}-\d{2}\.json$/,
     );
     const exported = JSON.parse(await readFile(await download.path(), "utf8"));
-    expect(exported.format).toBe("fig-donnees-client/1");
+    expect(exported.format).toBe("fig-donnees-client/2");
     expect(exported.customer.fullName).toBe("Noah Okafor");
+    expect(exported.customer.referralCode).toBe("Okafor#1000");
     expect(exported.orders.length).toBeGreaterThan(0);
+    expect(exported.tier.currentLabel).toBeDefined();
 
     await panel.getByRole("button", { name: "Anonymiser ce client" }).click();
     const confirm = panel.getByRole("button", {
@@ -105,29 +153,82 @@ test.describe("clients", () => {
     );
   });
 
-  test("le filtre communautés et le tri gardent les communautés et leur remise", async ({
+  test("le commutateur « communautés », le tri par membres dans les deux sens, et la remise déduite des membres", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients");
     const form = page.getByRole("form", { name: "Recherche de clients" });
-    await form.getByLabel("Afficher").selectOption("communautes");
+    const shown = form.getByRole("radiogroup", { name: "Afficher" });
+    // Le tri par membres n'existe pas tant que les communautés ne sont pas affichées.
+    await expect(
+      form.getByLabel("Trier par").locator("option", { hasText: "Membres" }),
+    ).toHaveCount(0);
+    await shown.getByRole("radio", { name: "Communautés" }).check();
     await expect(page).toHaveURL(/type=communautes/);
-    await form.getByLabel("Trier par").selectOption("commandes");
 
-    await expect(page).toHaveURL(/type=communautes/);
-    await expect(page).toHaveURL(/tri=commandes/);
-    const community = page.getByRole("article", {
+    await form.getByLabel("Trier par").selectOption("membres-decroissant");
+    await expect(page).toHaveURL(/tri=membres-decroissant/);
+    const cards = page.getByRole("article", { name: /^Communauté / });
+    await expect(cards).toHaveCount(3);
+    await expect(cards.nth(0)).toHaveAccessibleName(
+      "Communauté Crèche Les Lucioles",
+    );
+    await expect(cards.nth(2)).toHaveAccessibleName(
+      "Communauté Atelier Bricole & Co",
+    );
+
+    await form.getByLabel("Trier par").selectOption("membres-croissant");
+    await expect(page).toHaveURL(/tri=membres-croissant/);
+    await expect(cards.nth(0)).toHaveAccessibleName(
+      "Communauté Atelier Bricole & Co",
+    );
+
+    // Les trois paliers de remise, et la livraison offerte partout.
+    const creche = page.getByRole("article", {
       name: "Communauté Crèche Les Lucioles",
     });
-    await expect(community).toContainText("−10 % sur chaque commande");
-    await expect(community).toContainText("Horaire choisi par chaque membre");
-    await community.getByRole("link", { name: /Voir le détail/ }).click();
+    await expect(creche).toContainText("−10 % sur chaque commande");
+    await expect(creche).toContainText("Livraison offerte");
+    await expect(creche).toContainText("Horaire choisi par chaque membre");
+    await expect(
+      page.getByRole("article", { name: /École Jules-Verne/ }),
+    ).toContainText("−5 % sur chaque commande");
+    const atelier = page.getByRole("article", {
+      name: "Communauté Atelier Bricole & Co",
+    });
+    await expect(atelier).toContainText("Pas encore de remise");
+    await expect(atelier).toContainText("−5 % à partir de 4 membres");
+
+    await creche.getByRole("link", { name: /Voir le détail/ }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Crèche Les Lucioles" }),
     ).toBeVisible();
+    await expect(page.getByText("−10 % sur chaque commande")).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 2, name: "Membres" }),
     ).toBeVisible();
+  });
+
+  test("le commutateur « particuliers » et le tri par nom inversé", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/clients");
+    const form = page.getByRole("form", { name: "Recherche de clients" });
+    await form
+      .getByRole("radiogroup", { name: "Afficher" })
+      .getByRole("radio", { name: "Particuliers" })
+      .check();
+    await expect(page).toHaveURL(/type=particuliers/);
+    await expect(
+      page.getByRole("article", { name: /^Communauté / }),
+    ).toHaveCount(0);
+    await form.getByLabel("Trier par").selectOption("nom-decroissant");
+    await expect(page).toHaveURL(/tri=nom-decroissant/);
+    const names = page.getByRole("article").getByRole("heading", { level: 3 });
+    await expect(names.first()).not.toHaveText("Amel Benali");
+    const [first, second] = await names.allTextContents();
+    expect(first!.localeCompare(second!, "fr")).toBeGreaterThanOrEqual(0);
   });
 });

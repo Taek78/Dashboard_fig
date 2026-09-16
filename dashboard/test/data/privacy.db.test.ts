@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   customerMessages,
   customerNotes,
+  customerNotifications,
   loginAttempts,
   messageAttachments,
   orderEvents,
@@ -11,6 +12,7 @@ import {
 } from "@/db/schema";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import { messagesFixtures } from "@/domain/messages/fixtures";
+import { notificationsFixtures } from "@/domain/notifications/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { filterOrders, sortOrdersBySlot } from "@/domain/orders/rules";
 import { isCustomerInactive } from "@/domain/privacy/retention";
@@ -59,6 +61,22 @@ describe("privacyDb.getCustomerExportData", () => {
     expect(ownMessages.length).toBeGreaterThan(0);
     expect(ids(data!.messages)).toEqual(ids(ownMessages));
     expect(data!.messages[0]).toEqual(ownMessages[0]);
+
+    // Ses filleuls comptés ; aucune notification encore (commandes en préparation).
+    expect(data!.referralCount).toBe(2);
+    expect(data!.notifications).toEqual([]);
+
+    // Lucie (cli-0005) : ses notifications, du plus ancien dépôt au plus récent.
+    const lucie = await privacyDb.getCustomerExportData("cli-0005");
+    const ownNotifications = notificationsFixtures
+      .filter((n) => n.customerId === "cli-0005")
+      .toSorted(
+        (a, b) =>
+          a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+      );
+    expect(ownNotifications.length).toBeGreaterThan(0);
+    expect(lucie!.notifications).toEqual(ownNotifications);
+    expect(lucie!.referralCount).toBe(1);
   });
 
   it("null pour un client inconnu", async () => {
@@ -70,14 +88,16 @@ describe("privacyDb.anonymizeCustomer", () => {
   // cli-0011 : une commande annulée avec une précision libre (cmd-0013).
   const id = "cli-0011";
 
-  it("efface identité, coordonnées, notes et précisions ; garde les commandes", async () => {
+  it("efface identité, coordonnées, rue, code, autorisations, notes et précisions ; garde les commandes", async () => {
     const before = (await customersDb.getCustomer(id))!;
+    expect(before.referredBy).not.toBeNull();
     await customersDb.addNote(id, {
       text: "Code d'entrée 1234",
       authorName: "Gestion E2E",
       createdAt: new Date().toISOString(),
     });
     const ordersBefore = await ordersDb.getOrders({ customerId: id });
+    expect(ordersBefore.some((o) => o.deliveryAddressLine !== null)).toBe(true);
     const at = new Date("2026-09-15T10:00:00.000Z");
 
     expect(await privacyDb.anonymizeCustomer(id, at)).toBe("anonymized");
@@ -87,9 +107,18 @@ describe("privacyDb.anonymizeCustomer", () => {
       fullName: "Client anonymisé",
       email: `anonyme-${id}@anonyme.invalid`,
       phone: "",
+      addressLine: null,
       city: "",
       postalCode: "",
       community: null,
+      consents: {
+        offers: false,
+        orderStatus: false,
+        marketing: false,
+        updatedAt: null,
+      },
+      referralCode: null,
+      referredBy: null,
       notes: [],
       anonymizedAt: at.toISOString(),
     });
@@ -103,6 +132,10 @@ describe("privacyDb.anonymizeCustomer", () => {
     expect(ids(ordersAfter)).toEqual(ids(ordersBefore));
     expect(ordersAfter.map((o) => o.totalCents)).toEqual(
       ordersBefore.map((o) => o.totalCents),
+    );
+    expect(ordersAfter.every((o) => o.deliveryAddressLine === null)).toBe(true);
+    expect(ordersAfter.map((o) => o.deliveryCity)).toEqual(
+      ordersBefore.map((o) => o.deliveryCity),
     );
     expect(ordersAfter.find((o) => o.id === "cmd-0013")?.cancellation).toEqual({
       reason: "other",
@@ -162,6 +195,48 @@ describe("privacyDb.anonymizeCustomer", () => {
     ).toEqual([]);
   });
 
+  it("supprime ses notifications déposées, et garde ses filleuls rattachés à la ligne pseudonyme", async () => {
+    // cli-0001 (Amel) : notifications dans les fixtures et deux filleuls.
+    await ordersDb.updateOrderStatus("cmd-0001", {
+      from: "preparing",
+      to: "cancelled",
+      actor: { id: "usr-0001", name: "Admin E2E" },
+      cancellation: { reason: "stock", detail: null },
+      notification: { title: "t", body: "b" },
+    });
+    await ordersDb.updateOrderStatus("cmd-0012", {
+      from: "preparing",
+      to: "cancelled",
+      actor: { id: "usr-0001", name: "Admin E2E" },
+      cancellation: { reason: "stock", detail: null },
+      notification: { title: "t", body: "b" },
+    });
+    expect(
+      (
+        await testDb()
+          .select()
+          .from(customerNotifications)
+          .where(eq(customerNotifications.customerId, "cli-0001"))
+      ).length,
+    ).toBeGreaterThan(0);
+
+    expect(await privacyDb.anonymizeCustomer("cli-0001", new Date())).toBe(
+      "anonymized",
+    );
+    expect(
+      await testDb()
+        .select()
+        .from(customerNotifications)
+        .where(eq(customerNotifications.customerId, "cli-0001")),
+    ).toEqual([]);
+    const referrals = await customersDb.getCustomerReferrals("cli-0001");
+    expect(referrals).toHaveLength(2);
+    expect((await customersDb.getCustomer("cli-0002"))?.referredBy).toEqual({
+      id: "cli-0001",
+      fullName: "Client anonymisé",
+    });
+  });
+
   it("retire l'adhésion du client, pas la communauté de ses commandes passées", async () => {
     const member = customersFixtures.find((c) => c.community !== null)!;
     const before = await ordersDb.getOrders({ customerId: member.id });
@@ -187,6 +262,7 @@ describe("privacyDb.anonymizeCustomer", () => {
       to: "delivered",
       actor: { id: "usr-0001", name: "Admin E2E" },
       cancellation: null,
+      notification: null,
     });
     expect(await privacyDb.anonymizeCustomer("cli-0004", new Date())).toBe(
       "anonymized",

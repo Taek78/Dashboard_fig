@@ -14,6 +14,7 @@ import type { DbExecutor } from "@/db/client";
 import {
   customerMessages,
   customerNotes,
+  customerNotifications,
   customers,
   loginAttempts,
   orderEvents,
@@ -53,12 +54,14 @@ const hasOpenOrder = sql`exists (
 )`;
 
 /**
- * Supprime les notes et les messages « Nous contacter » d'un client, et efface
- * les précisions libres de ses annulations. Un message est du texte écrit par
- * la personne, souvent nominatif (« mon code d'entrée est… ») : le garder
+ * Supprime les notes, les messages « Nous contacter » et les notifications
+ * déposées d'un client, et efface de ses commandes la rue de livraison et les
+ * précisions libres des annulations. Un message est du texte écrit par la
+ * personne, souvent nominatif (« mon code d'entrée est… ») : le garder
  * viderait l'anonymisation de son sens. Ses pièces jointes partent avec lui
  * (ON DELETE CASCADE) ; les fichiers eux-mêmes vivent chez l'application FIG,
- * qui doit les effacer de son côté (question 19).
+ * qui doit les effacer de son côté (question 19). La rue identifie un foyer :
+ * seuls ville et code postal restent sur les commandes.
  */
 async function eraseFreeText(tx: DbExecutor, customerId: string) {
   await tx
@@ -68,8 +71,11 @@ async function eraseFreeText(tx: DbExecutor, customerId: string) {
     .delete(customerMessages)
     .where(eq(customerMessages.customerId, customerId));
   await tx
+    .delete(customerNotifications)
+    .where(eq(customerNotifications.customerId, customerId));
+  await tx
     .update(orders)
-    .set({ cancellationDetail: null })
+    .set({ cancellationDetail: null, deliveryAddressLine: null })
     .where(eq(orders.customerId, customerId));
   await tx
     .update(orderEvents)

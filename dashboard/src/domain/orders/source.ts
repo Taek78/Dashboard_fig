@@ -1,4 +1,5 @@
 import type { DirectoryStats } from "@/domain/customers/directory";
+import type { TierEvent } from "@/domain/customers/tier";
 import type {
   Bucket,
   DateRange,
@@ -40,12 +41,15 @@ import type { StaffWorkSummary } from "@/domain/staff/rules";
  *   nombre de livraisons de chaque jour d'une période.
  * - getStaffWorkSummaries, getStaffWorkSummary, getDirectoryStats : compteurs
  *   du personnel (toute l'équipe ou une personne) et chiffres de l'annuaire
- *   clients (tout l'annuaire, ou restreints à un client ou à une communauté).
+ *   clients (tout l'annuaire, ou restreints à un client ou à une communauté),
+ *   compteur fidélité et date de la dernière catégorie « fidèle » compris ;
+ *   getCustomerTierEvents : l'historique daté des atteintes d'un client.
  *
  * Écritures (conditionnelles) :
  * - updateOrderStatus reçoit un StatusChange (statut relu, statut visé, acteur,
- *   motif d'annulation éventuel) et ÉCRIT l'événement d'historique avec le statut
- *   (même transaction) ; null si `from` ne correspond plus.
+ *   motif d'annulation éventuel, notification à déposer) et ÉCRIT l'événement
+ *   d'historique avec le statut, puis la notification si le client l'a
+ *   autorisée (même transaction) ; null si `from` ne correspond plus.
  * - assignStaff pose ou retire le préparateur ou le livreur (la personne a déjà
  *   été relue et vérifiée par l'action) ; null (rien d'écrit) si la commande
  *   n'existe pas, si elle est terminée ou si la personne affectée n'est plus
@@ -75,4 +79,5 @@ export type OrdersSource = {
   getDirectoryStats(
     scope?: Pick<OrderFilters, "customerId" | "communityId">,
   ): Promise<DirectoryStats>;
+  getCustomerTierEvents(customerId: string): Promise<TierEvent[]>;
 };

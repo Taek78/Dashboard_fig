@@ -4,6 +4,8 @@ import {
   productToRow,
   toArticle,
   toCustomer,
+  toCustomerNotification,
+  toCustomerReferral,
   toEngagementPoint,
   toMessage,
   toOrder,
@@ -17,7 +19,9 @@ import {
   type CustomerNoteRow,
   type CustomerRow,
   type MessageAttachmentRow,
+  type MessageOrderJoins,
   type MessageRow,
+  type NotificationRow,
   type OrderEventRow,
   type OrderLineRow,
   type OrderRow,
@@ -26,8 +30,11 @@ import {
 import { articlesFixtures } from "@/domain/articles/fixtures";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
+import type { Customer } from "@/domain/customers/types";
 import { messagesFixtures } from "@/domain/messages/fixtures";
+import { notificationsFixtures } from "@/domain/notifications/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
+import type { Order } from "@/domain/orders/types";
 import { productsFixtures } from "@/domain/products/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
 
@@ -41,6 +48,65 @@ function withoutMeta<T extends { id: string; updatedAt: string }>(
   return copy as Omit<T, "id" | "updatedAt">;
 }
 
+/** Une ligne `customers` telle que le seed l'écrit. */
+function customerRow(c: Customer): CustomerRow {
+  return {
+    id: c.id,
+    fullName: c.fullName,
+    email: c.email,
+    phone: c.phone,
+    addressLine: c.addressLine,
+    city: c.city,
+    postalCode: c.postalCode,
+    communityId: c.community?.id ?? null,
+    notifyOffers: c.consents.offers,
+    notifyOrderStatus: c.consents.orderStatus,
+    marketingConsent: c.consents.marketing,
+    consentsUpdatedAt:
+      c.consents.updatedAt === null ? null : new Date(c.consents.updatedAt),
+    referralCode: c.referralCode,
+    referredById: c.referredBy?.id ?? null,
+    createdAt: new Date(c.createdAt),
+    anonymizedAt: c.anonymizedAt === null ? null : new Date(c.anonymizedAt),
+  };
+}
+
+/** Une ligne `orders` telle que le seed l'écrit. */
+function orderRow(o: Order): OrderRow {
+  return {
+    id: o.id,
+    reference: o.reference,
+    createdAt: new Date(o.createdAt),
+    status: o.status,
+    customerId: o.customer.id,
+    deliveryDate: o.deliverySlot.date,
+    deliveryStart: o.deliverySlot.start,
+    deliveryEnd: o.deliverySlot.end,
+    deliveryAddressLine: o.deliveryAddressLine,
+    deliveryCity: o.deliveryCity,
+    deliveryPostalCode: o.deliveryPostalCode,
+    deliveryFeeCents: o.deliveryFeeCents,
+    totalCents: o.totalCents,
+    cancellationReason: o.cancellation?.reason ?? null,
+    cancellationDetail: o.cancellation?.detail ?? null,
+    communityId: o.community?.id ?? null,
+    discountKind: o.discount?.kind ?? null,
+    discountPercent: o.discount?.percent ?? null,
+    discountCents: o.discount?.amountCents ?? 0,
+    preparerId: o.preparer?.id ?? null,
+    driverId: o.driver?.id ?? null,
+  };
+}
+
+const person = (ref: { id: string; name: string } | null) =>
+  ref === null
+    ? null
+    : {
+        id: ref.id,
+        firstName: ref.name.split(" ")[0]!,
+        lastName: ref.name.split(" ").slice(1).join(" "),
+      };
+
 /*
  * Aller-retour : une fixture transformée en lignes (comme le seed) puis
  * remappée doit redonner la fixture. Garantit que l'écran ne change pas quand
@@ -49,46 +115,13 @@ function withoutMeta<T extends { id: string; updatedAt: string }>(
 describe("toOrder / toOrderEvent", () => {
   it("reconstitue chaque commande des fixtures à partir de ses lignes", () => {
     for (const o of ordersFixtures) {
-      const row: OrderRow = {
-        id: o.id,
-        reference: o.reference,
-        createdAt: new Date(o.createdAt),
-        status: o.status,
-        customerId: o.customer.id,
-        deliveryDate: o.deliverySlot.date,
-        deliveryStart: o.deliverySlot.start,
-        deliveryEnd: o.deliverySlot.end,
-        deliveryCity: o.deliveryCity,
-        deliveryPostalCode: o.deliveryPostalCode,
-        totalCents: o.totalCents,
-        cancellationReason: o.cancellation?.reason ?? null,
-        cancellationDetail: o.cancellation?.detail ?? null,
-        communityId: o.community?.id ?? null,
-        discountKind: o.discount?.kind ?? null,
-        discountPercent: o.discount?.percent ?? null,
-        discountCents: o.discount?.amountCents ?? 0,
-        preparerId: o.preparer?.id ?? null,
-        driverId: o.driver?.id ?? null,
-      };
       const customer: CustomerRow = {
+        ...customerRow(customersFixtures[0]!),
         id: o.customer.id,
         fullName: o.customer.fullName,
         email: o.customer.email,
         phone: o.customer.phone,
-        city: o.deliveryCity,
-        postalCode: o.deliveryPostalCode,
-        communityId: o.community?.id ?? null,
-        createdAt: new Date(o.createdAt),
-        anonymizedAt: null,
       };
-      const person = (ref: { id: string; name: string } | null) =>
-        ref === null
-          ? null
-          : {
-              id: ref.id,
-              firstName: ref.name.split(" ")[0]!,
-              lastName: ref.name.split(" ").slice(1).join(" "),
-            };
       // Lignes fournies dans le désordre : le mapper remet l'ordre des positions.
       const lines: OrderLineRow[] = o.lines
         .map((l, position) => ({
@@ -102,7 +135,7 @@ describe("toOrder / toOrderEvent", () => {
         }))
         .toReversed();
       expect(
-        toOrder(row, customer, lines, {
+        toOrder(orderRow(o), customer, lines, {
           community: o.community,
           preparer: person(o.preparer),
           driver: person(o.driver),
@@ -130,7 +163,7 @@ describe("toOrder / toOrderEvent", () => {
 });
 
 describe("toMessage", () => {
-  it("reconstitue chaque message des fixtures, pièces jointes remises en ordre", () => {
+  it("reconstitue chaque message des fixtures, pièces jointes remises en ordre, commande jointe comprise", () => {
     for (const m of messagesFixtures) {
       const row: MessageRow = {
         id: m.id,
@@ -157,6 +190,17 @@ describe("toMessage", () => {
           url: a.url,
         }))
         .toReversed();
+      const joined = m.order
+        ? ordersFixtures.find((o) => o.id === m.order?.id)
+        : undefined;
+      const order: MessageOrderJoins | null = joined
+        ? {
+            order: orderRow(joined),
+            community: joined.community,
+            preparer: person(joined.preparer),
+            driver: person(joined.driver),
+          }
+        : null;
       expect(
         toMessage(row, attachments, {
           customer: {
@@ -164,9 +208,29 @@ describe("toMessage", () => {
             fullName: m.customer.fullName,
             email: m.customer.email,
           },
-          order: m.order,
+          order,
         }),
       ).toEqual(m);
+    }
+  });
+});
+
+describe("toCustomerNotification", () => {
+  it("reconstitue chaque notification des fixtures avec la référence de sa commande", () => {
+    expect(notificationsFixtures.length).toBeGreaterThan(0);
+    for (const n of notificationsFixtures) {
+      const row: NotificationRow = {
+        id: n.id,
+        customerId: n.customerId,
+        orderId: n.order.id,
+        kind: n.kind,
+        orderStatus: n.orderStatus,
+        title: n.title,
+        body: n.body,
+        createdAt: new Date(n.createdAt),
+        sentAt: n.sentAt === null ? null : new Date(n.sentAt),
+      };
+      expect(toCustomerNotification(row, n.order)).toEqual(n);
     }
   });
 });
@@ -202,20 +266,9 @@ describe("toProduct / productToRow", () => {
   });
 });
 
-describe("toCustomer", () => {
-  it("rattache les notes dans l'ordre chronologique", () => {
+describe("toCustomer / toCustomerReferral", () => {
+  it("rattache les notes dans l'ordre chronologique, le parrain et les autorisations", () => {
     for (const c of customersFixtures) {
-      const row: CustomerRow = {
-        id: c.id,
-        fullName: c.fullName,
-        email: c.email,
-        phone: c.phone,
-        city: c.city,
-        postalCode: c.postalCode,
-        communityId: c.community?.id ?? null,
-        createdAt: new Date(c.createdAt),
-        anonymizedAt: null,
-      };
       const notes: CustomerNoteRow[] = c.notes
         .map((n) => ({
           id: n.id,
@@ -225,26 +278,46 @@ describe("toCustomer", () => {
           createdAt: new Date(n.createdAt),
         }))
         .toReversed();
-      expect(toCustomer(row, notes, c.community)).toEqual(c);
+      expect(
+        toCustomer(customerRow(c), notes, c.community, c.referredBy),
+      ).toEqual(c);
     }
+    expect(customersFixtures.some((c) => c.referredBy !== null)).toBe(true);
   });
 
-  it("rend la date d'anonymisation en ISO", () => {
+  it("rend la date d'anonymisation en ISO, sans parrain ni code", () => {
     const [c] = customersFixtures;
     const row: CustomerRow = {
-      id: c!.id,
+      ...customerRow(c!),
       fullName: "Client anonymisé",
       email: `anonyme-${c!.id}@anonyme.invalid`,
       phone: "",
+      addressLine: null,
       city: "",
       postalCode: "",
       communityId: null,
-      createdAt: new Date(c!.createdAt),
+      referralCode: null,
+      referredById: null,
       anonymizedAt: new Date("2026-09-15T10:00:00.000Z"),
     };
-    expect(toCustomer(row, [], null).anonymizedAt).toBe(
-      "2026-09-15T10:00:00.000Z",
-    );
+    const mapped = toCustomer(row, [], null, null);
+    expect(mapped.anonymizedAt).toBe("2026-09-15T10:00:00.000Z");
+    expect(mapped.referralCode).toBeNull();
+    expect(mapped.referredBy).toBeNull();
+  });
+
+  it("un filleul ne porte que son nom et sa date d'inscription", () => {
+    expect(
+      toCustomerReferral({
+        id: "cli-0002",
+        fullName: "Théo Marchand",
+        createdAt: new Date("2026-04-02T08:30:00.000Z"),
+      }),
+    ).toEqual({
+      id: "cli-0002",
+      fullName: "Théo Marchand",
+      createdAt: "2026-04-02T08:30:00.000Z",
+    });
   });
 });
 

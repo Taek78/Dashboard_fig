@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import {
+  CONSENT_KEYS,
+  CONSENT_LABELS,
+  grantedConsentCount,
+  NO_CONSENTS,
+} from "@/domain/customers/consents";
+import {
+  isReferralCode,
+  REFERRAL_CODE_PATTERN,
+  referralCodeFor,
+} from "@/domain/customers/referral";
+
+describe("codes de parrainage", () => {
+  it("Nom#0000 : le nom de famille, un dièse, quatre chiffres", () => {
+    expect(isReferralCode("Benali#0001")).toBe(true);
+    expect(isReferralCode("Da Silva#0010")).toBe(true);
+    expect(isReferralCode("Benali#001")).toBe(false);
+    expect(isReferralCode("Benali#00012")).toBe(false);
+    expect(isReferralCode("#0001")).toBe(false);
+    expect(isReferralCode("Benali0001")).toBe(false);
+    expect(isReferralCode("Ben#ali#0001")).toBe(false);
+    expect(REFERRAL_CODE_PATTERN.source).toBe("^[^#]+#\\d{4}$");
+  });
+
+  it("referralCodeFor prend tout ce qui suit le prénom", () => {
+    expect(referralCodeFor("Amel Benali", 1)).toBe("Benali#0001");
+    expect(referralCodeFor("Chloé Da Silva", 10)).toBe("Da Silva#0010");
+    expect(referralCodeFor("Madonna", 7)).toBe("Madonna#0007");
+    expect(isReferralCode(referralCodeFor("  Noah  Okafor ", 1042))).toBe(true);
+  });
+});
+
+describe("autorisations", () => {
+  it("trois clés libellées, aucune par défaut", () => {
+    expect(CONSENT_KEYS).toEqual(["offers", "orderStatus", "marketing"]);
+    expect(Object.keys(CONSENT_LABELS)).toEqual([...CONSENT_KEYS]);
+    expect(grantedConsentCount(NO_CONSENTS)).toBe(0);
+    expect(
+      grantedConsentCount({
+        offers: true,
+        orderStatus: false,
+        marketing: true,
+        updatedAt: null,
+      }),
+    ).toBe(2);
+  });
+});

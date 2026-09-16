@@ -1,6 +1,7 @@
 import type { AttachmentContentType } from "@/domain/messages/attachment";
 import type { MessageStatus } from "@/domain/messages/status";
 import type { MessageSubject } from "@/domain/messages/subject";
+import type { Order } from "@/domain/orders/types";
 
 /*
  * Types métier de la boîte de réception : le vocabulaire du FRONT (les lignes
@@ -23,6 +24,26 @@ export type MessageAttachment = {
   url: string;
 };
 
+/*
+ * Ce que le message montre de la commande que le client a jointe : quand elle
+ * a été passée, où et quand elle est livrée, qui la prépare et qui la livre.
+ * Ni lignes ni montants : ils sont sur la fiche de la commande, en un lien.
+ */
+export type MessageOrder = Pick<
+  Order,
+  | "id"
+  | "reference"
+  | "createdAt"
+  | "status"
+  | "deliverySlot"
+  | "deliveryAddressLine"
+  | "deliveryCity"
+  | "deliveryPostalCode"
+  | "community"
+  | "preparer"
+  | "driver"
+>;
+
 export type Message = {
   id: string;
   /** Auteur du message. La fiche complète se relit par getCustomer(id). */
@@ -34,7 +55,7 @@ export type Message = {
    * Commande associée par le client dans l'application pour donner le
    * contexte, sinon null. Une commande supprimée ne supprime pas le message.
    */
-  order: { id: string; reference: string } | null;
+  order: MessageOrder | null;
   /** Dix au plus (MAX_ATTACHMENTS), dans l'ordre d'envoi. */
   attachments: MessageAttachment[];
   status: MessageStatus;

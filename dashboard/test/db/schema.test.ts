@@ -7,6 +7,7 @@ import { COMMUNITY_KINDS } from "@/domain/communities/kind";
 import { ATTACHMENT_CONTENT_TYPES } from "@/domain/messages/attachment";
 import { MESSAGE_STATUSES } from "@/domain/messages/status";
 import { MESSAGE_SUBJECTS } from "@/domain/messages/subject";
+import { NOTIFICATION_KINDS } from "@/domain/notifications/types";
 import { DISCOUNT_KINDS } from "@/domain/orders/discount";
 import { AVAILABILITIES, SHIFTS, STAFF_KINDS } from "@/domain/staff/kind";
 import { CANCELLATION_REASONS } from "@/domain/orders/cancellation";
@@ -54,6 +55,11 @@ describe("enums du schéma = constantes du domaine", () => {
       schema.attachmentContentTypeEnum.enumValues,
       ATTACHMENT_CONTENT_TYPES,
     ],
+    [
+      "notification_kind",
+      schema.notificationKindEnum.enumValues,
+      NOTIFICATION_KINDS,
+    ],
   ])("%s", (_name, enumValues, domainValues) => {
     expect([...enumValues]).toEqual([...domainValues]);
   });
@@ -64,7 +70,7 @@ describe("enums du schéma = constantes du domaine", () => {
 });
 
 describe("tables", () => {
-  it("expose les quatorze tables du dashboard", () => {
+  it("expose les quinze tables du dashboard", () => {
     const names = [
       schema.users,
       schema.staff,
@@ -75,6 +81,7 @@ describe("tables", () => {
       schema.orders,
       schema.orderLines,
       schema.orderEvents,
+      schema.customerNotifications,
       schema.customerMessages,
       schema.messageAttachments,
       schema.articles,
@@ -91,6 +98,7 @@ describe("tables", () => {
       "orders",
       "order_lines",
       "order_events",
+      "customer_notifications",
       "customer_messages",
       "message_attachments",
       "articles",

@@ -20,8 +20,9 @@ import { cn } from "@/lib/utils";
  * à porter l'information) :
  *   - STATUT, bordure gauche de la carte : ambre = non traité (il reste à
  *     faire), vert = traité ;
- *   - IMPORTANT, drapeau rouge : signalé par l'équipe ;
- *   - ÉPINGLÉ, bleu : remonté en haut de la liste ;
+ *   - IMPORTANT, drapeau rouge ET fond de carte en dégradé rouge, du coin haut
+ *     gauche vers la carte (demande du client : un signal visible et clair) ;
+ *   - ÉPINGLÉ, bleu : remonté en haut de la liste, dans son propre groupe ;
  *   - OBJET : rouge doux pour une réclamation (un préjudice à réparer), bleu
  *     pour une question ou un autre sujet.
  */
@@ -29,6 +30,18 @@ export const MESSAGE_STATUS_ACCENT: Record<MessageStatus, string> = {
   untreated: "border-l-warning",
   treated: "border-l-success",
 };
+
+/**
+ * Surface d'une carte selon le signalement : dégradé rouge franc pour un
+ * message important (teinte du token --destructive, lisible dans les trois
+ * thèmes : le texte reste sur la carte, le rouge s'estompe vers elle), anneau
+ * discret sinon.
+ */
+export function messageSurfaceClass(important: boolean): string {
+  return important
+    ? "ring-destructive/50 bg-gradient-to-br from-destructive/25 via-destructive/10 to-card dark:from-destructive/35 dark:via-destructive/15"
+    : "ring-foreground/10";
+}
 
 export function MessageStatusBadge({ status }: { status: MessageStatus }) {
   return (

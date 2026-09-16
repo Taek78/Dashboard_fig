@@ -1,59 +1,68 @@
 import type { Order } from "@/domain/orders/types";
 
 /*
- * Fidélité : après huit commandes d'affilée, la commande suivante est à −15 %.
+ * Fidélité : après huit commandes CUMULÉES, la commande suivante est à −15 %.
  * La remise est appliquée par l'application FIG (Order.discount de type
- * « loyalty ») ; le back-office compte la série et prévient l'équipe.
+ * « loyalty ») ; le back-office compte et prévient l'équipe.
  *
- * Règle de la série (« d'affilée ») : on parcourt les commandes du client dans
- * l'ordre où elles ont été passées ; une commande annulée remet la série à
- * zéro ; une commande qui porte la remise fidélité la consomme et repart de
- * zéro ; toute autre commande compte pour un. Quand la série atteint le seuil,
- * la prochaine commande est remisée. Hypothèse à confirmer avec le client
- * (docs/backlog.md, question 16).
+ * Règle du compteur (décision du client, 2026-09-16) : on parcourt les
+ * commandes du client dans l'ordre où elles ont été passées ; une commande
+ * annulée ne compte pas et NE remet PAS le compteur à zéro ; une commande qui
+ * porte la remise fidélité la consomme et repart de zéro (elle-même n'est pas
+ * comptée) ; toute autre commande, même encore en préparation, compte pour un.
+ * Quand le compteur atteint le seuil, la prochaine commande est remisée, et le
+ * client devient « fidèle » pour deux mois (domain/customers/tier.ts).
+ *
+ * Un membre de communauté a le même compteur : quand sa remise fidélité est
+ * prête, elle remplace la remise de sa communauté, plus faible
+ * (orders/discount.ts, bestDiscount).
  */
 export const LOYALTY_THRESHOLD = 8;
 export const LOYALTY_DISCOUNT_PERCENT = 15;
 
 export type LoyaltyStatus = {
-  /** Commandes d'affilée comptées, entre 0 et le seuil. */
-  streak: number;
+  /** Commandes comptées depuis la dernière remise, entre 0 et le seuil. */
+  count: number;
   /** Vrai quand la prochaine commande sera remisée. */
   rewardReady: boolean;
   /** Commandes restantes avant la remise (0 si prête). */
   remaining: number;
 };
 
-/**
- * Série BRUTE (non plafonnée) d'un client à partir de SES commandes, dans
- * n'importe quel ordre : le nombre de commandes passées depuis la dernière
- * remise à zéro (annulation ou commande remisée fidélité), celle-ci exclue.
- * C'est ce que la requête SQL de l'annuaire compte (orders-aggregates.db.ts).
- */
-export function loyaltyStreak(orders: readonly Order[]): number {
-  const chronological = orders.toSorted(
+/** Copie des commandes dans l'ordre de passation (createdAt puis id). */
+export function chronological(orders: readonly Order[]): Order[] {
+  return orders.toSorted(
     (a, b) =>
       a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
   );
-  let streak = 0;
-  for (const o of chronological) {
-    if (o.discount?.kind === "loyalty" || o.status === "cancelled") streak = 0;
-    else streak += 1;
+}
+
+/**
+ * Compteur BRUT (non plafonné) d'un client à partir de SES commandes, dans
+ * n'importe quel ordre : le nombre de commandes non annulées passées depuis
+ * la dernière commande remisée fidélité, celle-ci exclue. C'est ce que la
+ * requête SQL de l'annuaire compte (orders-aggregates.db.ts).
+ */
+export function loyaltyCount(orders: readonly Order[]): number {
+  let count = 0;
+  for (const o of chronological(orders)) {
+    if (o.discount?.kind === "loyalty") count = 0;
+    else if (o.status !== "cancelled") count += 1;
   }
-  return streak;
+  return count;
 }
 
-/** Série courante d'un client à partir de SES commandes (dans n'importe quel ordre). */
+/** État de fidélité d'un client à partir de SES commandes (dans n'importe quel ordre). */
 export function loyaltyStatus(orders: readonly Order[]): LoyaltyStatus {
-  return loyaltyFromStreak(loyaltyStreak(orders));
+  return loyaltyFromCount(loyaltyCount(orders));
 }
 
-/** État de fidélité à partir d'une série brute. */
-export function loyaltyFromStreak(streak: number): LoyaltyStatus {
-  const capped = Math.min(streak, LOYALTY_THRESHOLD);
+/** État de fidélité à partir d'un compteur brut. */
+export function loyaltyFromCount(count: number): LoyaltyStatus {
+  const capped = Math.min(count, LOYALTY_THRESHOLD);
   return {
-    streak: capped,
-    rewardReady: streak >= LOYALTY_THRESHOLD,
+    count: capped,
+    rewardReady: count >= LOYALTY_THRESHOLD,
     remaining: LOYALTY_THRESHOLD - capped,
   };
 }

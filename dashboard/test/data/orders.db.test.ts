@@ -1,5 +1,10 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
+import type { DbExecutor } from "@/db/client";
+import { customerNotifications, orders as ordersTable } from "@/db/schema";
 import { directoryStatsFromOrders } from "@/domain/customers/directory";
+import { customersFixtures } from "@/domain/customers/fixtures";
+import { loyalTierEvents } from "@/domain/customers/tier";
 import {
   filterByRange,
   orderStats,
@@ -32,10 +37,28 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/db/client", () =>
   import("../support/test-database").then((m) => m.dbClientMock),
 );
-const { isolateEachTest } = await import("../support/test-database");
+const { isolateEachTest, testDb } = await import("../support/test-database");
 isolateEachTest();
 
 const { ordersDb } = await import("@/data/orders.db");
+
+/** Les chiffres de l'annuaire, comparés champ à champ (Map → objet). */
+function expectDirectoryStats(
+  fromDb: Awaited<ReturnType<typeof ordersDb.getDirectoryStats>>,
+  expected: ReturnType<typeof directoryStatsFromOrders>,
+) {
+  for (const key of [
+    "customers",
+    "communities",
+    "loyaltyCounts",
+    "loyalSince",
+    "memberCounts",
+  ] as const) {
+    expect(Object.fromEntries(fromDb[key])).toEqual(
+      Object.fromEntries(expected[key]),
+    );
+  }
+}
 
 const ACTOR = { id: "usr-0002", name: "Gestion E2E" };
 const change = (from: OrderStatus, to: OrderStatus) => ({
@@ -43,6 +66,7 @@ const change = (from: OrderStatus, to: OrderStatus) => ({
   to,
   actor: ACTOR,
   cancellation: null,
+  notification: null,
 });
 const ids = (orders: readonly { id: string }[]) => orders.map((o) => o.id);
 const malik = { id: "stf-0001", name: "Malik Dembélé" };
@@ -179,19 +203,26 @@ describe("pagination et agrégats SQL = règles pures", () => {
     }
   });
 
-  it("getDirectoryStats : mêmes chiffres et séries de fidélité que directoryStatsFromOrders", async () => {
+  it("getDirectoryStats : mêmes chiffres, compteurs fidélité, dates d'atteinte et membres que directoryStatsFromOrders", async () => {
     const all = await ordersDb.getOrders();
     const fromDb = await ordersDb.getDirectoryStats();
-    const expected = directoryStatsFromOrders(all);
-    expect(Object.fromEntries(fromDb.customers)).toEqual(
-      Object.fromEntries(expected.customers),
-    );
-    expect(Object.fromEntries(fromDb.communities)).toEqual(
-      Object.fromEntries(expected.communities),
-    );
-    expect(Object.fromEntries(fromDb.loyaltyStreaks)).toEqual(
-      Object.fromEntries(expected.loyaltyStreaks),
-    );
+    const expected = directoryStatsFromOrders(all, customersFixtures);
+    expectDirectoryStats(fromDb, expected);
+    expect(fromDb.loyalSince.size).toBeGreaterThan(5);
+    expect(fromDb.memberCounts.size).toBe(3);
+  });
+
+  it("getCustomerTierEvents : même historique d'atteintes que loyalTierEvents", async () => {
+    const all = await ordersDb.getOrders();
+    const ids = [...new Set(all.map((o) => o.customer.id))];
+    let withEvents = 0;
+    for (const id of ids.slice(0, 40)) {
+      const expected = loyalTierEvents(all.filter((o) => o.customer.id === id));
+      expect(await ordersDb.getCustomerTierEvents(id)).toEqual(expected);
+      if (expected.length > 0) withEvents += 1;
+    }
+    expect(withEvents).toBeGreaterThan(0);
+    expect(await ordersDb.getCustomerTierEvents("cli-9999")).toEqual([]);
   });
 });
 
@@ -282,17 +313,88 @@ describe("lectures bornées et agrégats ciblés = règles pures", () => {
       { customerId: "cli-9999" },
     ]) {
       const fromDb = await ordersDb.getDirectoryStats(scope);
-      const expected = directoryStatsFromOrders(filterOrders(all, scope));
-      expect(Object.fromEntries(fromDb.customers)).toEqual(
-        Object.fromEntries(expected.customers),
+      // Les membres se comptent toujours sur toute la base.
+      const expected = directoryStatsFromOrders(
+        filterOrders(all, scope),
+        customersFixtures,
       );
-      expect(Object.fromEntries(fromDb.communities)).toEqual(
-        Object.fromEntries(expected.communities),
-      );
-      expect(Object.fromEntries(fromDb.loyaltyStreaks)).toEqual(
-        Object.fromEntries(expected.loyaltyStreaks),
-      );
+      expectDirectoryStats(fromDb, expected);
     }
+  });
+});
+
+/**
+ * Nom de la contrainte PostgreSQL qui a refusé l'écriture, sinon null. Chaque
+ * essai tourne dans sa propre sous-transaction (point de sauvegarde) : une
+ * écriture refusée n'abandonne pas la transaction du test.
+ */
+async function refusedBy(
+  write: (tx: DbExecutor) => Promise<unknown>,
+): Promise<string | null> {
+  try {
+    await testDb().transaction((tx) => write(tx));
+    return null;
+  } catch (error) {
+    const cause = (error as { cause?: { constraint_name?: string } }).cause;
+    return cause?.constraint_name ?? "erreur sans contrainte";
+  }
+}
+
+describe("contraintes de la base sur les commandes", () => {
+  const draft = {
+    reference: "FIG-TEST-001",
+    customerId: "cli-0001",
+    deliveryDate: "2026-09-10",
+    deliveryStart: "14:00",
+    deliveryEnd: "15:00",
+    deliveryCity: "Paris",
+    deliveryPostalCode: "75011",
+    totalCents: 1000,
+  };
+
+  it("refuse un créneau qui n'est pas d'une heure pile", async () => {
+    expect(
+      await refusedBy((tx) =>
+        tx
+          .insert(ordersTable)
+          .values({ ...draft, id: "cmd-test-2h", deliveryEnd: "16:00" }),
+      ),
+    ).toBe("orders_slot_one_hour");
+    expect(
+      await refusedBy((tx) =>
+        tx.insert(ordersTable).values({
+          ...draft,
+          id: "cmd-test-30",
+          deliveryStart: "14:30",
+          deliveryEnd: "15:30",
+        }),
+      ),
+    ).toBe("orders_slot_one_hour");
+    expect(
+      await refusedBy((tx) =>
+        tx.insert(ordersTable).values({ ...draft, id: "cmd-test-ok" }),
+      ),
+    ).toBeNull();
+  });
+
+  it("refuse des frais de livraison à une commande de communauté, ou négatifs", async () => {
+    expect(
+      await refusedBy((tx) =>
+        tx.insert(ordersTable).values({
+          ...draft,
+          id: "cmd-test-com",
+          communityId: "com-0001",
+          deliveryFeeCents: 190,
+        }),
+      ),
+    ).toBe("orders_community_delivery_free");
+    expect(
+      await refusedBy((tx) =>
+        tx
+          .insert(ordersTable)
+          .values({ ...draft, id: "cmd-test-neg", deliveryFeeCents: -1 }),
+      ),
+    ).toBe("orders_fee_non_negative");
   });
 });
 
@@ -363,6 +465,56 @@ describe("ordersDb.updateOrderStatus", () => {
       change("preparing", "delivering"),
     );
     expect(shipped?.cancellation).toBeNull();
+  });
+
+  it("dépose la notification dans la même transaction, seulement si le client l'a autorisée", async () => {
+    const draft = { title: "Commande FIG-260907-001", body: "En route." };
+    // cli-0001 (Amel) a autorisé les notifications d'état.
+    await ordersDb.updateOrderStatus("cmd-0001", {
+      ...change("preparing", "delivering"),
+      notification: draft,
+    });
+    const deposited = await testDb()
+      .select()
+      .from(customerNotifications)
+      .where(eq(customerNotifications.orderId, "cmd-0001"));
+    expect(deposited).toHaveLength(1);
+    expect(deposited[0]).toMatchObject({
+      customerId: "cli-0001",
+      kind: "order_status",
+      orderStatus: "delivering",
+      title: draft.title,
+      body: draft.body,
+      sentAt: null,
+    });
+
+    // cli-0011 (Mathis) n'a rien autorisé : rien n'est déposé.
+    await ordersDb.updateOrderStatus("cmd-0013", {
+      ...change("cancelled", "preparing"),
+      notification: draft,
+    });
+    expect(
+      await testDb()
+        .select()
+        .from(customerNotifications)
+        .where(eq(customerNotifications.orderId, "cmd-0013")),
+    ).toEqual([]);
+
+    // Sans notification à déposer, ou sur une écriture refusée : rien non plus.
+    await ordersDb.updateOrderStatus(
+      "cmd-0002",
+      change("preparing", "delivering"),
+    );
+    await ordersDb.updateOrderStatus("cmd-0002", {
+      ...change("preparing", "cancelled"),
+      notification: draft,
+    });
+    expect(
+      await testDb()
+        .select()
+        .from(customerNotifications)
+        .where(eq(customerNotifications.orderId, "cmd-0002")),
+    ).toEqual([]);
   });
 
   it("n'applique pas la règle métier : preparing → delivered passe (la règle vit dans l'action)", async () => {

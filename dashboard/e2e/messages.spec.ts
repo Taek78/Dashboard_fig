@@ -15,6 +15,12 @@ test.describe("messages", () => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages");
 
+    // Deux groupes séparés : les épinglés, puis les autres.
+    const pinned = page.getByRole("region", { name: "Épinglés" });
+    const others = page.getByRole("region", { name: "Autres messages" });
+    await expect(pinned.getByRole("article")).toHaveCount(1);
+    await expect(others.getByRole("article")).toHaveCount(6);
+
     const cards = page.getByRole("article");
     await expect(cards.first()).toHaveAccessibleName("Message de Amel Benali");
     await expect(cards.first()).toContainText("Épinglé");
@@ -26,6 +32,9 @@ test.describe("messages", () => {
     );
     await expect(cards.first()).not.toContainText("Merci d'avance");
     await expect(cards.first()).toContainText("2 pièces jointes");
+    // La commande jointe : livraison et équipe sur la carte.
+    await expect(cards.first()).toContainText("FIG-260907-001");
+    await expect(cards.first()).toContainText("Préparateur : non affecté");
     await expect(page.getByRole("status").first()).toContainText("non traité");
   });
 
@@ -48,7 +57,13 @@ test.describe("messages", () => {
     const search = form.getByLabel("Rechercher un message");
     const reset = async () => {
       await form.getByRole("link", { name: "Réinitialiser" }).click();
+      // L'URL nue signale que la navigation est passée ET que les champs ont
+      // été remontés : la recherche seule ne suffirait pas quand elle était
+      // déjà vide (le filtre suivant serait tapé avant le remontage).
+      await expect(page).toHaveURL(/\/messages$/);
       await expect(search).toHaveValue("");
+      await expect(form.getByLabel("Objet")).toHaveValue("");
+      await expect(form.getByLabel("Reçu du")).toHaveValue("");
     };
 
     await search.fill("aubergines");
@@ -94,9 +109,10 @@ test.describe("messages", () => {
       page.getByRole("heading", { level: 1, name: "Message de Amel Benali" }),
     ).toBeVisible();
 
-    // La fiche client, juste au-dessus : coordonnées et chiffres clés.
+    // La fiche client, juste au-dessus : coordonnées, adresse et chiffres clés.
     const customer = page.getByRole("article", { name: "Client Amel Benali" });
     await expect(customer).toContainText("amel.benali@example.invalid");
+    await expect(customer).toContainText("12 rue des Lilas");
     await expect(customer).toContainText("Commandes");
     await expect(customer).toContainText("Particulier");
     await expect(
@@ -114,9 +130,32 @@ test.describe("messages", () => {
     await expect(
       message.getByRole("link", { name: /fraises-abimees\.jpg/ }),
     ).toBeVisible();
+    // La commande jointe, en détail : dates, adresse, préparateur et livreur.
+    const order = message.getByRole("region", {
+      name: /Commande jointe par le client/,
+    });
     await expect(
-      message.getByRole("link", { name: "FIG-260907-001" }),
+      order.getByRole("link", { name: "FIG-260907-001" }),
     ).toBeVisible();
+    await expect(order).toContainText("Commandée le");
+    await expect(order).toContainText("09:00–10:00");
+    await expect(order).toContainText("12 rue des Lilas, 75011 Paris");
+    await expect(order).toContainText("Préparateur");
+    await expect(order).toContainText("Livreur");
+    await expect(order).toContainText("Non affecté");
+  });
+
+  test("un message important porte un dégradé rouge, un message ordinaire non", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/messages");
+    const important = page
+      .getByRole("article", { name: "Message de Amel Benali" })
+      .first();
+    await expect(important).toHaveClass(/from-destructive/);
+    const plain = page.getByRole("article", { name: "Message de Inès Rocher" });
+    await expect(plain).not.toHaveClass(/from-destructive/);
   });
 
   test("le gestionnaire marque traité, épingle et signale, puis revient en arrière", async ({
@@ -139,9 +178,11 @@ test.describe("messages", () => {
     await message.getByRole("button", { name: "Marquer important" }).click();
     await expect(message).toContainText("Important");
 
-    // La liste le remonte en tête, épinglé le plus récemment.
+    // La liste le remonte en tête du groupe des épinglés, le plus récent d'abord.
     await page.goto("/messages");
-    await expect(page.getByRole("article").first()).toHaveAccessibleName(
+    const pinned = page.getByRole("region", { name: "Épinglés" });
+    await expect(pinned.getByRole("article")).toHaveCount(2);
+    await expect(pinned.getByRole("article").first()).toHaveAccessibleName(
       "Message de Inès Rocher",
     );
 

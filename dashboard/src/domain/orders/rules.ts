@@ -25,14 +25,21 @@ export function computeOrderSubtotalCents(lines: readonly OrderLine[]): number {
   return lines.reduce((total, line) => total + line.lineTotalCents, 0);
 }
 
-/** Total dû : le sous-total moins la remise éventuelle, jamais négatif. */
+/**
+ * Total dû : le sous-total moins la remise éventuelle, jamais négatif, plus
+ * les frais de livraison (la remise porte sur les produits, pas sur la
+ * livraison).
+ */
 export function computeOrderTotalCents(
   lines: readonly OrderLine[],
   discount: OrderDiscount | null = null,
+  deliveryFeeCents = 0,
 ): number {
-  return Math.max(
-    0,
-    computeOrderSubtotalCents(lines) - (discount?.amountCents ?? 0),
+  return (
+    Math.max(
+      0,
+      computeOrderSubtotalCents(lines) - (discount?.amountCents ?? 0),
+    ) + deliveryFeeCents
   );
 }
 

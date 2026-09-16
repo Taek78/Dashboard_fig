@@ -38,11 +38,81 @@ describe("customersDb", () => {
     expect(one.every((c) => c.community?.id === "com-0001")).toBe(true);
   });
 
-  it("getCustomer relit le client et ses notes, ou null", async () => {
+  it("getCustomer relit le client, ses notes, ses autorisations, son parrain, ou null", async () => {
     expect(await customersDb.getCustomer("cli-0005")).toEqual(
       customersFixtures.find((c) => c.id === "cli-0005"),
     );
+    const theo = await customersDb.getCustomer("cli-0002");
+    expect(theo?.referredBy).toEqual({
+      id: "cli-0001",
+      fullName: "Amel Benali",
+    });
+    expect(theo?.referralCode).toBe("Marchand#0002");
+    expect(theo?.consents).toEqual({
+      offers: true,
+      orderStatus: true,
+      marketing: false,
+      updatedAt: theo?.createdAt,
+    });
     expect(await customersDb.getCustomer("cli-9999")).toBeNull();
+  });
+
+  it("getCustomerReferrals liste les filleuls du plus ancien au plus récent, vide sinon", async () => {
+    const expected = customersFixtures
+      .filter((c) => c.referredBy?.id === "cli-0001")
+      .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((c) => ({ id: c.id, fullName: c.fullName, createdAt: c.createdAt }));
+    expect(expected).toHaveLength(2);
+    expect(await customersDb.getCustomerReferrals("cli-0001")).toEqual(
+      expected,
+    );
+    // cli-0007 (Samuel) : personne n'a saisi son code.
+    expect(customersFixtures.some((c) => c.referredBy?.id === "cli-0007")).toBe(
+      false,
+    );
+    expect(await customersDb.getCustomerReferrals("cli-0007")).toEqual([]);
+    expect(await customersDb.getCustomerReferrals("cli-9999")).toEqual([]);
+  });
+
+  it("la base refuse un code de parrainage mal formé, en double, ou un client qui se parraine lui-même", async () => {
+    const { customers } = await import("@/db/schema");
+    const { testDb } = await import("../support/test-database");
+    const base = {
+      fullName: "Test Contrainte",
+      email: "contrainte@example.invalid",
+      phone: "06 39 98 99 99",
+      city: "Paris",
+      postalCode: "75001",
+    };
+    /**
+     * Nom de la contrainte PostgreSQL qui a refusé l'écriture, sinon null ;
+     * chaque essai dans sa sous-transaction, pour ne pas abandonner celle du test.
+     */
+    const refusedBy = async (
+      row: Partial<typeof customers.$inferInsert> & { id: string },
+    ) => {
+      try {
+        await testDb().transaction((tx) =>
+          tx.insert(customers).values({ ...base, ...row }),
+        );
+        return null;
+      } catch (error) {
+        const cause = (error as { cause?: { constraint_name?: string } }).cause;
+        return cause?.constraint_name ?? "erreur sans contrainte";
+      }
+    };
+    expect(
+      await refusedBy({ id: "cli-test-1", referralCode: "Contrainte#12" }),
+    ).toBe("customers_referral_code_format");
+    expect(
+      await refusedBy({ id: "cli-test-2", referralCode: "Benali#0001" }),
+    ).toBe("customers_referral_code_idx");
+    expect(
+      await refusedBy({ id: "cli-test-3", referredById: "cli-test-3" }),
+    ).toBe("customers_not_own_referrer");
+    expect(
+      await refusedBy({ id: "cli-test-4", referralCode: "Contrainte#0042" }),
+    ).toBeNull();
   });
 
   it("addNote ajoute une note avec un id généré, visible ensuite ; null pour un client inconnu", async () => {

@@ -5,6 +5,7 @@ import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import { engagementFixtures } from "@/domain/engagement/fixtures";
 import { messagesFixtures } from "@/domain/messages/fixtures";
+import { notificationsFixtures } from "@/domain/notifications/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { productsFixtures } from "@/domain/products/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
@@ -73,9 +74,10 @@ export async function seedDatabase(
   }
 
   await db.transaction(async (tx) => {
-    // Messages avant les commandes et les clients qu'ils référencent.
+    // Messages et notifications avant les commandes et les clients qu'ils référencent.
     await tx.delete(schema.messageAttachments);
     await tx.delete(schema.customerMessages);
+    await tx.delete(schema.customerNotifications);
     await tx.delete(schema.orderEvents);
     await tx.delete(schema.orderLines);
     await tx.delete(schema.orders);
@@ -120,21 +122,30 @@ export async function seedDatabase(
         pickupPlace: c.pickupPlace,
         pickupCity: c.pickupCity,
         pickupPostalCode: c.pickupPostalCode,
-        discountPercent: c.discountPercent,
         active: c.active,
         createdAt: new Date(c.createdAt),
       })),
     );
 
+    // Les parrains d'abord (clé étrangère sur la table elle-même) : les
+    // clients du scénario, qui parrainent, sont en tête des fixtures.
     await inChunks(
       customersFixtures.map((c) => ({
         id: c.id,
         fullName: c.fullName,
         email: c.email,
         phone: c.phone,
+        addressLine: c.addressLine,
         city: c.city,
         postalCode: c.postalCode,
         communityId: c.community?.id ?? null,
+        notifyOffers: c.consents.offers,
+        notifyOrderStatus: c.consents.orderStatus,
+        marketingConsent: c.consents.marketing,
+        consentsUpdatedAt:
+          c.consents.updatedAt === null ? null : new Date(c.consents.updatedAt),
+        referralCode: c.referralCode,
+        referredById: c.referredBy?.id ?? null,
         createdAt: new Date(c.createdAt),
         anonymizedAt: c.anonymizedAt === null ? null : new Date(c.anonymizedAt),
       })),
@@ -186,8 +197,10 @@ export async function seedDatabase(
         deliveryDate: o.deliverySlot.date,
         deliveryStart: o.deliverySlot.start,
         deliveryEnd: o.deliverySlot.end,
+        deliveryAddressLine: o.deliveryAddressLine,
         deliveryCity: o.deliveryCity,
         deliveryPostalCode: o.deliveryPostalCode,
+        deliveryFeeCents: o.deliveryFeeCents,
         totalCents: o.totalCents,
         cancellationReason: o.cancellation?.reason ?? null,
         cancellationDetail: o.cancellation?.detail ?? null,
@@ -228,6 +241,23 @@ export async function seedDatabase(
       })),
       (part) => tx.insert(schema.orderEvents).values(part),
     );
+
+    // Après les commandes : la file de notifications déposées pour les clients.
+    if (notificationsFixtures.length > 0) {
+      await tx.insert(schema.customerNotifications).values(
+        notificationsFixtures.map((n) => ({
+          id: n.id,
+          customerId: n.customerId,
+          orderId: n.order.id,
+          kind: n.kind,
+          orderStatus: n.orderStatus,
+          title: n.title,
+          body: n.body,
+          createdAt: new Date(n.createdAt),
+          sentAt: n.sentAt === null ? null : new Date(n.sentAt),
+        })),
+      );
+    }
 
     // Après les commandes et les clients : un message cite les deux.
     await tx.insert(schema.customerMessages).values(
@@ -286,5 +316,5 @@ export async function seedDatabase(
     );
   });
 
-  return `${accounts.length} compte(s), ${staffFixtures.length} personnes, ${communitiesFixtures.length} communautés, ${customersFixtures.length} clients, ${productsFixtures.length} produits, ${ordersFixtures.length} commandes, ${orderEventsFixtures.length} événements, ${messagesFixtures.length} messages, ${articlesFixtures.length} articles, ${engagementFixtures.length} mois d'usage`;
+  return `${accounts.length} compte(s), ${staffFixtures.length} personnes, ${communitiesFixtures.length} communautés, ${customersFixtures.length} clients, ${productsFixtures.length} produits, ${ordersFixtures.length} commandes, ${orderEventsFixtures.length} événements, ${notificationsFixtures.length} notifications, ${messagesFixtures.length} messages, ${articlesFixtures.length} articles, ${engagementFixtures.length} mois d'usage`;
 }

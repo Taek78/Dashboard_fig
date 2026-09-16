@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { clientTypeOf } from "@/domain/customers/client-type";
 import { formatCancellation } from "@/domain/orders/cancellation";
+import { computeOrderSubtotalCents } from "@/domain/orders/rules";
 import type { Order } from "@/domain/orders/types";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,7 @@ export function OrderCard({
   options: AssignmentOptions;
 }) {
   const done = order.status === "delivered" || order.status === "cancelled";
-  const subtotal = order.totalCents + (order.discount?.amountCents ?? 0);
+  const subtotal = computeOrderSubtotalCents(order.lines);
 
   return (
     <article
@@ -133,11 +134,20 @@ export function OrderCard({
                 <span className="font-medium">{order.community.name}</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · retrait à {order.deliveryPostalCode} {order.deliveryCity}
+                  · retrait{" "}
+                  {order.deliveryAddressLine
+                    ? `${order.deliveryAddressLine}, `
+                    : "à "}
+                  {order.deliveryPostalCode} {order.deliveryCity}
                 </span>
               </>
             ) : (
-              `${order.deliveryPostalCode} ${order.deliveryCity}`
+              <>
+                {order.deliveryAddressLine
+                  ? `${order.deliveryAddressLine}, `
+                  : ""}
+                {order.deliveryPostalCode} {order.deliveryCity}
+              </>
             )}
           </dd>
           <dt className="text-muted-foreground">
@@ -152,10 +162,21 @@ export function OrderCard({
             {order.discount ? (
               <span className="text-muted-foreground tabular-nums">
                 {" "}
-                (au lieu de {formatEuros(subtotal)}, remise −
-                {formatEuros(order.discount.amountCents)})
+                (produits {formatEuros(subtotal)}, remise −
+                {formatEuros(order.discount.amountCents)}
+                {order.deliveryFeeCents > 0
+                  ? `, livraison ${formatEuros(order.deliveryFeeCents)}`
+                  : ", livraison offerte"}
+                )
               </span>
-            ) : null}
+            ) : (
+              <span className="text-muted-foreground tabular-nums">
+                {" "}
+                {order.deliveryFeeCents > 0
+                  ? `(dont livraison ${formatEuros(order.deliveryFeeCents)})`
+                  : "(livraison offerte)"}
+              </span>
+            )}
           </dd>
           <dt className="text-muted-foreground">
             <User className="size-4" aria-hidden="true" />

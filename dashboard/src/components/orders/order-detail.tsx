@@ -21,8 +21,10 @@ import {
   allowedTransitions,
   ORDER_STATUS_LABELS,
 } from "@/domain/orders/status";
+import type { CustomerNotification } from "@/domain/notifications/types";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { formatDiscount } from "@/domain/orders/discount";
+import { computeOrderSubtotalCents } from "@/domain/orders/rules";
 import type { Order, OrderEvent } from "@/domain/orders/types";
 import Link from "next/link";
 import {
@@ -35,8 +37,9 @@ import {
 
 /*
  * Détail d'une commande. Composant serveur : il reçoit une Order déjà chargée par
- * la page et l'affiche en cinq cartes (Client, Livraison, Statut, Équipe,
- * Articles avec la remise éventuelle).
+ * la page et l'affiche en cinq cartes (Client, Livraison, Statut avec les
+ * notifications déposées pour le client, Équipe, Articles avec la remise
+ * éventuelle et les frais de livraison).
  *
  * - Grille lg (pas md) : à 768 px avec la sidebar dépliée, trois colonnes seraient
  *   trop étroites. Ordre DOM = ordre visuel pour les lecteurs d'écran.
@@ -50,6 +53,8 @@ import {
 export function OrderDetail({
   order,
   events,
+  notifications,
+  notifyOrderStatus,
   canEdit,
   canAssign,
   options,
@@ -57,6 +62,10 @@ export function OrderDetail({
   order: Order;
   /** Historique des changements de statut, du plus récent au plus ancien. */
   events: OrderEvent[];
+  /** Notifications déposées pour le client, de la plus récente à la plus ancienne. */
+  notifications: CustomerNotification[];
+  /** Le client a autorisé les notifications d'état (relu sur sa fiche). */
+  notifyOrderStatus: boolean;
   /** Rôle autorisé à changer le statut. Confort d'affichage : l'action revérifie. */
   canEdit: boolean;
   /** Rôle autorisé à affecter l'équipe. */
@@ -65,7 +74,7 @@ export function OrderDetail({
 }) {
   const allowed = allowedTransitions(order.status);
   const done = order.status === "delivered" || order.status === "cancelled";
-  const subtotal = order.totalCents + (order.discount?.amountCents ?? 0);
+  const subtotal = computeOrderSubtotalCents(order.lines);
 
   return (
     <div className="grid gap-4 @4xl/main:grid-cols-3">
@@ -130,8 +139,27 @@ export function OrderDetail({
               {order.community ? "Point de retrait" : "Adresse"}
             </dt>
             <dd className="font-medium">
-              {order.community ? `${order.community.name}, ` : ""}
+              {order.community ? (
+                <>
+                  {order.community.name}
+                  <br />
+                </>
+              ) : null}
+              {order.deliveryAddressLine ? (
+                <>
+                  {order.deliveryAddressLine}
+                  <br />
+                </>
+              ) : null}
               {order.deliveryPostalCode} {order.deliveryCity}
+            </dd>
+            <dt className="text-muted-foreground">Frais</dt>
+            <dd className="font-medium tabular-nums">
+              {order.deliveryFeeCents === 0
+                ? order.community
+                  ? "Livraison offerte (communauté)"
+                  : "Livraison offerte"
+                : formatEuros(order.deliveryFeeCents)}
             </dd>
             {order.community ? (
               <>
@@ -222,6 +250,40 @@ export function OrderDetail({
               </ol>
             )}
           </section>
+          <section aria-labelledby="notifications" className="border-t pt-4">
+            <h3 id="notifications" className="mb-2 text-sm font-semibold">
+              Notifications au client
+            </h3>
+            {!notifyOrderStatus ? (
+              <p className="text-muted-foreground text-sm">
+                Le client n&apos;a pas autorisé les notifications d&apos;état de
+                commande : rien n&apos;est déposé pour lui.
+              </p>
+            ) : notifications.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Aucune notification déposée pour l&apos;instant : chaque
+                changement de statut en dépose une, envoyée par
+                l&apos;application.
+              </p>
+            ) : (
+              <ol className="flex flex-col gap-3 text-sm">
+                {notifications.map((notification) => (
+                  <li
+                    key={notification.id}
+                    className="border-info/50 flex flex-col gap-0.5 border-l-2 pl-3"
+                  >
+                    <span className="font-medium">{notification.body}</span>
+                    <span className="text-muted-foreground text-xs">
+                      Déposée le {formatDateTimeFr(notification.createdAt)} ·{" "}
+                      {notification.sentAt
+                        ? `envoyée le ${formatDateTimeFr(notification.sentAt)}`
+                        : "en attente d'envoi par l'application"}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
         </CardContent>
       </Card>
 
@@ -282,28 +344,43 @@ export function OrderDetail({
               ))}
             </TableBody>
             <TableFooter>
+              <TableRow>
+                <TableCell colSpan={2}>Sous-total des produits</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatEuros(subtotal)}
+                </TableCell>
+              </TableRow>
               {order.discount ? (
-                <>
-                  <TableRow>
-                    <TableCell colSpan={2}>Sous-total</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatEuros(subtotal)}
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={2}>
-                      {formatDiscount(order.discount)}
-                      {order.community ? ` (${order.community.name})` : ""}
-                      <span className="text-muted-foreground block text-xs">
-                        Appliquée au paiement dans l&apos;application FIG
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-success text-right tabular-nums">
-                      −{formatEuros(order.discount.amountCents)}
-                    </TableCell>
-                  </TableRow>
-                </>
+                <TableRow>
+                  <TableCell colSpan={2}>
+                    {formatDiscount(order.discount)}
+                    {order.discount.kind === "community" && order.community
+                      ? ` (${order.community.name})`
+                      : ""}
+                    <span className="text-muted-foreground block text-xs">
+                      Appliquée au paiement dans l&apos;application FIG
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-success text-right tabular-nums">
+                    −{formatEuros(order.discount.amountCents)}
+                  </TableCell>
+                </TableRow>
               ) : null}
+              <TableRow>
+                <TableCell colSpan={2}>
+                  Frais de livraison
+                  {order.community ? (
+                    <span className="text-muted-foreground block text-xs">
+                      Offerts à toute communauté
+                    </span>
+                  ) : null}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {order.deliveryFeeCents === 0
+                    ? "Offerts"
+                    : formatEuros(order.deliveryFeeCents)}
+                </TableCell>
+              </TableRow>
               <TableRow>
                 <TableCell colSpan={2} className="font-semibold">
                   Total dû

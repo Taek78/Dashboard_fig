@@ -205,11 +205,27 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Personnel (staff)** (métier) : l'équipe du client, trois métiers (livreur, préparateur de commandes, gestionnaire), avec coordonnées, créneau de travail, disponibilité, jours travaillés. Les gestionnaires listés sont des personnes ; leur accès au back-office se gère dans Comptes. Son historique de traitement se calcule à partir des commandes affectées (`summarizeStaffWork`).
 
-**Communauté** (métier) : groupe de clients qui commandent ensemble et récupèrent leurs produits à un même point de retrait, à l'horaire que chacun choisit en commandant dans l'application (crèche, école, entreprise). Créée par l'application FIG, qui applique sa remise sur chaque commande des membres ; le dashboard la lit (recherche commune de la section Clients, fiche) et affiche la remise sur les commandes.
+**Communauté** (métier) : groupe de clients qui commandent ensemble et récupèrent leurs produits à un même point de retrait, à l'horaire que chacun choisit en commandant dans l'application (crèche, école, entreprise). Créée par l'application FIG ; livraison offerte à toutes ; sa remise dépend de son nombre de membres (`communityDiscountPercent` : rien jusqu'à 3, −5 % de 4 à 9, −10 % dès 10) et l'application l'applique sur chaque commande des membres ; le dashboard la lit (recherche commune de la section Clients, fiche) et affiche la remise sur les commandes.
 
-**Remise (OrderDiscount)** (métier) : réduction portée par une commande, appliquée par l'application : « communauté » (pourcentage de la communauté) ou « fidélité » (15 %). Le montant est conservé en centimes ; le total dû est le sous-total des lignes moins ce montant (`computeOrderTotalCents`). Source de vérité : le paiement dans l'application ; le dashboard ne la calcule jamais.
+**Remise (OrderDiscount)** (métier) : réduction portée par une commande, appliquée par l'application : « communauté » (taux de la communauté) ou « fidélité » (15 %). Les deux ne se cumulent pas : la plus forte l'emporte (`bestDiscount`), donc la fidélité prête remplace la remise de la communauté sur cette commande-là. Le montant est conservé en centimes ; le total dû est le sous-total des lignes moins ce montant, plus les frais de livraison (`computeOrderTotalCents`). Source de vérité : le paiement dans l'application ; le dashboard ne la calcule jamais.
 
-**Série de fidélité** (métier) : nombre de commandes d'affilée d'un particulier (`loyaltyStatus`). Une annulation remet à zéro, la commande qui porte la remise repart de zéro ; à huit, la prochaine commande est à −15 %. Affichée en jauge sur la fiche client et en badge dans la liste.
+**Compteur de fidélité** (métier) : nombre de commandes cumulées d'un client, membre de communauté compris, depuis la dernière remise fidélité (`loyaltyCount`, `loyaltyStatus`). Une annulée ne compte pas et ne remet pas à zéro ; la commande qui porte la remise repart de zéro ; à huit, la prochaine commande est à −15 %. Affiché en jauge sur la fiche client et en badge sur la carte. Remplace l'ancienne « série » de commandes d'affilée (décision du client, 2026-09-16).
+
+**Catégorie de client (basique, fidèle)** (métier) : « fidèle » pendant deux mois civils après avoir atteint huit commandes cumulées, « basique » sinon (`customerTier`, `tierFromReachedAt`). Rien n'est stocké : la catégorie et l'historique daté de ses atteintes (`loyalTierEvents`, une par cycle de huit) se déduisent des commandes, par une règle pure et par la même requête SQL. Affichée en étoiles et en couleur (token `--loyal`, or) par `TierBadge` ; l'historique est sur la fiche.
+
+**Frais de livraison** (métier) : montant facturé par l'application à un particulier selon son panier avant remise (`deliveryFeeCents` : 4,90 € sous 5 €, 3,90 € dès 5 €, 2,90 € dès 10 €, 1,90 € dès 20 €) ; offerts à toute communauté, ce que la base impose (`orders_community_delivery_free`). Conservés sur chaque commande (`deliveryFeeCents`, instantané) et ajoutés après la remise.
+
+**Créneau d'une heure** (métier) : une commande est livrée sur un créneau d'une heure pile (« 14:00 → 15:00 », `slotEndFor`, `isOneHourSlot`), ce que la contrainte `orders_slot_one_hour` de la base impose à toute écriture, application comprise.
+
+**Autorisations (consentements)** (métier, RGPD) : les trois choix que la personne fait dans l'application (`CustomerConsents`) : notifications d'offres, promos et liquidations ; notification à chaque état de sa commande ; communications marketing. Datés par l'application (`updatedAt`), lus et affichés par le dashboard (`ConsentPills`), jamais modifiés par lui.
+
+**File de notifications** (métier) : table `customer_notifications` où le dashboard **dépose** une notification d'état (`orderStatusNotification`) à chaque changement de statut fait par l'équipe, dans la transaction du statut, seulement si le client a autorisé les notifications d'état. Le dashboard n'envoie rien : l'application FIG lit les lignes sans `sentAt`, envoie par son canal et pose la date d'envoi (question 23).
+
+**Parrainage** (métier) : chaque client a un code « Nom#0000 » (`referralCode`, attribué par l'application, format vérifié par la base) ; un nouveau client qui le saisit à l'inscription devient son **filleul** (`referredBy`). Le code, le parrain, la liste des filleuls et leur total ne sont visibles que dans la fiche du client, jamais sur une carte ; l'export RGPD ne nomme ni le parrain ni les filleuls.
+
+**Commutateur de type** (clients) : le groupe de trois boutons radio de la section Clients (particuliers, communautés, tous), chacun dans sa couleur (`--individual`, `--community`, marque), qui remplace la liste déroulante ; coché, il lance la recherche aussitôt.
+
+**Tri dans les deux sens** (clients) : chaque critère de tri existe en croissant et en décroissant, dans une seule liste déroulante (`sortOptions`), le sens naturel du critère en premier ; l'URL n'écrit le sens que s'il diffère du naturel (`?tri=commandes-croissant`, `parseSortParam`). Le tri par nombre de membres n'apparaît qu'en position « communautés » et range les groupes avant leurs membres.
 
 **Duplication (produit)** (catalogue) : créer une copie complète d'une fiche, nommée « (copie) » (`duplicateName`), masquée dans l'application jusqu'à relecture. Depuis la carte de la grille ou la fiche.
 
@@ -227,7 +243,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Type de client (particulier, communauté)** (métier) : une commande ou un client est « particulier » sans communauté, « communauté » sinon (`clientTypeOf`). Affiché partout par `ClientTypeLabel`, avec une icône et un code couleur (tokens `--individual`, `--community`) ; le nom de la communauté passe à la ligne au lieu de déborder.
 
-**Annuaire (clients)** (clients) : la liste commune des particuliers et des communautés de la section Clients (`buildDirectory`), cherchée (`matchesDirectoryQuery`), filtrée par type et triée (nom, commandes, montant, récence) par des règles pures.
+**Annuaire (clients)** (clients) : la liste commune des particuliers et des communautés de la section Clients (`buildDirectory`), cherchée (`matchesDirectoryQuery`, code de parrainage compris), filtrée par type et triée (nom, commandes, montant, récence, membres, dans les deux sens) par des règles pures ; chaque entrée porte la catégorie du client à l'instant de la lecture et la remise attendue sur sa prochaine commande.
 
 **Camembert plein** (métriques) : un disque découpé en parts proportionnelles, chacune de sa couleur, sans pourcentage écrit ; au survol, une étiquette nomme la part et son nombre (`RatioPie`). La géométrie des parts est une fonction pure (`pieSlicePaths`).
 

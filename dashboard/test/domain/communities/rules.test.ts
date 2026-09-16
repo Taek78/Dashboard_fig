@@ -10,12 +10,11 @@ import { customersFixtures } from "@/domain/customers/fixtures";
 import { ordersFixtures } from "@/domain/orders/fixtures";
 
 describe("communitiesFixtures", () => {
-  it("trois communautés, ids uniques, remises entières, aucune personne réelle", () => {
+  it("trois communautés, ids uniques, sans taux stocké, aucune personne réelle", () => {
     expect(communitiesFixtures).toHaveLength(3);
     expect(new Set(communitiesFixtures.map((c) => c.id)).size).toBe(3);
     for (const c of communitiesFixtures) {
-      expect(Number.isInteger(c.discountPercent)).toBe(true);
-      expect(c.discountPercent).toBeGreaterThan(0);
+      expect(c).not.toHaveProperty("discountPercent");
       expect(c.contactEmail).toMatch(/@example\.invalid$/);
       expect(c.contactPhone).toMatch(/^06 39 98 80 \d{2}$/);
       expect(c).not.toHaveProperty("pickupTime");

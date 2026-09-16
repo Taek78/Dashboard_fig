@@ -1,21 +1,65 @@
 import Link from "next/link";
-import { ArrowRight, Clock, MapPin, Percent, Phone, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Clock,
+  MapPin,
+  Percent,
+  Phone,
+  Truck,
+  Users,
+} from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { nextCommunityDiscountTier } from "@/domain/communities/discount";
 import { COMMUNITY_KIND_LABELS } from "@/domain/communities/kind";
 import type { CommunityEntry } from "@/domain/customers/directory";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Grande carte d'une communauté (serveur) : type et remise annoncée, point de
- * retrait, contact, chiffres (membres, commandes, remises accordées) et un
- * bouton dédié vers la fiche. L'horaire de retrait n'appartient pas à la
- * communauté : chaque membre le choisit à la commande, dans l'application.
+ * Grande carte d'une communauté (serveur) : type, remise déduite du nombre de
+ * membres et livraison offerte, point de retrait, contact, chiffres (membres,
+ * commandes, remises accordées) et un bouton dédié vers la fiche. L'horaire
+ * de retrait n'appartient pas à la communauté : chaque membre le choisit à la
+ * commande, dans l'application.
  */
+export function CommunityDiscountBadges({
+  memberCount,
+  discountPercent,
+}: {
+  memberCount: number;
+  discountPercent: number;
+}) {
+  const next = nextCommunityDiscountTier(memberCount);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {discountPercent > 0 ? (
+        <Badge variant="success" className="h-auto whitespace-normal">
+          <Percent aria-hidden="true" />
+          {`−${discountPercent} % sur chaque commande`}
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="h-auto whitespace-normal">
+          <Percent aria-hidden="true" />
+          Pas encore de remise
+        </Badge>
+      )}
+      <Badge variant="secondary" className="h-auto whitespace-normal">
+        <Truck aria-hidden="true" />
+        Livraison offerte
+      </Badge>
+      {next ? (
+        <span className="text-muted-foreground self-center text-xs">
+          −{next.percent} % à partir de {next.minMembers} membres
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function CommunityCard({ entry }: { entry: CommunityEntry }) {
-  const { community, memberCount, summary } = entry;
+  const { community, memberCount, discountPercent, summary } = entry;
 
   return (
     <article
@@ -48,10 +92,10 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
               <Badge variant="destructive">Inactive</Badge>
             ) : null}
           </div>
-          <Badge variant="success" className="h-auto whitespace-normal">
-            <Percent aria-hidden="true" />
-            {`−${community.discountPercent} % sur chaque commande`}
-          </Badge>
+          <CommunityDiscountBadges
+            memberCount={memberCount}
+            discountPercent={discountPercent}
+          />
         </div>
       </div>
 

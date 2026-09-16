@@ -8,9 +8,16 @@ import {
   SCENARIO_WINDOW,
   scenarioOrders,
 } from "@/domain/orders/fixtures";
+import { communityDiscountPercent } from "@/domain/communities/discount";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
+import { customersFixtures } from "@/domain/customers/fixtures";
 import { LOYALTY_THRESHOLD } from "@/domain/customers/loyalty";
-import { computeOrderTotalCents } from "@/domain/orders/rules";
+import { deliveryFeeCents } from "@/domain/orders/delivery-fee";
+import {
+  computeOrderSubtotalCents,
+  computeOrderTotalCents,
+} from "@/domain/orders/rules";
+import { isOneHourSlot } from "@/domain/orders/slot";
 import { staffFixtures } from "@/domain/staff/fixtures";
 import { ORDER_STATUSES, statusPath } from "@/domain/orders/status";
 
@@ -75,18 +82,26 @@ describe("ordersFixtures (scénario + historique généré)", () => {
     expect(cancelled / generated.length).toBeLessThan(0.1);
   });
 
-  it("chaque commande : total cohérent, 2 à 5 lignes, formats ISO, aucune personne réelle", () => {
+  it("chaque commande : total cohérent (remise puis frais au barème), 2 à 5 lignes, créneau d'une heure, formats ISO, aucune personne réelle", () => {
     for (const order of ordersFixtures) {
-      expect(computeOrderTotalCents(order.lines, order.discount)).toBe(
-        order.totalCents,
+      const subtotal = computeOrderSubtotalCents(order.lines);
+      expect(order.deliveryFeeCents).toBe(
+        deliveryFeeCents(subtotal, order.community !== null),
       );
+      expect(
+        computeOrderTotalCents(
+          order.lines,
+          order.discount,
+          order.deliveryFeeCents,
+        ),
+      ).toBe(order.totalCents);
       if (order.discount) {
         expect(order.discount.amountCents).toBeGreaterThan(0);
-        expect(order.discount.kind === "community").toBe(
-          order.community !== null,
-        );
-      } else {
-        expect(order.community).toBeNull();
+        // Une remise de communauté n'existe que pour un membre ; la fidélité
+        // peut remplacer la sienne.
+        if (order.discount.kind === "community") {
+          expect(order.community).not.toBeNull();
+        }
       }
       expect(order.lines.length).toBeGreaterThanOrEqual(2);
       expect(order.lines.length).toBeLessThanOrEqual(5);
@@ -97,11 +112,30 @@ describe("ordersFixtures (scénario + historique généré)", () => {
       expect(order.deliverySlot.date).toMatch(ISO_DATE);
       expect(order.deliverySlot.start).toMatch(HOUR);
       expect(order.deliverySlot.end).toMatch(HOUR);
-      expect(order.deliverySlot.start < order.deliverySlot.end).toBe(true);
+      expect(isOneHourSlot(order.deliverySlot)).toBe(true);
+      expect(order.deliveryAddressLine).toBeTruthy();
       expect(order.customer.email).toMatch(/@example\.invalid$/);
       expect(order.customer.phone).toMatch(/^06 39 98 \d{2} \d{2}$/);
       expect(order.deliveryPostalCode).toMatch(/^\d{5}$/);
-      expect(order).not.toHaveProperty("street");
+    }
+    // Un particulier paie des frais, jamais une communauté ; les quatre paliers existent.
+    const fees = new Set(
+      ordersFixtures.filter((o) => !o.community).map((o) => o.deliveryFeeCents),
+    );
+    expect(fees).toEqual(new Set([190, 290, 390, 490]));
+    expect(
+      ordersFixtures
+        .filter((o) => o.community)
+        .every((o) => o.deliveryFeeCents === 0),
+    ).toBe(true);
+  });
+
+  it("la rue de livraison d'un particulier est celle de sa fiche", () => {
+    const byId = new Map(customersFixtures.map((c) => [c.id, c]));
+    for (const order of ordersFixtures.filter((o) => !o.community)) {
+      expect(order.deliveryAddressLine).toBe(
+        byId.get(order.customer.id)?.addressLine,
+      );
     }
   });
 
@@ -132,48 +166,70 @@ describe("ordersFixtures (scénario + historique généré)", () => {
     }
   });
 
-  it("les membres d'une communauté sont livrés au point de retrait avec sa remise, au créneau de leur commande", () => {
+  it("les membres d'une communauté sont livrés au point de retrait, sans frais, avec la remise que donne le nombre de membres", () => {
     const withCommunity = ordersFixtures.filter((o) => o.community);
     expect(withCommunity.length).toBeGreaterThan(100);
     for (const o of withCommunity) {
       const community = communitiesFixtures.find(
         (c) => c.id === o.community?.id,
       )!;
+      const members = customersFixtures.filter(
+        (c) => c.community?.id === community.id,
+      ).length;
+      const percent = communityDiscountPercent(members);
       expect(o.deliveryCity).toBe(community.pickupCity);
-      expect(o.discount).toMatchObject({
-        kind: "community",
-        percent: community.discountPercent,
-      });
+      expect(o.deliveryAddressLine).toBe(community.pickupPlace);
+      expect(o.deliveryFeeCents).toBe(0);
+      if (o.discount?.kind === "community") {
+        expect(o.discount.percent).toBe(percent);
+      } else if (o.discount === null) {
+        expect(percent).toBe(0);
+      } else {
+        expect(o.discount.kind).toBe("loyalty");
+      }
     }
+    // Les trois paliers : une communauté sans remise, une à −5 %, une à −10 %.
+    const percents = new Set(
+      withCommunity.map((o) =>
+        o.discount?.kind === "community" ? o.discount.percent : 0,
+      ),
+    );
+    expect(percents).toEqual(new Set([0, 5, 10]));
   });
 
-  it("la remise fidélité arrive exactement après huit commandes d'affilée (clients générés)", () => {
+  it("la remise fidélité arrive exactement après huit commandes cumulées, annulées non comptées, membres compris", () => {
     const byCustomer = new Map<string, typeof ordersFixtures>();
     for (const o of ordersFixtures) {
-      if (!o.customer.id.startsWith("cli-g-") || o.community) continue;
+      if (!o.customer.id.startsWith("cli-g-")) continue;
       byCustomer.set(o.customer.id, [
         ...(byCustomer.get(o.customer.id) ?? []),
         o,
       ]);
     }
     let rewarded = 0;
+    let rewardedMembers = 0;
     for (const orders of byCustomer.values()) {
-      let streak = 0;
+      let count = 0;
       for (const o of orders.toSorted(
         (a, b) =>
           a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
       )) {
-        expect(o.discount?.kind === "loyalty").toBe(
-          streak >= LOYALTY_THRESHOLD,
-        );
-        if (o.discount?.kind === "loyalty") rewarded += 1;
-        streak =
-          o.discount?.kind === "loyalty" || o.status === "cancelled"
-            ? 0
-            : streak + 1;
+        if (o.status === "cancelled") {
+          expect(o.discount?.kind).not.toBe("loyalty");
+          continue;
+        }
+        expect(o.discount?.kind === "loyalty").toBe(count >= LOYALTY_THRESHOLD);
+        if (o.discount?.kind === "loyalty") {
+          rewarded += 1;
+          if (o.community) rewardedMembers += 1;
+          count = 0;
+        } else {
+          count += 1;
+        }
       }
     }
     expect(rewarded).toBeGreaterThan(10);
+    expect(rewardedMembers).toBeGreaterThan(0);
   });
 
   it("garde un client cohérent d'une commande à l'autre", () => {

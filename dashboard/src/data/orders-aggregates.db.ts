@@ -3,7 +3,9 @@ import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import type { CommunitySummary } from "@/domain/communities/rules";
 import type { DirectoryStats } from "@/domain/customers/directory";
+import { LOYALTY_THRESHOLD } from "@/domain/customers/loyalty";
 import type { CustomerStats } from "@/domain/customers/rules";
+import { tierExpiry, type TierEvent } from "@/domain/customers/tier";
 import {
   fillSeries,
   rankProducts,
@@ -26,9 +28,10 @@ import {
  * Chiffres AGRÉGÉS par PostgreSQL : au lieu de charger toutes les commandes et
  * leurs lignes pour les compter en mémoire, chaque écran demande seulement ses
  * totaux (quelques lignes). Le calcul final (moyennes arrondies, seaux vides,
- * classement) reste celui des règles pures du domaine : statsFromTotals,
- * fillSeries, rankProducts, loyaltyFromStreak. test/data/orders.db.test.ts
- * compare chaque requête à la règle pure appliquée à toutes les commandes.
+ * classement, catégorie) reste celui des règles pures du domaine :
+ * statsFromTotals, fillSeries, rankProducts, loyaltyFromCount,
+ * tierFromReachedAt. test/data/orders.db.test.ts compare chaque requête à la
+ * règle pure appliquée à toutes les commandes.
  *
  * SQL écrit à la main (sql``) : les agrégats filtrés (`count(*) filter (where …)`)
  * se lisent mieux qu'en constructeur. Les seules valeurs variables sont des
@@ -41,6 +44,12 @@ type Row = Record<string, unknown>;
 
 const num = (value: unknown) => Number(value ?? 0);
 const day = (value: unknown) => (value === null ? null : String(value));
+
+/** Instant en texte ISO 8601 UTC, exactement comme Date.toISOString(). */
+const isoText = (column: string) =>
+  sql.raw(
+    `to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`,
+  );
 
 async function rows(query: SQL): Promise<Row[]> {
   return (await getDb().execute(query)) as unknown as Row[];
@@ -119,6 +128,40 @@ function scopeOf(scope: DirectoryScope, tableAlias: "o" | "x"): SQL {
   return sql.join(clauses, sql` and `);
 }
 
+/*
+ * Fidélité en SQL, la règle de loyaltyCount et loyalTierEvents :
+ * - `cycle` : numéro du cycle de chaque commande d'un client, incrémenté par
+ *   chaque commande qui porte la remise fidélité (comptage cumulé dans
+ *   l'ordre de passation, la commande remisée comprise : elle ouvre le cycle
+ *   suivant) ;
+ * - `ranked` : les commandes qui COMPTENT (ni annulée ni remisée fidélité),
+ *   numérotées dans leur cycle ; la huitième (LOYALTY_THRESHOLD) est l'atteinte
+ *   de la catégorie « fidèle ».
+ * Le compteur courant est le nombre de commandes comptées du DERNIER cycle
+ * (celui de la commande la plus récente, remisée ou non : après une remise il
+ * repart à zéro).
+ */
+function loyaltyCycles(scope: DirectoryScope): SQL {
+  return sql`
+    mine as (
+      select o.id, o.customer_id, o.reference, o.created_at,
+        (o.status <> 'cancelled' and o.discount_kind is distinct from 'loyalty') as counted,
+        count(*) filter (where o.discount_kind = 'loyalty')
+          over (partition by o.customer_id order by o.created_at, o.id) as cycle
+      from orders o
+      where ${scopeOf(scope, "o")}
+    ),
+    latest as (
+      select customer_id, max(cycle) as cycle from mine group by customer_id
+    ),
+    ranked as (
+      select m.*,
+        row_number() over (partition by m.customer_id, m.cycle order by m.created_at, m.id) as rn
+      from mine m
+      where m.counted
+    )`;
+}
+
 export const ordersAggregatesDb: Pick<
   OrdersSource,
   | "getOrderStats"
@@ -128,6 +171,7 @@ export const ordersAggregatesDb: Pick<
   | "getStaffWorkSummaries"
   | "getStaffWorkSummary"
   | "getDirectoryStats"
+  | "getCustomerTierEvents"
 > = {
   getOrderStats: async (range: DateRange): Promise<OrderStats> => {
     const [row = {}] = await rows(sql`
@@ -236,8 +280,9 @@ export const ordersAggregatesDb: Pick<
   getDirectoryStats: async (
     scope: DirectoryScope = {},
   ): Promise<DirectoryStats> => {
-    const [customerRows, communityRows, streakRows] = await Promise.all([
-      rows(sql`
+    const [customerRows, communityRows, loyaltyRows, memberRows] =
+      await Promise.all([
+        rows(sql`
         select
           o.customer_id as id,
           count(*) as orders,
@@ -247,7 +292,7 @@ export const ordersAggregatesDb: Pick<
         where ${scopeOf(scope, "o")}
         group by o.customer_id
       `),
-      rows(sql`
+        rows(sql`
         select
           o.community_id as id,
           count(*) as orders,
@@ -258,25 +303,25 @@ export const ordersAggregatesDb: Pick<
         where o.community_id is not null and ${scopeOf(scope, "o")}
         group by o.community_id
       `),
-      // Série de fidélité : commandes passées après la dernière remise à zéro
-      // (annulation ou remise fidélité), dans l'ordre (created_at, id).
-      rows(sql`
-        select o.customer_id as id,
-          count(*) filter (
-            where r.at is null or (o.created_at, o.id) > (r.at, r.id)
-          ) as streak
-        from orders o
-        left join (
-          select distinct on (x.customer_id) x.customer_id, x.created_at as at, x.id
-          from orders x
-          where (x.status = 'cancelled' or x.discount_kind = 'loyalty')
-            and ${scopeOf(scope, "x")}
-          order by x.customer_id, x.created_at desc, x.id desc
-        ) r on r.customer_id = o.customer_id
-        where ${scopeOf(scope, "o")}
-        group by o.customer_id
-      `),
-    ]);
+        // Compteur fidélité du dernier cycle et date de la dernière atteinte.
+        rows(sql`
+          with ${loyaltyCycles(scope)}
+          select c.customer_id as id,
+            count(r.id) filter (where r.cycle = c.cycle) as count,
+            ${isoText("max(r.created_at) filter (where r.rn = " + LOYALTY_THRESHOLD + ")")} as loyal_since
+          from latest c
+          left join ranked r on r.customer_id = c.customer_id
+          group by c.customer_id
+        `),
+        // Membres par communauté : le taux de remise, pas une statistique ;
+        // toujours sur toute la base, quel que soit le périmètre.
+        rows(sql`
+          select community_id as id, count(*) as members
+          from customers
+          where community_id is not null
+          group by community_id
+        `),
+      ]);
     return {
       customers: new Map<string, CustomerStats>(
         customerRows.map((row) => [
@@ -299,9 +344,40 @@ export const ordersAggregatesDb: Pick<
           },
         ]),
       ),
-      loyaltyStreaks: new Map(
-        streakRows.map((row) => [String(row.id), num(row.streak)]),
+      loyaltyCounts: new Map(
+        loyaltyRows.map((row) => [String(row.id), num(row.count)]),
+      ),
+      loyalSince: new Map(
+        loyaltyRows.flatMap((row) =>
+          row.loyal_since === null
+            ? []
+            : [[String(row.id), String(row.loyal_since)] as [string, string]],
+        ),
+      ),
+      memberCounts: new Map(
+        memberRows.map((row) => [String(row.id), num(row.members)]),
       ),
     };
+  },
+
+  // Historique des atteintes « fidèle » d'un client : les huitièmes commandes
+  // de chaque cycle, de la plus ancienne à la plus récente (fiche client).
+  getCustomerTierEvents: async (customerId: string): Promise<TierEvent[]> => {
+    const found = await rows(sql`
+      with ${loyaltyCycles({ customerId })}
+      select r.id, r.reference, ${isoText("r.created_at")} as reached_at
+      from ranked r
+      where r.rn = ${LOYALTY_THRESHOLD}
+      order by r.created_at, r.id
+    `);
+    return found.map((row) => {
+      const reachedAt = String(row.reached_at);
+      return {
+        reachedAt,
+        expiresAt: tierExpiry(reachedAt),
+        orderId: String(row.id),
+        orderReference: String(row.reference),
+      };
+    });
   },
 };

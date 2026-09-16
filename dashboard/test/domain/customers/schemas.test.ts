@@ -42,7 +42,7 @@ describe("parseCustomerHistoryPeriod", () => {
 });
 
 describe("parseClientsSearch", () => {
-  it("lit recherche, type, tri et page", () => {
+  it("lit recherche, type, tri (avec ou sans sens) et page", () => {
     expect(
       parseClientsSearch({
         q: " amel ",
@@ -50,14 +50,29 @@ describe("parseClientsSearch", () => {
         tri: "recent",
         page: "2",
       }),
-    ).toEqual({ query: "amel", type: "communautes", sort: "recent", page: 2 });
+    ).toEqual({
+      query: "amel",
+      type: "communautes",
+      sort: "recent",
+      order: "decroissant",
+      page: 2,
+    });
+    expect(parseClientsSearch({ tri: "montant-croissant" })).toMatchObject({
+      sort: "montant",
+      order: "croissant",
+    });
+    expect(parseClientsSearch({ tri: "nom-decroissant" })).toMatchObject({
+      sort: "nom",
+      order: "decroissant",
+    });
   });
 
-  it("par défaut : tout le monde, par nom, première page", () => {
+  it("par défaut : tout le monde, par nom croissant, première page", () => {
     expect(parseClientsSearch({})).toEqual({
       query: undefined,
       type: "tous",
       sort: "nom",
+      order: "croissant",
       page: 1,
     });
     expect(parseClientsSearch({ q: "" }).query).toBeUndefined();
@@ -65,8 +80,28 @@ describe("parseClientsSearch", () => {
     expect(parseClientsSearch({ q: "x".repeat(65) }).query).toBeUndefined();
     expect(parseClientsSearch({ type: "autre" }).type).toBe("tous");
     expect(parseClientsSearch({ tri: "prix" }).sort).toBe("nom");
+    expect(parseClientsSearch({ tri: "nom-aleatoire" })).toMatchObject({
+      sort: "nom",
+      order: "croissant",
+    });
     expect(parseClientsSearch({ page: "0" }).page).toBe(1);
     expect(parseClientsSearch({ page: "-3" }).page).toBe(1);
+  });
+
+  it("le tri par membres n'existe que pour les communautés", () => {
+    expect(
+      parseClientsSearch({ type: "communautes", tri: "membres" }),
+    ).toMatchObject({ sort: "membres", order: "decroissant" });
+    expect(
+      parseClientsSearch({ type: "communautes", tri: "membres-croissant" }),
+    ).toMatchObject({ sort: "membres", order: "croissant" });
+    expect(parseClientsSearch({ tri: "membres" })).toMatchObject({
+      sort: "nom",
+      order: "croissant",
+    });
+    expect(
+      parseClientsSearch({ type: "particuliers", tri: "membres" }).sort,
+    ).toBe("nom");
   });
 });
 

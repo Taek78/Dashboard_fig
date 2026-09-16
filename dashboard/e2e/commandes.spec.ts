@@ -23,6 +23,30 @@ test.describe("commandes", () => {
     await expect(history).toContainText("Expédiée");
     await expect(history).toContainText("(depuis en préparation)");
     await expect(history).toContainText(E2E_ACCOUNTS.manager.name);
+
+    // Amel a autorisé les notifications d'état : une est déposée pour l'application.
+    const notifications = page.getByRole("region", {
+      name: "Notifications au client",
+    });
+    await expect(notifications).toContainText(
+      "Votre commande FIG-260907-001 est en route",
+    );
+    await expect(notifications).toContainText("en attente d'envoi");
+
+    // Frais de livraison et adresse dans le détail.
+    await expect(page.getByText("Frais de livraison")).toBeVisible();
+    await expect(page.getByText("12 rue des Lilas")).toBeVisible();
+  });
+
+  test("un client qui n'a pas autorisé les notifications d'état n'en reçoit aucune", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    // cmd-0013 : Mathis, aucune autorisation.
+    await page.goto("/commandes/cmd-0013");
+    await expect(
+      page.getByRole("region", { name: "Notifications au client" }),
+    ).toContainText("n'a pas autorisé les notifications d'état");
   });
 
   test("un statut hors liste blanche n'est pas proposé", async ({ page }) => {

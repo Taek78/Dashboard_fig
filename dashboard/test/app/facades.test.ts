@@ -21,6 +21,7 @@ describe("façades de données", () => {
     ["customers", () => import("@/data/customers")],
     ["engagement", () => import("@/data/engagement")],
     ["messages", () => import("@/data/messages")],
+    ["notifications", () => import("@/data/notifications")],
     ["orders", () => import("@/data/orders")],
     ["products", () => import("@/data/products")],
     ["staff", () => import("@/data/staff")],

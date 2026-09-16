@@ -1,4 +1,5 @@
 import type { CommunityRef } from "@/domain/communities/types";
+import type { NotificationDraft } from "@/domain/notifications/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
 import type { OrderDiscount } from "@/domain/orders/discount";
@@ -32,12 +33,23 @@ export type Order = {
   createdAt: string;
   status: OrderStatus;
   customer: { id: string; fullName: string; email: string; phone: string };
-  /** date "AAAA-MM-JJ", heures "HH:mm" */
+  /** date "AAAA-MM-JJ", heures "HH:mm" ; créneau d'une heure (orders/slot.ts). */
   deliverySlot: { date: string; start: string; end: string };
+  /**
+   * Rue de livraison (instantané au moment de la commande) : celle du client,
+   * ou le lieu de retrait pour une communauté ; null si l'application ne l'a
+   * pas fournie, ou effacée par l'anonymisation RGPD.
+   */
+  deliveryAddressLine: string | null;
   deliveryCity: string;
   deliveryPostalCode: string;
   lines: OrderLine[];
-  /** Total dû : sous-total des lignes moins la remise éventuelle. */
+  /**
+   * Frais de livraison facturés par l'application (instantané ; barème dans
+   * orders/delivery-fee.ts) ; 0 pour une communauté, livraison offerte.
+   */
+  deliveryFeeCents: number;
+  /** Total dû : sous-total des lignes moins la remise, plus les frais de livraison. */
   totalCents: number;
   /** Motif communiqué au client quand la commande est annulée, sinon null. */
   cancellation: Cancellation | null;
@@ -111,4 +123,11 @@ export type StatusChange = {
   to: OrderStatus;
   actor: OrderActor;
   cancellation: Cancellation | null;
+  /**
+   * Notification à déposer pour le client (domain/notifications/rules.ts),
+   * dans la même transaction que le statut, SEULEMENT s'il a autorisé les
+   * notifications d'état de commande : la source relit ce consentement dans
+   * la base, jamais l'action. null = rien à déposer.
+   */
+  notification: NotificationDraft | null;
 };

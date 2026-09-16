@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 
 /*
  * Fidélité d'un client (serveur). Le badge signale que la prochaine commande
- * est à −15 % ; la jauge montre la série en cours (n / 8). La couleur n'est
- * jamais seule : le texte porte l'information.
+ * est à −15 % ; la jauge montre le compteur (n / 8 commandes cumulées). La
+ * couleur n'est jamais seule : le texte porte l'information.
  */
 export function LoyaltyBadge({ status }: { status: LoyaltyStatus }) {
   if (status.rewardReady) {
@@ -23,7 +23,7 @@ export function LoyaltyBadge({ status }: { status: LoyaltyStatus }) {
   }
   return (
     <Badge variant="outline" className="tabular-nums">
-      {status.streak} / {LOYALTY_THRESHOLD} d&apos;affilée
+      {status.count} / {LOYALTY_THRESHOLD} commandes
     </Badge>
   );
 }
@@ -33,7 +33,7 @@ export function LoyaltyGauge({ status }: { status: LoyaltyStatus }) {
   return (
     <div className="flex flex-col gap-2">
       <ol
-        aria-label={`${status.streak} commandes d'affilée sur ${LOYALTY_THRESHOLD}`}
+        aria-label={`${status.count} commandes cumulées sur ${LOYALTY_THRESHOLD}`}
         className="flex gap-1.5"
       >
         {dots.map((n) => (
@@ -42,7 +42,7 @@ export function LoyaltyGauge({ status }: { status: LoyaltyStatus }) {
             aria-hidden="true"
             className={cn(
               "h-2.5 flex-1 rounded-full transition-colors",
-              n <= status.streak ? "bg-gradient-brand" : "bg-muted",
+              n <= status.count ? "bg-gradient-brand" : "bg-muted",
             )}
           />
         ))}
@@ -51,21 +51,21 @@ export function LoyaltyGauge({ status }: { status: LoyaltyStatus }) {
         {status.rewardReady ? (
           <>
             <span className="text-success font-medium">
-              {LOYALTY_THRESHOLD} commandes d&apos;affilée :
+              {LOYALTY_THRESHOLD} commandes cumulées :
             </span>{" "}
             la prochaine commande est à −{LOYALTY_DISCOUNT_PERCENT} % (remise
-            appliquée par l&apos;application).
+            appliquée par l&apos;application), puis le compteur repart de zéro.
           </>
         ) : (
           <>
             <span className="font-medium tabular-nums">
-              {status.streak} commande{status.streak > 1 ? "s" : ""}{" "}
-              d&apos;affilée
+              {status.count} commande{status.count > 1 ? "s" : ""} cumulée
+              {status.count > 1 ? "s" : ""}
             </span>
             <span className="text-muted-foreground">
               {" "}
               · encore {status.remaining} avant −{LOYALTY_DISCOUNT_PERCENT} %.
-              Une annulation remet le compteur à zéro.
+              Une annulation ne compte pas et ne remet pas le compteur à zéro.
             </span>
           </>
         )}

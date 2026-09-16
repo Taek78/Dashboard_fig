@@ -7,5 +7,9 @@ import type { CustomersSource } from "@/domain/customers/source";
  * L'implémentation est PostgreSQL (customers.db.ts) ; la façade fixe le contrat
  * CustomersSource et `server-only` (un composant client qui l'importerait casse le build).
  */
-export const { getCustomers, getCustomer, addNote }: CustomersSource =
-  customersDb;
+export const {
+  getCustomers,
+  getCustomer,
+  getCustomerReferrals,
+  addNote,
+}: CustomersSource = customersDb;

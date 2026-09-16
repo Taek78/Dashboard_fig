@@ -18,10 +18,11 @@ Ce document dit quelles données personnelles la base contient, pourquoi, combie
 
 | Table ou lieu     | Personnes                 | Données                                                                                          | Remarque                                                                    |
 | ----------------- | ------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| `customers`       | clients de l'application  | nom, e-mail, téléphone, ville, code postal, communauté, date de création                         | anonymisables (`anonymized_at`, migration 0007)                             |
+| `customers`       | clients de l'application  | nom, e-mail, téléphone, rue, ville, code postal, communauté, date de création ; autorisations (offres, état de commande, marketing) et date du choix ; code de parrainage (contient le nom) et parrain | anonymisables (`anonymized_at`, migration 0007) : rue, code, parrain et autorisations effacés aussi (migration 0009) |
 | `customer_notes`  | clients, parfois des tiers | texte libre écrit par l'équipe, nom de l'auteur                                                 | supprimées à l'anonymisation ; consigne de minimisation sous le champ       |
-| `orders`          | clients                   | produits, montants, créneau, ville et code postal de livraison, précision libre d'une annulation | conservées après anonymisation (voir 3) ; précisions effacées               |
+| `orders`          | clients                   | produits, montants, frais de livraison, créneau, rue, ville et code postal de livraison, précision libre d'une annulation | conservées après anonymisation (voir 3) ; rue et précisions effacées        |
 | `order_events`    | clients, équipe           | changements de statut, nom de la personne de l'équipe, précision d'annulation                    | précisions effacées à l'anonymisation du client                             |
+| `customer_notifications` | clients            | notifications d'état déposées pour la personne : commande, statut, texte (jamais son nom), dépôt et envoi | seulement si elle a autorisé les notifications d'état ; exportées, puis **supprimées** à l'anonymisation |
 | `customer_messages` | clients, parfois des tiers | objet, texte libre écrit par la personne, commande citée, date ; qui l'a traité et quand      | exportés (droit d'accès) puis **supprimés** à l'anonymisation                |
 | `message_attachments` | clients, parfois des tiers | nom de fichier, format, taille, URL ; le FICHIER est chez l'application FIG                 | supprimées avec leur message ; les fichiers restent à effacer par l'application (question 19) |
 | `communities`     | référents des communautés | nom, e-mail, téléphone du contact                                                                | lecture seule dans le dashboard (question 15)                               |
@@ -33,8 +34,10 @@ Ce document dit quelles données personnelles la base contient, pourquoi, combie
 | sauvegardes       | tous                      | copie complète de la base (`npm run db:backup`)                                                  | rotation à définir (question 18) ; voir 4.3                                 |
 
 Ce que la base ne contient pas, volontairement :
-- ni adresse complète, ni coordonnées GPS (question 13) ;
+- ni coordonnées GPS, ni instructions d'accès (question 13) : la rue seule, telle que l'application la transmet ;
 - ni moyen de paiement, ni date de naissance, ni donnée de santé.
+
+**Consentements.** Les trois autorisations (`notify_offers`, `notify_order_status`, `marketing_consent`) sont recueillies par l'application FIG, qui date le dernier choix (`consents_updated_at`, preuve exigée par l'article 7.1). Le dashboard les lit et ne les modifie jamais ; il n'envoie rien lui-même : il **dépose** une notification d'état de commande dans une file quand la personne l'a autorisé, et l'application l'envoie (question 23).
 
 Aucune donnée réelle ne se trouve sur un poste de développement : les fixtures sont inventées et les adresses utilisent le domaine `.invalid`.
 
@@ -46,6 +49,8 @@ Aucune donnée réelle ne se trouve sur un poste de développement : les fixture
 | Commandes conservées après anonymisation      | justifier la comptabilité                                         | obligation légale (article 6.1.c), exception au droit à l'effacement (article 17.3.b)   | anciens clients          | 10 ans (article L123-22 du Code de commerce), **si** le comptable confirme que ces commandes sont des pièces justificatives ; accès restreint à l'équipe |
 | Notes internes sur les clients                | qualité du service (accès, préférences de livraison)              | intérêt légitime (article 6.1.f)                                                        | clients                  | comme le client ; supprimées à l'anonymisation                                                                        |
 | Messages « Nous contacter » et pièces jointes | traiter les réclamations et les questions des clients             | exécution du contrat (article 6.1.b)                                                    | clients                  | comme le client ; supprimés à l'anonymisation. Durée propre à fixer (question 22) : une réclamation traitée n'a pas à être gardée aussi longtemps qu'une facture |
+| Notifications d'état de commande              | prévenir la personne de l'avancement de sa commande               | consentement (article 6.1.a), recueilli par l'application                               | clients                  | comme le client ; supprimées à l'anonymisation. Durée propre à fixer (question 23) : une notification envoyée n'a plus d'utilité |
+| Parrainage                                    | rattacher un nouveau client à celui dont il a saisi le code       | exécution du contrat (article 6.1.b) ; les conditions du parrainage sont celles de l'application | clients                  | comme le client ; code et parrain effacés à l'anonymisation ; les filleuls restent rattachés à la ligne pseudonyme |
 | Organisation de l'équipe                      | affecter préparateurs et livreurs, plannings                      | exécution du contrat de travail (article 6.1.b)                                         | équipe                   | à définir avec le client (question 20)                                                                                |
 | Comptes et sécurité du back-office            | authentifier, limiter les accès, détecter et analyser un incident | intérêt légitime (article 6.1.f), au service de l'obligation de sécurité (article 32)    | utilisateurs, visiteurs  | journal de sécurité 12 mois, tentatives de connexion 24 h                                                              |
 | Preuves des demandes RGPD traitées            | démontrer le respect des droits (article 5.2)                     | obligation légale (article 6.1.c)                                                       | clients                  | à fixer (question 18) ; identifiant et date seulement                                                                  |
@@ -62,12 +67,14 @@ La demande arrive chez FIG. Le délai de réponse est d'un mois, prolongeable de
 
 Fiche client → encart « Données personnelles (RGPD) » → **Exporter les données**. Le fichier JSON `fig-client-<id>-<jour>.json` contient :
 
-- la fiche du client ;
+- la fiche du client, avec sa rue, ses trois autorisations et la date de son dernier choix, son code de parrainage, le fait qu'elle ait été parrainée et le nombre de ses filleuls ;
+- sa catégorie (basique ou fidèle) à l'instant de l'export et l'historique daté de ses atteintes ;
 - les notes internes (la personne a le droit d'en avoir connaissance) ;
-- toutes les commandes, avec leurs lignes, remises, annulations et l'historique de leurs statuts ;
-- tous ses messages « Nous contacter », avec l'objet en clair, le texte, la commande qu'elle avait jointe, la liste de ses pièces jointes (nom, format, taille, URL) et le fait que la demande ait été traitée.
+- toutes les commandes, avec leurs lignes, remises, frais de livraison, rue de livraison, annulations et l'historique de leurs statuts ;
+- tous ses messages « Nous contacter », avec l'objet en clair, le texte, la commande qu'elle avait jointe, la liste de ses pièces jointes (nom, format, taille, URL) et le fait que la demande ait été traitée ;
+- toutes les notifications d'état déposées pour elle, avec leur date de dépôt et d'envoi.
 
-Il ne contient pas les noms des membres de l'équipe, qui sont les données d'autres personnes (article 15.4) — y compris le nom de la personne qui a traité un message. Il ne contient pas non plus les marques d'organisation interne de la boîte de réception (épingle, « important ») : elles disent comment l'équipe range son travail, pas ce qu'elle sait de la personne.
+Il ne contient pas les noms des membres de l'équipe, qui sont les données d'autres personnes (article 15.4) — y compris le nom de la personne qui a traité un message. Ni le nom de son parrain, ni ceux de ses filleuls, pour la même raison : seulement « parrainée : oui/non » et un nombre. Il ne contient pas non plus les marques d'organisation interne de la boîte de réception (épingle, « important ») : elles disent comment l'équipe range son travail, pas ce qu'elle sait de la personne.
 
 **Relire avant envoi.** Les notes et les précisions d'annulation sont du texte libre : elles peuvent nommer un tiers ou un membre de l'équipe. Il faut masquer ces passages avant de transmettre le fichier.
 
@@ -84,8 +91,8 @@ Les coordonnées d'un client viennent de l'application FIG, qui en est la source
 Fiche client → **Anonymiser ce client** → taper `ANONYMISER`. L'opération est irréversible et se fait en une transaction (`src/db/privacy.ts`).
 
 - **Refus si commande ouverte** : l'anonymisation est **refusée tant qu'une commande est en préparation ou expédiée**. La livraison a besoin des coordonnées, et une annulation postérieure pourrait réécrire un texte nominatif. Il faut attendre la livraison ou l'annulation.
-- **Effacé** : nom, e-mail, téléphone, ville et code postal, adhésion à une communauté, notes internes, précisions libres des annulations, et **tous ses messages « Nous contacter »** avec leurs pièces jointes (un message est du texte écrit par la personne, souvent nominatif : le garder viderait l'anonymisation de son sens). Les fichiers joints, eux, sont hébergés par l'application FIG : à elle de les effacer (question 19).
-- **Conservé** : les commandes, leurs produits, montants, créneaux, ville et code postal de livraison, leur historique, et l'identifiant technique (voir section 3).
+- **Effacé** : nom, e-mail, téléphone, rue, ville et code postal, adhésion à une communauté, code de parrainage et parrain, les trois autorisations et leur date, notes internes, la rue de livraison et les précisions libres des annulations de ses commandes, **tous ses messages « Nous contacter »** avec leurs pièces jointes (un message est du texte écrit par la personne, souvent nominatif : le garder viderait l'anonymisation de son sens) et **toutes les notifications déposées pour elle**. Les fichiers joints, eux, sont hébergés par l'application FIG : à elle de les effacer (question 19).
+- **Conservé** : les commandes, leurs produits, montants, frais, créneaux, ville et code postal de livraison, leur historique, l'identifiant technique (voir section 3), et le rattachement de ses filleuls à cette ligne pseudonyme (leur fiche affiche « Client anonymisé » comme parrain).
 - **Rejouer la demande** sur un client déjà anonymisé refait le nettoyage des textes libres.
 - **Journal** : `customer_anonymized`, jamais supprimé par la purge.
 
@@ -179,6 +186,10 @@ Ces questions sont reprises dans `docs/backlog.md`.
   - où l'application stocke-t-elle les pièces jointes, et sous quelles URL (publiques mais imprévisibles, ou signées à durée limitée) ? Le dashboard n'en garde que l'adresse ;
   - combien de temps garder un message traité, et ses fichiers ?
   - l'application efface-t-elle les fichiers quand un client est anonymisé ici ?
+- **Question 23**, notifications d'état de commande :
+  - par quel canal l'application les envoie-t-elle (notification du téléphone, e-mail, SMS) et lit-elle bien la file `customer_notifications` (lignes sans `sent_at`) pour poser `sent_at` ?
+  - combien de temps garder une notification envoyée ?
+  - l'application transmet-elle la date de chaque choix d'autorisation (`consents_updated_at`), preuve du consentement ?
 - **Question 21** :
   - contrat de sous-traitance (article 28) ;
   - hébergeur et localisation des données ;

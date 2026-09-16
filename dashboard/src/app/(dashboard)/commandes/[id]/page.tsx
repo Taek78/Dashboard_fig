@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { getCustomer } from "@/data/customers";
+import { getOrderNotifications } from "@/data/notifications";
 import { getOrder, getOrderEvents } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
@@ -22,6 +24,8 @@ import { formatSlot } from "@/lib/format";
  *   dans un try/catch.
  * - La session permet de masquer le formulaire au rôle lecture ;
  *   ce n'est qu'un confort, l'action revérifie le rôle.
+ * - Les notifications déposées pour le client et son autorisation (relue sur
+ *   sa fiche) sont lues en parallèle avec l'historique et l'équipe.
  * - Titre statique : un titre avec la référence exigerait un second getOrder (parking).
  */
 export const metadata: Metadata = { title: "Détail de la commande" };
@@ -35,8 +39,10 @@ export default async function CommandePage({
 
   const order = await getOrder(parsed.data);
   if (!order) notFound();
-  const [events, user, staff] = await Promise.all([
+  const [events, notifications, customer, user, staff] = await Promise.all([
     getOrderEvents(order.id),
+    getOrderNotifications(order.id),
+    getCustomer(order.customer.id),
     getCurrentUser(),
     listStaff(),
   ]);
@@ -60,6 +66,8 @@ export default async function CommandePage({
       <OrderDetail
         order={order}
         events={events}
+        notifications={notifications}
+        notifyOrderStatus={customer?.consents.orderStatus ?? false}
         canEdit={canChangeOrderStatus(user.role)}
         canAssign={canAssignStaff(user.role)}
         options={assignmentOptions(staff)}

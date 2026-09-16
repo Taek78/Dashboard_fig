@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ShoppingBasket } from "lucide-react";
 import { MessageActions } from "@/components/messages/message-actions";
 import { MessageAttachments } from "@/components/messages/message-attachments";
 import {
@@ -7,15 +5,18 @@ import {
   MESSAGE_STATUS_ACCENT,
   MessageStatusBadge,
   MessageSubjectBadge,
+  messageSurfaceClass,
   PinnedBadge,
 } from "@/components/messages/message-badges";
+import { MessageOrderDetails } from "@/components/messages/message-order";
 import type { Message } from "@/domain/messages/types";
 import { formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
- * Le message complet (serveur) : objet, étiquettes, texte intégral, commande
- * citée, pièces jointes, puis les actions de traitement.
+ * Le message complet (serveur) : objet, étiquettes, commande jointe (dates,
+ * adresse, préparateur, livreur), texte intégral, pièces jointes, puis les
+ * actions de traitement. Important = fond en dégradé rouge, comme la carte.
  *
  * Le corps est rendu en `whitespace-pre-wrap` : les retours à la ligne sont
  * ceux que la personne a tapés, et rien n'est interprété comme du balisage
@@ -34,7 +35,7 @@ export function MessageDetail({
       className={cn(
         "bg-card text-card-foreground flex flex-col gap-4 rounded-2xl border-l-4 p-4 shadow-sm ring-1 @2xl/main:p-5",
         MESSAGE_STATUS_ACCENT[message.status],
-        message.important ? "ring-destructive/30" : "ring-foreground/10",
+        messageSurfaceClass(message.important),
       )}
     >
       <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
@@ -62,18 +63,7 @@ export function MessageDetail({
         </div>
       </div>
 
-      {message.order ? (
-        <p className="bg-muted/40 flex flex-wrap items-center gap-1.5 rounded-xl px-3 py-2 text-sm">
-          <ShoppingBasket className="size-4 shrink-0" aria-hidden="true" />
-          Commande jointe par le client :
-          <Link
-            href={`/commandes/${message.order.id}`}
-            className="font-mono font-semibold underline-offset-4 hover:underline"
-          >
-            {message.order.reference}
-          </Link>
-        </p>
-      ) : null}
+      {message.order ? <MessageOrderDetails order={message.order} /> : null}
 
       <p className="text-base [overflow-wrap:anywhere] whitespace-pre-wrap">
         {message.body}

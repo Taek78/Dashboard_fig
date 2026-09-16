@@ -1,5 +1,6 @@
 import type { Customer } from "@/domain/customers/types";
 import type { Message } from "@/domain/messages/types";
+import type { CustomerNotification } from "@/domain/notifications/types";
 import type { Order, OrderEvent } from "@/domain/orders/types";
 import type { AnonymizeOutcome } from "@/domain/privacy/anonymization";
 
@@ -8,8 +9,9 @@ import type { AnonymizeOutcome } from "@/domain/privacy/anonymization";
  * (src/data/privacy.db.ts). Types seulement.
  * - getCustomerExportData : tout ce que la base garde sur la personne (fiche,
  *   notes, commandes, historique des statuts, messages « Nous contacter » et
- *   leurs pièces jointes) ; borné par la personne, jamais paginé : un export au
- *   titre du droit d'accès doit être complet ;
+ *   leurs pièces jointes, notifications déposées, nombre de filleuls) ; borné
+ *   par la personne, jamais paginé : un export au titre du droit d'accès doit
+ *   être complet ;
  * - anonymizeCustomer : écriture conditionnelle (seulement si pas encore
  *   anonymisé), en une transaction ; `at` vient de l'horloge du serveur.
  */
@@ -18,6 +20,9 @@ export type CustomerExportData = {
   orders: Order[];
   events: OrderEvent[];
   messages: Message[];
+  notifications: CustomerNotification[];
+  /** Nombre de filleuls : les tiers ne sont pas nommés dans l'export. */
+  referralCount: number;
 };
 
 export type PrivacySource = {

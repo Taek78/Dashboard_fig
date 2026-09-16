@@ -1,18 +1,24 @@
+import { communityDiscountPercent } from "@/domain/communities/discount";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import type { Community, CommunityRef } from "@/domain/communities/types";
 import {
   LOYALTY_DISCOUNT_PERCENT,
   LOYALTY_THRESHOLD,
 } from "@/domain/customers/loyalty";
+import { referralCodeFor } from "@/domain/customers/referral";
 import { scenarioCustomers } from "@/domain/customers/scenario";
-import type { Customer } from "@/domain/customers/types";
+import type { Customer, CustomerConsents } from "@/domain/customers/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
+import { deliveryFeeCents } from "@/domain/orders/delivery-fee";
 import {
+  bestDiscount,
   discountAmountCents,
   type OrderDiscount,
 } from "@/domain/orders/discount";
+import { computeOrderTotalCents } from "@/domain/orders/rules";
 import { scenarioOrders } from "@/domain/orders/scenario";
+import { slotEndFor } from "@/domain/orders/slot";
 import type { OrderStatus } from "@/domain/orders/status";
 import type { Order, OrderLine } from "@/domain/orders/types";
 import { productsFixtures } from "@/domain/products/fixtures";
@@ -37,15 +43,21 @@ import type { StaffMember } from "@/domain/staff/types";
  * - l'équipe (src/domain/staff/fixtures.ts) affectée aux commandes à partir
  *   de la date d'entrée de chacun : préparateur dès la préparation, livreur
  *   dès la livraison ;
- * - trois communautés (src/domain/communities/fixtures.ts) dont les membres
- *   sont livrés au point de retrait avec la remise de la communauté ;
- * - la fidélité : après huit commandes d'affilée, la suivante porte la remise
- *   de 15 % (src/domain/customers/loyalty.ts), hors communautés.
+ * - trois communautés (src/domain/communities/fixtures.ts) de onze, huit et
+ *   trois membres, livrés au point de retrait sans frais, avec la remise que
+ *   leur nombre de membres donne (communities/discount.ts) ;
+ * - des créneaux d'une heure (orders/slot.ts) et des frais de livraison au
+ *   barème (orders/delivery-fee.ts) pour les particuliers ;
+ * - la fidélité, membres compris : après huit commandes cumulées, la suivante
+ *   porte la remise de 15 % (src/domain/customers/loyalty.ts), qui remplace
+ *   celle de la communauté, plus faible ;
+ * - des adresses, des autorisations et des codes de parrainage pour chaque
+ *   client, quelques filleuls des clients du scénario.
  *
  * La fenêtre du 5 au 9 septembre 2026 est laissée aux commandes du scénario
  * (src/domain/orders/scenario.ts), écrites à la main pour les tests et la démo.
  * Aucune personne réelle : e-mails en @example.invalid, téléphones dans la
- * tranche de fiction 06 39 98 xx xx, adresses réduites à ville et code postal.
+ * tranche de fiction 06 39 98 xx xx, rues et numéros tirés de listes.
  */
 export const HISTORY_FROM = "2025-01-01";
 export const HISTORY_TO = "2026-09-14";
@@ -176,16 +188,37 @@ const CITIES = [
   ["94200", "Ivry-sur-Seine"],
   ["94300", "Vincennes"],
 ] as const;
+/** Rues de quartier, sans lien avec une personne ; le numéro vient du rang. */
+const STREETS = [
+  "rue des Lilas",
+  "avenue de la République",
+  "rue Jean-Jaurès",
+  "boulevard Voltaire",
+  "rue de la Mairie",
+  "allée des Peupliers",
+  "rue Victor-Hugo",
+  "rue des Écoles",
+  "avenue Pasteur",
+  "rue du Moulin",
+];
 
 /**
  * Membres des communautés : rangs (parmi les 110 clients générés) rattachés à
- * chaque communauté. Les autres clients sont des particuliers.
+ * chaque communauté. Onze, huit et trois membres : un par palier de remise.
+ * Les autres clients sont des particuliers.
  */
 const COMMUNITY_MEMBER_RANKS: Record<string, readonly number[]> = {
-  "com-0001": [20, 21, 22, 23, 24, 25, 26, 27, 28],
+  "com-0001": [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
   "com-0002": [40, 41, 42, 43, 44, 45, 46, 47],
-  "com-0003": [70, 71, 72, 73, 74, 75, 76],
+  "com-0003": [70, 71, 72],
 };
+
+/** Taux annoncé d'une communauté d'après ses membres générés. */
+function discountPercentOf(community: Community): number {
+  return communityDiscountPercent(
+    COMMUNITY_MEMBER_RANKS[community.id]?.length ?? 0,
+  );
+}
 
 function slug(text: string): string {
   return text
@@ -195,8 +228,12 @@ function slug(text: string): string {
     .toLowerCase();
 }
 
-type Draft = Omit<Customer, "createdAt" | "notes" | "anonymizedAt"> & {
+type Draft = Omit<
+  Customer,
+  "createdAt" | "notes" | "anonymizedAt" | "consents"
+> & {
   weight: number;
+  consents: Omit<CustomerConsents, "updatedAt">;
 };
 
 function communityFor(rank: number): Community | null {
@@ -212,9 +249,13 @@ function buildCustomers(random: () => number): Draft[] {
     fullName: c.fullName,
     email: c.email,
     phone: c.phone,
+    addressLine: c.addressLine,
     city: c.city,
     postalCode: c.postalCode,
     community: null,
+    consents: c.consents,
+    referralCode: c.referralCode,
+    referredBy: c.referredBy,
     // Les clients du scénario sont la clientèle fidèle de départ.
     weight: 4,
   }));
@@ -232,14 +273,27 @@ function buildCustomers(random: () => number): Draft[] {
     const [postalCode, city] = CITIES[Math.floor(random() * CITIES.length)]!;
     const n = 100 + i; // 06 39 98 01 00 … : tranche réservée à la fiction
     const community = communityFor(i);
+    const fullName = `${first} ${last}`;
+    // Un client sur dix a saisi le code d'un client du scénario à l'inscription.
+    const referrer = i % 10 === 3 ? scenarioCustomers[i % 12]! : null;
     drafts.push({
       id: `cli-g-${pad(i + 1, 3)}`,
-      fullName: `${first} ${last}`,
+      fullName,
       email,
       phone: `06 39 98 ${pad(Math.floor(n / 100))} ${pad(n % 100)}`,
+      addressLine: `${1 + ((i * 7) % 60)} ${STREETS[i % STREETS.length]}`,
       city,
       postalCode,
       community: community ? { id: community.id, name: community.name } : null,
+      consents: {
+        offers: i % 3 !== 0,
+        orderStatus: i % 4 !== 1,
+        marketing: i % 5 === 0,
+      },
+      referralCode: referralCodeFor(fullName, 1000 + i),
+      referredBy: referrer
+        ? { id: referrer.id, fullName: referrer.fullName }
+        : null,
       // Quelques clients très réguliers, beaucoup d'occasionnels ; les membres
       // d'une communauté commandent régulièrement.
       weight: community ? 1.2 + random() : 0.3 + 3 * random() ** 2,
@@ -274,12 +328,16 @@ function pickWeighted<T>(
   return items[items.length - 1]!;
 }
 
-const SLOTS = [
-  ["09:00", "11:00"],
-  ["11:00", "13:00"],
-  ["14:00", "16:00"],
-  ["16:00", "18:00"],
-  ["18:00", "20:00"],
+/** Débuts des créneaux d'une heure proposés par l'application. */
+const SLOT_STARTS = [
+  "09:00",
+  "10:00",
+  "11:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
 ] as const;
 const GRAMS = [500, 750, 1000, 1500, 2000, 3000];
 const OTHER_DETAILS = [
@@ -393,39 +451,49 @@ function pickStaff(
 
 /* ---------- Fidélité ---------- */
 /**
- * Seconde passe : pour chaque client hors communauté, rejoue ses commandes
- * dans l'ordre de passation (createdAt, la règle de loyaltyStatus) et pose la
- * remise fidélité sur la commande qui suit huit commandes d'affilée. Modifie
- * les commandes en place (discount et totalCents).
+ * Seconde passe : pour chaque client, membres de communauté compris, rejoue
+ * ses commandes dans l'ordre de passation (createdAt, la règle de
+ * loyaltyCount) et pose la remise fidélité sur la commande qui suit huit
+ * commandes cumulées ; une annulée ne compte pas et ne remet rien à zéro. La
+ * remise fidélité remplace celle de la communauté (bestDiscount). Modifie les
+ * commandes en place (discount et totalCents).
  */
 function applyLoyalty(orders: Order[]): void {
   const byCustomer = new Map<string, Order[]>();
   for (const o of orders) {
-    if (o.community) continue;
     byCustomer.set(o.customer.id, [
       ...(byCustomer.get(o.customer.id) ?? []),
       o,
     ]);
   }
   for (const list of byCustomer.values()) {
-    let streak = 0;
+    let count = 0;
     for (const o of list.toSorted(
       (a, b) =>
         a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
     )) {
-      if (streak >= LOYALTY_THRESHOLD) {
-        const subtotal = o.totalCents;
-        o.discount = {
-          kind: "loyalty",
-          percent: LOYALTY_DISCOUNT_PERCENT,
-          amountCents: discountAmountCents(subtotal, LOYALTY_DISCOUNT_PERCENT),
-        };
-        o.totalCents = subtotal - o.discount.amountCents;
-        streak = 0;
-      } else if (o.status === "cancelled") {
-        streak = 0;
+      if (o.status === "cancelled") continue;
+      if (count >= LOYALTY_THRESHOLD) {
+        const subtotal = o.lines.reduce((s, l) => s + l.lineTotalCents, 0);
+        const best = bestDiscount(
+          true,
+          o.discount?.kind === "community" ? o.discount.percent : null,
+        );
+        if (best?.kind === "loyalty") {
+          o.discount = {
+            kind: "loyalty",
+            percent: LOYALTY_DISCOUNT_PERCENT,
+            amountCents: discountAmountCents(subtotal, best.percent),
+          };
+          o.totalCents = computeOrderTotalCents(
+            o.lines,
+            o.discount,
+            o.deliveryFeeCents,
+          );
+        }
+        count = 0;
       } else {
-        streak += 1;
+        count += 1;
       }
     }
   }
@@ -458,28 +526,27 @@ function build(): { customers: Customer[]; orders: Order[] } {
       // Le créneau est choisi à chaque commande dans l'application, retrait
       // en communauté compris ; pour un membre il est tiré sans consommer
       // l'aléa, pour garder le reste du jeu de données identique.
-      const [start, end] = community
-        ? SLOTS[(index + seq) % SLOTS.length]!
-        : SLOTS[Math.floor(random() * SLOTS.length)]!;
-      const slot = { start, end };
+      const start = community
+        ? SLOT_STARTS[(index + seq) % SLOT_STARTS.length]!
+        : SLOT_STARTS[Math.floor(random() * SLOT_STARTS.length)]!;
       const createdDay = addDays(day, -(1 + Math.floor(random() * 3)));
       const createdHour = 7 + Math.floor(random() * 14);
       const lines = buildLines(month, random);
       const subtotal = lines.reduce((s, l) => s + l.lineTotalCents, 0);
       const { status, cancellation } = statusFor(day, random);
 
-      // Remise de communauté ici ; la fidélité est posée en seconde passe
-      // (applyLoyalty), dans l'ordre où les commandes ont été passées.
-      const discount: OrderDiscount | null = community
-        ? {
-            kind: "community",
-            percent: community.discountPercent,
-            amountCents: discountAmountCents(
-              subtotal,
-              community.discountPercent,
-            ),
-          }
-        : null;
+      // Remise de communauté ici (selon ses membres) ; la fidélité est posée
+      // en seconde passe (applyLoyalty), dans l'ordre de passation.
+      const percent = community ? discountPercentOf(community) : 0;
+      const discount: OrderDiscount | null =
+        community && percent > 0
+          ? {
+              kind: "community",
+              percent,
+              amountCents: discountAmountCents(subtotal, percent),
+            }
+          : null;
+      const fee = deliveryFeeCents(subtotal, community !== null);
 
       index += 1;
       if (!firstOrderDate.has(customer.id))
@@ -499,13 +566,17 @@ function build(): { customers: Customer[]; orders: Order[] } {
           email: customer.email,
           phone: customer.phone,
         },
-        deliverySlot: { date: day, start: slot.start, end: slot.end },
+        deliverySlot: { date: day, start, end: slotEndFor(start) },
+        deliveryAddressLine: community
+          ? community.pickupPlace
+          : customer.addressLine,
         deliveryCity: community ? community.pickupCity : customer.city,
         deliveryPostalCode: community
           ? community.pickupPostalCode
           : customer.postalCode,
         lines,
-        totalCents: subtotal - (discount?.amountCents ?? 0),
+        deliveryFeeCents: fee,
+        totalCents: computeOrderTotalCents(lines, discount, fee),
         community: communityRef,
         discount,
         preparer: PREPARED_STATUSES.includes(status)
@@ -520,22 +591,30 @@ function build(): { customers: Customer[]; orders: Order[] } {
 
   applyLoyalty(orders);
 
-  // Seuls les clients générés ayant commandé existent ; créés peu avant leur première commande.
+  // Seuls les clients générés ayant commandé existent ; créés peu avant leur
+  // première commande, autorisations datées de ce jour-là.
   const scenarioIds = new Set(scenarioCustomers.map((c) => c.id));
   const customers: Customer[] = drafts
     .filter((d) => !scenarioIds.has(d.id) && firstOrderDate.has(d.id))
-    .map((d) => ({
-      id: d.id,
-      fullName: d.fullName,
-      email: d.email,
-      phone: d.phone,
-      city: d.city,
-      postalCode: d.postalCode,
-      createdAt: `${addDays(firstOrderDate.get(d.id)!, -(5 + Math.floor(random() * 55)))}T09:00:00.000Z`,
-      community: d.community,
-      notes: [],
-      anonymizedAt: null,
-    }));
+    .map((d) => {
+      const createdAt = `${addDays(firstOrderDate.get(d.id)!, -(5 + Math.floor(random() * 55)))}T09:00:00.000Z`;
+      return {
+        id: d.id,
+        fullName: d.fullName,
+        email: d.email,
+        phone: d.phone,
+        addressLine: d.addressLine,
+        city: d.city,
+        postalCode: d.postalCode,
+        createdAt,
+        community: d.community,
+        consents: { ...d.consents, updatedAt: createdAt },
+        referralCode: d.referralCode,
+        referredBy: d.referredBy,
+        notes: [],
+        anonymizedAt: null,
+      };
+    });
   return { customers, orders };
 }
 

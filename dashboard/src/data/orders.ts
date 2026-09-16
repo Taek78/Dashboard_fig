@@ -24,4 +24,5 @@ export const {
   getStaffWorkSummaries,
   getStaffWorkSummary,
   getDirectoryStats,
+  getCustomerTierEvents,
 }: OrdersSource = ordersDb;

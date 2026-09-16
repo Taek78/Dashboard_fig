@@ -17,24 +17,27 @@ Conventions communes : montants en centimes entiers, quantités en grammes ou pi
 | `getStaffWorkSummaries()` | | `Map<staffId, StaffWorkSummary>` | affectées, préparées, livrées, en cours, dernière activité |
 | `getStaffWorkSummary(staffId)` | identifiant | `StaffWorkSummary` (zéros sans commande) | index préparateur et livreur |
 | `getDeliveryDayCounts(range)` | `{ from, to }` | `Map<jour, nombre>` | raccourcis de la tournée |
-| `getDirectoryStats(scope?)` | `{ customerId? , communityId? }` | `DirectoryStats` : chiffres par client, par communauté, série de fidélité | trois requêtes agrégées, tout l'annuaire ou une fiche ; `loyaltyFromStreak` |
+| `getDirectoryStats(scope?)` | `{ customerId? , communityId? }` | `DirectoryStats` : chiffres par client, par communauté, compteur de fidélité, date de la dernière catégorie « fidèle », membres par communauté | quatre requêtes agrégées (fenêtres pour la fidélité), tout l'annuaire ou une fiche ; `loyaltyFromCount`, `tierFromReachedAt` |
+| `getCustomerTierEvents(customerId)` | `id` du client | `TierEvent[]` du plus ancien au plus récent | l'historique daté des atteintes « fidèle » (huitième commande de chaque cycle) ; même règle que `loyalTierEvents` |
 | `getOrder(id)`                  | `id`                                                  | `Order \| null`                                      |                                                                                                                                                                               |
-| `updateOrderStatus(id, change)` | `{ from, to, actor, cancellation }`                   | `Order \| null`                                      | conditionnelle : `null` si le statut n'est plus `from` ; écrit l'événement d'historique dans la même transaction ; `cancellation` posé sur la commande quand `to = cancelled` |
+| `updateOrderStatus(id, change)` | `{ from, to, actor, cancellation, notification }`     | `Order \| null`                                      | conditionnelle : `null` si le statut n'est plus `from` ; écrit l'événement d'historique dans la même transaction, puis dépose `notification` dans `customer_notifications` **seulement si** `customers.notify_order_status` ; `cancellation` posé sur la commande quand `to = cancelled` |
 | `getOrderEvents(orderId)`       | `orderId`                                             | `OrderEvent[]` du plus récent au plus ancien         |                                                                                                                                                                               |
 
-`Order` : `id`, `reference` (unique), `createdAt`, `status` (`preparing | delivering | delivered | cancelled`), `customer { id, fullName, email, phone }`, `deliverySlot { date, start, end }`, `deliveryCity`, `deliveryPostalCode`, `lines[] { productId, productName, quantity, unit, lineTotalCents }` (instantané au moment de l'achat), `totalCents`, `cancellation { reason, detail } | null`.
+`Order` : `id`, `reference` (unique), `createdAt`, `status` (`preparing | delivering | delivered | cancelled`), `customer { id, fullName, email, phone }`, `deliverySlot { date, start, end }` (une heure pile), `deliveryAddressLine | null` (rue, instantané), `deliveryCity`, `deliveryPostalCode`, `lines[] { productId, productName, quantity, unit, lineTotalCents }` (instantané au moment de l'achat), `deliveryFeeCents` (0 pour une communauté), `totalCents` (lignes − remise + frais), `cancellation { reason, detail } | null`.
 
 `OrderEvent` : `id`, `orderId`, `from`, `to`, `actor { id, name }`, `cancellation | null`, `at`.
 
 Sources de vérité côté application FIG, à respecter au branchement :
 
-- la **remise** (`discount`) est celle réellement appliquée au **paiement** dans l'application ; le dashboard l'affiche et ne la calcule jamais (le taux d'une communauté n'est qu'annoncé) ;
-- le **créneau** (`deliverySlot`) d'une commande de communauté est l'horaire de retrait choisi par le client **à chaque commande** ; une communauté n'a pas d'heure fixe ;
+- la **remise** (`discount`) est celle réellement appliquée au **paiement** dans l'application ; le dashboard l'affiche et ne la calcule jamais. Il annonce ce qu'il attend : le taux d'une communauté selon ses membres (rien jusqu'à 3, −5 % de 4 à 9, −10 % dès 10), la fidélité −15 % à la commande qui suit huit commandes cumulées, et **la plus forte des deux seulement** ;
+- les **frais de livraison** (`deliveryFeeCents`) sont ceux facturés par l'application, au barème du panier avant remise (4,90 € sous 5 €, 3,90 € dès 5 €, 2,90 € dès 10 €, 1,90 € dès 20 €), toujours 0 pour une communauté (la base le refuse sinon) ;
+- le **créneau** (`deliverySlot`) est d'une heure pile (la base refuse le reste) ; pour une commande de communauté, c'est l'horaire de retrait choisi par le client **à chaque commande**, une communauté n'a pas d'heure fixe ;
+- la **rue de livraison** (`deliveryAddressLine`) est copiée sur la commande par l'application (celle du client, ou le lieu de retrait) ;
 - une commande reçue est **en préparation** d'emblée (ni « confirmée » ni « en attente ») ; elle passe à **expédiée** (`delivering`) puis **livrée** ; l'annulation, avec motif, n'est possible qu'en préparation.
 
 ## Livraisons
 
-Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure ; les raccourcis des 7 derniers jours viennent de `getDeliveryDayCounts`. Les colonnes `search_text` et `phone_digits` sont calculées par la base : l'application FIG ne les écrit jamais. L'adresse de rue n'existe pas encore (question 13).
+Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jours au plus et des règles pures (`tourRange`, `groupOrdersByDay`, `recentDeliveryDays`, `tourProgress`, `nextStopIndex`, `nextDeliveryStep`, `itineraryUrl`). La recherche libre des commandes (`matchesOrderQuery`) est reproduite en SQL (sans accents, chiffres du téléphone) et testée contre la règle pure ; les raccourcis des 7 derniers jours viennent de `getDeliveryDayCounts`. Les colonnes `search_text` et `phone_digits` sont calculées par la base : l'application FIG ne les écrit jamais. L'itinéraire utilise la rue de livraison quand la commande la porte ; coordonnées GPS et instructions d'accès restent à décider (question 13).
 
 ## Catalogue (`ProductsSource`)
 
@@ -53,10 +56,28 @@ Pas de source propre : la tournée est `getOrders({ from, to, … })` sur 7 jour
 | Fonction                    | Entrées                           | Sortie                     | Notes                                                                        |
 | --------------------------- | --------------------------------- | -------------------------- | ---------------------------------------------------------------------------- |
 | `getCustomers(query?)`      | texte libre                       | `Customer[]` triés par nom | recherche nom, e-mail, chiffres du téléphone, en mémoire après chargement    |
-| `getCustomer(id)`           | `id`                              | `Customer \| null`         | avec ses notes, de la plus ancienne à la plus récente                        |
+| `getCustomer(id)`           | `id`                              | `Customer \| null`         | avec ses notes, de la plus ancienne à la plus récente, et son parrain        |
+| `getCustomerReferrals(customerId)` | `id` du client             | `CustomerReferral[]`       | ses filleuls (ceux qui ont saisi son code), du plus ancien au plus récent ; fiche seulement |
 | `addNote(customerId, note)` | `{ text, authorName, createdAt }` | `CustomerNote \| null`     | auteur et date viennent de l'action (session, horloge), jamais du formulaire |
 
-`Customer` : `id`, `fullName`, `email`, `phone`, `city`, `postalCode`, `createdAt`, `notes[] { id, text, authorName, createdAt }`, `anonymizedAt` (ISO ou `null`). Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne dans l'application, mais figurent dans l'export de ses données. Un client anonymisé a un nom neutre, un e-mail `anonyme-<id>@anonyme.invalid` et un téléphone vide : l'application FIG ne doit ni le réécrire ni le recréer depuis sa copie (question 19). La section Clients assemble particuliers et communautés en un annuaire (`buildDirectory`, `filterDirectory`, `sortDirectory`) à partir des chiffres agrégés par la base (`getDirectoryStats`).
+`Customer` : `id`, `fullName`, `email`, `phone`, `addressLine | null` (rue), `city`, `postalCode`, `createdAt`, `community | null`, `consents { offers, orderStatus, marketing, updatedAt | null }`, `referralCode | null` (« Nom#0000 », unique), `referredBy { id, fullName } | null`, `notes[] { id, text, authorName, createdAt }`, `anonymizedAt` (ISO ou `null`). Données personnelles au sens du RGPD ; les notes internes ne sont jamais visibles de la personne dans l'application, mais figurent dans l'export de ses données. Un client anonymisé a un nom neutre, un e-mail `anonyme-<id>@anonyme.invalid`, un téléphone vide, ni rue, ni code, ni parrain, ni autorisation : l'application FIG ne doit ni le réécrire ni le recréer depuis sa copie (question 19). La section Clients assemble particuliers et communautés en un annuaire (`buildDirectory`, `filterDirectory`, `sortDirectory`) à partir des chiffres agrégés par la base (`getDirectoryStats`).
+
+Sources de vérité côté application FIG, à respecter au branchement :
+
+- les **autorisations** sont recueillies et datées (`consents_updated_at`) par l'application ; le dashboard les lit, ne les modifie jamais, et n'envoie rien lui-même ;
+- le **code de parrainage** est attribué par l'application (format `Nom#0000`, unique, vérifié par la base) ; `referred_by_id` est le client dont le code a été saisi à l'inscription ; un client ne peut pas se parrainer lui-même ;
+- la **catégorie** (basique, fidèle) et le **compteur de fidélité** ne sont pas stockés : le dashboard les déduit des commandes ; l'application applique la remise fidélité à la commande qui suit huit commandes cumulées (annulées non comptées).
+
+## Notifications d'état (`NotificationsSource`)
+
+| Fonction                              | Entrées          | Sortie                    | Notes                                                              |
+| ------------------------------------- | ---------------- | ------------------------- | ------------------------------------------------------------------ |
+| `getOrderNotifications(orderId)`      | `id` de commande | `CustomerNotification[]`  | de la plus récente à la plus ancienne (fiche commande)             |
+| `getCustomerNotifications(customerId)`| `id` du client   | `CustomerNotification[]`  | toutes, de la plus ancienne à la plus récente (export RGPD)        |
+
+`CustomerNotification` : `id`, `customerId`, `order { id, reference }`, `kind` (`order_status`), `orderStatus`, `title`, `body`, `createdAt` (dépôt), `sentAt | null` (envoi). Le contrat n'a pas d'écriture : le dépôt se fait dans `updateOrderStatus`, dans la transaction du statut.
+
+Ce que l'application FIG doit faire (question 23) : lire régulièrement les lignes dont `sent_at` est vide (index `customer_notifications_pending_idx`, dans l'ordre de dépôt), envoyer par son canal, puis poser `sent_at`. Le texte est prêt à envoyer (`title`, `body`), en français, sans le nom de la personne.
 
 ## Messages « Nous contacter » (`MessagesSource`)
 
@@ -72,7 +93,7 @@ Les messages sont **écrits par l'application FIG** : le contrat n'a aucune fonc
 | `setMessagePinned(id, change)`        | `{ from, to, at }`                                             | `Message \| null`  | `WHERE pinned_at IS [NOT] NULL` selon `from`                                                |
 | `setMessageImportant(id, change)`     | `{ from, to }`                                                 | `Message \| null`  | `WHERE important = from`                                                                    |
 
-`Message` : `id`, `customer { id, fullName, email }`, `subject` (`missing_or_damaged | delivery_issue | order_error | product_question | refund | other`), `body` (texte brut), `order { id, reference } | null` (contexte joint par le client), `attachments[] { id, fileName, contentType, sizeBytes, url }` (dix au plus), `status` (`untreated | treated`), `receivedAt`, `pinnedAt | null`, `important`, `handledAt | null`, `handledByName | null`.
+`Message` : `id`, `customer { id, fullName, email }`, `subject` (`missing_or_damaged | delivery_issue | order_error | product_question | refund | other`), `body` (texte brut), `order | null` (contexte joint par le client : `id`, `reference`, `createdAt`, `status`, `deliverySlot`, `deliveryAddressLine`, `deliveryCity`, `deliveryPostalCode`, `community`, `preparer`, `driver`), `attachments[] { id, fileName, contentType, sizeBytes, url }` (dix au plus), `status` (`untreated | treated`), `receivedAt`, `pinnedAt | null`, `important`, `handledAt | null`, `handledByName | null`.
 
 Sources de vérité côté application FIG, à respecter au branchement :
 
@@ -85,7 +106,7 @@ Sources de vérité côté application FIG, à respecter au branchement :
 
 | Fonction                          | Entrées          | Sortie                                                          | Notes                                                                                                                 |
 | --------------------------------- | ---------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `getCustomerExportData(id)`       | `id`             | `{ customer, orders, events, messages } \| null`                | tout ce que la base garde sur la personne, borné par elle, jamais paginé ; mis en forme par `buildCustomerExport`    |
+| `getCustomerExportData(id)`       | `id`             | `{ customer, orders, events, messages, notifications, referralCount } \| null` | tout ce que la base garde sur la personne, borné par elle, jamais paginé ; mis en forme par `buildCustomerExport` (catégorie et historique déduits des commandes) |
 | `anonymizeCustomer(id, at)`       | `id`, instant    | `"anonymized" \| "already_anonymized" \| "open_orders" \| "not_found"` | une transaction conditionnelle (`anonymized_at IS NULL`, aucune commande en préparation ou expédiée) ; commandes conservées ; nettoyage des textes libres rejoué si déjà anonymisé |
 
 Le script `npm run rgpd:purge` n'est pas dans le contrat : il appelle directement `purgeExpiredData` (`src/db/privacy.ts`), hors de Next.

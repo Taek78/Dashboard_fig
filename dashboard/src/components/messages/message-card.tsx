@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, Paperclip, ShoppingBasket } from "lucide-react";
+import { ArrowRight, Paperclip } from "lucide-react";
 import { MessageActions } from "@/components/messages/message-actions";
 import {
   ImportantBadge,
   MESSAGE_STATUS_ACCENT,
   MessageStatusBadge,
   MessageSubjectBadge,
+  messageSurfaceClass,
   PinnedBadge,
 } from "@/components/messages/message-badges";
+import { MessageOrderLine } from "@/components/messages/message-order";
 import { buttonVariants } from "@/components/ui/button";
 import { messagePreview } from "@/domain/messages/rules";
 import type { Message } from "@/domain/messages/types";
@@ -20,8 +22,9 @@ import { cn } from "@/lib/utils";
  * LIGNES de sa demande, puis de quoi agir.
  *
  * La bordure gauche porte le statut (ambre = non traité, vert = traité) et un
- * message signalé important prend en plus un liseré rouge : deux signaux
- * différents, jamais la même couleur pour deux choses.
+ * message signalé important prend un fond en dégradé rouge : deux signaux
+ * différents, jamais la même couleur pour deux choses. Si le client a joint
+ * une commande, une ligne dit quand elle est livrée et qui s'en occupe.
  *
  * Le nom mène au MESSAGE (c'est l'objet de la liste) ; un second lien discret
  * mène à la fiche du client. Pas de carte entièrement cliquable : elle
@@ -44,7 +47,7 @@ export function MessageCard({
       className={cn(
         "bg-card text-card-foreground card-lift cv-auto flex flex-col gap-3 rounded-2xl border-l-4 p-4 shadow-sm ring-1 @2xl/main:p-5",
         MESSAGE_STATUS_ACCENT[message.status],
-        message.important ? "ring-destructive/30" : "ring-foreground/10",
+        messageSurfaceClass(message.important),
       )}
     >
       <div className="flex flex-col gap-2 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
@@ -80,22 +83,6 @@ export function MessageCard({
           <dt className="sr-only">Reçu le</dt>
           <dd>{formatDateTimeFr(message.receivedAt)}</dd>
         </div>
-        {message.order ? (
-          <div className="flex items-center gap-1.5">
-            <dt>
-              <ShoppingBasket className="size-3.5" aria-hidden="true" />
-              <span className="sr-only">Commande associée</span>
-            </dt>
-            <dd>
-              <Link
-                href={`/commandes/${message.order.id}`}
-                className="font-mono underline-offset-4 hover:underline"
-              >
-                {message.order.reference}
-              </Link>
-            </dd>
-          </div>
-        ) : null}
         {files > 0 ? (
           <div className="flex items-center gap-1.5">
             <dt>
@@ -108,6 +95,12 @@ export function MessageCard({
           </div>
         ) : null}
       </dl>
+
+      {message.order ? (
+        <div className="bg-muted/40 rounded-lg px-3 py-2 text-xs">
+          <MessageOrderLine order={message.order} />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 border-t pt-3 @2xl/main:flex-row @2xl/main:items-center @2xl/main:justify-between">
         {canHandle ? (

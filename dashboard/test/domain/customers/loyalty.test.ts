@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   LOYALTY_DISCOUNT_PERCENT,
   LOYALTY_THRESHOLD,
+  loyaltyCount,
+  loyaltyFromCount,
   loyaltyStatus,
 } from "@/domain/customers/loyalty";
-import { scenarioOrders } from "@/domain/orders/fixtures";
+import { ordersFixtures, scenarioOrders } from "@/domain/orders/fixtures";
 import type { Order } from "@/domain/orders/types";
 
 const base = scenarioOrders[0]!;
@@ -27,26 +29,26 @@ describe("loyaltyStatus", () => {
     expect(LOYALTY_DISCOUNT_PERCENT).toBe(15);
   });
 
-  it("compte les commandes d'affilée et signale la remise au seuil", () => {
+  it("compte les commandes cumulées et signale la remise au seuil", () => {
     const seven = Array.from({ length: 7 }, (_, i) => order(i + 1));
     expect(loyaltyStatus(seven)).toEqual({
-      streak: 7,
+      count: 7,
       rewardReady: false,
       remaining: 1,
     });
     expect(loyaltyStatus([...seven, order(8)])).toEqual({
-      streak: 8,
+      count: 8,
       rewardReady: true,
       remaining: 0,
     });
     expect(loyaltyStatus([])).toEqual({
-      streak: 0,
+      count: 0,
       rewardReady: false,
       remaining: 8,
     });
   });
 
-  it("une annulation remet la série à zéro, l'ordre chronologique compte", () => {
+  it("une annulation ne compte pas et NE remet PAS le compteur à zéro ; l'ordre chronologique compte", () => {
     const orders = [
       order(1),
       order(2),
@@ -54,11 +56,11 @@ describe("loyaltyStatus", () => {
       order(4),
       order(5, "preparing"),
     ];
-    expect(loyaltyStatus(orders).streak).toBe(2);
-    expect(loyaltyStatus(orders.toReversed()).streak).toBe(2);
+    expect(loyaltyStatus(orders).count).toBe(4);
+    expect(loyaltyStatus(orders.toReversed()).count).toBe(4);
   });
 
-  it("la commande qui porte la remise fidélité consomme la série", () => {
+  it("la commande qui porte la remise fidélité consomme le compteur, qui repart de zéro", () => {
     const eight = Array.from({ length: 8 }, (_, i) => order(i + 1));
     const rewarded = order(9, "delivered", {
       kind: "loyalty",
@@ -66,17 +68,42 @@ describe("loyaltyStatus", () => {
       amountCents: 100,
     });
     expect(loyaltyStatus([...eight, rewarded])).toEqual({
-      streak: 0,
+      count: 0,
       rewardReady: false,
       remaining: 8,
     });
-    expect(loyaltyStatus([...eight, rewarded, order(10)]).streak).toBe(1);
+    expect(loyaltyStatus([...eight, rewarded, order(10)]).count).toBe(1);
   });
 
-  it("au-delà du seuil, la série reste plafonnée à 8 tant que la remise n'est pas passée", () => {
+  it("au-delà du seuil, le compteur reste plafonné à 8 tant que la remise n'est pas passée", () => {
     const twelve = Array.from({ length: 12 }, (_, i) => order(i + 1));
     expect(loyaltyStatus(twelve)).toEqual({
-      streak: 8,
+      count: 8,
+      rewardReady: true,
+      remaining: 0,
+    });
+    expect(loyaltyCount(twelve)).toBe(12);
+  });
+});
+
+/* Compteur brut (ce que la base compte) et état de fidélité qui en découle. */
+describe("loyaltyCount / loyaltyFromCount", () => {
+  it("l'état tiré du compteur brut est celui de loyaltyStatus, pour chaque client des fixtures", () => {
+    const ids = new Set(ordersFixtures.map((o) => o.customer.id));
+    for (const id of ids) {
+      const mine = ordersFixtures.filter((o) => o.customer.id === id);
+      expect(loyaltyFromCount(loyaltyCount(mine))).toEqual(loyaltyStatus(mine));
+    }
+  });
+
+  it("plafonne le compteur au seuil et annonce la remise", () => {
+    expect(loyaltyFromCount(0)).toEqual({
+      count: 0,
+      rewardReady: false,
+      remaining: LOYALTY_THRESHOLD,
+    });
+    expect(loyaltyFromCount(LOYALTY_THRESHOLD + 3)).toEqual({
+      count: LOYALTY_THRESHOLD,
       rewardReady: true,
       remaining: 0,
     });

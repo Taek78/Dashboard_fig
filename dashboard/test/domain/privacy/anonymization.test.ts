@@ -8,13 +8,20 @@ import {
 import { anonymizeCustomerSchema } from "@/domain/privacy/schemas";
 
 describe("anonymizedCustomerFields", () => {
-  it("remplace tout ce qui identifie la personne", () => {
+  it("remplace tout ce qui identifie la personne, code de parrainage et autorisations compris", () => {
     expect(anonymizedCustomerFields("cli-0007")).toEqual({
       fullName: ANONYMIZED_CUSTOMER_NAME,
       email: "anonyme-cli-0007@anonyme.invalid",
       phone: "",
+      addressLine: null,
       city: "",
       postalCode: "",
+      referralCode: null,
+      referredById: null,
+      notifyOffers: false,
+      notifyOrderStatus: false,
+      marketingConsent: false,
+      consentsUpdatedAt: null,
     });
   });
 

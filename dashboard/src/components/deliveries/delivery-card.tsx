@@ -134,7 +134,11 @@ export function DeliveryCard({
             </a>
           ) : null}
           <a
-            href={itineraryUrl(order.deliveryPostalCode, order.deliveryCity)}
+            href={itineraryUrl(
+              order.deliveryPostalCode,
+              order.deliveryCity,
+              order.deliveryAddressLine,
+            )}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -160,11 +164,20 @@ export function DeliveryCard({
                 <span className="font-medium">{order.community.name}</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  · retrait à {order.deliveryPostalCode} {order.deliveryCity}
+                  · retrait{" "}
+                  {order.deliveryAddressLine
+                    ? `${order.deliveryAddressLine}, `
+                    : "à "}
+                  {order.deliveryPostalCode} {order.deliveryCity}
                 </span>
               </>
             ) : (
-              `${order.deliveryPostalCode} ${order.deliveryCity}`
+              <>
+                {order.deliveryAddressLine
+                  ? `${order.deliveryAddressLine}, `
+                  : ""}
+                {order.deliveryPostalCode} {order.deliveryCity}
+              </>
             )}
           </dd>
           <dt className="text-muted-foreground">

@@ -1,15 +1,21 @@
 import type { CommunityRef } from "@/domain/communities/types";
-import type { Customer } from "@/domain/customers/types";
+import type { CustomerConsents } from "@/domain/customers/types";
+import {
+  CUSTOMER_TIER_LABELS,
+  customerTier,
+  loyalTierEvents,
+  type CustomerTier,
+} from "@/domain/customers/tier";
 import {
   MESSAGE_SUBJECT_LABELS,
   type MessageSubject,
 } from "@/domain/messages/subject";
-import type { Message } from "@/domain/messages/types";
 import type { Cancellation } from "@/domain/orders/cancellation";
 import type { OrderDiscount } from "@/domain/orders/discount";
 import { sortOrdersBySlot } from "@/domain/orders/rules";
 import type { OrderStatus } from "@/domain/orders/status";
-import type { Order, OrderEvent } from "@/domain/orders/types";
+import type { OrderEvent } from "@/domain/orders/types";
+import type { CustomerExportData } from "@/domain/privacy/source";
 import { toIso } from "@/lib/days";
 
 /*
@@ -17,19 +23,23 @@ import { toIso } from "@/lib/days";
  * portabilité) : un fichier JSON complet, structuré et lisible, que
  * l'administrateur transmet à la personne qui en fait la demande.
  *
- * Contenu : la fiche, les notes internes (la personne a le droit d'en avoir
- * connaissance), toutes ses commandes avec lignes, remises, annulations et
- * historique des statuts, et tous ses messages « Nous contacter » avec la liste
- * de leurs pièces jointes.
+ * Contenu : la fiche (adresse, autorisations et leur date, code de
+ * parrainage), les notes internes (la personne a le droit d'en avoir
+ * connaissance), sa catégorie et l'historique daté de ses atteintes, toutes
+ * ses commandes avec lignes, remises, frais de livraison, annulations et
+ * historique des statuts, tous ses messages « Nous contacter » avec la liste
+ * de leurs pièces jointes, et les notifications déposées pour elle.
  * Exclu volontairement : les noms des membres de l'équipe (préparateur,
  * livreur, auteur d'une note, d'un changement de statut ou du traitement d'un
- * message), données personnelles d'autres personnes (article 15.4) ; les
- * identifiants techniques des produits, sans intérêt pour elle ; et les marques
- * d'organisation interne de la boîte de réception (épingle, « important »), qui
- * disent comment l'équipe range son travail et non ce qu'elle sait de la
- * personne. Seul l'état « demande traitée » est repris : il la concerne.
+ * message), données personnelles d'autres personnes (article 15.4) ; de même
+ * le NOM du parrain et ceux des filleuls : seuls « parrainé : oui/non » et le
+ * nombre de filleuls sont repris ; les identifiants techniques des produits,
+ * sans intérêt pour elle ; et les marques d'organisation interne de la boîte
+ * de réception (épingle, « important »), qui disent comment l'équipe range
+ * son travail et non ce qu'elle sait de la personne. Seul l'état « demande
+ * traitée » est repris : il la concerne.
  */
-export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/1";
+export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/2";
 
 export type CustomerDataExport = {
   format: typeof CUSTOMER_EXPORT_FORMAT;
@@ -41,11 +51,24 @@ export type CustomerDataExport = {
     fullName: string;
     email: string;
     phone: string;
+    addressLine: string | null;
     city: string;
     postalCode: string;
     createdAt: string;
     community: CommunityRef | null;
+    consents: CustomerConsents;
+    referralCode: string | null;
+    /** La personne a été parrainée par un autre client (non nommé). */
+    referred: boolean;
+    /** Nombre de clients qu'elle a parrainés (non nommés). */
+    referralCount: number;
     anonymizedAt: string | null;
+  };
+  tier: {
+    current: CustomerTier;
+    /** Libellé français de la catégorie : l'export doit se lire sans le code. */
+    currentLabel: string;
+    history: { reachedAt: string; expiresAt: string; orderReference: string }[];
   };
   internalNotes: { text: string; createdAt: string }[];
   messages: {
@@ -65,11 +88,20 @@ export type CustomerDataExport = {
       url: string;
     }[];
   }[];
+  notifications: {
+    orderReference: string;
+    orderStatus: OrderStatus;
+    title: string;
+    body: string;
+    createdAt: string;
+    sentAt: string | null;
+  }[];
   orders: {
     reference: string;
     createdAt: string;
     status: OrderStatus;
     deliverySlot: { date: string; start: string; end: string };
+    deliveryAddressLine: string | null;
     deliveryCity: string;
     deliveryPostalCode: string;
     lines: {
@@ -79,6 +111,7 @@ export type CustomerDataExport = {
       lineTotalCents: number;
     }[];
     discount: OrderDiscount | null;
+    deliveryFeeCents: number;
     totalCents: number;
     cancellation: Cancellation | null;
     pickupCommunity: CommunityRef | null;
@@ -92,30 +125,31 @@ export type CustomerDataExport = {
 };
 
 /**
- * Assemble l'export. Défensif : ne garde que les commandes de ce client et les
- * événements de ces commandes, quoi que la source ait passé. Commandes par
- * créneau croissant, historique par date croissante.
+ * Assemble l'export. Défensif : ne garde que les commandes, messages et
+ * notifications de ce client et les événements de ces commandes, quoi que la
+ * source ait passé. Commandes par créneau croissant, historiques par date
+ * croissante. La catégorie est celle à l'instant de l'export.
  */
 export function buildCustomerExport(
-  customer: Customer,
-  orders: readonly Order[],
-  events: readonly OrderEvent[],
-  messages: readonly Message[],
+  data: CustomerExportData,
   exportedAt: Date,
 ): CustomerDataExport {
+  const { customer } = data;
   const own = sortOrdersBySlot(
-    orders.filter((order) => order.customer.id === customer.id),
+    data.orders.filter((order) => order.customer.id === customer.id),
   );
   const history = new Map<string, OrderEvent[]>();
-  for (const event of events) {
+  for (const event of data.events) {
     const list = history.get(event.orderId) ?? [];
     list.push(event);
     history.set(event.orderId, list);
   }
+  const at = exportedAt.toISOString();
+  const tier = customerTier(own, at);
 
   return {
     format: CUSTOMER_EXPORT_FORMAT,
-    exportedAt: exportedAt.toISOString(),
+    exportedAt: at,
     units: {
       amounts: "centimes d'euro (1990 = 19,90 €)",
       quantities: "grammes (unit « g ») ou pièces (unit « piece »)",
@@ -126,17 +160,31 @@ export function buildCustomerExport(
       fullName: customer.fullName,
       email: customer.email,
       phone: customer.phone,
+      addressLine: customer.addressLine,
       city: customer.city,
       postalCode: customer.postalCode,
       createdAt: customer.createdAt,
       community: customer.community,
+      consents: customer.consents,
+      referralCode: customer.referralCode,
+      referred: customer.referredBy !== null,
+      referralCount: data.referralCount,
       anonymizedAt: customer.anonymizedAt,
+    },
+    tier: {
+      current: tier.tier,
+      currentLabel: CUSTOMER_TIER_LABELS[tier.tier],
+      history: loyalTierEvents(own).map((event) => ({
+        reachedAt: event.reachedAt,
+        expiresAt: event.expiresAt,
+        orderReference: event.orderReference,
+      })),
     },
     internalNotes: customer.notes.map((note) => ({
       text: note.text,
       createdAt: note.createdAt,
     })),
-    messages: messages
+    messages: data.messages
       .filter((message) => message.customer.id === customer.id)
       .toSorted((a, b) => a.receivedAt.localeCompare(b.receivedAt))
       .map((message) => ({
@@ -153,11 +201,23 @@ export function buildCustomerExport(
           url: file.url,
         })),
       })),
+    notifications: data.notifications
+      .filter((n) => n.customerId === customer.id)
+      .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((n) => ({
+        orderReference: n.order.reference,
+        orderStatus: n.orderStatus,
+        title: n.title,
+        body: n.body,
+        createdAt: n.createdAt,
+        sentAt: n.sentAt,
+      })),
     orders: own.map((order) => ({
       reference: order.reference,
       createdAt: order.createdAt,
       status: order.status,
       deliverySlot: order.deliverySlot,
+      deliveryAddressLine: order.deliveryAddressLine,
       deliveryCity: order.deliveryCity,
       deliveryPostalCode: order.deliveryPostalCode,
       lines: order.lines.map((line) => ({
@@ -167,6 +227,7 @@ export function buildCustomerExport(
         lineTotalCents: line.lineTotalCents,
       })),
       discount: order.discount,
+      deliveryFeeCents: order.deliveryFeeCents,
       totalCents: order.totalCents,
       cancellation: order.cancellation,
       pickupCommunity: order.community,

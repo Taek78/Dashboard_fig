@@ -3,6 +3,7 @@ import type {
   communities,
   customerMessages,
   customerNotes,
+  customerNotifications,
   customers,
   engagementMonthly,
   messageAttachments,
@@ -20,9 +21,19 @@ import type {
 import type { Article, ArticleInput } from "@/domain/articles/types";
 import type { ManagedUser, UserAccount } from "@/domain/auth/types";
 import type { Community, CommunityRef } from "@/domain/communities/types";
-import type { Customer, CustomerNote } from "@/domain/customers/types";
+import type {
+  Customer,
+  CustomerNote,
+  CustomerReferral,
+  ReferrerRef,
+} from "@/domain/customers/types";
 import type { EngagementPoint } from "@/domain/engagement/types";
-import type { Message, MessageAttachment } from "@/domain/messages/types";
+import type {
+  Message,
+  MessageAttachment,
+  MessageOrder,
+} from "@/domain/messages/types";
+import type { CustomerNotification } from "@/domain/notifications/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
 import type { OrderDiscount } from "@/domain/orders/discount";
@@ -54,6 +65,7 @@ export type MessageRow = Omit<
   "searchText"
 >;
 export type MessageAttachmentRow = typeof messageAttachments.$inferSelect;
+export type NotificationRow = typeof customerNotifications.$inferSelect;
 export type ProductRow = typeof products.$inferSelect;
 export type ArticleRow = typeof articles.$inferSelect;
 export type EngagementRow = typeof engagementMonthly.$inferSelect;
@@ -64,6 +76,8 @@ export type CommunityRow = typeof communities.$inferSelect;
 /** Ce qu'une commande ou un client portent d'une personne ou d'une communauté. */
 export type StaffRefRow = Pick<StaffRow, "id" | "firstName" | "lastName">;
 export type CommunityRefRow = Pick<CommunityRow, "id" | "name">;
+/** Ce qu'un client porte de son parrain (jointure de customers sur elle-même). */
+export type ReferrerRow = Pick<CustomerRow, "id" | "fullName">;
 
 export function toStaffRef(row: StaffRefRow | null): StaffRef | null {
   return row === null
@@ -133,11 +147,13 @@ export function toOrder(
       start: row.deliveryStart,
       end: row.deliveryEnd,
     },
+    deliveryAddressLine: row.deliveryAddressLine,
     deliveryCity: row.deliveryCity,
     deliveryPostalCode: row.deliveryPostalCode,
     lines: [...lines]
       .toSorted((a, b) => a.position - b.position)
       .map(toOrderLine),
+    deliveryFeeCents: row.deliveryFeeCents,
     totalCents: row.totalCents,
     cancellation: toCancellation(
       row.cancellationReason,
@@ -181,10 +197,47 @@ export function toMessageAttachment(
   };
 }
 
+/** Ce qu'un message porte de la commande que le client a jointe : la commande et ses jointures. */
+export type MessageOrderRow = Pick<
+  OrderRow,
+  | "id"
+  | "reference"
+  | "createdAt"
+  | "status"
+  | "deliveryDate"
+  | "deliveryStart"
+  | "deliveryEnd"
+  | "deliveryAddressLine"
+  | "deliveryCity"
+  | "deliveryPostalCode"
+>;
+export type MessageOrderJoins = { order: MessageOrderRow } & OrderJoins;
+
+export function toMessageOrder(joins: MessageOrderJoins): MessageOrder {
+  const { order } = joins;
+  return {
+    id: order.id,
+    reference: order.reference,
+    createdAt: order.createdAt.toISOString(),
+    status: order.status,
+    deliverySlot: {
+      date: order.deliveryDate,
+      start: order.deliveryStart,
+      end: order.deliveryEnd,
+    },
+    deliveryAddressLine: order.deliveryAddressLine,
+    deliveryCity: order.deliveryCity,
+    deliveryPostalCode: order.deliveryPostalCode,
+    community: toCommunityRef(joins.community),
+    preparer: toStaffRef(joins.preparer),
+    driver: toStaffRef(joins.driver),
+  };
+}
+
 /** Ce qu'un message porte de son auteur et de la commande qu'il cite. */
 export type MessageJoins = {
   customer: Pick<CustomerRow, "id" | "fullName" | "email">;
-  order: Pick<OrderRow, "id" | "reference"> | null;
+  order: MessageOrderJoins | null;
 };
 
 export function toMessage(
@@ -201,10 +254,7 @@ export function toMessage(
     },
     subject: row.subject,
     body: row.body,
-    order:
-      joins.order === null
-        ? null
-        : { id: joins.order.id, reference: joins.order.reference },
+    order: joins.order === null ? null : toMessageOrder(joins.order),
     attachments: [...attachments]
       .toSorted((a, b) => a.position - b.position)
       .map(toMessageAttachment),
@@ -226,24 +276,66 @@ export function toCustomerNote(row: CustomerNoteRow): CustomerNote {
   };
 }
 
+export function toReferrerRef(row: ReferrerRow | null): ReferrerRef | null {
+  return row === null ? null : { id: row.id, fullName: row.fullName };
+}
+
 export function toCustomer(
   row: CustomerRow,
   notes: readonly CustomerNoteRow[],
   community: CommunityRefRow | null,
+  referrer: ReferrerRow | null = null,
 ): Customer {
   return {
     id: row.id,
     fullName: row.fullName,
     email: row.email,
     phone: row.phone,
+    addressLine: row.addressLine,
     city: row.city,
     postalCode: row.postalCode,
     createdAt: row.createdAt.toISOString(),
     community: toCommunityRef(community),
+    consents: {
+      offers: row.notifyOffers,
+      orderStatus: row.notifyOrderStatus,
+      marketing: row.marketingConsent,
+      updatedAt: row.consentsUpdatedAt?.toISOString() ?? null,
+    },
+    referralCode: row.referralCode,
+    referredBy: toReferrerRef(referrer),
     notes: [...notes]
       .toSorted((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
       .map(toCustomerNote),
     anonymizedAt: row.anonymizedAt?.toISOString() ?? null,
+  };
+}
+
+/** Un filleul, tel que la fiche de son parrain le liste. */
+export function toCustomerReferral(
+  row: Pick<CustomerRow, "id" | "fullName" | "createdAt">,
+): CustomerReferral {
+  return {
+    id: row.id,
+    fullName: row.fullName,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toCustomerNotification(
+  row: NotificationRow,
+  order: Pick<OrderRow, "id" | "reference">,
+): CustomerNotification {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    order: { id: order.id, reference: order.reference },
+    kind: row.kind,
+    orderStatus: row.orderStatus,
+    title: row.title,
+    body: row.body,
+    createdAt: row.createdAt.toISOString(),
+    sentAt: row.sentAt?.toISOString() ?? null,
   };
 }
 
@@ -390,7 +482,6 @@ export function toCommunity(row: CommunityRow): Community {
     pickupPlace: row.pickupPlace,
     pickupCity: row.pickupCity,
     pickupPostalCode: row.pickupPostalCode,
-    discountPercent: row.discountPercent,
     active: row.active,
     createdAt: row.createdAt.toISOString(),
   };
