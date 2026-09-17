@@ -12,12 +12,15 @@ import { cn } from "@/lib/utils";
  * --community) et une icône : la couleur n'est jamais le seul signal.
  * - ClientTypeLabel : « Particulier » pour une personne, « Communauté » pour
  *   un groupe (carte et fiche d'une communauté).
- * - CustomerTypeLabels : ce qu'on affiche pour une personne ou sa commande,
- *   « Particulier » toujours, suivi du badge « Communauté » (et du nom du
- *   groupe) seulement si elle en est membre. Une personne n'est jamais une
- *   communauté, même quand elle en fait partie.
+ * - CustomerTypeLabels : ce qu'on affiche pour une PERSONNE, « Particulier »
+ *   toujours, suivi du badge « Communauté » (et du nom du groupe) seulement
+ *   si elle en est membre. Une personne n'est jamais une communauté, même
+ *   quand elle en fait partie.
+ * - Une COMMANDE porte son propre type (orderKindOf : particulier ou
+ *   communauté, ClientTypeLabel) : une commande de communauté est groupée,
+ *   en couleur communauté, la personne n'en est que l'interlocuteur.
  * Seul ce badge d'appartenance porte la couleur communauté chez une personne :
- * sa carte, son avatar et ses commandes restent en couleur « particulier ».
+ * sa carte et son avatar restent en couleur « particulier ».
  * Le nom d'une communauté passe à la ligne au lieu de déborder : un badge ne
  * sort jamais de sa carte.
  */

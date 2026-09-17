@@ -84,6 +84,7 @@ Dernière mise à jour : 2026-09-16.
 
 ## Décisions prises
 
+- Écrans (2026-09-17, sixième lot) : **type de commande** particulier / communauté (`orderKindOf`, déduit de la communauté portée) : carte, tableau et détail nomment la communauté puis l'interlocuteur (garant, livré pour tous), code couleur des tokens `--individual` / `--community`, filtre `?type=` en commutateur coloré (`TypeSwitch`, partagé avec les Clients), parité SQL testée.
 - Écrans (2026-09-17, cinquième lot, refonte visuelle) :
   - **Panneau de filtres** commun (`FilterTray`) sous chaque barre de recherche, **zone de dates** dédiée pleine largeur (`DateRangeFields`), cases à cocher en puces, barre de recherche partagée (`SearchField`).
   - **Commandes** : raccourcis des 7 derniers jours dans la zone de dates, « Aujourd'hui » en tête et en évidence ; barre d'**avancement des commandes listées** (toutes pages, `getOrderStatusCounts`).

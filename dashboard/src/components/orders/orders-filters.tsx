@@ -1,14 +1,17 @@
 import type { ReactNode } from "react";
+import { LayoutGrid, User, Users } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
 import { DateRangeFields } from "@/components/date-range-fields";
 import { FilterTray } from "@/components/filter-tray";
 import { SearchField } from "@/components/search-field";
+import { TypeSwitch, type TypeSwitchOption } from "@/components/type-switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { CLIENT_TYPE_LABELS } from "@/domain/customers/client-type";
 import {
   ASSIGNMENT_ROLE_LABELS,
   ASSIGNMENT_ROLES,
@@ -26,13 +29,14 @@ import type { DateRangeInput } from "@/lib/days";
 /*
  * Recherche et filtres de la liste des commandes (serveur ; AutoSubmitForm,
  * client, lance la recherche pendant la saisie avec un anti-rebond). Les
- * champs deviennent l'URL (?q=…&statut=…&du=…&au=…&preparateur=…&livreur=…) :
- * URL partageable, retour arrière gratuit, l'écran reste affiché pendant le
- * chargement.
- * - La barre de recherche, puis le panneau des filtres (FilterTray) : statut,
- *   préparateur et livreur sur une ligne, et la zone de dates en dernier,
- *   pleine largeur, avec les raccourcis des 7 derniers jours à droite de son
- *   intitulé (`shortcuts`, rendus par la page).
+ * champs deviennent l'URL (?q=…&type=…&statut=…&du=…&au=…&preparateur=…
+ * &livreur=…) : URL partageable, retour arrière gratuit, l'écran reste
+ * affiché pendant le chargement.
+ * - La barre de recherche, puis le panneau des filtres (FilterTray) : le
+ *   TYPE de commande (toutes, particuliers, communautés : commutateur coloré
+ *   comme celui des Clients), statut, préparateur et livreur, et la zone de
+ *   dates en dernier, pleine largeur, avec les raccourcis des 7 derniers
+ *   jours (`shortcuts`, rendus par la page).
  * - Reçoit des filtres déjà validés (parseOrderFilters), jamais l'URL brute,
  *   et la saisie « du / au » telle quelle (parsePeriodInput).
  * - Les noms de champs sont les clés françaises que parseOrderFilters attend.
@@ -48,6 +52,25 @@ const STAFF_FIELDS: Record<
   preparer: { name: "preparateur", key: "preparerId" },
   driver: { name: "livreur", key: "driverId" },
 };
+
+/** Positions du commutateur de type : la valeur vide = toutes les commandes. */
+const KIND_OPTIONS: readonly TypeSwitchOption[] = [
+  { value: "", label: "Toutes", icon: LayoutGrid, tone: "brand" },
+  {
+    value: "particulier",
+    label: `${CLIENT_TYPE_LABELS.particulier}s`,
+    icon: User,
+    tone: "individual",
+    title: "Commandes d'une personne, livrées chez elle",
+  },
+  {
+    value: "communaute",
+    label: `${CLIENT_TYPE_LABELS.communaute}s`,
+    icon: Users,
+    tone: "community",
+    title: "Commandes groupées d'une communauté, livrées à son interlocuteur",
+  },
+];
 
 export function OrdersFilters({
   filters,
@@ -80,7 +103,14 @@ export function OrdersFilters({
           />
 
           <FilterTray reset={canReset ? { href: "/commandes" } : null}>
-            <div className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-3 @4xl/main:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] @4xl/main:items-end">
+              <TypeSwitch
+                legend="Type de commande"
+                name="type"
+                value={filters.kind ?? ""}
+                options={KIND_OPTIONS}
+                className="col-span-2 @2xl/main:col-span-3 @4xl/main:col-span-1"
+              />
               <div className="col-span-2 grid min-w-0 gap-1.5 @2xl/main:col-span-1">
                 <Label htmlFor="statut">Statut</Label>
                 <NativeSelect

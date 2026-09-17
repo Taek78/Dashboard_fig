@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CLIENT_TYPES } from "@/domain/customers/client-type";
 import { ASSIGNMENT_ROLES } from "@/domain/orders/assignment";
 import {
   CANCELLATION_DETAIL_MAX_LENGTH,
@@ -118,6 +119,7 @@ export const orderFiltersSchema = z
       .transform((v) => (v === "" ? undefined : v))
       .optional()
       .catch(undefined),
+    type: z.enum(CLIENT_TYPES).optional().catch(undefined),
     statut: z.enum(ORDER_STATUSES).optional().catch(undefined),
     du: z.iso.date().optional().catch(undefined),
     au: z.iso.date().optional().catch(undefined),
@@ -126,10 +128,11 @@ export const orderFiltersSchema = z
     livreur: staffFilterSchema,
   })
   .transform(
-    ({ q, statut, du, au, date, preparateur, livreur }): OrderFilters => {
+    ({ q, type, statut, du, au, date, preparateur, livreur }): OrderFilters => {
       const period = parsePeriodInput({ du, au, date });
       return {
         query: q,
+        kind: type,
         status: statut,
         from: period.range?.from,
         to: period.range?.to,

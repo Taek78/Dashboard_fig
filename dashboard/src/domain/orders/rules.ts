@@ -1,3 +1,4 @@
+import type { ClientType } from "@/domain/customers/client-type";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { OrderDiscount } from "@/domain/orders/discount";
 import {
@@ -87,6 +88,17 @@ function staffMatches(
  * traité à part. Les jours sont des chaînes "AAAA-MM-JJ" : la comparaison de
  * chaînes borne la période. Ne trie pas : c'est le rôle de sortOrdersBySlot.
  */
+/**
+ * Type d'une commande (décision du client, 2026-09-17) : une commande portée
+ * par une communauté est une commande GROUPÉE de type « communauté », dont
+ * la personne qui a commandé est l'interlocuteur (et le garant) à qui tout
+ * est livré ; sinon c'est la commande d'un particulier. Rien n'est stocké :
+ * le type se lit dans la communauté de la commande.
+ */
+export function orderKindOf(order: Pick<Order, "community">): ClientType {
+  return order.community ? "communaute" : "particulier";
+}
+
 export function filterOrders(
   orders: readonly Order[],
   filters: OrderFilters,
@@ -94,6 +106,7 @@ export function filterOrders(
   return orders.filter((order) => {
     const day = order.deliverySlot.date;
     return (
+      (filters.kind === undefined || orderKindOf(order) === filters.kind) &&
       (filters.status === undefined || order.status === filters.status) &&
       (filters.from === undefined || day >= filters.from) &&
       (filters.to === undefined || day <= filters.to) &&
@@ -111,10 +124,11 @@ export function filterOrders(
   });
 }
 
-/** Vrai si un filtre de la barre (recherche, statut, période, équipe) est actif. */
+/** Vrai si un filtre de la barre (recherche, type, statut, période, équipe) est actif. */
 export function hasOrderFilters(filters: OrderFilters): boolean {
   return (
     filters.query !== undefined ||
+    filters.kind !== undefined ||
     filters.status !== undefined ||
     filters.from !== undefined ||
     filters.to !== undefined ||
@@ -133,6 +147,7 @@ export function orderFiltersQuery(filters: OrderFilters): string {
     id === null ? UNASSIGNED_FILTER : id;
   const entries: [string, string | undefined][] = [
     ["q", filters.query],
+    ["type", filters.kind],
     ["statut", filters.status],
     ["du", filters.from],
     ["au", filters.to],

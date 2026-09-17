@@ -1,4 +1,5 @@
 import type { CommunityRef } from "@/domain/communities/types";
+import type { ClientType } from "@/domain/customers/client-type";
 import type { NotificationDraft } from "@/domain/notifications/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
@@ -83,6 +84,8 @@ export const UNASSIGNED_FILTER = "aucun";
 export type OrderFilters = {
   /** Référence, nom du client, e-mail, téléphone, ville ou code postal. */
   query?: string;
+  /** Type de commande : particulier (livrée chez la personne) ou communauté (groupée, livrée à l'interlocuteur). */
+  kind?: ClientType;
   status?: OrderStatus;
   from?: string;
   to?: string;

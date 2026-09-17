@@ -55,6 +55,8 @@ Règle des périodes « du / au », commune à toutes les recherches par dates (
 
 `Product` : `name`, `variety`, `category` (`fruit | vegetable`), `unit` (`piece | g`), `priceCents` (par kg si `g`, par pièce sinon), `unitWeightGrams` (pièce seulement ; le prix au kilo s'en déduit), `container`, `originCountry` (ISO2), `originRegion`, `caliber { minMm, maxMm } | null`, `organic`, `inSeason`, `available`, `visible`, `stockQuantity`, `illustration` (emoji), `imageUrl` (https), `updatedAt`. La conversion euros → centimes est faite par zod (`productInputSchema`), jamais en base.
 
+**Type de commande** : le dashboard ne stocke aucun type ; une commande dont `community_id` est renseigné est une commande GROUPÉE de communauté (client affiché = la communauté, la personne = interlocuteur et garant, livrée pour tous les membres), sinon la commande d'un particulier. L'application doit donc poser `community_id` sur les seules commandes groupées, jamais sur la commande individuelle d'un membre.
+
 Un produit **s'achète** dans l'application si son statut de vente est « en vente » (`productSaleStatus`) : `visible`, `available`, et un stock supérieur à 0 **sauf** si `catalog_settings.sell_when_out_of_stock` est vrai (paramètre posé depuis le catalogue du dashboard). L'application doit lire ce paramètre plutôt que de supposer qu'un stock à 0 bloque la vente. Le filtre `availability` de `getProducts` suit la même règle.
 
 ## Clients (`CustomersSource`)

@@ -51,7 +51,11 @@ export default async function CommandePage({
     <>
       <PageHeader
         title={`Commande ${order.reference}`}
-        description={`${order.customer.fullName} · ${formatSlot(order.deliverySlot)}`}
+        description={`${
+          order.community
+            ? `${order.community.name} · interlocuteur ${order.customer.fullName}`
+            : order.customer.fullName
+        } · ${formatSlot(order.deliverySlot)}`}
         actions={
           <Button
             variant="outline"

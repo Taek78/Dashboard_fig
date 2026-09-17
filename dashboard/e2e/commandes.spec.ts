@@ -339,6 +339,35 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     expect(total).toBeGreaterThan(40);
   });
 
+  test("commandes de communauté : la communauté puis l'interlocuteur, et le filtre par type", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?type=communaute");
+    const cards = page.getByRole("article", { name: /^Commande FIG-/ });
+    await expect(cards.first()).toBeVisible();
+    for (const card of await cards.all()) {
+      await expect(card).toContainText("Communauté");
+      await expect(card).toContainText("Interlocuteur :");
+      await expect(card).not.toContainText("Particulier");
+    }
+    const form = page.getByRole("form", {
+      name: "Recherche et filtres des commandes",
+    });
+    const kinds = form.getByRole("radiogroup", { name: "Type de commande" });
+    await expect(
+      kinds.getByRole("radio", { name: "Communautés" }),
+    ).toBeChecked();
+    await kinds.getByRole("radio", { name: "Particuliers" }).check();
+    await expect(page).toHaveURL(/type=particulier/);
+    await expect(page.getByRole("article").first()).toContainText(
+      "Particulier",
+    );
+    await expect(page.getByRole("article").first()).not.toContainText(
+      "Interlocuteur :",
+    );
+  });
+
   test("le filtre préparateur garde ses commandes, « Réinitialiser » rend la liste complète", async ({
     page,
   }) => {

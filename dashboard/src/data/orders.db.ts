@@ -7,6 +7,7 @@ import {
   desc,
   eq,
   gte,
+  isNotNull,
   isNull,
   lte,
   notInArray,
@@ -179,6 +180,12 @@ function queryClause(query: string | undefined): SQL | undefined {
 
 function whereFor(filters: OrderFilters): SQL | undefined {
   const clauses = [
+    // Type de commande (orderKindOf) : une communauté portée = commande groupée.
+    filters.kind === "communaute"
+      ? isNotNull(orders.communityId)
+      : filters.kind === "particulier"
+        ? isNull(orders.communityId)
+        : undefined,
     filters.status ? eq(orders.status, filters.status) : undefined,
     filters.from ? gte(orders.deliveryDate, filters.from) : undefined,
     filters.to ? lte(orders.deliveryDate, filters.to) : undefined,

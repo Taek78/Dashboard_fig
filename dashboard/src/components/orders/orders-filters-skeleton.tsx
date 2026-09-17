@@ -3,9 +3,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /*
  * Silhouette de la recherche des commandes, pour loading.tsx (qui ne connaît
- * pas l'URL) : la barre de recherche, puis le panneau des filtres (statut,
- * préparateur, livreur) et sa zone de dates avec les raccourcis des 7
- * derniers jours, mêmes colonnes que OrdersFilters.
+ * pas l'URL) : la barre de recherche, puis le panneau des filtres (type de
+ * commande, statut, préparateur, livreur) et sa zone de dates avec les
+ * raccourcis des 7 derniers jours, mêmes colonnes que OrdersFilters.
  *
  * Module séparé de orders-filters.tsx EXPRÈS : un loading.tsx qui importe un
  * module contenant un composant client (AutoSubmitForm) fait écrire par Next,
@@ -24,7 +24,11 @@ export function OrdersFiltersSkeleton() {
         <Skeleton className="h-11 w-full" />
         <div className="surface-tray grid gap-3 rounded-xl p-3">
           <Skeleton className="h-5 w-20" />
-          <div className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-3 @4xl/main:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="col-span-2 grid gap-1.5 @2xl/main:col-span-3 @4xl/main:col-span-1">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-9 w-72 max-w-full rounded-lg" />
+            </div>
             <div className="col-span-2 grid gap-1.5 @2xl/main:col-span-1">
               <Skeleton className="h-4 w-14" />
               <Skeleton className="h-9 w-full rounded-lg" />

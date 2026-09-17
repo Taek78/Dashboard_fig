@@ -9,6 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CLIENT_TYPE_LABELS } from "@/domain/customers/client-type";
+import { orderKindOf } from "@/domain/orders/rules";
 import type { Order } from "@/domain/orders/types";
 import { formatEuros, formatSlot } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,10 @@ import { cn } from "@/lib/utils";
  *   les deux) ;
  * - à partir de 768 px, le tableau : Ville et Articles n'apparaissent qu'à
  *   partir de 1024 px (avec la sidebar dépliée, 768 px laissent peu de place).
+ * - Le client d'une commande de communauté est la COMMUNAUTÉ (lien vers sa
+ *   fiche), avec dessous l'interlocuteur à qui tout est livré (OrderClient) ;
+ *   une pastille en couleur de type (particulier, communauté) précède le nom,
+ *   doublée d'un texte pour les lecteurs d'écran.
  * - Une classe de colonne va sur le TableHead ET le TableCell, sinon l'en-tête se
  *   décale. Les nombres sont alignés à droite avec tabular-nums.
  * - Le conteneur arrondi (tableFrame) est partagé avec loading.tsx : même
@@ -60,6 +66,51 @@ export function CustomerNameLink({
   );
 }
 
+/**
+ * Le client d'une commande dans une liste : la communauté et son
+ * interlocuteur pour une commande groupée, la personne sinon, avec la
+ * pastille du type de commande.
+ */
+export function OrderClient({ order }: { order: Order }) {
+  const kind = orderKindOf(order);
+  return (
+    <span className="flex min-w-0 flex-col gap-0.5">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "size-2 shrink-0 rounded-full",
+            kind === "communaute" ? "bg-community" : "bg-individual",
+          )}
+        />
+        <span className="sr-only">{CLIENT_TYPE_LABELS[kind]} : </span>
+        {order.community ? (
+          <Link
+            href={`/clients/communautes/${order.community.id}`}
+            className={cn(link, "truncate font-medium")}
+          >
+            {order.community.name}
+          </Link>
+        ) : (
+          <CustomerNameLink
+            customer={order.customer}
+            className="truncate font-medium"
+          />
+        )}
+      </span>
+      {order.community ? (
+        <span className="text-muted-foreground truncate pl-3.5 text-xs">
+          Interlocuteur :{" "}
+          <CustomerNameLink
+            customer={order.customer}
+            className="text-foreground font-medium"
+          />
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 export function OrdersTable({ orders }: { orders: Order[] }) {
   return (
     <>
@@ -67,14 +118,12 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
         {orders.map((order) => (
           <li
             key={order.id}
-            aria-label={`Commande ${order.reference}, ${order.customer.fullName}`}
+            aria-label={`Commande ${order.reference}, ${order.community?.name ?? order.customer.fullName}`}
             className={mobileCardFrame}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate font-medium">
-                  <CustomerNameLink customer={order.customer} />
-                </p>
+                <OrderClient order={order} />
                 <p className="text-muted-foreground font-mono text-xs">
                   <Link
                     href={`/commandes/${order.id}`}
@@ -140,8 +189,8 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     {order.reference}
                   </Link>
                 </TableCell>
-                <TableCell className="font-medium">
-                  <CustomerNameLink customer={order.customer} />
+                <TableCell>
+                  <OrderClient order={order} />
                 </TableCell>
                 <TableCell>{formatSlot(order.deliverySlot)}</TableCell>
                 <TableCell className={hideUntilLg}>

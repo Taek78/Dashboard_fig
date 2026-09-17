@@ -7,7 +7,7 @@ import {
   Package,
   Phone,
 } from "lucide-react";
-import { CustomerTypeLabels } from "@/components/customers/client-type-label";
+import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderActions } from "@/components/orders/order-actions";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
@@ -21,6 +21,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { itineraryUrl } from "@/domain/deliveries/rules";
 import { formatCancellation } from "@/domain/orders/cancellation";
+import { orderKindOf } from "@/domain/orders/rules";
 import type { Order } from "@/domain/orders/types";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,15 +30,18 @@ import { cn } from "@/lib/utils";
  * Carte d'une commande (serveur), pensée pour le bureau ET le terrain depuis
  * que la section Livraisons y a été fondue (2026-09-16). Trois bandes :
  *   1. le jour et le CRÉNEAU EN GRAND (c'est ce qu'on cherche des yeux en
- *      tournée), la référence, le type de client (particulier ou communauté,
- *      en couleur, la bande est teintée de même), le statut (et le motif si
- *      annulée), la remise éventuelle (communauté, fidélité) ;
- *   2. le client (son nom mène à sa fiche), deux gestes en un tap : appeler,
- *      ouvrir l'itinéraire (de vrais <a> habillés en bouton : Base UI
- *      donnerait role="button" à un lien rendu par <Button>) ; puis
- *      l'adresse ou le point de retrait, le contenu et le montant (avec la
- *      remise entre parenthèses ; les frais de livraison sont dans le détail
- *      seulement), l'e-mail, le lien vers le détail ;
+ *      tournée), la référence, le TYPE de commande (particulier ou
+ *      communauté : badge en couleur, et la bande est teintée de même), le
+ *      statut (et le motif si annulée), la remise éventuelle ;
+ *   2. le client : pour une commande de communauté, le NOM DE LA COMMUNAUTÉ
+ *      (lien vers sa fiche) et, dessous, l'interlocuteur à qui tout est livré
+ *      (la personne qui a commandé, garante, lien vers sa fiche) ; pour un
+ *      particulier, son nom. Puis deux gestes en un tap : appeler, ouvrir
+ *      l'itinéraire (de vrais <a> habillés en bouton : Base UI donnerait
+ *      role="button" à un lien rendu par <Button>) ; l'adresse ou le point de
+ *      retrait, le contenu et le montant (avec la remise entre parenthèses ;
+ *      les frais de livraison sont dans le détail seulement), l'e-mail, le
+ *      lien vers le détail ;
  *   3. le suivi : l'équipe (préparateur, livreur, en listes déroulantes qui
  *      écrivent aussitôt), puis le geste suivant et l'annulation avec motif.
  * Disposition selon la largeur de la ZONE DE CONTENU (@container/main du
@@ -46,6 +50,11 @@ import { cn } from "@/lib/utils";
  * dès @xl, trois colonnes dès @4xl.
  * Aucun élément absolu : rien ne peut se chevaucher.
  */
+const KIND_BAND = {
+  particulier: "bg-individual/8",
+  communaute: "bg-community/10",
+} as const;
+
 export function OrderCard({
   order,
   canChangeStatus,
@@ -58,23 +67,27 @@ export function OrderCard({
   options: AssignmentOptions;
 }) {
   const done = order.status === "delivered" || order.status === "cancelled";
+  const kind = orderKindOf(order);
+  const community = order.community;
 
   return (
     <article
-      aria-label={`Commande ${order.reference}, ${order.customer.fullName}`}
+      aria-label={`Commande ${order.reference}, ${
+        community
+          ? `${community.name} (interlocuteur ${order.customer.fullName})`
+          : order.customer.fullName
+      }`}
       className={cn(
         "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]",
         STATUS_ACCENT[order.status],
         done && "opacity-80",
       )}
     >
-      {/* 1. Créneau en grand, référence, statut, remise */}
+      {/* 1. Créneau en grand, référence, type, statut, remise */}
       <div
         className={cn(
           "flex flex-row items-start justify-between gap-3 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:flex-col @4xl/main:justify-start @4xl/main:border-r @4xl/main:border-b-0",
-          // Couleur « particulier » : une commande est toujours celle d'une
-          // personne ; l'appartenance à une communauté a son propre badge.
-          "bg-individual/8",
+          KIND_BAND[kind],
         )}
       >
         <div className="flex min-w-0 flex-col gap-1">
@@ -95,7 +108,7 @@ export function OrderCard({
           >
             {order.reference}
           </Link>
-          <CustomerTypeLabels community={order.community} className="mt-1" />
+          <ClientTypeLabel type={kind} className="mt-1 w-fit" />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5 @4xl/main:items-start">
           <OrderStatusBadge status={order.status} />
@@ -108,16 +121,38 @@ export function OrderCard({
         </div>
       </div>
 
-      {/* 2. Client, gestes rapides et contenu */}
+      {/* 2. Client (communauté et interlocuteur, ou particulier), gestes rapides et contenu */}
       <div className="flex min-w-0 flex-col gap-3 p-4 @xl/main:p-5">
-        <p className="truncate text-lg font-semibold">
-          <Link
-            href={`/clients/${order.customer.id}`}
-            className="underline-offset-4 hover:underline focus-visible:underline"
-          >
-            {order.customer.fullName}
-          </Link>
-        </p>
+        {community ? (
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="truncate text-lg font-semibold">
+              <Link
+                href={`/clients/communautes/${community.id}`}
+                className="underline-offset-4 hover:underline focus-visible:underline"
+              >
+                {community.name}
+              </Link>
+            </p>
+            <p className="text-muted-foreground truncate text-sm">
+              Interlocuteur :{" "}
+              <Link
+                href={`/clients/${order.customer.id}`}
+                className="text-foreground font-medium underline-offset-4 hover:underline focus-visible:underline"
+              >
+                {order.customer.fullName}
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <p className="truncate text-lg font-semibold">
+            <Link
+              href={`/clients/${order.customer.id}`}
+              className="underline-offset-4 hover:underline focus-visible:underline"
+            >
+              {order.customer.fullName}
+            </Link>
+          </p>
+        )}
         <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
           {/* Téléphone vide : client anonymisé (RGPD). */}
           {order.customer.phone ? (
@@ -154,21 +189,17 @@ export function OrderCard({
           <dt className="text-muted-foreground">
             <MapPin className="size-4" aria-hidden="true" />
             <span className="sr-only">
-              {order.community ? "Point de retrait" : "Adresse"}
+              {community ? "Point de retrait" : "Adresse"}
             </span>
           </dt>
           <dd>
-            {order.community ? (
+            {community ? (
               <>
-                <span className="font-medium">{order.community.name}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · retrait{" "}
-                  {order.deliveryAddressLine
-                    ? `${order.deliveryAddressLine}, `
-                    : "à "}
-                  {order.deliveryPostalCode} {order.deliveryCity}
-                </span>
+                <span className="text-muted-foreground">Retrait : </span>
+                {order.deliveryAddressLine
+                  ? `${order.deliveryAddressLine}, `
+                  : ""}
+                {order.deliveryPostalCode} {order.deliveryCity}
               </>
             ) : (
               <>

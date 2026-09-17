@@ -148,6 +148,7 @@ describe("parseOrderFilters", () => {
     expect(
       parseOrderFilters({
         q: "  Benali ",
+        type: "communaute",
         statut: "preparing",
         du: "2026-09-01",
         au: "2026-09-07",
@@ -156,12 +157,18 @@ describe("parseOrderFilters", () => {
       }),
     ).toEqual({
       query: "Benali",
+      kind: "communaute",
       status: "preparing",
       from: "2026-09-01",
       to: "2026-09-07",
       preparerId: "stf-0005",
       driverId: "stf-0001",
     });
+  });
+
+  it("un type inconnu ou vide ne filtre pas", () => {
+    expect(parseOrderFilters({ type: "" }).kind).toBeUndefined();
+    expect(parseOrderFilters({ type: "groupe" }).kind).toBeUndefined();
   });
 
   it("« aucun » demande les commandes sans personne affectée, vide ne filtre pas", () => {

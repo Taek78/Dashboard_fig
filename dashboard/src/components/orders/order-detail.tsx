@@ -1,4 +1,4 @@
-import { CustomerTypeLabels } from "@/components/customers/client-type-label";
+import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderStatusForm } from "@/components/orders/order-status-form";
@@ -24,7 +24,7 @@ import {
 import type { CustomerNotification } from "@/domain/notifications/types";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { formatDiscount } from "@/domain/orders/discount";
-import { computeOrderSubtotalCents } from "@/domain/orders/rules";
+import { computeOrderSubtotalCents, orderKindOf } from "@/domain/orders/rules";
 import type { Order, OrderEvent } from "@/domain/orders/types";
 import Link from "next/link";
 import {
@@ -34,12 +34,16 @@ import {
   formatQuantity,
   toTelHref,
 } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 /*
  * Détail d'une commande. Composant serveur : il reçoit une Order déjà chargée par
  * la page et l'affiche en cinq cartes (Client, Livraison, Statut avec les
  * notifications déposées pour le client, Équipe, Articles avec la remise
- * éventuelle et les frais de livraison).
+ * éventuelle et les frais de livraison). Pour une commande de communauté, la
+ * carte Client nomme d'abord la COMMUNAUTÉ, puis l'interlocuteur à qui tout
+ * est livré (la personne qui a commandé, garante), et l'en-tête de la carte
+ * prend la couleur du type.
  *
  * - Grille lg (pas md) : à 768 px avec la sidebar dépliée, trois colonnes seraient
  *   trop étroites. Ordre DOM = ordre visuel pour les lecteurs d'écran.
@@ -75,30 +79,61 @@ export function OrderDetail({
   const allowed = allowedTransitions(order.status);
   const done = order.status === "delivered" || order.status === "cancelled";
   const subtotal = computeOrderSubtotalCents(order.lines);
+  const kind = orderKindOf(order);
 
   return (
     <div className="grid gap-4 @4xl/main:grid-cols-3">
       <Card>
-        <CardHeader>
-          <CardTitle>
+        <CardHeader
+          className={cn(
+            "-mt-(--card-spacing) border-b py-(--card-spacing)",
+            kind === "communaute" ? "bg-community/10" : "bg-individual/8",
+          )}
+        >
+          <CardTitle className="flex flex-wrap items-center justify-between gap-2">
             <h2>Client</h2>
+            <ClientTypeLabel type={kind} />
           </CardTitle>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Nom</dt>
-            <dd className="font-medium">
-              <Link
-                href={`/clients/${order.customer.id}`}
-                className="underline-offset-4 hover:underline"
-              >
-                {order.customer.fullName}
-              </Link>
-            </dd>
-            <dt className="text-muted-foreground">Type</dt>
-            <dd>
-              <CustomerTypeLabels community={order.community} />
-            </dd>
+            {order.community ? (
+              <>
+                <dt className="text-muted-foreground">Communauté</dt>
+                <dd className="font-medium">
+                  <Link
+                    href={`/clients/communautes/${order.community.id}`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {order.community.name}
+                  </Link>
+                </dd>
+                <dt className="text-muted-foreground">Interlocuteur</dt>
+                <dd className="font-medium">
+                  <Link
+                    href={`/clients/${order.customer.id}`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {order.customer.fullName}
+                  </Link>
+                  <span className="text-muted-foreground block text-xs font-normal">
+                    Reçoit la commande groupée pour tous les membres.
+                  </span>
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt className="text-muted-foreground">Nom</dt>
+                <dd className="font-medium">
+                  <Link
+                    href={`/clients/${order.customer.id}`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {order.customer.fullName}
+                  </Link>
+                </dd>
+              </>
+            )}
             <dt className="text-muted-foreground">E-mail</dt>
             <dd className="font-medium break-all">
               <a
@@ -168,19 +203,6 @@ export function OrderDetail({
                   : "Livraison offerte"
                 : formatEuros(order.deliveryFeeCents)}
             </dd>
-            {order.community ? (
-              <>
-                <dt className="text-muted-foreground">Communauté</dt>
-                <dd>
-                  <Link
-                    href={`/clients/communautes/${order.community.id}`}
-                    className="font-medium underline-offset-4 hover:underline"
-                  >
-                    {order.community.name}
-                  </Link>
-                </dd>
-              </>
-            ) : null}
           </dl>
         </CardContent>
       </Card>

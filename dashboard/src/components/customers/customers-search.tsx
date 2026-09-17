@@ -3,6 +3,7 @@ import { AutoSubmitForm } from "@/components/auto-submit-form";
 import { FilterTray } from "@/components/filter-tray";
 import { SearchField } from "@/components/search-field";
 import { SortOrderToggle } from "@/components/sort-order-toggle";
+import { TypeSwitch, type TypeSwitchOption } from "@/components/type-switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,40 +18,35 @@ import {
   DIRECTORY_TYPES,
   SORT_ORDER_LABELS,
   sortOptions,
-  type DirectoryType,
 } from "@/domain/customers/directory";
 import type { ClientsSearch } from "@/domain/customers/schemas";
-import { cn } from "@/lib/utils";
 
 /*
  * Recherche commune de la section Clients (serveur ; AutoSubmitForm, client,
  * la lance pendant la saisie) : un seul champ pour les particuliers ET les
- * communautés, puis, dans le panneau des filtres, un COMMUTATEUR de type à
- * trois positions (particuliers, communautés, tous), chacune dans sa couleur
- * (tokens --individual, --community, marque pour « tous »), et un tri en deux
- * gestes : le critère dans la liste, le sens par le bouton à côté
- * (SortOrderToggle : flèche qui pivote, A / Z pour le nom, 1 / 9 pour les
- * nombres). Les champs deviennent l'URL (?q=&type=&tri=&sens=) : partageable,
- * retour arrière gratuit ; une nouvelle recherche revient en page 1.
- *
- * Le commutateur est un groupe de boutons radio natifs (un par position, le
- * bouton visible est l'étiquette) : accessible au clavier, coché = envoyé
- * aussitôt par AutoSubmitForm, sans JavaScript dédié. Le tri par membres
- * n'apparaît qu'en position « communautés ».
+ * communautés, puis, dans le panneau des filtres, le COMMUTATEUR de type à
+ * trois positions (particuliers, communautés, tous ; TypeSwitch, chacune
+ * dans sa couleur) et un tri en deux gestes : le critère dans la liste, le
+ * sens par le bouton à côté (SortOrderToggle : flèche qui pivote, A / Z pour
+ * le nom, 1 / 9 pour les nombres). Les champs deviennent l'URL
+ * (?q=&type=&tri=&sens=) : partageable, retour arrière gratuit ; une
+ * nouvelle recherche revient en page 1. Le tri par membres n'apparaît qu'en
+ * position « communautés ».
  */
-const TYPE_ICONS: Record<DirectoryType, typeof User> = {
-  tous: LayoutGrid,
-  particuliers: User,
-  communautes: Users,
-};
-
-const TYPE_CHECKED: Record<DirectoryType, string> = {
-  tous: "has-checked:bg-primary/15 has-checked:text-primary has-checked:ring-primary/40",
-  particuliers:
-    "has-checked:bg-individual/15 has-checked:text-individual has-checked:ring-individual/40",
-  communautes:
-    "has-checked:bg-community/15 has-checked:text-community has-checked:ring-community/40",
-};
+const TYPE_OPTIONS: readonly TypeSwitchOption[] = DIRECTORY_TYPES.map(
+  (type) => ({
+    value: type,
+    label: DIRECTORY_TYPE_LABELS[type],
+    title: DIRECTORY_TYPE_DESCRIPTIONS[type],
+    icon: type === "tous" ? LayoutGrid : type === "particuliers" ? User : Users,
+    tone:
+      type === "tous"
+        ? "brand"
+        : type === "particuliers"
+          ? "individual"
+          : "community",
+  }),
+);
 
 export function CustomersSearch({
   search,
@@ -76,45 +72,12 @@ export function CustomersSearch({
 
           <FilterTray reset={canReset ? { href: "/clients" } : null}>
             <div className="grid gap-3 @2xl/main:grid-cols-[auto_minmax(0,1fr)] @2xl/main:items-end">
-              <fieldset className="grid min-w-0 gap-1.5">
-                <legend className="text-sm font-medium">Afficher</legend>
-                <div
-                  className="bg-card border-input inline-flex min-h-9 w-fit max-w-full flex-wrap items-center gap-0.5 rounded-lg border p-0.5"
-                  role="radiogroup"
-                  aria-label="Afficher"
-                >
-                  {DIRECTORY_TYPES.map((type) => {
-                    const Icon = TYPE_ICONS[type];
-                    return (
-                      <label
-                        key={type}
-                        title={DIRECTORY_TYPE_DESCRIPTIONS[type]}
-                        className={cn(
-                          "text-muted-foreground has-focus-visible:ring-ring relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium transition-colors select-none has-checked:font-semibold has-checked:shadow-xs has-checked:ring-1 has-focus-visible:ring-2",
-                          TYPE_CHECKED[type],
-                        )}
-                      >
-                        {/* Le bouton radio natif couvre toute l'étiquette, invisible
-                            mais bien là : clic, clavier et lecteurs d'écran passent
-                            par lui, l'étiquette ne fait que l'habiller. */}
-                        <input
-                          type="radio"
-                          name="type"
-                          value={type}
-                          defaultChecked={search.type === type}
-                          className="absolute inset-0 cursor-pointer appearance-none opacity-0"
-                        />
-                        {/* Icône masquée sur téléphone : les trois positions tiennent alors sur une ligne. */}
-                        <Icon
-                          aria-hidden="true"
-                          className="hidden size-4 @xl/main:inline"
-                        />
-                        {DIRECTORY_TYPE_LABELS[type]}
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
+              <TypeSwitch
+                legend="Afficher"
+                name="type"
+                value={search.type}
+                options={TYPE_OPTIONS}
+              />
               <div className="grid min-w-0 gap-1.5 @2xl/main:max-w-sm">
                 <Label htmlFor="tri">Trier par</Label>
                 <div className="flex min-w-0 items-center gap-2">

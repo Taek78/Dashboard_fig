@@ -253,6 +253,8 @@ describe("lectures bornées et agrégats ciblés = règles pures", () => {
       { from: "2026-09-07", to: "2026-09-07" },
       { status: "delivered" as const },
       { query: "benali", preparerId: null },
+      { kind: "communaute" as const },
+      { kind: "particulier" as const, status: "delivered" as const },
     ] satisfies OrderFilters[]) {
       expect(await ordersDb.getOrderStatusCounts(filters)).toEqual(
         countByStatus(filterOrders(all, filters)),

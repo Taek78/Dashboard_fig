@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { scenarioOrders } from "@/domain/orders/fixtures";
+import { ordersFixtures, scenarioOrders } from "@/domain/orders/fixtures";
 import {
   computeOrderTotalCents,
   filterOrders,
   hasOrderFilters,
   orderFiltersQuery,
+  orderKindOf,
   paginate,
   sortOrdersBySlot,
 } from "@/domain/orders/rules";
@@ -284,9 +285,26 @@ describe("filterOrders : période, recherche et équipe", () => {
   });
 });
 
+describe("orderKindOf / filtre par type", () => {
+  it("une communauté portée = commande groupée, sinon un particulier", () => {
+    // Le scénario n'a que des particuliers : l'historique porte les communautés.
+    const community = ordersFixtures.find((o) => o.community !== null)!;
+    const individual = ordersFixtures.find((o) => o.community === null)!;
+    expect(orderKindOf(community)).toBe("communaute");
+    expect(orderKindOf(individual)).toBe("particulier");
+    const grouped = filterOrders(ordersFixtures, { kind: "communaute" });
+    expect(grouped.length).toBeGreaterThan(0);
+    expect(grouped.every((o) => o.community !== null)).toBe(true);
+    const single = filterOrders(ordersFixtures, { kind: "particulier" });
+    expect(single.every((o) => o.community === null)).toBe(true);
+    expect(grouped.length + single.length).toBe(ordersFixtures.length);
+  });
+});
+
 describe("hasOrderFilters / orderFiltersQuery", () => {
   it("ne compte que les filtres de la barre", () => {
     expect(hasOrderFilters({})).toBe(false);
+    expect(hasOrderFilters({ kind: "communaute" })).toBe(true);
     expect(
       hasOrderFilters({ customerId: "cli-0001", communityId: "com-0001" }),
     ).toBe(false);
@@ -297,6 +315,7 @@ describe("hasOrderFilters / orderFiltersQuery", () => {
   it("écrit les clés d'URL françaises, que parseOrderFilters relit à l'identique", () => {
     const filters = {
       query: "amel benali",
+      kind: "communaute",
       status: "delivering",
       from: "2026-09-01",
       to: "2026-09-07",
@@ -305,7 +324,7 @@ describe("hasOrderFilters / orderFiltersQuery", () => {
     } as const;
     const query = orderFiltersQuery({ ...filters, customerId: "cli-0001" });
     expect(query).toBe(
-      "q=amel+benali&statut=delivering&du=2026-09-01&au=2026-09-07&preparateur=stf-0005&livreur=aucun",
+      "q=amel+benali&type=communaute&statut=delivering&du=2026-09-01&au=2026-09-07&preparateur=stf-0005&livreur=aucun",
     );
     expect(
       parseOrderFilters(Object.fromEntries(new URLSearchParams(query))),
