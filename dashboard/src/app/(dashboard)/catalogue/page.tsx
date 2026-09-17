@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CircleCheck, Plus } from "lucide-react";
+import { CatalogSettingsForm } from "@/components/products/catalog-settings-form";
 import { ProductsFilters } from "@/components/products/products-filters";
 import {
   ProductsResults,
@@ -9,6 +10,10 @@ import {
 } from "@/components/products/products-results";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCatalogSettings } from "@/data/products";
+import { getCurrentUser } from "@/data/session";
+import { canEditProduct } from "@/domain/auth/roles";
 import { parseProductFilters } from "@/domain/products/schemas";
 
 /*
@@ -16,7 +21,9 @@ import { parseProductFilters } from "@/domain/products/schemas";
  * présentation que les clients), grille complète affichée d'emblée. La page ne
  * fait aucun await de données elle-même : la grille charge dans son propre
  * <Suspense>, le moteur reste en place pendant la recherche (pas de loading.tsx
- * pour ce segment, c'est voulu). ?supprime=1 confirme une suppression.
+ * pour ce segment, c'est voulu). Entre les deux, le paramètre du catalogue
+ * (laisser en vente à stock 0), dans son propre <Suspense> : il n'est pas
+ * rechargé à chaque recherche. ?supprime=1 confirme une suppression.
  */
 export const metadata: Metadata = { title: "Catalogue" };
 
@@ -32,7 +39,6 @@ export default async function CataloguePage({
     <>
       <PageHeader
         title="Catalogue"
-        description="Fruits et légumes proposés dans l'application : prix, origine, saison, disponibilité."
         actions={
           <Button render={<Link href="/catalogue/nouveau" />}>
             <Plus />
@@ -50,9 +56,25 @@ export default async function CataloguePage({
         </p>
       ) : null}
       <ProductsFilters filters={filters} />
+      <Suspense fallback={<Skeleton className="h-12 rounded-xl" />}>
+        <CatalogSettingsPanel />
+      </Suspense>
       <Suspense key={key} fallback={<ProductsResultsSkeleton />}>
         <ProductsResults filters={filters} />
       </Suspense>
     </>
+  );
+}
+
+async function CatalogSettingsPanel() {
+  const [settings, user] = await Promise.all([
+    getCatalogSettings(),
+    getCurrentUser(),
+  ]);
+  return (
+    <CatalogSettingsForm
+      sellWhenOutOfStock={settings.sellWhenOutOfStock}
+      canEdit={canEditProduct(user.role)}
+    />
   );
 }

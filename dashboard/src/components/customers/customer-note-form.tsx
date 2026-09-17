@@ -41,9 +41,7 @@ export function CustomerNoteForm({ customerId }: { customerId: string }) {
           className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
         />
         <p id="text-aide" className="text-muted-foreground text-xs">
-          Seulement ce qui sert au service (accès, préférences de livraison).
-          Jamais de santé, d&apos;opinions, de religion ni de jugement sur la
-          personne : elle peut demander à lire ces notes (RGPD).
+          Utile au service seulement, jamais de donnée sensible (RGPD).
         </p>
       </div>
       <Button

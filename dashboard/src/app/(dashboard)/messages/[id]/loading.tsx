@@ -8,10 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function MessageLoading() {
   return (
     <>
-      <PageHeader
-        title="Message client"
-        description="Fiche du client, puis sa demande complète."
-      />
+      <PageHeader title="Message client" />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement du message…</p>
         <div className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 @2xl/main:p-5">

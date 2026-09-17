@@ -81,7 +81,7 @@ test.describe("clients", () => {
     await expect(page).toHaveURL(/au=2026-09-09/);
     const status = page.getByRole("status").filter({ hasText: "livraison" });
     await expect(status).toContainText("2 commandes sur");
-    await expect(status).toContainText("du sam. 5 sept. au mer. 9 sept.");
+    await expect(status).toContainText("du sam. 5 sept. au mer. 9 sept. 2026");
     // Dans l'historique des commandes seulement : la carte Fidélité cite aussi des références.
     await expect(
       page.locator("#historique").getByRole("link", { name: /FIG-/ }),
@@ -95,7 +95,7 @@ test.describe("clients", () => {
     await page.goto("/clients/cli-0001?du=2026-09-20&au=2026-09-21");
     const notice = page.getByRole("status").filter({ hasText: "Aucune" });
     await expect(notice).toContainText(
-      "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. pour ce client.",
+      "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. 2026 pour ce client.",
     );
     await expect(notice).toHaveClass(/text-info/);
   });

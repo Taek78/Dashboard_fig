@@ -3,8 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
+  CalendarCheck,
   Check,
+  Euro,
   Gift,
+  Mail,
+  MapPin,
+  Phone,
+  ShoppingBasket,
   Percent,
   Sparkles,
   Star,
@@ -59,7 +65,9 @@ import { cn } from "@/lib/utils";
  * qu'elle porte (demande du client : autorisations et parrainage « à
  * l'horizontale ») :
  *   1. coordonnées et adresse de livraison (et communauté), chiffres clés,
- *      notes internes avec formulaire d'ajout ;
+ *      notes internes avec formulaire d'ajout ; sur PC (@4xl), coordonnées
+ *      et chiffres en tuiles sur deux colonnes, les notes à droite ; en
+ *      dessous, listes libellé / valeur (les tuiles sont en display: contents) ;
  *   2. « Notifications et autorisations » : les trois autorisations données
  *      dans l'application, en trois colonnes ;
  *   3. « Parrainage » : code et parrain à gauche, filleuls à droite (visibles
@@ -81,6 +89,18 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "Fiche client" };
 
 const plural = (n: number) => (n > 1 ? "s" : "");
+
+/*
+ * Tuiles des coordonnées et des chiffres clés, sur PC seulement : en dessous
+ * de @4xl, chaque tuile est en display: contents, son libellé et sa valeur
+ * redeviennent les deux colonnes de la liste (et l'icône est masquée).
+ */
+const TILE =
+  "contents @4xl/main:flex @4xl/main:min-w-0 @4xl/main:flex-col @4xl/main:gap-1 @4xl/main:rounded-xl @4xl/main:border @4xl/main:bg-muted/30 @4xl/main:p-3";
+const TILE_LABEL =
+  "text-muted-foreground @4xl/main:flex @4xl/main:items-center @4xl/main:gap-1.5 @4xl/main:text-xs @4xl/main:font-medium";
+const TILE_ICON = "hidden size-3.5 @4xl/main:inline";
+const STAT_VALUE = "@4xl/main:text-2xl @4xl/main:font-bold";
 
 export default async function ClientPage({
   params,
@@ -139,7 +159,7 @@ export default async function ClientPage({
 
       {/* 1. Coordonnées, chiffres, notes */}
       <div className="grid gap-4 @4xl/main:grid-cols-3">
-        <Card>
+        <Card className="@4xl/main:col-span-2">
           <CardHeader>
             <CardTitle>
               <h2>Coordonnées</h2>
@@ -152,84 +172,122 @@ export default async function ClientPage({
                 (anonymisation RGPD).
               </p>
             ) : (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                <dt className="text-muted-foreground">E-mail</dt>
-                <dd className="font-medium break-all">
-                  <a
-                    href={`mailto:${customer.email}`}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {customer.email}
-                  </a>
-                </dd>
-                <dt className="text-muted-foreground">Téléphone</dt>
-                <dd className="font-medium">
-                  <a
-                    href={toTelHref(customer.phone)}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {customer.phone}
-                  </a>
-                </dd>
-                <dt className="text-muted-foreground">Adresse de livraison</dt>
-                <dd className="font-medium">
-                  {customer.addressLine ? (
-                    <>
-                      {customer.addressLine}
-                      <br />
-                    </>
-                  ) : null}
-                  {customer.postalCode} {customer.city}
-                  {customer.community ? (
-                    <span className="text-muted-foreground block text-xs font-normal">
-                      Livraison au point de retrait de sa communauté.
-                    </span>
-                  ) : null}
-                </dd>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm @4xl/main:grid-cols-2 @4xl/main:gap-3">
+                <div className={TILE}>
+                  <dt className={TILE_LABEL}>
+                    <Mail className={TILE_ICON} aria-hidden="true" />
+                    E-mail
+                  </dt>
+                  <dd className="font-medium break-all">
+                    <a
+                      href={`mailto:${customer.email}`}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {customer.email}
+                    </a>
+                  </dd>
+                </div>
+                <div className={TILE}>
+                  <dt className={TILE_LABEL}>
+                    <Phone className={TILE_ICON} aria-hidden="true" />
+                    Téléphone
+                  </dt>
+                  <dd className="font-medium">
+                    <a
+                      href={toTelHref(customer.phone)}
+                      className="underline-offset-4 hover:underline"
+                    >
+                      {customer.phone}
+                    </a>
+                  </dd>
+                </div>
+                <div className={TILE}>
+                  <dt className={TILE_LABEL}>
+                    <MapPin className={TILE_ICON} aria-hidden="true" />
+                    Adresse de livraison
+                  </dt>
+                  <dd className="font-medium">
+                    {customer.addressLine ? (
+                      <>
+                        {customer.addressLine}
+                        <br />
+                      </>
+                    ) : null}
+                    {customer.postalCode} {customer.city}
+                    {customer.community ? (
+                      <span className="text-muted-foreground block text-xs font-normal">
+                        Livraison au point de retrait de sa communauté.
+                      </span>
+                    ) : null}
+                  </dd>
+                </div>
                 {customer.community ? (
-                  <>
-                    <dt className="text-muted-foreground">Communauté</dt>
+                  <div className={TILE}>
+                    <dt className={TILE_LABEL}>
+                      <Users className={TILE_ICON} aria-hidden="true" />
+                      Communauté
+                    </dt>
                     <dd className="font-medium">
                       <Link
                         href={`/clients/communautes/${customer.community.id}`}
                         className="inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
                       >
-                        <Users className="size-4" aria-hidden="true" />
+                        <Users
+                          className="size-4 @4xl/main:hidden"
+                          aria-hidden="true"
+                        />
                         {customer.community.name}
                       </Link>
                     </dd>
-                  </>
+                  </div>
                 ) : null}
               </dl>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="@4xl/main:col-span-2 @4xl/main:row-start-2">
           <CardHeader>
             <CardTitle>
               <h2>Chiffres clés</h2>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Commandes</dt>
-              <dd className="font-medium tabular-nums">{stats.orderCount}</dd>
-              <dt className="text-muted-foreground">Total (hors annulées)</dt>
-              <dd className="font-medium tabular-nums">
-                {formatEuros(stats.totalSpentCents)}
-              </dd>
-              <dt className="text-muted-foreground">Dernière livraison</dt>
-              <dd className="font-medium">
-                {stats.lastDeliveryDate
-                  ? formatDateFr(stats.lastDeliveryDate)
-                  : "—"}
-              </dd>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm @4xl/main:grid-cols-3 @4xl/main:gap-3">
+              <div className={TILE}>
+                <dt className={TILE_LABEL}>
+                  <ShoppingBasket className={TILE_ICON} aria-hidden="true" />
+                  Commandes
+                </dt>
+                <dd className={cn("font-medium tabular-nums", STAT_VALUE)}>
+                  {stats.orderCount}
+                </dd>
+              </div>
+              <div className={TILE}>
+                <dt className={TILE_LABEL}>
+                  <Euro className={TILE_ICON} aria-hidden="true" />
+                  Total (hors annulées)
+                </dt>
+                <dd className={cn("font-medium tabular-nums", STAT_VALUE)}>
+                  {formatEuros(stats.totalSpentCents)}
+                </dd>
+              </div>
+              <div className={TILE}>
+                <dt className={TILE_LABEL}>
+                  <CalendarCheck className={TILE_ICON} aria-hidden="true" />
+                  Dernière livraison
+                </dt>
+                <dd className="font-medium @4xl/main:text-base @4xl/main:font-semibold">
+                  {stats.lastDeliveryDate
+                    ? formatDateFr(stats.lastDeliveryDate)
+                    : "—"}
+                </dd>
+              </div>
             </dl>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="@4xl/main:col-start-3 @4xl/main:row-span-2 @4xl/main:row-start-1">
           <CardHeader>
             <CardTitle>
               <h2>Notes internes</h2>
@@ -316,11 +374,9 @@ export default async function ClientPage({
                 })}
               </ul>
               <p className="text-muted-foreground text-xs">
-                Choix faits dans l&apos;application FIG
                 {customer.consents.updatedAt
-                  ? `, le ${formatDateTimeFr(customer.consents.updatedAt)}`
-                  : ""}
-                . Le dashboard les lit, il ne les modifie pas.
+                  ? `Mis à jour le ${formatDateTimeFr(customer.consents.updatedAt)}.`
+                  : "Jamais modifiées."}
               </p>
             </>
           )}
@@ -469,7 +525,7 @@ export default async function ClientPage({
               </h3>
               {reached.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  Jamais encore fidèle : le compteur repart à chaque remise.
+                  Jamais encore fidèle.
                 </p>
               ) : (
                 <ol className="flex flex-col gap-2 text-sm">

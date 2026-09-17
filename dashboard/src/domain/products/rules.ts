@@ -1,3 +1,8 @@
+import {
+  DEFAULT_CATALOG_SETTINGS,
+  productSaleStatus,
+  type CatalogSettings,
+} from "@/domain/products/status";
 import type { Product, ProductFilters } from "@/domain/products/types";
 import { normalize } from "@/lib/text";
 
@@ -49,9 +54,14 @@ export function unitPriceCents(
   return product.unit === "piece" ? product.priceCents : null;
 }
 
+/**
+ * Filtre du catalogue. « Disponible » = statut « en vente » ; « indisponible »
+ * = retiré de la vente ou en rupture de stock (selon le paramètre du catalogue).
+ */
 export function filterProducts(
   products: readonly Product[],
   filters: ProductFilters,
+  settings: CatalogSettings = DEFAULT_CATALOG_SETTINGS,
 ): Product[] {
   const query = filters.query ? normalize(filters.query) : undefined;
   return products.filter((product) => {
@@ -61,9 +71,12 @@ export function filterProducts(
     const queryOk =
       query === undefined ||
       normalize(`${product.name} ${product.variety ?? ""}`).includes(query);
+    const status = productSaleStatus(product, settings);
     const availabilityOk =
       filters.availability === undefined ||
-      product.available === (filters.availability === "available");
+      (filters.availability === "available"
+        ? status === "en_vente"
+        : status === "indisponible" || status === "rupture");
     return visibleOk && categoryOk && queryOk && availabilityOk;
   });
 }

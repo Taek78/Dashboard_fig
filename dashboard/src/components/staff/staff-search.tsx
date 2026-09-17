@@ -112,18 +112,9 @@ export function StaffSearch({
                 maxLength={STAFF_SEARCH_MAX_LENGTH}
                 placeholder="Nom, prénom, e-mail ou téléphone…"
                 defaultValue={search.query ?? ""}
-                aria-describedby="q-help"
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <p
-              id="q-help"
-              className="text-muted-foreground text-sm @max-2xl/main:hidden"
-            >
-              Les résultats se mettent à jour pendant la saisie. Une partie
-              suffit : « malik », « renard@ » ou les derniers chiffres du
-              téléphone « 90 04 ».
-            </p>
           </div>
 
           <div

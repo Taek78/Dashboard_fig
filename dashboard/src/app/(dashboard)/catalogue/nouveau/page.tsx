@@ -14,7 +14,6 @@ export default function NouveauProduitPage() {
     <>
       <PageHeader
         title="Nouveau produit"
-        description="Renseignez la fiche ; vous pourrez tout modifier ensuite."
         actions={
           <Button
             variant="outline"

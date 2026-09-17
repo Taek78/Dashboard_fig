@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 /*
- * Section de la page Métriques (serveur) : un titre h2, une phrase qui dit ce
- * que la section mesure, puis ses cartes. Trier les métriques par thème
+ * Section de la page Métriques (serveur) : un titre h2, une courte précision
+ * facultative, puis ses cartes. Trier les métriques par thème
  * (ventes, commandes, produits, usage) rend la page lisible d'un coup d'œil.
  */
 export function MetricsSection({

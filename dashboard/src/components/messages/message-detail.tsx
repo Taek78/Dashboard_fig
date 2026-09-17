@@ -81,8 +81,7 @@ export function MessageDetail({
           />
         ) : (
           <p className="text-muted-foreground text-sm">
-            Compte en lecture seule : le traitement des messages est réservé à
-            l&apos;administrateur et au gestionnaire.
+            Compte en lecture seule.
           </p>
         )}
       </div>

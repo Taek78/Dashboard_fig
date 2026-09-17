@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * Les valeurs affichées sont celles de l'URL, jamais corrigées : si les dates
  * sont inversées, le cadre passe en rouge et une erreur (role="alert") dit
  * qu'aucune période n'est appliquée. Une seule date remplie n'est pas une
- * erreur : ce jour-là est cherché (readDateRange), l'aide le rappelle.
+ * erreur : ce jour-là est cherché (readDateRange). Pas d'aide par défaut.
  * NativeInput : les champs restent montés pendant la saisie automatique.
  * Sur tablette et PC, chaque champ reçoit le calendrier maison
  * (DatePickerButton : jours hors du mois grisés, ouverture sur le mois de la
@@ -55,7 +55,7 @@ export function DateRangeFields({
   /** Préfixe des id, unique dans la page (plusieurs formulaires possibles). */
   idPrefix: string;
   period: DateRangeInput;
-  /** Aide sous les champs, quand il n'y a pas d'erreur. */
+  /** Aide facultative sous les champs, quand il n'y a pas d'erreur. */
   help?: string;
   className?: string;
 }) {
@@ -91,7 +91,7 @@ export function DateRangeFields({
               type="date"
               defaultValue={period.from ?? ""}
               aria-invalid={error ? true : undefined}
-              aria-describedby={messageId}
+              aria-describedby={error || help ? messageId : undefined}
               className={DATE_INPUT}
             />
             <DatePickerButton
@@ -113,7 +113,7 @@ export function DateRangeFields({
               type="date"
               defaultValue={period.to ?? ""}
               aria-invalid={error ? true : undefined}
-              aria-describedby={messageId}
+              aria-describedby={error || help ? messageId : undefined}
               className={DATE_INPUT}
             />
             <DatePickerButton
@@ -133,11 +133,11 @@ export function DateRangeFields({
           <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden="true" />
           {ERROR_LABELS[error]}
         </p>
-      ) : (
+      ) : help ? (
         <p id={messageId} className="text-muted-foreground text-xs">
-          {help ?? "Bornes incluses. Une seule date : ce jour-là."}
+          {help}
         </p>
-      )}
+      ) : null}
     </fieldset>
   );
 }

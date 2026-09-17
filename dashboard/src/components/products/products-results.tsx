@@ -11,7 +11,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getProducts } from "@/data/products";
+import { getCatalogSettings, getProducts } from "@/data/products";
 import { getCurrentUser } from "@/data/session";
 import { canEditProduct } from "@/domain/auth/roles";
 import type { ProductFilters } from "@/domain/products/types";
@@ -26,8 +26,9 @@ export async function ProductsResults({
 }: {
   filters: ProductFilters;
 }) {
-  const [products, user] = await Promise.all([
+  const [products, settings, user] = await Promise.all([
     getProducts(filters),
+    getCatalogSettings(),
     getCurrentUser(),
   ]);
   const canEdit = canEditProduct(user.role);
@@ -69,7 +70,7 @@ export async function ProductsResults({
         {scope}
         {filters.includeHidden ? ", produits masqués inclus" : ""}
       </p>
-      <ProductsGrid products={products} canEdit={canEdit} />
+      <ProductsGrid products={products} settings={settings} canEdit={canEdit} />
     </div>
   );
 }

@@ -183,11 +183,7 @@ export default async function MetriquesPage({
         />
       ) : null}
 
-      <MetricsSection
-        id="ventes"
-        title="Ventes"
-        description={`Commandes, chiffre d'affaires, panier moyen et acheteurs de la période, montants ${taxLabel}, commandes annulées exclues du CA.`}
-      >
+      <MetricsSection id="ventes" title="Ventes">
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
           <KpiCard
             label="Commandes"
@@ -213,7 +209,6 @@ export default async function MetriquesPage({
           <KpiCard
             label="Acheteurs distincts"
             value={String(buyersInRange)}
-            hint="clients ayant commandé sur la période"
             icon={<Contact />}
             trend={trend(buyersInRange, buyersInRangeRef)}
           />
@@ -238,16 +233,11 @@ export default async function MetriquesPage({
         </Card>
       </MetricsSection>
 
-      <MetricsSection
-        id="commandes"
-        title="Commandes"
-        description="Annulations, part des commandes passées par les membres d'une communauté, et réclamations reçues par « Nous contacter » (produit manquant ou abîmé, problème de livraison, erreur sur la commande, remboursement ou avoir)."
-      >
+      <MetricsSection id="commandes" title="Commandes">
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
           <KpiCard
             label="Annulées"
             value={String(kpis.cancelledCount)}
-            hint="moins, c'est mieux"
             icon={<Ban />}
             trend={trend(kpis.cancelledCount, kpisRef.cancelledCount, true)}
             visual={
@@ -299,7 +289,7 @@ export default async function MetriquesPage({
           <KpiCard
             label="Réclamations"
             value={String(complaints)}
-            hint={`message${plural(complaints)} reçu${plural(complaints)} sur la période · moins, c'est mieux`}
+            hint={`message${plural(complaints)} reçu${plural(complaints)}`}
             icon={<MessageSquareWarning />}
             trend={trend(complaints, complaintsRef, true)}
           />
@@ -316,16 +306,11 @@ export default async function MetriquesPage({
         </Card>
       </MetricsSection>
 
-      <MetricsSection
-        id="clients"
-        title="Clients"
-        description="Inscriptions de la période dans l'application, et celles faites avec le code d'un parrain."
-      >
+      <MetricsSection id="clients" title="Clients">
         <div className="grid gap-4 @xl/main:grid-cols-2">
           <KpiCard
             label="Nouveaux clients"
             value={String(signups.signups)}
-            hint="inscrits sur la période"
             icon={<UserPlus />}
             trend={trend(signups.signups, signupsRef.signups)}
           />
@@ -335,7 +320,7 @@ export default async function MetriquesPage({
             hint={
               referredRate === null
                 ? "aucune inscription sur la période"
-                : `${pct(referredRate)} des nouveaux clients ont saisi un code`
+                : `${pct(referredRate)} des nouveaux clients`
             }
             icon={<Gift />}
             trend={trend(signups.referred, signupsRef.referred)}
@@ -360,11 +345,7 @@ export default async function MetriquesPage({
         </div>
       </MetricsSection>
 
-      <MetricsSection
-        id="produits"
-        title="Produits"
-        description={`Les cinq produits au plus fort chiffre d'affaires ${taxLabel} sur la période, hors commandes annulées.`}
-      >
+      <MetricsSection id="produits" title="Produits">
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -418,7 +399,7 @@ export default async function MetriquesPage({
       <MetricsSection
         id="usage"
         title={`Usage de l'application en ${year}`}
-        description={`Année civile de la période choisie, variations par rapport à ${Number(year) - 1}. Téléchargements, inscriptions et note viennent des stores.`}
+        description={`Variations par rapport à ${Number(year) - 1}.`}
       >
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
           <KpiCard

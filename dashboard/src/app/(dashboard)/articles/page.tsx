@@ -37,10 +37,7 @@ export default async function ArticlesPage({
 
   return (
     <>
-      <PageHeader
-        title="Articles"
-        description="Conseils d'alimentation, recettes, articles scientifiques et actualité agroalimentaire publiés dans l'application."
-      />
+      <PageHeader title="Articles" />
       {justDeleted ? (
         <p
           role="status"

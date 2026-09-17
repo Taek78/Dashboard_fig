@@ -36,10 +36,7 @@ export default async function ComptesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Comptes"
-        description="Qui peut se connecter au back-office, avec quel rôle."
-      />
+      <PageHeader title="Comptes" />
 
       <Card>
         <CardHeader>

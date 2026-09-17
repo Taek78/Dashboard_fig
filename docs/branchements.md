@@ -50,8 +50,12 @@ Règle des périodes « du / au », commune à toutes les recherches par dates (
 | `createProduct(input)`     | `ProductInput`                                           | `Product`                 | id généré, `updatedAt` posé                                        |
 | `updateProduct(id, input)` | `id`, `ProductInput`                                     | `Product \| null`         |                                                                    |
 | `deleteProduct(id)`        | `id`                                                     | `boolean`                 | les lignes de commande ne référencent pas la table : rien ne casse |
+| `getCatalogSettings()`     | —                                                        | `CatalogSettings`         | ligne unique de `catalog_settings` ; valeurs par défaut si absente |
+| `updateCatalogSettings(s)` | `{ sellWhenOutOfStock }`                                 | `CatalogSettings`         | insertion ou mise à jour de la ligne unique                        |
 
 `Product` : `name`, `variety`, `category` (`fruit | vegetable`), `unit` (`piece | g`), `priceCents` (par kg si `g`, par pièce sinon), `unitWeightGrams` (pièce seulement ; le prix au kilo s'en déduit), `container`, `originCountry` (ISO2), `originRegion`, `caliber { minMm, maxMm } | null`, `organic`, `inSeason`, `available`, `visible`, `stockQuantity`, `illustration` (emoji), `imageUrl` (https), `updatedAt`. La conversion euros → centimes est faite par zod (`productInputSchema`), jamais en base.
+
+Un produit **s'achète** dans l'application si son statut de vente est « en vente » (`productSaleStatus`) : `visible`, `available`, et un stock supérieur à 0 **sauf** si `catalog_settings.sell_when_out_of_stock` est vrai (paramètre posé depuis le catalogue du dashboard). L'application doit lire ce paramètre plutôt que de supposer qu'un stock à 0 bloque la vente. Le filtre `availability` de `getProducts` suit la même règle.
 
 ## Clients (`CustomersSource`)
 

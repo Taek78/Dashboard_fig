@@ -31,14 +31,20 @@ describe("endSentence", () => {
 describe("formatPeriodFr", () => {
   it("deux bornes, un seul jour, une borne ou aucune", () => {
     expect(plain(formatPeriodFr("2026-09-05", "2026-09-09"))).toBe(
-      "du sam. 5 sept. au mer. 9 sept.",
+      "du sam. 5 sept. au mer. 9 sept. 2026",
+    );
+    // Deux années : chaque borne porte la sienne.
+    expect(plain(formatPeriodFr("2025-12-30", "2026-01-02"))).toBe(
+      "du mar. 30 déc. 2025 au ven. 2 janv. 2026",
     );
     expect(plain(formatPeriodFr("2026-09-07", "2026-09-07"))).toBe(
-      "le lun. 7 sept.",
+      "le lun. 7 sept. 2026",
     );
-    expect(plain(formatPeriodFr("2026-09-05"))).toBe("depuis le sam. 5 sept.");
+    expect(plain(formatPeriodFr("2026-09-05"))).toBe(
+      "depuis le sam. 5 sept. 2026",
+    );
     expect(plain(formatPeriodFr(undefined, "2026-09-09"))).toBe(
-      "jusqu'au mer. 9 sept.",
+      "jusqu'au mer. 9 sept. 2026",
     );
     expect(formatPeriodFr()).toBe("");
   });
@@ -59,19 +65,19 @@ describe("formatEuros", () => {
 });
 
 describe("formatDateFr", () => {
-  it("formate une date ISO courte en jour abrégé, numéro et mois", () => {
-    expect(plain(formatDateFr("2026-09-08"))).toBe("mar. 8 sept.");
+  it("formate une date ISO courte en jour abrégé, numéro, mois et année", () => {
+    expect(plain(formatDateFr("2026-09-08"))).toBe("mar. 8 sept. 2026");
   });
 
   it("ne glisse pas d'un jour selon le fuseau (minuit UTC reste le bon jour)", () => {
     expect(plain(formatDateFr("2026-09-07T00:00:00.000Z"))).toBe(
-      "lun. 7 sept.",
+      "lun. 7 sept. 2026",
     );
   });
 
   it("accepte un ISO complet avec heure", () => {
     expect(plain(formatDateFr("2026-09-06T23:30:00.000Z"))).toBe(
-      "lun. 7 sept.",
+      "lun. 7 sept. 2026",
     );
   });
 });
@@ -80,7 +86,7 @@ describe("formatSlot", () => {
   it("assemble la date et le créneau avec un tiret demi-cadratin", () => {
     expect(
       plain(formatSlot({ date: "2026-09-08", start: "09:00", end: "11:00" })),
-    ).toBe("mar. 8 sept., 09:00–11:00");
+    ).toBe("mar. 8 sept. 2026, 09:00–11:00");
   });
 });
 
@@ -131,14 +137,14 @@ describe("toTelHref", () => {
 describe("formatDateTimeFr", () => {
   it("donne le jour et l'heure de Paris (UTC+2 en septembre)", () => {
     expect(plain(formatDateTimeFr("2026-09-07T08:15:00.000Z"))).toBe(
-      "lun. 7 sept., 10:15",
+      "lun. 7 sept. 2026, 10:15",
     );
   });
 });
 
 describe("formatDayLongFr", () => {
   it("écrit le jour en toutes lettres, sans décalage de fuseau", () => {
-    expect(plain(formatDayLongFr("2026-09-07"))).toBe("lundi 7 septembre");
-    expect(plain(formatDayLongFr("2026-01-01"))).toBe("jeudi 1 janvier");
+    expect(plain(formatDayLongFr("2026-09-07"))).toBe("lundi 7 septembre 2026");
+    expect(plain(formatDayLongFr("2026-01-01"))).toBe("jeudi 1 janvier 2026");
   });
 });

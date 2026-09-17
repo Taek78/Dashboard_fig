@@ -71,7 +71,7 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/commandes?du=2026-09-07&au=2026-09-07");
     await expect(page.getByRole("status").first()).toContainText(
-      "livraison le lun. 7 sept.",
+      "livraison le lun. 7 sept. 2026",
     );
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-002,/,
@@ -190,7 +190,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     });
     // Une seule date : ce jour-là, sans erreur.
     await expect(page.getByRole("status").first()).toContainText(
-      "5 commandes · livraison le lun. 7 sept.",
+      "5 commandes · livraison le lun. 7 sept. 2026",
     );
     await expect(form.getByRole("alert")).toHaveCount(0);
 
@@ -283,7 +283,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     await page.goto("/commandes?du=2026-09-20&au=2026-09-21&statut=preparing");
     const notice = page.getByRole("status").filter({ hasText: "Aucune" });
     await expect(notice).toContainText(
-      "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. avec ces filtres.",
+      "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. 2026 avec ces filtres.",
     );
     await expect(notice).toHaveClass(/text-info/);
     await notice.getByRole("link", { name: "Toutes les dates" }).click();

@@ -90,19 +90,9 @@ export function OrdersFilters({
                 maxLength={ORDER_SEARCH_MAX_LENGTH}
                 placeholder="Référence, nom, téléphone, ville…"
                 defaultValue={filters.query ?? ""}
-                aria-describedby="q-help"
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <p
-              id="q-help"
-              className="text-muted-foreground text-sm @max-2xl/main:hidden"
-            >
-              Les résultats se mettent à jour pendant la saisie. Une partie
-              suffit : « 260907 », « benali », « rocher@ » ou les derniers
-              chiffres d&apos;un téléphone « 00 07 ». Accents et majuscules sont
-              ignorés.
-            </p>
           </div>
 
           <div

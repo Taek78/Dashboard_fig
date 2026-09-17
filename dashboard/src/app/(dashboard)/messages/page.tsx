@@ -67,10 +67,7 @@ export default async function MessagesPage({
 
   return (
     <>
-      <PageHeader
-        title="Messages"
-        description="Les demandes envoyées par les clients depuis « Nous contacter » dans l'application."
-      />
+      <PageHeader title="Messages" />
       <div className="flex flex-col gap-4">
         <MessagesFilters
           filters={filters}

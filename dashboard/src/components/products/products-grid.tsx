@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ProductCard } from "@/components/products/product-card";
+import type { CatalogSettings } from "@/domain/products/status";
 import type { Product } from "@/domain/products/types";
 
 /*
@@ -15,9 +16,11 @@ export const gridClass =
 
 export function ProductsGrid({
   products,
+  settings,
   canEdit,
 }: {
   products: Product[];
+  settings: CatalogSettings;
   canEdit: boolean;
 }) {
   return (
@@ -33,16 +36,17 @@ export function ProductsGrid({
             </span>
             <span className="flex flex-col gap-0.5 @xl/main:gap-1">
               <span className="font-medium">Nouveau produit</span>
-              <span className="text-xs">
-                Ajouter un fruit ou un légume au catalogue
-              </span>
             </span>
           </Link>
         </li>
       ) : null}
       {products.map((product) => (
         <li key={product.id}>
-          <ProductCard product={product} canEdit={canEdit} />
+          <ProductCard
+            product={product}
+            settings={settings}
+            canEdit={canEdit}
+          />
         </li>
       ))}
     </ul>

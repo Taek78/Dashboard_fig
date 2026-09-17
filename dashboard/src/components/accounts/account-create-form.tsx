@@ -77,8 +77,7 @@ export function AccountCreateForm() {
             aria-describedby="new-password-help"
           />
           <p id="new-password-help" className="text-muted-foreground text-xs">
-            {PASSWORD_MIN_LENGTH} caractères au moins. À transmettre par un
-            canal sûr ; la personne le changera sur sa page Profil.
+            {PASSWORD_MIN_LENGTH} caractères au moins.
           </p>
         </div>
       </div>

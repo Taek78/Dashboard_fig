@@ -112,9 +112,6 @@ export function TourProgress({
               </li>
             ))}
           </ul>
-          <p className="text-muted-foreground text-xs">
-            Une livraison est traitée quand elle est livrée ou annulée.
-          </p>
         </>
       )}
     </div>

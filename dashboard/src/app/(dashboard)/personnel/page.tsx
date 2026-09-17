@@ -60,7 +60,6 @@ export default async function PersonnelPage({
     <>
       <PageHeader
         title="Personnel"
-        description="L'équipe qui prépare et livre : coordonnées, horaires, disponibilité et historique de chacun."
         actions={
           canManage ? (
             <Link
@@ -88,9 +87,7 @@ export default async function PersonnelPage({
           <p className="bg-muted/40 text-muted-foreground flex items-start gap-2 rounded-xl border p-3 text-sm">
             <UserCog className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>
-              Les gestionnaires listés ici sont des personnes de l&apos;équipe.
-              Leur accès au back-office (compte, mot de passe, rôle) se gère
-              dans{" "}
+              Accès au back-office :{" "}
               <Link
                 href="/comptes"
                 className="text-foreground font-medium underline-offset-4 hover:underline"

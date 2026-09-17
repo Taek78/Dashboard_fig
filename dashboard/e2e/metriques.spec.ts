@@ -62,7 +62,7 @@ test.describe("métriques", () => {
     const orders = page.getByRole("region", { name: "Commandes" });
     // Libellé, badge de tendance, valeur, puis l'aide : la valeur juste avant l'aide.
     await expect(orders).toContainText(
-      /Réclamations[\s\S]*?5\s*messages reçus sur la période/,
+      /Réclamations[\s\S]*?5\s*messages reçus/,
     );
     const clients = page.getByRole("region", { name: "Clients" });
     await expect(clients).toContainText("Nouveaux clients");

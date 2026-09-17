@@ -63,15 +63,9 @@ export function ProductsFilters({ filters }: { filters: ProductFilters }) {
                 type="search"
                 placeholder="Nom ou variété"
                 defaultValue={filters.query ?? ""}
-                aria-describedby="q-help"
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <p id="q-help" className="text-muted-foreground text-sm">
-              Les résultats se mettent à jour pendant la saisie. Une partie
-              suffit : « pom », « gala », « cœur ». Accents et majuscules sont
-              ignorés.
-            </p>
           </div>
 
           <div className="flex flex-col gap-3 border-t pt-4 @2xl/main:flex-row @2xl/main:flex-wrap @2xl/main:items-end">

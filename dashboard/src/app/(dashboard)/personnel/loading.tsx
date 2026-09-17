@@ -9,10 +9,7 @@ const FILTERS = [1, 2, 3, 4, 5];
 export default function PersonnelLoading() {
   return (
     <>
-      <PageHeader
-        title="Personnel"
-        description="L'équipe qui prépare et livre : coordonnées, horaires, disponibilité et historique de chacun."
-      />
+      <PageHeader title="Personnel" />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement de l&apos;équipe…</p>
         <Card>

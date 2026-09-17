@@ -1,3 +1,4 @@
+import type { CatalogSettings } from "@/domain/products/status";
 import type {
   Product,
   ProductFilters,
@@ -8,6 +9,7 @@ import type {
  * CONTRAT du catalogue, implémenté par PostgreSQL (src/data/products.db.ts).
  * Types seulement. updateProduct et deleteProduct renvoient null / false si
  * le produit n'existe pas ; createProduct attribue l'id et updatedAt.
+ * getProducts applique le paramètre du catalogue au filtre de disponibilité.
  */
 export type ProductsSource = {
   getProducts(filters?: ProductFilters): Promise<Product[]>;
@@ -15,4 +17,7 @@ export type ProductsSource = {
   createProduct(input: ProductInput): Promise<Product>;
   updateProduct(id: string, input: ProductInput): Promise<Product | null>;
   deleteProduct(id: string): Promise<boolean>;
+  /** Paramètres du catalogue ; valeurs par défaut si la ligne manque. */
+  getCatalogSettings(): Promise<CatalogSettings>;
+  updateCatalogSettings(settings: CatalogSettings): Promise<CatalogSettings>;
 };

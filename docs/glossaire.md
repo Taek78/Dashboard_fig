@@ -253,7 +253,13 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Barre d'avancement segmentée** (tableau de bord) : barre découpée en segments proportionnels, un par statut (livrées, annulées, expédiées, en préparation), accompagnée d'une légende chiffrée, à partir des totaux agrégés (`tourProgressFromCounts`). « Traitée » veut dire livrée ou annulée : il ne reste rien à faire.
 
-**Gommette de présence** (affectation) : le caractère 🟢 ou 🔴 devant chaque nom dans les listes déroulantes de préparateur et de livreur (`staffOptionLabel`) : vert si la personne est « disponible », rouge sinon, quelle que soit la raison (congé, indisponible), la raison suivant en texte. Un `<select>` natif n'accepte ni icône ni couleur CSS dans ses options, surtout sur téléphone : un caractère passe partout.
+**Gommette de présence** (affectation) : le caractère 🟢 ou 🔴 devant chaque nom dans les listes déroulantes de préparateur et de livreur (`staffOptionLabel`) : vert si la personne est « disponible », rouge sinon, quelle que soit la raison (congé, indisponible), la raison suivant en texte. Un `<select>` natif n'accepte ni icône ni couleur CSS dans ses options, surtout sur téléphone : un caractère passe partout. Elle ne sert qu'à affecter le jour même : sur une commande terminée (livrée ou annulée), la gommette du préparateur et du livreur est grise.
+
+**Statut de vente (produit)** (catalogue) : déduit, jamais stocké (`productSaleStatus`) : « Masqué » (absent de l'application), « Indisponible » (retiré de la vente à la main), « Rupture de stock » (stock à 0, sauf paramètre du catalogue), « En vente ». Affiché en pastille sur l'image de la carte produit (`ProductStatusBadge`) ; le pied de carte ne montre que le stock et l'alerte « Stock bas ».
+
+**Paramètre du catalogue (vente à stock 0)** (catalogue) : case entre la recherche et la grille du catalogue, « Laisser en vente les produits dont le stock est à 0 » : cochée, un produit épuisé garde le statut « En vente » ; décochée (par défaut), il passe en « Rupture de stock ». Une seule valeur pour tout le catalogue (table `catalog_settings`), écrite par `saveCatalogSettings` (rôles qui modifient le catalogue), lue par l'application FIG.
+
+**Dates avec l'année** (tous les écrans) : toute date affichée porte son année (« jeu. 12 mars 2026 ») ; une période dans une même année ne l'écrit qu'une fois (« du sam. 5 sept. au mer. 9 sept. 2026 »). Seuls les repères sous l'axe du graphe d'évolution l'omettent, l'infobulle et l'en-tête la donnant. Décision du client, 2026-09-16.
 
 **Alerte de personnel** (tableau de bord) : le bandeau rouge (`StaffShortageAlert`, `role="alert"`) placé avant tout le reste quand aucun préparateur, ou aucun livreur, n'est présent (`unavailableRoles` : dans l'équipe et « disponible »). Rien ne peut alors être préparé ou livré ; un lien mène au métier concerné dans le personnel.
 

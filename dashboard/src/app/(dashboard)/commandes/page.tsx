@@ -98,10 +98,7 @@ export default async function CommandesPage({
 
   return (
     <>
-      <PageHeader
-        title="Commandes"
-        description="Suivez, préparez et livrez les commandes : chaque jour est une tournée."
-      />
+      <PageHeader title="Commandes" />
       <div className="flex flex-col gap-4">
         <OrdersFilters
           filters={filters}

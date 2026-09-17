@@ -16,10 +16,7 @@ const ROWS = [1, 2, 3, 4];
 export default function CommandesLoading() {
   return (
     <>
-      <PageHeader
-        title="Commandes"
-        description="Suivez, préparez et livrez les commandes : chaque jour est une tournée."
-      />
+      <PageHeader title="Commandes" />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement des commandes…</p>
         {/* Silhouette de la recherche et des filtres : loading.tsx ne connaît pas l'URL. */}

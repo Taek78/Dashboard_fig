@@ -31,9 +31,7 @@ export function CustomerPrivacyPanel({
       <CardContent className="flex flex-col gap-4 text-sm">
         {customer.anonymizedAt ? (
           <p role="note" className="bg-muted/40 rounded-lg border px-3 py-2">
-            Client anonymisé le {formatDateTimeFr(customer.anonymizedAt)} :
-            identité, coordonnées, adhésion et notes internes effacées. Les
-            commandes restent pour la comptabilité.
+            Client anonymisé le {formatDateTimeFr(customer.anonymizedAt)}.
           </p>
         ) : null}
         {canHandle ? (
@@ -43,9 +41,7 @@ export function CustomerPrivacyPanel({
                 Droit d&apos;accès et portabilité
               </h3>
               <p className="text-muted-foreground">
-                Toutes les données gardées sur ce client (fiche, notes internes,
-                commandes et leur historique) dans un fichier JSON à transmettre
-                à la personne qui les demande. Chaque export est journalisé.
+                Fichier JSON de toutes ses données. Export journalisé.
               </p>
               <a
                 href={`/clients/${customer.id}/export`}
@@ -63,9 +59,7 @@ export function CustomerPrivacyPanel({
               <section className="flex flex-col gap-2">
                 <h3 className="font-semibold">Droit à l&apos;effacement</h3>
                 <p className="text-muted-foreground">
-                  Efface définitivement ce qui identifie la personne. Les
-                  commandes, pièces comptables, ne peuvent pas être supprimées :
-                  elles restent, rattachées à un client anonyme.
+                  Définitif. Les commandes restent, sans identité.
                 </p>
                 <AnonymizeCustomerButton
                   customerId={customer.id}
@@ -76,8 +70,7 @@ export function CustomerPrivacyPanel({
           </div>
         ) : (
           <p className="text-muted-foreground">
-            Une demande d&apos;accès à ses données ou d&apos;effacement de la
-            part de ce client est traitée par un administrateur.
+            Export et effacement : traitée par un administrateur.
           </p>
         )}
       </CardContent>

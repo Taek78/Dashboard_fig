@@ -57,7 +57,6 @@ export default async function MessagePage({
     <>
       <PageHeader
         title={`Message de ${customer.fullName}`}
-        description="Fiche du client, puis sa demande complète."
         actions={
           <Button
             variant="outline"

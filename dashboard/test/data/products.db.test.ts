@@ -79,4 +79,23 @@ describe("productsDb", () => {
     expect(await productsDb.getProduct("prd-0003")).toBeNull();
     expect(await productsDb.deleteProduct("prd-0003")).toBe(false);
   });
+
+  it("paramètres du catalogue : non par défaut, enregistrés, appliqués au filtre", async () => {
+    expect(await productsDb.getCatalogSettings()).toEqual({
+      sellWhenOutOfStock: false,
+    });
+    const unavailable = () =>
+      productsDb
+        .getProducts({ availability: "unavailable" })
+        .then((list) => list.map((p) => p.id));
+    expect(await unavailable()).toContain("prd-0013");
+
+    expect(
+      await productsDb.updateCatalogSettings({ sellWhenOutOfStock: true }),
+    ).toEqual({ sellWhenOutOfStock: true });
+    expect(await productsDb.getCatalogSettings()).toEqual({
+      sellWhenOutOfStock: true,
+    });
+    expect(await unavailable()).not.toContain("prd-0013");
+  });
 });

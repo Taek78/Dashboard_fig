@@ -18,8 +18,7 @@ export const CONSENT_LABELS: Record<ConsentKey, string> = {
 /** Ce que chaque autorisation permet, en une phrase, pour l'infobulle et la fiche. */
 export const CONSENT_DESCRIPTIONS: Record<ConsentKey, string> = {
   offers: "Notifications d'offres, de promotions et de liquidations.",
-  orderStatus:
-    "Notification à chaque changement d'état de sa commande : le dashboard la dépose automatiquement.",
+  orderStatus: "Notification à chaque changement d'état de sa commande.",
   marketing: "Communications marketing (lettres, campagnes).",
 };
 

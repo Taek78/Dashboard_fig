@@ -80,7 +80,6 @@ export function PeriodForm({
         toLabel="Au"
         idPrefix="periode"
         period={custom}
-        help="Une plage « Du / Au » remplace la période. Une seule date : ce jour-là."
         className="@2xl/main:w-80"
       />
       {children}

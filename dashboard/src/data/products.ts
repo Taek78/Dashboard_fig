@@ -13,4 +13,6 @@ export const {
   createProduct,
   updateProduct,
   deleteProduct,
+  getCatalogSettings,
+  updateCatalogSettings,
 }: ProductsSource = productsDb;

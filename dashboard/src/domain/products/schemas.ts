@@ -38,6 +38,13 @@ const productFiltersSchema = z
     includeHidden: masques === "1" ? true : undefined,
   }));
 
+/** Case « laisser en vente à stock 0 » : présente = cochée (formulaire HTML). */
+export const catalogSettingsSchema = z
+  .object({ sellWhenOutOfStock: z.literal("on").optional() })
+  .transform(({ sellWhenOutOfStock }) => ({
+    sellWhenOutOfStock: sellWhenOutOfStock === "on",
+  }));
+
 export function parseProductFilters(
   raw: Record<string, string | string[] | undefined>,
 ): ProductFilters {

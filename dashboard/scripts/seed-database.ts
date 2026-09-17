@@ -163,6 +163,15 @@ export async function seedDatabase(
     );
     if (notes.length > 0) await tx.insert(schema.customerNotes).values(notes);
 
+    // Paramètres du catalogue remis à leur valeur par défaut (une seule ligne).
+    await tx
+      .insert(schema.catalogSettings)
+      .values({ id: "catalog", sellWhenOutOfStock: false })
+      .onConflictDoUpdate({
+        target: schema.catalogSettings.id,
+        set: { sellWhenOutOfStock: false, updatedAt: new Date() },
+      });
+
     await tx.insert(schema.products).values(
       productsFixtures.map((p) => ({
         id: p.id,

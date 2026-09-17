@@ -9,7 +9,7 @@ import { ProductForm } from "@/components/products/product-form";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getProduct } from "@/data/products";
+import { getCatalogSettings, getProduct } from "@/data/products";
 import { getCurrentUser } from "@/data/session";
 import { canEditProduct } from "@/domain/auth/roles";
 import { PRODUCT_CATEGORY_LABELS } from "@/domain/products/category";
@@ -32,8 +32,9 @@ export default async function ProduitPage({
   const parsed = productIdSchema.safeParse(id);
   if (!parsed.success) notFound();
 
-  const [product, user, raw] = await Promise.all([
+  const [product, settings, user, raw] = await Promise.all([
     getProduct(parsed.data),
+    getCatalogSettings(),
     getCurrentUser(),
     searchParams,
   ]);
@@ -72,7 +73,7 @@ export default async function ProduitPage({
       <div className="grid gap-6 @4xl/main:grid-cols-[minmax(16rem,20rem)_1fr]">
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-semibold">Aperçu dans le catalogue</h2>
-          <ProductCard product={product} />
+          <ProductCard product={product} settings={settings} />
         </div>
         <Card>
           <CardHeader>

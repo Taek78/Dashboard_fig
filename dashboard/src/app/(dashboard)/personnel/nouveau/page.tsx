@@ -51,11 +51,7 @@ export default async function NouvellePersonnePage({
 
   return (
     <>
-      <PageHeader
-        title="Nouvelle personne"
-        description="Renseignez la fiche ; vous pourrez tout modifier ensuite."
-        actions={back}
-      />
+      <PageHeader title="Nouvelle personne" actions={back} />
       {source ? (
         <p
           role="status"

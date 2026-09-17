@@ -48,6 +48,24 @@ function bucketLabel(key: string, bucket: Bucket): string {
   return formatDateFr(key);
 }
 
+/**
+ * Libellé d'AXE sans l'année (« lun. 7 sept. ») : écrite sous chaque repère,
+ * elle ferait chevaucher les dates ; l'infobulle et le tableau gardent la date
+ * complète, et l'en-tête de la page dit la période.
+ */
+const axisDay = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
+function bucketAxisLabel(key: string, bucket: Bucket): string {
+  if (bucket === "month") return bucketLabel(key, bucket);
+  const day = axisDay.format(new Date(`${key}T00:00:00.000Z`));
+  return bucket === "week" ? `sem. ${day}` : day;
+}
+
 const shortDay = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
   month: "short",
@@ -86,6 +104,8 @@ function edgeAlign(x: number): string {
 type Row = {
   key: string;
   label: string;
+  /** Libellé d'axe, sans l'année. */
+  axisLabel: string;
   /** Libellé d'axe court, en largeur étroite. */
   shortLabel: string;
   /** Valeurs tracées (euros ou compte). */
@@ -180,6 +200,7 @@ export function ComparisonChart({
     return {
       key: p.key,
       label: bucketLabel(p.key, bucket),
+      axisLabel: bucketAxisLabel(p.key, bucket),
       shortLabel: bucketShortLabel(p.key, bucket),
       current: currentRaw / scale,
       previous: previousRaw / scale,
@@ -418,22 +439,16 @@ export function ComparisonChart({
                 style={{ left: `${xAt(i) * 100}%` }}
               >
                 <span className="@xl/main:hidden">{r.shortLabel}</span>
-                <span className="hidden @xl/main:inline">{r.label}</span>
+                <span className="hidden @xl/main:inline">{r.axisLabel}</span>
               </span>
             );
           })}
         </div>
       </div>
 
-      <p className="text-muted-foreground text-xs @3xl/main:hidden">
-        Touchez le graphe pour lire la valeur d&apos;une période.
-      </p>
-
       {!hasPrevious ? (
         <p className="text-muted-foreground text-xs">
-          Aucune donnée sur la période de référence (
-          {referenceLabel.toLowerCase()}) : la ligne de comparaison reste à
-          zéro.
+          Aucune donnée pour {referenceLabel.toLowerCase()}.
         </p>
       ) : null}
 

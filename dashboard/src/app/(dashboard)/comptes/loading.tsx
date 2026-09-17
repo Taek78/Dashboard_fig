@@ -5,10 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ComptesLoading() {
   return (
     <>
-      <PageHeader
-        title="Comptes"
-        description="Qui peut se connecter au back-office, avec quel rôle."
-      />
+      <PageHeader title="Comptes" />
       <div aria-busy="true" className="flex flex-col gap-5">
         <p className="sr-only">Chargement des comptes…</p>
         <Card>

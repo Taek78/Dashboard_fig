@@ -263,7 +263,7 @@ export const productsFixtures: readonly Product[] = [
     inSeason: true,
     available: true,
     visible: true,
-    stockQuantity: 14,
+    stockQuantity: 0,
     illustration: "🍈",
   }),
   p({

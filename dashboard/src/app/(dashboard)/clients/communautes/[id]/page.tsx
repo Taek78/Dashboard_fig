@@ -86,13 +86,6 @@ export default async function CommunautePage({
           discountPercent={discountPercent}
         />
       </div>
-      <p className="text-muted-foreground text-sm">
-        La remise dépend du nombre de membres (aucune jusqu&apos;à 3, −5 % de 4
-        à 9, −10 % à partir de 10) et la livraison est offerte ; l&apos;une et
-        l&apos;autre sont appliquées par l&apos;application au paiement. Un
-        membre dont la remise fidélité est prête la reçoit à la place, sur cette
-        commande-là.
-      </p>
 
       <div className="grid gap-4 @4xl/main:grid-cols-3">
         <Card>

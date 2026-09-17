@@ -6,12 +6,14 @@ import {
   createProduct,
   deleteProduct,
   getProduct,
+  updateCatalogSettings,
   updateProduct,
 } from "@/data/products";
 import { getCurrentUser } from "@/data/session";
 import { canEditProduct } from "@/domain/auth/roles";
 import { duplicateName } from "@/domain/products/rules";
 import {
+  catalogSettingsSchema,
   deleteProductSchema,
   productInputSchema,
   updateProductSchema,
@@ -33,6 +35,44 @@ const MESSAGES = {
   confirm: "Tapez SUPPRIMER pour confirmer la suppression.",
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
 } as const;
+
+/**
+ * Paramètre du catalogue « laisser en vente un produit à stock 0 » : écrit dès
+ * que la case change. Même rôle que la modification d'un produit.
+ */
+export async function saveCatalogSettings(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canEditProduct(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "saveCatalogSettings",
+    });
+    return { status: "error", message: MESSAGES.forbidden };
+  }
+  const parsed = catalogSettingsSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: MESSAGES.invalid };
+  try {
+    const saved = await updateCatalogSettings(parsed.data);
+    logSecurity({
+      type: "catalog_settings_changed",
+      userId: user.id,
+      sellWhenOutOfStock: saved.sellWhenOutOfStock,
+    });
+    revalidatePath("/catalogue", "layout");
+    return {
+      status: "success",
+      message: saved.sellWhenOutOfStock
+        ? "Les produits à stock 0 restent en vente."
+        : "Les produits à stock 0 passent en rupture de stock.",
+    };
+  } catch {
+    return { status: "error", message: MESSAGES.failure };
+  }
+}
 
 export async function saveProduct(
   _prev: ActionResult,

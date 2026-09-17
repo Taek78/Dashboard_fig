@@ -96,19 +96,9 @@ export function CustomersSearch({
                 maxLength={64}
                 placeholder="Nom, e-mail, téléphone, ville, communauté, code de parrainage…"
                 defaultValue={search.query ?? ""}
-                aria-describedby="q-help"
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <p
-              id="q-help"
-              className="text-muted-foreground text-sm @max-2xl/main:hidden"
-            >
-              Les résultats se mettent à jour pendant la saisie. Une partie
-              suffit : « benali », « lucioles », « montreuil », « Benali#0001 »
-              ou les derniers chiffres d&apos;un téléphone « 00 07 ». Accents et
-              majuscules sont ignorés.
-            </p>
           </div>
 
           <div className="grid gap-4 border-t pt-4 @2xl/main:grid-cols-[auto_1fr_auto] @2xl/main:items-end">

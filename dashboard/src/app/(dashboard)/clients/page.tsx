@@ -31,10 +31,7 @@ export default async function ClientsPage({
 
   return (
     <>
-      <PageHeader
-        title="Clients"
-        description="Particuliers et communautés : coordonnées, autorisations, commandes, fidélité, notes internes."
-      />
+      <PageHeader title="Clients" />
       <CustomersSearch search={search} canReset={canReset} />
       <Suspense fallback={<CustomersResultsSkeleton />}>
         <CustomersResults search={search} />

@@ -31,9 +31,14 @@ vi.mock("next/navigation", () => ({ redirect }));
 const { isolateEachTest } = await import("../../support/test-database");
 isolateEachTest();
 
-const { addProduct, duplicateProduct, removeProduct, saveProduct } =
-  await import("@/app/(dashboard)/catalogue/actions");
-const { getProduct } = await import("@/data/products");
+const {
+  addProduct,
+  duplicateProduct,
+  removeProduct,
+  saveCatalogSettings,
+  saveProduct,
+} = await import("@/app/(dashboard)/catalogue/actions");
+const { getCatalogSettings, getProduct } = await import("@/data/products");
 const { idleActionResult } = await import("@/lib/action-result");
 
 function form(fields: Record<string, string>): FormData {
@@ -218,5 +223,41 @@ describe("removeProduct", () => {
         })
       ).result,
     ).toEqual({ status: "error", message: "Ce produit n'existe plus." });
+  });
+});
+
+describe("saveCatalogSettings", () => {
+  it("coche puis décoche « laisser en vente à stock 0 »", async () => {
+    expect(
+      await saveCatalogSettings(
+        idleActionResult,
+        form({ sellWhenOutOfStock: "on" }),
+      ),
+    ).toEqual({
+      status: "success",
+      message: "Les produits à stock 0 restent en vente.",
+    });
+    expect(await getCatalogSettings()).toEqual({ sellWhenOutOfStock: true });
+    expect(revalidatePath).toHaveBeenCalledWith("/catalogue", "layout");
+
+    // Case décochée : le champ est absent du formulaire.
+    expect((await saveCatalogSettings(idleActionResult, form({}))).status).toBe(
+      "success",
+    );
+    expect(await getCatalogSettings()).toEqual({ sellWhenOutOfStock: false });
+  });
+
+  it("refuse un compte en lecture seule", async () => {
+    session.role = "lecture";
+    expect(
+      await saveCatalogSettings(
+        idleActionResult,
+        form({ sellWhenOutOfStock: "on" }),
+      ),
+    ).toEqual({
+      status: "error",
+      message: "Vous n'avez pas les droits pour modifier le catalogue.",
+    });
+    expect(await getCatalogSettings()).toEqual({ sellWhenOutOfStock: false });
   });
 });

@@ -159,10 +159,6 @@ export function ArticleForm({
               defaultValue={article?.imageUrl ?? ""}
               placeholder="https://…/illustration.jpg"
             />
-            <p className="text-muted-foreground text-xs">
-              Si une image est renseignée, elle remplace l&apos;emoji sur la
-              carte.
-            </p>
           </div>
         </fieldset>
 

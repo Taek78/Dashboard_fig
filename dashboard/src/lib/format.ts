@@ -11,6 +11,11 @@
  *
  * Les formateurs Intl sont construits une fois au chargement du module :
  * leur création est coûteuse, leur usage ne l'est pas.
+ *
+ * Toute date affichée porte son ANNÉE (décision du client, 2026-09-16) :
+ * « client depuis le jeu. 25 juin » relu deux ans plus tard laisserait croire
+ * à l'année de lecture. Seule une période dans une même année ne l'écrit
+ * qu'une fois, à la fin (« du sam. 5 sept. au mer. 9 sept. 2026 »).
  */
 const euros = new Intl.NumberFormat("fr-FR", {
   style: "currency",
@@ -18,6 +23,15 @@ const euros = new Intl.NumberFormat("fr-FR", {
 });
 
 const dateFr = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Europe/Paris",
+});
+
+/** Sans l'année : seulement pour la première borne d'une période dans une même année. */
+const dateFrNoYear = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
   day: "numeric",
   month: "short",
@@ -30,6 +44,7 @@ const dayLongFr = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
   day: "numeric",
   month: "long",
+  year: "numeric",
   timeZone: "Europe/Paris",
 });
 
@@ -37,6 +52,7 @@ const dateTimeFr = new Intl.DateTimeFormat("fr-FR", {
   weekday: "short",
   day: "numeric",
   month: "short",
+  year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
   timeZone: "Europe/Paris",
@@ -49,32 +65,36 @@ export function formatEuros(cents: number): string {
   return euros.format(cents / 100);
 }
 
-/** Date ISO (courte ou complète) → jour abrégé, numéro, mois. "2026-09-08" → "mar. 8 sept." */
+/** Date ISO (courte ou complète) → jour abrégé, numéro, mois. "2026-09-08" → "mar. 8 sept. 2026" */
 export function formatDateFr(iso: string): string {
   return dateFr.format(new Date(iso));
 }
 
-/** Jour "AAAA-MM-JJ" → en-tête de tournée. "2026-09-07" → "lundi 7 septembre" */
+/** Jour "AAAA-MM-JJ" → en-tête de tournée. "2026-09-07" → "lundi 7 septembre 2026" */
 export function formatDayLongFr(day: string): string {
   return dayLongFr.format(new Date(day));
 }
 
-/** Instant ISO → jour et heure de Paris. "2026-09-07T08:15:00.000Z" → "lun. 7 sept., 10:15" */
+/** Instant ISO → jour et heure de Paris. "2026-09-07T08:15:00.000Z" → "lun. 7 sept. 2026, 10:15" */
 export function formatDateTimeFr(iso: string): string {
   return dateTimeFr.format(new Date(iso));
 }
 
 /**
  * Période de jours "AAAA-MM-JJ", bornes facultatives → texte.
- * ("2026-09-05", "2026-09-09") → "du sam. 5 sept. au mer. 9 sept." ;
- * même jour → "le lun. 7 sept." ; début seul → "depuis le …" ; fin seule →
- * "jusqu'au …" ; aucune borne → "".
+ * ("2026-09-05", "2026-09-09") → "du sam. 5 sept. au mer. 9 sept. 2026"
+ * (l'année une fois si les deux bornes la partagent, sinon sur chacune) ;
+ * même jour → "le lun. 7 sept. 2026" ; début seul → "depuis le …" ; fin
+ * seule → "jusqu'au …" ; aucune borne → "".
  */
 export function formatPeriodFr(from?: string, to?: string): string {
   if (from && to) {
-    return from === to
-      ? `le ${formatDateFr(from)}`
-      : `du ${formatDateFr(from)} au ${formatDateFr(to)}`;
+    if (from === to) return `le ${formatDateFr(from)}`;
+    const start =
+      from.slice(0, 4) === to.slice(0, 4)
+        ? dateFrNoYear.format(new Date(from))
+        : formatDateFr(from);
+    return `du ${start} au ${formatDateFr(to)}`;
   }
   if (from) return `depuis le ${formatDateFr(from)}`;
   if (to) return `jusqu'au ${formatDateFr(to)}`;
@@ -90,7 +110,7 @@ export function endSentence(text: string): string {
   return text.endsWith(".") ? text : `${text}.`;
 }
 
-/** Créneau de livraison → date + plage horaire. { date, start: "09:00", end: "11:00" } → "mar. 8 sept., 09:00–11:00" */
+/** Créneau de livraison → date + plage horaire. { date, start: "10:00", end: "11:00" } → "mar. 8 sept. 2026, 10:00–11:00" */
 export function formatSlot(slot: {
   date: string;
   start: string;

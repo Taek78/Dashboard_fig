@@ -14,10 +14,7 @@ export default async function ProfilPage() {
 
   return (
     <>
-      <PageHeader
-        title="Mon profil"
-        description="Votre compte et votre mot de passe."
-      />
+      <PageHeader title="Mon profil" />
       <div className="grid gap-4 @4xl/main:grid-cols-[minmax(16rem,20rem)_1fr]">
         <Card>
           <CardHeader>

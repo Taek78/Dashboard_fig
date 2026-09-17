@@ -53,8 +53,7 @@ export function LoyaltyGauge({ status }: { status: LoyaltyStatus }) {
             <span className="text-success font-medium">
               {LOYALTY_THRESHOLD} commandes cumulées :
             </span>{" "}
-            la prochaine commande est à −{LOYALTY_DISCOUNT_PERCENT} % (remise
-            appliquée par l&apos;application), puis le compteur repart de zéro.
+            prochaine commande à −{LOYALTY_DISCOUNT_PERCENT} %.
           </>
         ) : (
           <>
@@ -65,7 +64,6 @@ export function LoyaltyGauge({ status }: { status: LoyaltyStatus }) {
             <span className="text-muted-foreground">
               {" "}
               · encore {status.remaining} avant −{LOYALTY_DISCOUNT_PERCENT} %.
-              Une annulation ne compte pas et ne remet pas le compteur à zéro.
             </span>
           </>
         )}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Leaf, Pencil, Sun } from "lucide-react";
 import { DeleteProductButton } from "@/components/products/delete-product-button";
 import { DuplicateProductButton } from "@/components/products/duplicate-product-button";
+import { ProductStatusBadge } from "@/components/products/product-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -17,6 +18,10 @@ import {
   pricePerKgCents,
   unitPriceCents,
 } from "@/domain/products/rules";
+import {
+  productSaleStatus,
+  type CatalogSettings,
+} from "@/domain/products/status";
 import type { Product } from "@/domain/products/types";
 import { formatEuros, formatQuantity } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -27,15 +32,20 @@ import { cn } from "@/lib/utils";
  * directement depuis la grille pour un rôle qui peut modifier le catalogue.
  * La carte est un <article> et non un lien : un lien ne peut pas contenir de
  * boutons. Fond de l'illustration teinté par catégorie (orange = fruit,
- * vert = légume), badges Saison / Bio / drapeau France, état (masqué,
- * indisponible, stock bas). L'illustration est un emoji, ou l'image du client
- * si imageUrl est renseignée. Tous les signaux colorés ont un texte.
+ * vert = légume), badges Saison / Bio / drapeau France, et le STATUT DE VENTE
+ * posé sur l'image (en vente, rupture de stock, indisponible, masqué : règle
+ * productSaleStatus, selon le paramètre du catalogue) ; en pied, le stock et
+ * l'alerte de stock bas seulement. L'illustration est un emoji, ou l'image du
+ * client si imageUrl est renseignée. Tous les signaux colorés ont un texte.
  */
 export function ProductCard({
   product,
+  settings,
   canEdit = false,
 }: {
   product: Product;
+  /** Paramètre du catalogue : décide si un stock à 0 est une rupture. */
+  settings: CatalogSettings;
   /** Affiche la barre d'actions (grille). L'aperçu de la fiche la masque. */
   canEdit?: boolean;
 }) {
@@ -43,7 +53,8 @@ export function ProductCard({
   const perUnit = unitPriceCents(product);
   const caliber = formatCaliber(product.caliber);
   const isFruit = product.category === "fruit";
-  const dimmed = !product.visible || !product.available;
+  const status = productSaleStatus(product, settings);
+  const dimmed = status !== "en_vente";
   const href = `/catalogue/${product.id}`;
 
   return (
@@ -104,18 +115,10 @@ export function ProductCard({
           />
         ) : null}
 
-        {!product.visible ? (
-          <Badge variant="secondary" className="absolute bottom-2 left-2">
-            Masqué
-          </Badge>
-        ) : !product.available ? (
-          <Badge
-            variant="outline"
-            className="bg-card/80 absolute bottom-2 left-2"
-          >
-            Indisponible
-          </Badge>
-        ) : null}
+        <ProductStatusBadge
+          status={status}
+          className="absolute bottom-2 left-2"
+        />
       </Link>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
@@ -170,10 +173,8 @@ export function ProductCard({
           <span className="text-muted-foreground">
             Stock : {formatQuantity(product.stockQuantity, product.unit)}
           </span>
-          {isLowStock(product) ? (
+          {product.stockQuantity > 0 && isLowStock(product) ? (
             <Badge variant="warning">Stock bas</Badge>
-          ) : product.available && product.visible ? (
-            <Badge variant="success">En vente</Badge>
           ) : null}
         </div>
       </div>

@@ -96,7 +96,7 @@ test.describe("personnel", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel?type=gestionnaire");
-    await expect(page.getByText("se gère dans")).toBeVisible();
+    await expect(page.getByText("Accès au back-office")).toBeVisible();
     await expect(page.getByRole("link", { name: "Comptes" })).toBeVisible();
   });
 

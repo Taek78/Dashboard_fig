@@ -313,6 +313,25 @@ export const products = pgTable(
   ],
 );
 
+/*
+ * ---------- Paramètres du catalogue (une seule ligne) ----------
+ * Lus par l'application FIG pour savoir si un produit s'achète
+ * (src/domain/products/status.ts). La contrainte d'id garantit l'unicité de la
+ * ligne, posée par la migration 0012.
+ */
+export const catalogSettings = pgTable(
+  "catalog_settings",
+  {
+    id: text("id").primaryKey().default("catalog"),
+    /** Un produit à stock 0 reste en vente. */
+    sellWhenOutOfStock: boolean("sell_when_out_of_stock")
+      .notNull()
+      .default(false),
+    updatedAt: timestampTz("updated_at").notNull().defaultNow(),
+  },
+  (t) => [check("catalog_settings_single_row", sql`${t.id} = 'catalog'`)],
+);
+
 /* ---------- Commandes ---------- */
 export const orders = pgTable(
   "orders",

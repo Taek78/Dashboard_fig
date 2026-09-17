@@ -14,10 +14,7 @@ const ROWS = [1, 2, 3, 4];
 export default function MessagesLoading() {
   return (
     <>
-      <PageHeader
-        title="Messages"
-        description="Les demandes envoyées par les clients depuis « Nous contacter » dans l'application."
-      />
+      <PageHeader title="Messages" />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement des messages…</p>
         <MessagesFiltersSkeleton />

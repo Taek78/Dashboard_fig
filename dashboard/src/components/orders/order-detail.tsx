@@ -207,13 +207,10 @@ export function OrderDetail({
             ) : null}
           </div>
           {allowed.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Statut final : aucune transition possible.
-            </p>
+            <p className="text-muted-foreground text-sm">Statut final.</p>
           ) : !canEdit ? (
             <p className="text-muted-foreground text-sm">
-              Votre compte est en lecture seule : le statut ne peut pas être
-              modifié.
+              Compte en lecture seule.
             </p>
           ) : (
             <OrderStatusForm
@@ -263,14 +260,11 @@ export function OrderDetail({
             </h3>
             {!notifyOrderStatus ? (
               <p className="text-muted-foreground text-sm">
-                Le client n&apos;a pas autorisé les notifications d&apos;état de
-                commande : rien n&apos;est déposé pour lui.
+                Le client n&apos;a pas autorisé les notifications d&apos;état.
               </p>
             ) : notifications.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                Aucune notification déposée pour l&apos;instant : chaque
-                changement de statut en dépose une, envoyée par
-                l&apos;application.
+                Aucune notification pour l&apos;instant.
               </p>
             ) : (
               <ol className="flex flex-col gap-3 text-sm">
@@ -301,10 +295,6 @@ export function OrderDetail({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <p className="text-muted-foreground text-sm">
-            Qui prépare et qui livre. Les personnes proposées sont celles de la
-            section Personnel, du bon métier et actives.
-          </p>
           <div className="max-w-md">
             <OrderTeam
               order={order}
@@ -364,9 +354,6 @@ export function OrderDetail({
                     {order.discount.kind === "community" && order.community
                       ? ` (${order.community.name})`
                       : ""}
-                    <span className="text-muted-foreground block text-xs">
-                      Appliquée au paiement dans l&apos;application FIG
-                    </span>
                   </TableCell>
                   <TableCell className="text-success text-right tabular-nums">
                     −{formatEuros(order.discount.amountCents)}
@@ -374,14 +361,7 @@ export function OrderDetail({
                 </TableRow>
               ) : null}
               <TableRow>
-                <TableCell colSpan={2}>
-                  Frais de livraison
-                  {order.community ? (
-                    <span className="text-muted-foreground block text-xs">
-                      Offerts à toute communauté
-                    </span>
-                  ) : null}
-                </TableCell>
+                <TableCell colSpan={2}>Frais de livraison</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {order.deliveryFeeCents === 0
                     ? "Offerts"

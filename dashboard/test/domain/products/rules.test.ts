@@ -106,17 +106,34 @@ describe("filterProducts", () => {
         (p) => p.category === "fruit",
       ),
     ).toBe(true);
+    // Fraises retirées de la vente, Melon à stock 0 (rupture par défaut).
     expect(
       filterProducts(productsFixtures, { availability: "unavailable" }).map(
         (p) => p.id,
       ),
-    ).toEqual(["prd-0009"]);
+    ).toEqual(["prd-0009", "prd-0013"]);
     expect(
       filterProducts(productsFixtures, {
         availability: "unavailable",
         includeHidden: true,
       }).map((p) => p.id),
-    ).toEqual(["prd-0009", "prd-0016"]);
+    ).toEqual(["prd-0009", "prd-0013"]);
+    // Paramètre coché : le Melon reste en vente.
+    const sell = { sellWhenOutOfStock: true };
+    expect(
+      filterProducts(
+        productsFixtures,
+        { availability: "unavailable" },
+        sell,
+      ).map((p) => p.id),
+    ).toEqual(["prd-0009"]);
+    expect(
+      filterProducts(
+        productsFixtures,
+        { availability: "available" },
+        sell,
+      ).some((p) => p.id === "prd-0013"),
+    ).toBe(true);
   });
 });
 

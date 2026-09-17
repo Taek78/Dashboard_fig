@@ -20,6 +20,11 @@ export type SecurityEvent =
     }
   | { type: "product_deleted"; userId: string; productId: string }
   | {
+      type: "catalog_settings_changed";
+      userId: string;
+      sellWhenOutOfStock: boolean;
+    }
+  | {
       type: "product_duplicated";
       userId: string;
       productId: string;

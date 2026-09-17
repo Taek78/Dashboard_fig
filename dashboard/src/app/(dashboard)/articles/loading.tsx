@@ -8,10 +8,7 @@ const ROWS = [1, 2, 3];
 export default function ArticlesLoading() {
   return (
     <>
-      <PageHeader
-        title="Articles"
-        description="Conseils d'alimentation, recettes, articles scientifiques et actualité agroalimentaire publiés dans l'application."
-      />
+      <PageHeader title="Articles" />
       <div aria-busy="true" className="flex flex-col gap-5">
         <p className="sr-only">Chargement des articles…</p>
         <Card>

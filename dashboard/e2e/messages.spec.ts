@@ -55,7 +55,7 @@ test.describe("messages", () => {
     await page.goto("/messages?du=2026-08-01&au=2026-08-31");
     const notice = page.getByRole("status").filter({ hasText: "Aucun" });
     await expect(notice).toContainText(
-      "Aucun message reçu du sam. 1 août au lun. 31 août.",
+      "Aucun message reçu du sam. 1 août au lun. 31 août 2026.",
     );
     await expect(notice).toHaveClass(/text-info/);
   });

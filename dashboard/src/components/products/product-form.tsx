@@ -158,9 +158,6 @@ export function ProductForm({ product }: ProductFormProps) {
             />
             <p id="priceEuros-help" className="text-muted-foreground text-xs">
               Deux décimales maximum.
-              {unit === "piece"
-                ? " Le prix au kilo se déduit du poids moyen ci-contre."
-                : ""}
             </p>
           </div>
           {unit === "piece" ? (
@@ -310,10 +307,6 @@ export function ProductForm({ product }: ProductFormProps) {
                   defaultValue={product?.imageUrl ?? ""}
                   placeholder="https://…/pommes.jpg"
                 />
-                <p className="text-muted-foreground text-xs">
-                  Si une image est renseignée, elle remplace l&apos;illustration
-                  sur la carte.
-                </p>
               </div>
             </div>
           </div>

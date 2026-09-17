@@ -77,19 +77,9 @@ export function MessagesFilters({
                 maxLength={MESSAGE_SEARCH_MAX_LENGTH}
                 placeholder="Nom, e-mail, mot du message, référence…"
                 defaultValue={filters.query ?? ""}
-                aria-describedby="q-help"
                 className="h-11 pl-10 text-base"
               />
             </div>
-            <p
-              id="q-help"
-              className="text-muted-foreground text-sm @max-2xl/main:hidden"
-            >
-              Les résultats se mettent à jour pendant la saisie. La recherche
-              porte sur le nom et l&apos;e-mail du client, le texte du message
-              et la référence de la commande associée. Accents et majuscules
-              sont ignorés.
-            </p>
           </div>
 
           <div

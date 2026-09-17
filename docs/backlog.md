@@ -84,6 +84,13 @@ Dernière mise à jour : 2026-09-16.
 
 ## Décisions prises
 
+- Écrans (2026-09-16, quatrième lot) :
+  - **Gommette grise** sur le préparateur et le livreur d'une commande livrée ou annulée : la gommette verte ou rouge ne sert qu'à affecter le jour même.
+  - **Catalogue** : statut de vente en pastille sur l'image (en vente, rupture de stock, indisponible, masqué) ; case « Laisser en vente les produits dont le stock est à 0 » entre la recherche et la grille, paramètre global en base (migration 0012) lu par l'application.
+  - **Dates avec l'année** partout (une seule fois dans une période de la même année).
+  - **Fiche client sur PC** : coordonnées et chiffres clés en tuiles sur deux colonnes, notes à droite ; téléphone et tablette inchangés.
+  - **Moins d'explications** : aides sous les recherches et les champs de dates, descriptions d'en-tête, phrases de section des métriques et paragraphes de démonstration retirés ou raccourcis.
+  - **Carte de commande** : la remise seule entre parenthèses à côté du total ; frais de livraison et sous-total dans le détail seulement ; le badge de remise reste à gauche.
 - Écrans (2026-09-16, troisième lot) :
   - **Calendrier maison** des champs « du / au » sur tablette et PC (jours voisins grisés, ouverture sur le mois de la date saisie, sinon de l'autre borne, sinon le mois actuel), sans dépendance ; sélecteur natif conservé sur téléphone.
   - **Tri en deux gestes** dans la section Clients : critère dans la liste, sens par un bouton icône (A / Z, 1 / 9 ; flèche bas = croissant, vers le haut = décroissant, rotation rapide).
