@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
@@ -14,6 +13,7 @@ import {
   StaffKindBadge,
 } from "@/components/staff/staff-badges";
 import { buttonVariants } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import { SHIFT_LABELS, WEEKDAY_LABELS, WEEKDAYS } from "@/domain/staff/kind";
 import { staffFullName, type StaffWorkSummary } from "@/domain/staff/rules";
 import type { StaffMember } from "@/domain/staff/types";
@@ -60,12 +60,12 @@ export function StaffCard({
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h3 className="truncate text-lg leading-tight font-semibold">
-            <Link
+            <HoverPrefetchLink
               href={`/personnel/${member.id}`}
               className="underline-offset-4 hover:underline focus-visible:underline"
             >
               {name}
-            </Link>
+            </HoverPrefetchLink>
           </h3>
           <div className="flex flex-wrap gap-1.5">
             <StaffKindBadge kind={member.kind} />
@@ -164,7 +164,7 @@ export function StaffCard({
       </dl>
 
       <div className="mt-auto flex flex-col gap-2 border-t pt-3">
-        <Link
+        <HoverPrefetchLink
           href={`/personnel/${member.id}`}
           className={cn(
             buttonVariants({ variant: "ghost", size: "sm" }),
@@ -173,27 +173,27 @@ export function StaffCard({
         >
           Fiche et historique
           <ArrowRight />
-        </Link>
+        </HoverPrefetchLink>
         {canManage ? (
           <div
             role="group"
             aria-label={`Actions sur ${name}`}
             className="flex flex-wrap items-center gap-1.5"
           >
-            <Link
+            <HoverPrefetchLink
               href={`/personnel/${member.id}#modifier`}
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <Pencil />
               Modifier
-            </Link>
-            <Link
+            </HoverPrefetchLink>
+            <HoverPrefetchLink
               href={`/personnel/nouveau?depuis=${member.id}`}
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <Copy />
               Dupliquer
-            </Link>
+            </HoverPrefetchLink>
             <DeleteStaffButton staffId={member.id} name={name} compact />
           </div>
         ) : null}

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   Mail,
@@ -19,6 +18,7 @@ import {
   type AssignmentOptions,
 } from "@/components/orders/order-team";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import { itineraryUrl } from "@/domain/deliveries/rules";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { orderKindOf } from "@/domain/orders/rules";
@@ -104,12 +104,12 @@ export function OrderCard({
               → {order.deliverySlot.end}
             </span>
           </span>
-          <Link
+          <HoverPrefetchLink
             href={`/commandes/${order.id}`}
             className="text-muted-foreground mt-1 font-mono text-xs font-semibold underline-offset-4 hover:underline focus-visible:underline"
           >
             {order.reference}
-          </Link>
+          </HoverPrefetchLink>
           <ClientTypeLabel type={kind} className="mt-1 w-fit" />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1.5 @4xl/main:items-start">
@@ -128,31 +128,31 @@ export function OrderCard({
         {community ? (
           <div className="flex min-w-0 flex-col gap-0.5">
             <p className="truncate text-lg font-semibold">
-              <Link
+              <HoverPrefetchLink
                 href={`/clients/communautes/${community.id}`}
                 className="underline-offset-4 hover:underline focus-visible:underline"
               >
                 {community.name}
-              </Link>
+              </HoverPrefetchLink>
             </p>
             <p className="text-muted-foreground truncate text-sm">
               Interlocuteur :{" "}
-              <Link
+              <HoverPrefetchLink
                 href={`/clients/${order.customer.id}`}
                 className="text-foreground font-medium underline-offset-4 hover:underline focus-visible:underline"
               >
                 {order.customer.fullName}
-              </Link>
+              </HoverPrefetchLink>
             </p>
           </div>
         ) : (
           <p className="truncate text-lg font-semibold">
-            <Link
+            <HoverPrefetchLink
               href={`/clients/${order.customer.id}`}
               className="underline-offset-4 hover:underline focus-visible:underline"
             >
               {order.customer.fullName}
-            </Link>
+            </HoverPrefetchLink>
           </p>
         )}
         <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
@@ -240,7 +240,7 @@ export function OrderCard({
             variant="ghost"
             size="sm"
             className="-ml-2"
-            render={<Link href={`/commandes/${order.id}`} />}
+            render={<HoverPrefetchLink href={`/commandes/${order.id}`} />}
           >
             Détail de la commande
             <ArrowRight />

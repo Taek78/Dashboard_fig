@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   Clock,
@@ -12,6 +11,7 @@ import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { CommunityBanner } from "@/components/customers/community-banner";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import { nextCommunityDiscountTier } from "@/domain/communities/discount";
 import type { CommunityEntry } from "@/domain/customers/directory";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
@@ -159,14 +159,14 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
       </p>
 
       <div className="mt-auto border-t pt-3">
-        <Link
+        <HoverPrefetchLink
           href={`/clients/communautes/${community.id}`}
           className={cn(buttonVariants({ variant: "outline" }), "w-full")}
         >
           Voir le détail
           <span className="sr-only"> ({community.name})</span>
           <ArrowRight />
-        </Link>
+        </HoverPrefetchLink>
       </div>
     </article>
   );

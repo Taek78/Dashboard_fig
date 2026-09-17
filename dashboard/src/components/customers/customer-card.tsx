@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   Mail,
@@ -13,6 +12,7 @@ import { ConsentPills } from "@/components/customers/consent-pills";
 import { LoyaltyBadge } from "@/components/customers/loyalty-badge";
 import { TierBadge } from "@/components/customers/tier-badge";
 import { buttonVariants } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import type { CustomerEntry } from "@/domain/customers/directory";
 import { formatDateFr, formatEuros, toTelHref } from "@/lib/format";
 import { initials } from "@/lib/text";
@@ -58,12 +58,12 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
-              <Link
+              <HoverPrefetchLink
                 href={`/clients/${customer.id}`}
                 className="underline-offset-4 hover:underline focus-visible:underline"
               >
                 {customer.fullName}
-              </Link>
+              </HoverPrefetchLink>
             </h3>
             {anonymized ? null : <TierBadge state={tier} />}
           </div>
@@ -174,14 +174,14 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
       </div>
 
       <div className="mt-auto border-t pt-3">
-        <Link
+        <HoverPrefetchLink
           href={`/clients/${customer.id}`}
           className={cn(buttonVariants({ variant: "outline" }), "w-full")}
         >
           Voir le détail
           <span className="sr-only"> ({customer.fullName})</span>
           <ArrowRight />
-        </Link>
+        </HoverPrefetchLink>
       </div>
     </article>
   );

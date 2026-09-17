@@ -1,10 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { ComponentProps } from "react";
 import { CalendarDays, Pencil } from "lucide-react";
 import { ArticleVisibilityButton } from "@/components/articles/article-visibility-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import {
   ARTICLE_CATEGORY_LABELS,
   type ArticleCategory,
@@ -100,12 +100,12 @@ export function ArticleCard({
           ) : null}
         </div>
         <h3 className="text-lg leading-snug font-bold">
-          <Link
+          <HoverPrefetchLink
             href={`/articles/${article.id}`}
             className="underline-offset-4 hover:underline focus-visible:underline"
           >
             {article.title}
-          </Link>
+          </HoverPrefetchLink>
         </h3>
         <p className="text-muted-foreground text-sm">{excerpt(article.body)}</p>
         {canEdit ? (
@@ -113,7 +113,7 @@ export function ArticleCard({
             <Button
               variant="outline"
               size="sm"
-              render={<Link href={`/articles/${article.id}`} />}
+              render={<HoverPrefetchLink href={`/articles/${article.id}`} />}
             >
               <Pencil />
               Modifier

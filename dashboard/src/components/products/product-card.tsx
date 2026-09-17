@@ -1,11 +1,11 @@
 import Image from "next/image";
-import Link from "next/link";
 import { Leaf, Pencil, Sun } from "lucide-react";
 import { DeleteProductButton } from "@/components/products/delete-product-button";
 import { DuplicateProductButton } from "@/components/products/duplicate-product-button";
 import { ProductStatusBadge } from "@/components/products/product-status-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import {
   CONTAINER_LABELS,
   LOCAL_COUNTRY,
@@ -65,7 +65,7 @@ export function ProductCard({
         dimmed && "opacity-75",
       )}
     >
-      <Link
+      <HoverPrefetchLink
         href={href}
         aria-label={`${product.name} : ouvrir la fiche`}
         className={cn(
@@ -119,18 +119,18 @@ export function ProductCard({
           status={status}
           className="absolute bottom-2 left-2"
         />
-      </Link>
+      </HoverPrefetchLink>
 
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate leading-tight font-semibold">
-              <Link
+              <HoverPrefetchLink
                 href={href}
                 className="underline-offset-4 hover:underline focus-visible:underline"
               >
                 {product.name}
-              </Link>
+              </HoverPrefetchLink>
             </h3>
             <p className="text-muted-foreground truncate text-xs">
               {product.variety ?? "—"} ·{" "}
@@ -185,13 +185,13 @@ export function ProductCard({
           aria-label={`Actions sur ${product.name}`}
           className="bg-muted/40 flex flex-wrap items-center gap-1 border-t px-2 py-1.5"
         >
-          <Link
+          <HoverPrefetchLink
             href={href}
             className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             <Pencil />
             Modifier
-          </Link>
+          </HoverPrefetchLink>
           <DuplicateProductButton
             productId={product.id}
             size="icon-sm"

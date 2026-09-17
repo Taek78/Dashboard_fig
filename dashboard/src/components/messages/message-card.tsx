@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { MessageActions } from "@/components/messages/message-actions";
 import { AttachmentBadge } from "@/components/messages/message-attachments";
@@ -12,6 +11,7 @@ import {
 } from "@/components/messages/message-badges";
 import { MessageOrderLine } from "@/components/messages/message-order";
 import { buttonVariants } from "@/components/ui/button";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import { messagePreview } from "@/domain/messages/rules";
 import type { Message } from "@/domain/messages/types";
 import { formatDateTimeFr } from "@/lib/format";
@@ -55,12 +55,12 @@ export function MessageCard({
       <div className="flex flex-col gap-2 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
         <div className="flex min-w-0 flex-col gap-1.5">
           <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
-            <Link
+            <HoverPrefetchLink
               href={`/clients/${message.customer.id}`}
               className="underline-offset-4 hover:underline focus-visible:underline"
             >
               {message.customer.fullName}
-            </Link>
+            </HoverPrefetchLink>
           </h3>
           <span className="text-muted-foreground truncate text-sm">
             {message.customer.email}
@@ -107,7 +107,7 @@ export function MessageCard({
         )}
         {/* Un vrai <a> et non <Button render> : celui-ci NAVIGUE, il doit donc
             être annoncé « lien » et non « bouton » (convention du projet). */}
-        <Link
+        <HoverPrefetchLink
           href={`/messages/${message.id}`}
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
@@ -117,7 +117,7 @@ export function MessageCard({
           Lire le message
           <span className="sr-only"> de {message.customer.fullName}</span>
           <ArrowRight />
-        </Link>
+        </HoverPrefetchLink>
       </div>
     </article>
   );

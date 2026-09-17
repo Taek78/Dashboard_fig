@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import {
   Table,
@@ -60,9 +60,12 @@ export function CustomerNameLink({
   className?: string;
 }) {
   return (
-    <Link href={`/clients/${customer.id}`} className={cn(link, className)}>
+    <HoverPrefetchLink
+      href={`/clients/${customer.id}`}
+      className={cn(link, className)}
+    >
       {customer.fullName}
-    </Link>
+    </HoverPrefetchLink>
   );
 }
 
@@ -85,12 +88,12 @@ export function OrderClient({ order }: { order: Order }) {
         />
         <span className="sr-only">{CLIENT_TYPE_LABELS[kind]} : </span>
         {order.community ? (
-          <Link
+          <HoverPrefetchLink
             href={`/clients/communautes/${order.community.id}`}
             className={cn(link, "truncate font-medium")}
           >
             {order.community.name}
-          </Link>
+          </HoverPrefetchLink>
         ) : (
           <CustomerNameLink
             customer={order.customer}
@@ -125,12 +128,12 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               <div className="min-w-0">
                 <OrderClient order={order} />
                 <p className="text-muted-foreground font-mono text-xs">
-                  <Link
+                  <HoverPrefetchLink
                     href={`/commandes/${order.id}`}
                     className={cn(link, "font-medium")}
                   >
                     {order.reference}
-                  </Link>
+                  </HoverPrefetchLink>
                 </p>
               </div>
               <OrderStatusBadge status={order.status} />
@@ -182,12 +185,12 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
             {orders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">
-                  <Link
+                  <HoverPrefetchLink
                     href={`/commandes/${order.id}`}
                     className={cn(link, "text-foreground font-medium")}
                   >
                     {order.reference}
-                  </Link>
+                  </HoverPrefetchLink>
                 </TableCell>
                 <TableCell>
                   <OrderClient order={order} />
