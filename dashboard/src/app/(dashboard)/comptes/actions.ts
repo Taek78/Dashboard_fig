@@ -16,11 +16,23 @@ import {
   setPassword,
   updateUser,
 } from "@/data/users";
-import { invitationMail } from "@/domain/auth/mails";
+import {
+  accountActivatedMail,
+  accountDeactivatedMail,
+  accountDeletedMail,
+  adminAccountActivatedMail,
+  invitationMail,
+  type AccountSummary,
+} from "@/domain/auth/mails";
 import { PASSWORD_PROBLEM_MESSAGES } from "@/domain/auth/password-policy";
 import { canManageUsers } from "@/domain/auth/roles";
-import { isLastActiveAdmin, wouldRemoveLastAdmin } from "@/domain/auth/rules";
 import {
+  activeAdmins,
+  isLastActiveAdmin,
+  wouldRemoveLastAdmin,
+} from "@/domain/auth/rules";
+import {
+  cancelInvitationSchema,
   createUserSchema,
   deleteUserSchema,
   PASSWORD_MIN_LENGTH,
@@ -51,14 +63,21 @@ import { generateLinkToken, hashSecret } from "@/lib/secrets";
  * Depuis le 2026-09-17, un compte se crée SANS mot de passe : la personne le
  * choisit par un lien d'invitation (48 h, une seule fois) envoyé après la
  * réponse ; « Envoyer un lien » renvoie ce lien à tout compte actif (compte
- * jamais activé, ou mot de passe à remplacer). « Nouveau mot de passe » reste
- * le dépannage quand le mail ne passe pas : il applique la même politique
- * (règles pures puis fuites connues). Désactiver un compte ferme ses sessions
- * sur-le-champ ; changer un mot de passe aussi (le sien est rouvert).
- * Un compte porte un prénom et un nom (le nom seul sert au rappel de
- * l'adresse) ; son e-mail se lit mais ne se modifie pas. Supprimer un compte
- * (mot SUPPRIMER) est définitif : ses jetons partent en cascade, ses sessions
- * tombent à la requête suivante, l'historique des commandes garde le nom écrit.
+ * jamais activé, ou mot de passe à remplacer). Tant que le mot de passe
+ * n'existe pas, le compte est EN ATTENTE D'ACTIVATION : « Annuler
+ * l'invitation » le supprime (jamais activé, rien à conserver), et le lien
+ * cesse de fonctionner. Quand il s'active (lien accepté, ou dépannage ici), la
+ * personne et les administrateurs reçoivent un avis d'activation. « Nouveau
+ * mot de passe » reste le dépannage quand le mail ne passe pas : il applique
+ * la même politique (règles pures puis fuites connues). Désactiver un compte
+ * ferme ses sessions sur-le-champ ; changer un mot de passe aussi (le sien
+ * est rouvert). Un compte porte un prénom et un nom (le nom seul sert au
+ * rappel de l'adresse) ; son e-mail se lit mais ne se modifie pas. Supprimer
+ * un compte (mot SUPPRIMER) est définitif : ses jetons partent en cascade, ses
+ * sessions tombent à la requête suivante, l'historique des commandes garde le
+ * nom écrit. Désactiver ou supprimer un compte envoie un mail à la personne,
+ * après la réponse (after) : la date, ce que cela change, l'administrateur qui
+ * agit, nommé avec son adresse.
  */
 const MESSAGES = {
   forbidden: "Seul un administrateur peut gérer les comptes.",
@@ -70,12 +89,23 @@ const MESSAGES = {
   nameTaken: "Un compte porte déjà ce prénom et ce nom.",
   notFound: "Ce compte n'existe plus.",
   inactive: "Ce compte est désactivé : réactivez-le avant d'envoyer un lien.",
+  activated:
+    "Ce compte est déjà activé : pour le retirer, utilisez « Supprimer ce compte ».",
   self: "Vous ne pouvez pas désactiver votre propre compte.",
   selfDelete: "Vous ne pouvez pas supprimer votre propre compte.",
   lastAdmin:
     "Impossible : ce compte est le dernier administrateur actif du back-office.",
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
 } as const;
+
+/** L'administrateur qui agit, avec son adresse : le contact nommé dans l'avis à la personne. */
+function contactOf(
+  users: readonly ManagedUser[],
+  user: CurrentUser,
+): AccountSummary {
+  const me = users.find((u) => u.id === user.id);
+  return { name: user.name, email: me?.email ?? "" };
+}
 
 /** Crée le lien d'invitation, programme son envoi après la réponse, journalise. */
 async function issueInvitation(
@@ -99,6 +129,47 @@ async function issueInvitation(
   });
   after(() => trySendMail("invitation", mail));
   logSecurity({ type: "invitation_sent", userId: by.id, targetId: target.id });
+}
+
+/**
+ * Avis d'activation, après la réponse : à la personne (tout ce qu'il faut
+ * pour se connecter) et à chaque administrateur actif (pour information).
+ * `by` : l'administrateur qui a attribué le mot de passe (dépannage).
+ */
+function announceActivation(
+  target: ManagedUser,
+  users: readonly ManagedUser[],
+  at: string,
+  by: string,
+): void {
+  const admins = activeAdmins(users).map((a) => ({
+    name: a.name,
+    email: a.email,
+  }));
+  const account = { name: target.name, email: target.email, role: target.role };
+  const comptesUrl = appUrl("/comptes");
+  const loginUrl = appUrl("/connexion");
+  after(async () => {
+    await trySendMail(
+      "account_activated",
+      accountActivatedMail({
+        to: { email: target.email, name: target.name },
+        at,
+        role: target.role,
+        loginUrl,
+        admins,
+        by,
+      }),
+    );
+    await Promise.all(
+      admins.map((admin) =>
+        trySendMail(
+          "admin_account_activated",
+          adminAccountActivatedMail({ to: admin, account, at, comptesUrl, by }),
+        ),
+      ),
+    );
+  });
 }
 
 export async function createAccount(
@@ -141,7 +212,7 @@ export async function createAccount(
     revalidatePath("/comptes", "layout");
     return {
       status: "success",
-      message: `Compte « ${created.name} » créé : un lien pour choisir son mot de passe lui a été envoyé (${created.email}, valable ${AUTH_TOKEN_RULES.invitation.validity}).`,
+      message: `Compte « ${created.name} » créé, en attente d'activation : un lien pour choisir son mot de passe lui a été envoyé (${created.email}, valable ${AUTH_TOKEN_RULES.invitation.validity}).`,
     };
   } catch (error) {
     console.error("[createAccount]", { userId: user.id }, error);
@@ -174,6 +245,8 @@ export async function sendPasswordLink(
       user,
       target.hasPassword ? "reset" : "creation",
     );
+    // La carte affiche la nouvelle validité du lien.
+    revalidatePath("/comptes", "layout");
     return {
       status: "success",
       message: `Lien envoyé à « ${target.name} » (${target.email}), valable ${AUTH_TOKEN_RULES.invitation.validity}.`,
@@ -182,6 +255,52 @@ export async function sendPasswordLink(
     console.error(
       "[sendPasswordLink]",
       { userId: user.id, targetId: parsed.data.userId },
+      error,
+    );
+    return { status: "error", message: MESSAGES.failure };
+  }
+}
+
+export async function cancelInvitation(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canManageUsers(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "cancelInvitation",
+    });
+    return { status: "error", message: MESSAGES.forbidden };
+  }
+  const parsed = cancelInvitationSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: MESSAGES.invalid };
+  const { userId } = parsed.data;
+
+  try {
+    const target = await getUser(userId);
+    if (!target) return { status: "error", message: MESSAGES.notFound };
+    // Un compte activé a un historique et des sessions : c'est une suppression, avec son mot.
+    if (target.hasPassword) {
+      return { status: "error", message: MESSAGES.activated };
+    }
+    const deleted = await deleteUser(userId);
+    if (!deleted) return { status: "error", message: MESSAGES.notFound };
+    logSecurity({
+      type: "invitation_cancelled",
+      userId: user.id,
+      targetId: userId,
+    });
+    revalidatePath("/comptes", "layout");
+    return {
+      status: "success",
+      message: `Invitation de « ${target.name} » annulée : le compte est supprimé et le lien reçu ne fonctionne plus.`,
+    };
+  } catch (error) {
+    console.error(
+      "[cancelInvitation]",
+      { userId: user.id, targetId: userId },
       error,
     );
     return { status: "error", message: MESSAGES.failure };
@@ -271,7 +390,16 @@ export async function setAccountActive(
     if (!updated || updated === "name_taken") {
       return { status: "error", message: MESSAGES.notFound };
     }
-    if (!active) await revokeSessions(userId, new Date());
+    if (!active) {
+      const at = new Date();
+      await revokeSessions(userId, at);
+      const mail = accountDeactivatedMail({
+        to: { email: updated.email, name: updated.name },
+        at: at.toISOString(),
+        admin: contactOf(users, user),
+      });
+      after(() => trySendMail("account_deactivated", mail));
+    }
     logSecurity({
       type: active ? "account_reactivated" : "account_deactivated",
       userId: user.id,
@@ -282,7 +410,7 @@ export async function setAccountActive(
       status: "success",
       message: active
         ? `Compte « ${updated.name} » réactivé.`
-        : `Compte « ${updated.name} » désactivé : il ne peut plus se connecter et ses sessions sont fermées.`,
+        : `Compte « ${updated.name} » désactivé : il ne peut plus se connecter, ses sessions sont fermées et un message l'en informe.`,
     };
   } catch (error) {
     console.error(
@@ -324,10 +452,17 @@ export async function deleteAccount(
     const deleted = await deleteUser(userId);
     if (!deleted) return { status: "error", message: MESSAGES.notFound };
     logSecurity({ type: "account_deleted", userId: user.id, targetId: userId });
+    // À l'ancienne adresse du compte : un nouveau compte peut y être créé, sur invitation.
+    const mail = accountDeletedMail({
+      to: { email: target.email, name: target.name },
+      at: new Date().toISOString(),
+      admin: contactOf(users, user),
+    });
+    after(() => trySendMail("account_deleted", mail));
     revalidatePath("/comptes", "layout");
     return {
       status: "success",
-      message: `Compte « ${target.name} » supprimé.`,
+      message: `Compte « ${target.name} » supprimé ; un message l'en informe à son ancienne adresse.`,
     };
   } catch (error) {
     console.error(
@@ -359,7 +494,8 @@ export async function resetAccountPassword(
   const { userId, password } = parsed.data;
 
   try {
-    const target = await getUser(userId);
+    const users = await listUsers();
+    const target = users.find((u) => u.id === userId);
     if (!target) return { status: "error", message: MESSAGES.notFound };
     const problem = await findPasswordProblem(password, {
       email: target.email,
@@ -368,18 +504,26 @@ export async function resetAccountPassword(
     if (problem) {
       return { status: "error", message: PASSWORD_PROBLEM_MESSAGES[problem] };
     }
+    const changedAt = new Date();
     const ok = await setPassword(
       userId,
       await hashPassword(password),
-      new Date(),
+      changedAt,
     );
     if (!ok) return { status: "error", message: MESSAGES.notFound };
     logSecurity({ type: "password_reset", userId: user.id, targetId: userId });
     if (userId === user.id) await reopenSession(target.email, password);
+    // Premier mot de passe d'un compte invité : c'est son activation.
+    const activated = !target.hasPassword;
+    if (activated) {
+      announceActivation(target, users, changedAt.toISOString(), user.name);
+    }
     revalidatePath("/comptes", "layout");
     return {
       status: "success",
-      message: `Nouveau mot de passe enregistré pour « ${target.name} » ; ses sessions sont fermées. Communiquez-le par un canal sûr, ou préférez « Envoyer un lien ».`,
+      message: activated
+        ? `Compte « ${target.name} » activé avec ce mot de passe ; un message l'en informe, ainsi que les administrateurs. Communiquez-le par un canal sûr : la personne devra le changer à sa première connexion.`
+        : `Nouveau mot de passe enregistré pour « ${target.name} » ; ses sessions sont fermées. Communiquez-le par un canal sûr, ou préférez « Envoyer un lien ».`,
     };
   } catch (error) {
     console.error(

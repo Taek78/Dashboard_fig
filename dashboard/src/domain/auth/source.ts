@@ -1,5 +1,6 @@
 import type { AuthToken, AuthTokenKind } from "@/domain/auth/tokens";
 import type {
+  ExpiredInvitation,
   ManagedUser,
   NewUser,
   UserAccount,
@@ -25,6 +26,14 @@ import type {
  * - setPassword pose aussi passwordChangedAt = changedAt (horloge de
  *   l'application, la même que celle des sessions) ; revokeSessions ne pose
  *   que cet instant, sans toucher au mot de passe (verrouillage, désactivation).
+ * - listUsers et getUser joignent l'expiration du dernier lien d'invitation
+ *   (invitationExpiresAt) : l'écran en déduit « en attente » ou « expirée ».
+ * - expireInvitations(now) : les comptes actifs sans mot de passe dont le
+ *   dernier lien d'invitation est expiré à `now` et qui n'ont pas encore été
+ *   notifiés pour ce lien ; ils sont MARQUÉS (invitation_expired_at =
+ *   expiration de ce lien) dans la même écriture conditionnelle, donc renvoyés
+ *   une seule fois même si deux balayages se croisent. Un lien renvoyé ensuite
+ *   (émis après cette marque) sera notifié à son tour.
  */
 export type UsersSource = {
   findUserByEmail(email: string): Promise<UserAccount | null>;
@@ -46,6 +55,7 @@ export type UsersSource = {
     changedAt: Date,
   ): Promise<boolean>;
   revokeSessions(id: string, at: Date): Promise<boolean>;
+  expireInvitations(now: Date): Promise<ExpiredInvitation[]>;
 };
 
 /*

@@ -32,7 +32,16 @@ test.describe("comptes et profil", () => {
     );
     const card = page.getByRole("article", { name: `Compte ${name}` });
     await expect(card).toContainText("Lecture seule");
-    await expect(card).toContainText("Invitation en attente");
+    // En attente d'activation : carte translucide en pointillés, validité du lien, pas de « Désactiver ».
+    await expect(card).toContainText("En attente d'activation");
+    await expect(card).toContainText("Lien d'invitation valable jusqu'au");
+    await expect(card).toHaveAttribute("data-invitation", "pending");
+    await expect(card.getByRole("button", { name: "Désactiver" })).toHaveCount(
+      0,
+    );
+    await expect(
+      card.getByRole("button", { name: "Annuler l'invitation" }),
+    ).toBeVisible();
     // L'e-mail se lit sur la carte mais ne se modifie pas.
     const shownEmail = card.getByLabel(/E-mail/);
     await expect(shownEmail).toHaveValue(email);
@@ -54,8 +63,29 @@ test.describe("comptes et profil", () => {
     await otherPage.goto("/comptes");
     await expect(otherPage).not.toHaveURL(/\/comptes/);
 
+    // Compte activé : avis à la personne (comment se connecter) et à l'administrateur.
+    const welcome = await waitForMail(email, { subject: /activé/, since });
+    expect(welcome.text).toContain("identifiant : " + email);
+    expect(welcome.text).toContain("rôle attribué : Lecture seule");
+    const activated = await waitForMail(E2E_ACCOUNTS.admin.email, {
+      subject: new RegExp(`Compte activé : ${name}`),
+      since,
+    });
+    expect(activated.text).toContain("vient d'activer son compte");
+
+    // De retour chez l'administrateur, la carte est redevenue ordinaire.
+    await page.reload();
+    await expect(card).toHaveAttribute("data-invitation", "none");
+    await expect(card).not.toContainText("En attente d'activation");
+
     await card.getByRole("button", { name: "Désactiver" }).click();
     await expect(card).toContainText("Désactivé");
+    // La personne en est informée, avec l'administrateur à contacter.
+    const deactivated = await waitForMail(email, {
+      subject: /désactivé/,
+      since,
+    });
+    expect(deactivated.text).toContain("contactez votre administrateur");
 
     // Sa session ouverte est fermée à la requête suivante.
     await otherPage.goto("/commandes");
@@ -81,6 +111,33 @@ test.describe("comptes et profil", () => {
       .getByRole("button", { name: "Supprimer définitivement" })
       .click();
     await expect(card).toHaveCount(0);
+    // Avis de suppression à l'ancienne adresse : un nouveau compte y reste possible, par un administrateur.
+    const deleted = await waitForMail(email, { subject: /supprimé/, since });
+    expect(deleted.text).toContain("Seul un administrateur est habilité");
+
+    // Une invitation s'annule tant que le compte n'est pas activé : le compte disparaît.
+    const cancelledEmail = `lina-${stamp}@fig-demo.invalid`;
+    const cancelledName = `Lina Annule ${stamp % 10_000}`;
+    await page.getByLabel("Prénom").first().fill("Lina");
+    await page
+      .getByLabel("Nom", { exact: true })
+      .first()
+      .fill(`Annule ${stamp % 10_000}`);
+    await page.getByLabel("E-mail").first().fill(cancelledEmail);
+    await page.getByLabel("Rôle").first().selectOption("livreur");
+    await page.getByRole("button", { name: /Créer le compte/ }).click();
+    const pendingCard = page.getByRole("article", {
+      name: `Compte ${cancelledName}`,
+    });
+    await expect(pendingCard).toHaveAttribute("data-invitation", "pending");
+    await pendingCard
+      .getByRole("button", { name: "Annuler l'invitation" })
+      .click();
+    await pendingCard
+      .getByRole("alert")
+      .getByRole("button", { name: "Confirmer l'annulation" })
+      .click();
+    await expect(pendingCard).toHaveCount(0);
 
     // Le dernier administrateur actif n'a ni « Désactiver » ni « Supprimer », et le dit.
     const own = page.getByRole("article", {

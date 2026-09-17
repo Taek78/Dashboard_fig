@@ -1,14 +1,17 @@
+import { Hourglass, TimerOff } from "lucide-react";
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { AccountCreateForm } from "@/components/accounts/account-create-form";
 import { AccountEditor } from "@/components/accounts/account-editor";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { notifyExpiredInvitations } from "@/data/invitation-expiry";
 import { getCurrentUser } from "@/data/session";
-import { listUsers } from "@/data/users";
+import { listUsersWithInvitations } from "@/data/users";
 import { canManageUsers, ROLE_LABELS } from "@/domain/auth/roles";
 import { isLastActiveAdmin } from "@/domain/auth/rules";
-import { formatDateFr } from "@/lib/format";
+import { formatDateFr, formatDateTimeFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
@@ -18,9 +21,14 @@ import { cn } from "@/lib/utils";
  * (actifs d'abord) avec, par compte, prénom, nom et rôle modifiables, l'e-mail
  * en lecture seule, activation, lien de mot de passe, dépannage et
  * suppression confirmée. Un compte qui n'a pas encore accepté son invitation
- * porte le badge « Invitation en attente ». Le compte courant est signalé et
- * ne peut ni se désactiver ni se supprimer ; le dernier administrateur actif
- * non plus (isLastActiveAdmin, règle pure relue ici et par les actions).
+ * est EN ATTENTE D'ACTIVATION : sa carte est translucide, bordée de pointillés
+ * (ambre tant que le lien est valable, rouge « Invitation expirée » ensuite),
+ * et ses gestes sont « Renvoyer » ou « Annuler l'invitation ». Le compte
+ * courant est signalé et ne peut ni se désactiver ni se supprimer ; le
+ * dernier administrateur actif non plus (isLastActiveAdmin, règle pure relue
+ * ici et par les actions). Après la réponse, la page relance le balayage des
+ * invitations expirées (mails à la personne et aux administrateurs), en plus
+ * de la minuterie du serveur.
  */
 export const metadata: Metadata = { title: "Comptes" };
 
@@ -36,8 +44,9 @@ export default async function ComptesPage() {
       </>
     );
   }
-  const accounts = await listUsers();
+  const accounts = await listUsersWithInvitations();
   const activeCount = accounts.filter((a) => a.active).length;
+  after(() => notifyExpiredInvitations());
 
   return (
     <>
@@ -68,12 +77,20 @@ export default async function ComptesPage() {
           {accounts.map((account) => {
             const isSelf = account.id === user.id;
             const lastAdmin = isLastActiveAdmin(accounts, account.id);
+            const { invitation } = account;
             return (
               <li key={account.id}>
                 <article
                   aria-label={`Compte ${account.name}`}
+                  data-invitation={invitation}
                   className={cn(
-                    "bg-card text-card-foreground ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
+                    "text-card-foreground flex flex-col gap-4 rounded-2xl p-4 shadow-sm @2xl/main:p-5",
+                    invitation === "none" &&
+                      "bg-card ring-foreground/10 ring-1",
+                    invitation === "pending" &&
+                      "bg-card/45 supports-backdrop-filter:bg-card/30 border-warning/60 border border-dashed backdrop-blur-sm",
+                    invitation === "expired" &&
+                      "bg-card/40 supports-backdrop-filter:bg-card/25 border-destructive/60 border border-dashed backdrop-blur-sm",
                     !account.active && "opacity-70",
                   )}
                 >
@@ -92,13 +109,38 @@ export default async function ComptesPage() {
                     ) : (
                       <Badge variant="destructive">Désactivé</Badge>
                     )}
-                    {!account.hasPassword ? (
-                      <Badge variant="warning">Invitation en attente</Badge>
+                    {invitation === "pending" ? (
+                      <Badge variant="warning">
+                        <Hourglass aria-hidden="true" />
+                        En attente d&apos;activation
+                      </Badge>
+                    ) : null}
+                    {invitation === "expired" ? (
+                      <Badge variant="destructive">
+                        <TimerOff aria-hidden="true" />
+                        Invitation expirée
+                      </Badge>
                     ) : null}
                     <span className="text-muted-foreground text-sm">
                       créé le {formatDateFr(account.createdAt)}
                     </span>
                   </div>
+                  {invitation === "pending" && account.invitationExpiresAt ? (
+                    <p className="text-warning -mt-2 text-sm">
+                      Lien d&apos;invitation valable jusqu&apos;au{" "}
+                      {formatDateTimeFr(account.invitationExpiresAt)} : le
+                      compte s&apos;activera quand la personne aura choisi son
+                      mot de passe.
+                    </p>
+                  ) : null}
+                  {invitation === "expired" ? (
+                    <p className="text-destructive -mt-2 text-sm">
+                      {account.invitationExpiresAt
+                        ? `Lien d'invitation expiré le ${formatDateTimeFr(account.invitationExpiresAt)} sans avoir été utilisé`
+                        : "Aucun lien d'invitation en cours"}{" "}
+                      : renvoyez l&apos;invitation ou annulez-la.
+                    </p>
+                  ) : null}
                   <AccountEditor
                     account={account}
                     isSelf={isSelf}

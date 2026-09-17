@@ -62,6 +62,9 @@ export const updateUserSchema = z.object({
 
 export const sendPasswordLinkSchema = z.object({ userId: userIdSchema });
 
+/** Annulation d'une invitation : le compte, jamais activé, est supprimé (confirmation à l'écran, sans mot). */
+export const cancelInvitationSchema = z.object({ userId: userIdSchema });
+
 export const setUserActiveSchema = z.object({
   userId: userIdSchema,
   active: z.enum(["1", "0"]).transform((v) => v === "1"),

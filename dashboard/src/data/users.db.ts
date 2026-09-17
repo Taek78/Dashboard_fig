@@ -1,12 +1,16 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, max, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { toManagedUser, toUserAccount } from "@/db/mappers";
-import { users } from "@/db/schema";
+import { authTokens, users } from "@/db/schema";
 import { fullName, sortUsers } from "@/domain/auth/rules";
 import type { UsersSource } from "@/domain/auth/source";
-import type { NewUser, UserPatch } from "@/domain/auth/types";
+import type {
+  ExpiredInvitation,
+  NewUser,
+  UserPatch,
+} from "@/domain/auth/types";
 
 /*
  * Implémentation Drizzle du contrat UsersSource : table `users`, e-mail comparé
@@ -16,6 +20,14 @@ import type { NewUser, UserPatch } from "@/domain/auth/types";
  * d'adresse, comptes désactivés exclus de la connexion et du rappel.
  * Le mot de passe n'est jamais lu autrement que par son hachage ; un compte
  * invité n'en a pas encore (null). L'e-mail ne se modifie jamais.
+ *
+ * Invitations : la gestion des comptes lit chaque compte AVEC l'expiration de
+ * son dernier lien d'invitation (max(expires_at) des jetons de cette sorte,
+ * jointure groupée par compte) ; l'écran en déduit « en attente » ou
+ * « expirée ». expireInvitations est UNE écriture conditionnelle : elle marque
+ * (invitation_expired_at) et renvoie, d'un coup, les comptes actifs sans mot
+ * de passe dont le dernier lien est expiré et pas encore notifié, de sorte que
+ * deux balayages simultanés ne préviennent jamais deux fois.
  */
 const lowerEmail = (email: string) => email.trim().toLowerCase();
 
@@ -32,6 +44,33 @@ const sameLastName = (lastName: string) =>
     sql`fig_normalize(${users.lastName})`,
     sql`fig_normalize(${lastName.trim()})`,
   );
+
+/*
+ * Sous-requêtes corrélées sur la table `users` de l'UPDATE : `users.id` est
+ * écrit en toutes lettres, car dans un RETURNING Drizzle rend une colonne sans
+ * son nom de table et `t.user_id = "id"` viserait alors la colonne du jeton.
+ */
+/** Expiration du dernier lien d'invitation du compte. */
+const latestInvitationExpiry = sql`(select max(t.expires_at) from auth_tokens t where t.user_id = users.id and t.kind = 'invitation')`;
+/** Émission du dernier lien d'invitation : un lien renvoyé après l'avis est notifiable à son tour. */
+const latestInvitationIssue = sql`(select max(t.created_at) from auth_tokens t where t.user_id = users.id and t.kind = 'invitation')`;
+
+/** Chaque compte avec l'expiration de son dernier lien d'invitation. */
+function selectManaged() {
+  return getDb()
+    .select({ user: users, invitationExpiresAt: max(authTokens.expiresAt) })
+    .from(users)
+    .leftJoin(
+      authTokens,
+      and(eq(authTokens.userId, users.id), eq(authTokens.kind, "invitation")),
+    )
+    .groupBy(users.id);
+}
+
+async function readManaged(id: string) {
+  const [row] = await selectManaged().where(eq(users.id, id)).limit(1);
+  return row ? toManagedUser(row.user, row.invitationExpiresAt) : null;
+}
 
 async function nameTakenByAnother(
   firstName: string,
@@ -83,18 +122,13 @@ export const usersDb: UsersSource = {
   },
 
   listUsers: async () => {
-    const rows = await getDb().select().from(users);
-    return sortUsers(rows.map(toManagedUser));
+    const rows = await selectManaged();
+    return sortUsers(
+      rows.map((row) => toManagedUser(row.user, row.invitationExpiresAt)),
+    );
   },
 
-  getUser: async (id: string) => {
-    const [row] = await getDb()
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
-    return row ? toManagedUser(row) : null;
-  },
+  getUser: readManaged,
 
   createUser: async (input: NewUser) => {
     const db = getDb();
@@ -119,7 +153,8 @@ export const usersDb: UsersSource = {
       })
       .returning();
     if (!row) throw new Error("Insertion du compte sans ligne renvoyée.");
-    return toManagedUser(row);
+    // Aucun jeton encore : l'invitation est créée ensuite par l'action.
+    return toManagedUser(row, null);
   },
 
   updateUser: async (id: string, patch: UserPatch) => {
@@ -149,8 +184,8 @@ export const usersDb: UsersSource = {
         ...(patch.active !== undefined ? { active: patch.active } : {}),
       })
       .where(eq(users.id, id))
-      .returning();
-    return row ? toManagedUser(row) : null;
+      .returning({ id: users.id });
+    return row ? readManaged(row.id) : null;
   },
 
   deleteUser: async (id: string) => {
@@ -178,5 +213,40 @@ export const usersDb: UsersSource = {
       .where(eq(users.id, id))
       .returning({ id: users.id });
     return updated.length > 0;
+  },
+
+  expireInvitations: async (now: Date): Promise<ExpiredInvitation[]> => {
+    // La marque est l'EXPIRATION du lien notifié, pas l'heure du balayage :
+    // « renvoyé depuis » se lit alors sans dépendre de l'horloge du balayage.
+    const rows = await getDb()
+      .update(users)
+      .set({ invitationExpiredAt: latestInvitationExpiry })
+      .where(
+        and(
+          isNull(users.passwordHash),
+          eq(users.active, true),
+          // Comparée à une expression SQL, une Date part brute au pilote : on l'écrit en ISO.
+          lt(latestInvitationExpiry, sql`${now.toISOString()}::timestamptz`),
+          or(
+            isNull(users.invitationExpiredAt),
+            lt(users.invitationExpiredAt, latestInvitationIssue),
+          ),
+        ),
+      )
+      .returning({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        expiresAt: latestInvitationExpiry.mapWith(authTokens.expiresAt),
+      });
+    return rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      name: fullName(row),
+      role: row.role,
+      expiresAt: row.expiresAt.toISOString(),
+    }));
   },
 };

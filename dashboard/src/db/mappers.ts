@@ -495,7 +495,11 @@ export function toCommunity(row: CommunityRow): Community {
   };
 }
 
-export function toManagedUser(row: UserRow): ManagedUser {
+/** `invitationExpiresAt` : expiration du dernier lien d'invitation, jointe par la source (null si aucun). */
+export function toManagedUser(
+  row: UserRow,
+  invitationExpiresAt: Date | null = null,
+): ManagedUser {
   return {
     id: row.id,
     email: row.email,
@@ -505,6 +509,7 @@ export function toManagedUser(row: UserRow): ManagedUser {
     role: row.role,
     active: row.active,
     hasPassword: row.passwordHash !== null,
+    invitationExpiresAt: invitationExpiresAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
   };
 }

@@ -154,6 +154,12 @@ export const users = pgTable(
     active: boolean("active").notNull().default(true),
     /** Dernier changement de mot de passe ou verrouillage : les sessions antérieures sont refusées. */
     passwordChangedAt: timestampTz("password_changed_at"),
+    /**
+     * Expiration du dernier lien d'invitation dont l'avis d'expiration est
+     * parti par mail (balayage, migration 0015) ; null sinon. Une invitation
+     * renvoyée ensuite (jeton plus récent) pourra être notifiée à son tour.
+     */
+    invitationExpiredAt: timestampTz("invitation_expired_at"),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
   },
   (t) => [

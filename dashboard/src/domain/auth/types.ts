@@ -47,8 +47,27 @@ export type ManagedUser = {
   active: boolean;
   /** Faux tant que l'invitation n'a pas été acceptée. */
   hasPassword: boolean;
+  /**
+   * Expiration (ISO 8601) du dernier lien d'invitation envoyé, null si aucun
+   * (ou déjà purgé). Ne compte que sans mot de passe : c'est l'état
+   * « en attente » ou « expirée » de l'invitation (invitationState).
+   */
+  invitationExpiresAt: string | null;
   /** ISO 8601. */
   createdAt: string;
+};
+
+/**
+ * Compte dont l'invitation vient d'être constatée expirée par le balayage
+ * (expireInvitations) : de quoi prévenir la personne et les administrateurs.
+ */
+export type ExpiredInvitation = {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  /** Expiration du lien (ISO 8601). */
+  expiresAt: string;
 };
 
 /**

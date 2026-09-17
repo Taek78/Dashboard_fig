@@ -15,6 +15,7 @@ import {
   setAccountActive,
   updateAccount,
 } from "@/app/(dashboard)/comptes/actions";
+import { CancelInvitationButton } from "@/components/accounts/cancel-invitation-button";
 import { DeleteAccountButton } from "@/components/accounts/delete-account-button";
 import { ActionStatus } from "@/components/action-status";
 import { PasswordField } from "@/components/auth/password-field";
@@ -40,7 +41,10 @@ import { cn } from "@/lib/utils";
  * Cinq petits formulaires, cinq Server Actions, un message de résultat chacun.
  * L'administrateur ne voit ni « Désactiver » ni « Supprimer » pour lui-même,
  * ni pour le dernier administrateur actif (`lastAdmin`) : un texte le dit, et
- * l'action refuse de toute façon.
+ * l'action refuse de toute façon. Un compte EN ATTENTE d'activation (sans mot
+ * de passe) n'a ni « Désactiver » ni « Supprimer » : ses gestes sont
+ * « Renvoyer l'invitation » et « Annuler l'invitation » (qui le supprime),
+ * plus le dépannage par mot de passe, qui l'active.
  */
 export function AccountEditor({
   account,
@@ -77,6 +81,8 @@ export function AccountEditor({
     password: `${account.id}-password`,
   };
   const protectedAccount = isSelf || lastAdmin;
+  /** En attente d'activation : la personne n'a pas encore choisi son mot de passe. */
+  const pending = !account.hasPassword;
 
   return (
     <div className="flex flex-col gap-4">
@@ -152,7 +158,7 @@ export function AccountEditor({
       </form>
 
       <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-        {!protectedAccount ? (
+        {!protectedAccount && !(pending && account.active) ? (
           <form action={activeAction}>
             <input type="hidden" name="userId" value={account.id} />
             <input
@@ -211,7 +217,11 @@ export function AccountEditor({
           <KeyRound />
           Nouveau mot de passe
         </Button>
-        {!protectedAccount ? <DeleteAccountButton account={account} /> : null}
+        {pending ? (
+          <CancelInvitationButton account={account} />
+        ) : !protectedAccount ? (
+          <DeleteAccountButton account={account} />
+        ) : null}
         {lastAdmin ? (
           <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
             <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />

@@ -409,6 +409,7 @@ describe("toEngagementPoint / toUserAccount", () => {
       passwordHash: "scrypt$x$y",
       active: true,
       passwordChangedAt: new Date("2026-09-17T10:00:00.000Z"),
+      invitationExpiredAt: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
     expect(toUserAccount(row)).toEqual({
@@ -434,11 +435,17 @@ describe("toEngagementPoint / toUserAccount", () => {
       role: "admin",
       active: true,
       hasPassword: true,
+      invitationExpiresAt: null,
       createdAt: "2026-01-01T00:00:00.000Z",
     });
     expect(toManagedUser({ ...row, passwordHash: null }).hasPassword).toBe(
       false,
     );
+    // L'expiration du dernier lien d'invitation, jointe par la source, passe en ISO.
+    expect(
+      toManagedUser(row, new Date("2026-09-19T10:00:00.000Z"))
+        .invitationExpiresAt,
+    ).toBe("2026-09-19T10:00:00.000Z");
   });
 
   it("convertit un jeton d'authentification, dates en ISO", () => {

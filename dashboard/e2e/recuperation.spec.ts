@@ -43,7 +43,7 @@ test.describe("récupération de compte", () => {
       "lien pour choisir son mot de passe",
     );
     const card = page.getByRole("article", { name: `Compte ${account.name}` });
-    await expect(card).toContainText("Invitation en attente");
+    await expect(card).toContainText("En attente d'activation");
 
     const mail = await waitForMail(account.email, { subject: /accès/i, since });
     expect(mail.text).toContain("Admin E2E vous a créé un compte");
@@ -76,7 +76,7 @@ test.describe("récupération de compte", () => {
     await other.close();
 
     await page.reload();
-    await expect(card).not.toContainText("Invitation en attente");
+    await expect(card).not.toContainText("En attente d'activation");
   });
 
   test("« Mot de passe oublié » envoie un code à six chiffres ; le bon code change le mot de passe et connecte", async ({

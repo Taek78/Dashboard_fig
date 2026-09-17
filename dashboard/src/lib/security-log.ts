@@ -89,6 +89,9 @@ export type SecurityEvent =
   | { type: "account_locked_by_owner"; userId: string; ip: string }
   | { type: "invitation_sent"; userId: string; targetId: string }
   | { type: "invitation_accepted"; userId: string; ip: string }
+  | { type: "invitation_cancelled"; userId: string; targetId: string }
+  // Balayage sans acteur : le compte dont le lien a expiré sans être utilisé.
+  | { type: "invitation_expired"; targetId: string }
   | { type: "email_reminder_requested"; ip: string; userId: string | null }
   | { type: "mail_failed"; kind: string };
 

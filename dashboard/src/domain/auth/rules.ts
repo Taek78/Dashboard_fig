@@ -35,13 +35,39 @@ export function sortUsers(users: readonly ManagedUser[]): ManagedUser[] {
   );
 }
 
-/** Les administrateurs actifs : destinataires des alertes de sécurité par mail. */
+/**
+ * Les administrateurs actifs : destinataires des alertes par mail et contacts
+ * nommés dans les avis à une personne. Un administrateur invité qui n'a pas
+ * encore choisi son mot de passe n'en est pas un : il ne peut ni se
+ * connecter ni gérer les comptes (décision du 2026-09-17, invitations).
+ */
 export function activeAdmins(users: readonly ManagedUser[]): ManagedUser[] {
-  return users.filter((u) => u.active && u.role === "admin");
+  return users.filter((u) => u.active && u.role === "admin" && u.hasPassword);
 }
 
 export function countActiveAdmins(users: readonly ManagedUser[]): number {
   return activeAdmins(users).length;
+}
+
+/**
+ * État de l'invitation d'un compte, à l'instant `nowMs` : « none » dès que le
+ * mot de passe est choisi ; sinon « pending » tant que le dernier lien envoyé
+ * est valable, « expired » passé ce délai (ou si le lien a déjà été purgé).
+ */
+export type InvitationState = "none" | "pending" | "expired";
+
+export function invitationState(
+  user: Pick<ManagedUser, "hasPassword" | "invitationExpiresAt">,
+  nowMs: number,
+): InvitationState {
+  if (user.hasPassword) return "none";
+  if (
+    user.invitationExpiresAt !== null &&
+    Date.parse(user.invitationExpiresAt) > nowMs
+  ) {
+    return "pending";
+  }
+  return "expired";
 }
 
 /**
@@ -70,9 +96,8 @@ export function isLastActiveAdmin(
   users: readonly ManagedUser[],
   targetId: string,
 ): boolean {
-  const target = users.find((u) => u.id === targetId);
-  if (!target || !target.active || target.role !== "admin") return false;
-  return countActiveAdmins(users) <= 1;
+  const admins = activeAdmins(users);
+  return admins.length <= 1 && admins.some((u) => u.id === targetId);
 }
 
 /**

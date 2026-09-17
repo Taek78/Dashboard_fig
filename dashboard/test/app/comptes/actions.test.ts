@@ -71,6 +71,7 @@ const { isolateEachTest } = await import("../../support/test-database");
 isolateEachTest();
 
 const {
+  cancelInvitation,
   createAccount,
   deleteAccount,
   resetAccountPassword,
@@ -242,10 +243,20 @@ describe("setAccountActive / updateAccount", () => {
     ).toBe("success");
     expect(await findUserByEmail(email)).toBeNull();
     expect((await findUserById("usr-0002"))?.passwordChangedAt).not.toBeNull();
+    await flush();
+    expect(hoisted.mails).toEqual([
+      expect.objectContaining({ kind: "account_deactivated", to: email }),
+    ]);
+    expect(hoisted.mails[0]?.text).toContain(
+      `contactez votre administrateur, Admin E2E (${TEST_ACCOUNTS.admin.email}).`,
+    );
     expect(
       (await run(setAccountActive, { userId: "usr-0002", active: "1" })).status,
     ).toBe("success");
     expect((await findUserByEmail(email))?.id).toBe("usr-0002");
+    // Réactiver n'envoie rien.
+    await flush();
+    expect(hoisted.mails).toHaveLength(1);
   });
 
   it("refuse de renommer un compte avec le nom d'un autre", async () => {
@@ -311,10 +322,18 @@ describe("deleteAccount", () => {
       await run(deleteAccount, { userId: "usr-0002", confirm: " supprimer " }),
     ).toEqual({
       status: "success",
-      message: "Compte « Gestion E2E » supprimé.",
+      message:
+        "Compte « Gestion E2E » supprimé ; un message l'en informe à son ancienne adresse.",
     });
     expect(await findUserById("usr-0002")).toBeNull();
     expect(await findActiveToken("invitation", "usr-0002")).toBeNull();
+    await flush();
+    expect(hoisted.mails).toContainEqual(
+      expect.objectContaining({
+        kind: "account_deleted",
+        to: TEST_ACCOUNTS.manager.email,
+      }),
+    );
     expect(hoisted.logged).toContainEqual({
       type: "account_deleted",
       userId: "usr-0001",
@@ -340,12 +359,111 @@ describe("deleteAccount", () => {
       await run(deleteAccount, { userId: second!.id, confirm: "SUPPRIMER" }),
     ).toEqual({
       status: "success",
-      message: "Compte « Second Admin » supprimé.",
+      message:
+        "Compte « Second Admin » supprimé ; un message l'en informe à son ancienne adresse.",
     });
   });
 });
 
+describe("cancelInvitation", () => {
+  it("supprime un compte en attente d'activation et son lien, journalise ; refuse un compte activé, un inconnu et un non-administrateur", async () => {
+    const email = "attente@fig-demo.invalid";
+    await run(createAccount, {
+      email,
+      firstName: "Lina",
+      lastName: "Attente",
+      role: "lecture",
+    });
+    const pending = (await listUsers()).find((u) => u.email === email);
+    expect(pending?.hasPassword).toBe(false);
+    expect(pending?.invitationExpiresAt).not.toBeNull();
+    await flush();
+    hoisted.mails.length = 0;
+
+    hoisted.session.role = "gestionnaire";
+    expect((await run(cancelInvitation, { userId: pending!.id })).status).toBe(
+      "error",
+    );
+    hoisted.session.role = "admin";
+    expect(await run(cancelInvitation, { userId: pending!.id })).toEqual({
+      status: "success",
+      message:
+        "Invitation de « Lina Attente » annulée : le compte est supprimé et le lien reçu ne fonctionne plus.",
+    });
+    expect(await findUserById(pending!.id)).toBeNull();
+    expect(await findActiveToken("invitation", pending!.id)).toBeNull();
+    expect(hoisted.logged).toContainEqual({
+      type: "invitation_cancelled",
+      userId: "usr-0001",
+      targetId: pending!.id,
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/comptes", "layout");
+    // Aucun mail : la personne n'a jamais eu de compte actif.
+    await flush();
+    expect(hoisted.mails).toEqual([]);
+
+    // Un compte activé ne s'annule pas : c'est une suppression, avec son mot.
+    const refused = await run(cancelInvitation, { userId: "usr-0002" });
+    expect(refused.status).toBe("error");
+    if (refused.status === "error") {
+      expect(refused.message).toMatch(/déjà activé/);
+    }
+    expect(await findUserById("usr-0002")).not.toBeNull();
+    expect((await run(cancelInvitation, { userId: "nope" })).status).toBe(
+      "error",
+    );
+  });
+});
+
 describe("resetAccountPassword", () => {
+  it("active un compte invité : avis à la personne (mot de passe attribué, à changer) et aux administrateurs", async () => {
+    const email = "depannage@fig-demo.invalid";
+    await run(createAccount, {
+      email,
+      firstName: "Sami",
+      lastName: "Dépannage",
+      role: "livreur",
+    });
+    const pending = (await listUsers()).find((u) => u.email === email);
+    await flush();
+    hoisted.mails.length = 0;
+
+    const result = await run(resetAccountPassword, {
+      userId: pending!.id,
+      password: "Betterave rouge du dimanche",
+    });
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.message).toMatch(/activé avec ce mot de passe/);
+    }
+    expect(
+      (await listUsers()).find((u) => u.id === pending!.id)?.hasPassword,
+    ).toBe(true);
+    await flush();
+    expect(hoisted.mails.map((m) => [m.kind, m.to])).toEqual([
+      ["account_activated", email],
+      ["admin_account_activated", TEST_ACCOUNTS.admin.email],
+    ]);
+    expect(hoisted.mails[0]?.text).toContain(
+      "celui que Admin E2E vous a attribué",
+    );
+    expect(hoisted.mails[0]?.text).toContain("rôle attribué : Livreur");
+    expect(hoisted.mails[0]?.text).toContain("http://localhost:3126/connexion");
+    expect(hoisted.mails[1]?.text).toContain("par Admin E2E");
+
+    // Un second mot de passe sur ce compte activé n'envoie plus d'avis d'activation.
+    expect(
+      (
+        await run(resetAccountPassword, {
+          userId: pending!.id,
+          password: "Carotte violette du matin",
+        })
+      ).status,
+    ).toBe("success");
+    await flush();
+    expect(hoisted.mails).toHaveLength(2);
+  });
+
   it("applique la politique, remplace le hachage et ferme les sessions ; refuse un compte inconnu", async () => {
     const weak = await run(resetAccountPassword, {
       userId: "usr-0002",

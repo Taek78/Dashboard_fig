@@ -1,22 +1,40 @@
+import { ROLE_LABELS, type Role } from "@/domain/auth/roles";
 import { AUTH_TOKEN_RULES } from "@/domain/auth/tokens";
 import type { MailMessage, MailRecipient } from "@/domain/mail/types";
 import { formatDateTimeFr } from "@/lib/format";
 
 /*
- * Textes des mails de la récupération de compte, règles PURES testées :
- * texte brut, en français, sans HTML. Le code et les liens ne figurent que dans
- * le mail à la personne ; les alertes aux administrateurs nomment le compte,
- * l'heure et l'adresse IP, jamais un secret. Chaque mail qui suit une demande
- * dit quoi faire si la personne n'en est pas l'auteur : le lien « Ce n'était
- * pas moi » verrouille le compte (24 heures), et l'administrateur est le
- * recours.
+ * Textes des mails de la récupération et de la gestion des comptes
+ * (invitation, activation, expiration, désactivation, suppression), règles
+ * PURES testées : texte brut, en français, sans HTML. Le code et les liens ne
+ * figurent que dans le mail à la personne ; les alertes aux administrateurs
+ * nomment le compte, l'heure et l'adresse IP, jamais un secret. Chaque mail
+ * qui suit une demande dit quoi faire si la personne n'en est pas l'auteur :
+ * le lien « Ce n'était pas moi » verrouille le compte (24 heures), et
+ * l'administrateur est le recours. Les avis à une personne (activation,
+ * expiration, désactivation, suppression) nomment l'administrateur à
+ * contacter AVEC son adresse (adminContact) : c'est la possibilité concrète de
+ * le joindre, demandée par le client le 2026-09-17.
  */
 const SIGNATURE =
-  "\n\nFIG Back-office\nMessage automatique : il ne sert à rien d'y répondre.";
+  "\n\nBien cordialement,\nL'équipe FIG\n\nFIG Back-office\nMessage automatique : il ne sert à rien d'y répondre.";
 
 const greet = (name: string) => `Bonjour ${name},\n\n`;
 
 export type AccountSummary = { name: string; email: string };
+
+/**
+ * « votre administrateur, Amel Benali (amel@fig.example) », ou la liste
+ * quand ils sont plusieurs ; sans administrateur connu, le mot seul.
+ */
+export function adminContact(admins: readonly AccountSummary[]): string {
+  const named = admins.map((a) =>
+    a.email ? `${a.name} (${a.email})` : a.name,
+  );
+  if (named.length === 0) return "votre administrateur";
+  if (named.length === 1) return `votre administrateur, ${named[0]}`;
+  return `l'un de vos administrateurs : ${named.join(", ")}`;
+}
 
 export function recoveryCodeMail(input: {
   to: MailRecipient & { name: string };
@@ -140,6 +158,157 @@ export function emailReminderMail(input: {
       greet(input.to.name) +
       `Vous avez demandé un rappel de votre adresse de connexion au back-office FIG : c'est ${input.to.email}, l'adresse qui reçoit ce message.\n\n` +
       `Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : rien n'a changé.` +
+      SIGNATURE,
+  };
+}
+
+/**
+ * Compte activé (demande du 2026-09-17) : à la personne, dès que son mot de
+ * passe existe. `by` null = elle l'a choisi par le lien d'invitation ; sinon
+ * le nom de l'administrateur qui le lui a attribué (dépannage), qu'elle devra
+ * changer. Tout ce qu'il faut pour se connecter, jamais le mot de passe.
+ */
+export function accountActivatedMail(input: {
+  to: MailRecipient & { name: string };
+  at: string;
+  role: Role;
+  loginUrl: string;
+  admins: readonly AccountSummary[];
+  by: string | null;
+}): MailMessage {
+  const password =
+    input.by === null
+      ? "celui que vous venez de choisir. Nous ne le connaissons pas et ne vous le demanderons jamais."
+      : `celui que ${input.by} vous a attribué et vous communiquera par un canal sûr. Changez-le dès votre première connexion, depuis votre profil.`;
+  return {
+    to: input.to,
+    subject: "Votre compte du back-office FIG est activé",
+    text:
+      greet(input.to.name) +
+      `Votre compte d'accès au back-office FIG est activé depuis le ${formatDateTimeFr(input.at)} : bienvenue dans l'équipe !\n\n` +
+      `Pour vous connecter :\n` +
+      `- adresse de connexion : ${input.loginUrl}\n` +
+      `- identifiant : ${input.to.email}\n` +
+      `- mot de passe : ${password}\n` +
+      `- rôle attribué : ${ROLE_LABELS[input.role]}.\n\n` +
+      `Si vous oubliez votre mot de passe, « Mot de passe oublié » sur la page de connexion vous enverra un code par e-mail ; « Adresse e-mail oubliée » vous rappellera votre identifiant à partir de votre nom.\n\n` +
+      `Si vous n'êtes pas à l'origine de cette activation, signalez-le sans attendre : votre compte sera désactivé le temps de vérifier.\n\n` +
+      `Pour cela comme pour toute question, contactez ${adminContact(input.admins)}.` +
+      SIGNATURE,
+  };
+}
+
+/** Compte activé : à chaque administrateur actif, pour information (rien à faire). */
+export function adminAccountActivatedMail(input: {
+  to: MailRecipient & { name: string };
+  account: AccountSummary & { role: Role };
+  at: string;
+  comptesUrl: string;
+  by: string | null;
+}): MailMessage {
+  const how =
+    input.by === null
+      ? `vient d'activer son compte du back-office FIG, le ${formatDateTimeFr(input.at)}, en choisissant son mot de passe par le lien d'invitation.`
+      : `a vu son compte du back-office FIG activé le ${formatDateTimeFr(input.at)} par ${input.by}, qui lui a attribué un mot de passe.`;
+  return {
+    to: input.to,
+    subject: `Compte activé : ${input.account.name}`,
+    text:
+      greet(input.to.name) +
+      `${input.account.name} (${input.account.email}) ${how} Rôle attribué : ${ROLE_LABELS[input.account.role]}. Cette personne peut se connecter dès maintenant ; elle en a été informée par e-mail.\n\n` +
+      `Il n'y a rien à faire. Vous pouvez à tout moment modifier son rôle ou désactiver son compte depuis la section Comptes :\n${input.comptesUrl}` +
+      SIGNATURE,
+  };
+}
+
+/**
+ * Invitation expirée sans avoir été utilisée : à la personne. Rien n'est
+ * activé ; un nouveau lien se demande à l'administrateur, seul habilité à
+ * créer un compte et à envoyer l'invitation.
+ */
+export function invitationExpiredMail(input: {
+  to: MailRecipient & { name: string };
+  expiresAt: string;
+  admins: readonly AccountSummary[];
+}): MailMessage {
+  const { validity } = AUTH_TOKEN_RULES.invitation;
+  return {
+    to: input.to,
+    subject: "Votre invitation au back-office FIG a expiré",
+    text:
+      greet(input.to.name) +
+      `Le lien qui vous invitait à choisir votre mot de passe pour le back-office FIG a expiré le ${formatDateTimeFr(input.expiresAt)}, sans avoir été utilisé. Il n'était valable que ${validity}.\n\n` +
+      `Aucun compte n'est donc actif à cette adresse (${input.to.email}) : vous ne pouvez pas encore vous connecter, et rien n'a été enregistré de votre part.\n\n` +
+      `Si vous souhaitez toujours accéder au back-office, il suffit de demander un nouveau lien à votre administrateur : vous recevrez alors un nouveau message, avec un lien valable ${validity}. Seul un administrateur est habilité à créer un compte et à envoyer cette invitation.\n\n` +
+      `Si vous n'attendiez pas cette invitation, vous pouvez ignorer ce message : rien ne se passera sans le lien.\n\n` +
+      `Pour obtenir ce nouveau lien, ou pour toute question, contactez ${adminContact(input.admins)}.` +
+      SIGNATURE,
+  };
+}
+
+/** Invitation expirée : à chaque administrateur actif, avec les deux gestes possibles. */
+export function adminInvitationExpiredMail(input: {
+  to: MailRecipient & { name: string };
+  account: AccountSummary & { role: Role };
+  expiresAt: string;
+  comptesUrl: string;
+}): MailMessage {
+  const { validity } = AUTH_TOKEN_RULES.invitation;
+  return {
+    to: input.to,
+    subject: `Invitation expirée : ${input.account.name} n'a pas activé son compte`,
+    text:
+      greet(input.to.name) +
+      `L'invitation envoyée à ${input.account.name} (${input.account.email}), avec le rôle ${ROLE_LABELS[input.account.role]}, a expiré le ${formatDateTimeFr(input.expiresAt)} sans avoir été utilisée. Le compte n'est pas activé et cette personne ne peut pas se connecter au back-office FIG. Elle vient d'en être informée par e-mail, avec les coordonnées des administrateurs à contacter.\n\n` +
+      `Le compte reste en attente dans la section Comptes, où deux choix s'offrent à vous :\n` +
+      `- « Renvoyer l'invitation » : un nouveau lien, valable ${validity}, lui est envoyé ;\n` +
+      `- « Annuler l'invitation » : le compte, jamais activé, est supprimé.\n\n` +
+      `${input.comptesUrl}\n\n` +
+      `Rien ne changera tant que vous n'aurez pas choisi.` +
+      SIGNATURE,
+  };
+}
+
+/**
+ * Compte désactivé par un administrateur (demande du 2026-09-17) : ton
+ * professionnel, la date, ce que cela change, et l'administrateur à contacter
+ * pour plus d'informations. Le compte reste et peut être réactivé.
+ */
+export function accountDeactivatedMail(input: {
+  to: MailRecipient & { name: string };
+  at: string;
+  admin: AccountSummary;
+}): MailMessage {
+  return {
+    to: input.to,
+    subject: "Votre accès au back-office FIG a été désactivé",
+    text:
+      greet(input.to.name) +
+      `Votre compte d'accès au back-office FIG (${input.to.email}) a été désactivé le ${formatDateTimeFr(input.at)}. Vous ne pouvez plus vous y connecter et vos sessions ouvertes ont été fermées.\n\n` +
+      `Votre compte n'est pas supprimé : un administrateur peut le réactiver.\n\n` +
+      `Pour plus d'informations, contactez ${adminContact([input.admin])}.` +
+      SIGNATURE,
+  };
+}
+
+/**
+ * Compte supprimé : envoyé à l'ancienne adresse du compte. Un nouveau compte
+ * peut y être créé, sur invitation ; seul un administrateur est habilité à
+ * créer un compte et à envoyer cette invitation.
+ */
+export function accountDeletedMail(input: {
+  to: MailRecipient & { name: string };
+  at: string;
+  admin: AccountSummary;
+}): MailMessage {
+  return {
+    to: input.to,
+    subject: "Votre compte du back-office FIG a été supprimé",
+    text:
+      greet(input.to.name) +
+      `Votre compte d'accès au back-office FIG (${input.to.email}) a été supprimé le ${formatDateTimeFr(input.at)}. Vous ne pouvez plus vous y connecter et vos sessions ouvertes ont été fermées.\n\n` +
+      `Si vous pensez qu'il s'agit d'une erreur, ou si vous avez de nouveau besoin d'un accès, adressez votre demande à votre administrateur depuis cette adresse : un nouveau compte peut y être créé, sur invitation. Seul un administrateur est habilité à créer un compte et à envoyer cette invitation.\n\n` +
+      `Pour plus d'informations, contactez ${adminContact([input.admin])}.` +
       SIGNATURE,
   };
 }

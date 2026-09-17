@@ -3,6 +3,7 @@ import {
   activeAdmins,
   countActiveAdmins,
   fullName,
+  invitationState,
   isLastActiveAdmin,
   isSessionAlive,
   sortUsers,
@@ -17,6 +18,7 @@ const u = (
   lastName: string,
   role: ManagedUser["role"],
   active = true,
+  hasPassword = true,
 ): ManagedUser => ({
   id,
   firstName,
@@ -25,7 +27,8 @@ const u = (
   email: `${id}@fig.invalid`,
   role,
   active,
-  hasPassword: true,
+  hasPassword,
+  invitationExpiresAt: null,
   createdAt: "2026-09-14T08:00:00.000Z",
 });
 
@@ -105,6 +108,45 @@ describe("activeAdmins", () => {
   it("garde les administrateurs actifs seulement", () => {
     expect(activeAdmins(users).map((x) => x.id)).toEqual(["a"]);
     expect(countActiveAdmins(users)).toBe(1);
+  });
+
+  it("un administrateur invité, sans mot de passe, ne compte pas : ni contact, ni dernier admin, et son invitation s'annule", () => {
+    const invited = u("f", "Lina", "Cohen", "admin", true, false);
+    const withInvited = [...users, invited];
+    expect(activeAdmins(withInvited).map((x) => x.id)).toEqual(["a"]);
+    expect(isLastActiveAdmin(withInvited, "a")).toBe(true);
+    expect(isLastActiveAdmin(withInvited, "f")).toBe(false);
+    expect(wouldRemoveLastAdmin(withInvited, "a", { active: false })).toBe(
+      true,
+    );
+  });
+});
+
+describe("invitationState", () => {
+  const now = Date.parse("2026-09-17T12:00:00.000Z");
+  const pending = {
+    ...u("p", "Nour", "Benali", "lecture", true, false),
+    invitationExpiresAt: "2026-09-19T12:00:00.000Z",
+  };
+
+  it("« none » dès que le mot de passe existe, quel que soit le lien", () => {
+    expect(invitationState(u("a", "Z", "M", "admin"), now)).toBe("none");
+    expect(
+      invitationState(
+        { ...pending, hasPassword: true, invitationExpiresAt: null },
+        now,
+      ),
+    ).toBe("none");
+  });
+
+  it("« pending » tant que le dernier lien est valable, « expired » ensuite ou sans lien", () => {
+    expect(invitationState(pending, now)).toBe("pending");
+    expect(
+      invitationState(pending, Date.parse("2026-09-19T12:00:00.000Z")),
+    ).toBe("expired");
+    expect(
+      invitationState({ ...pending, invitationExpiresAt: null }, now),
+    ).toBe("expired");
   });
 });
 
