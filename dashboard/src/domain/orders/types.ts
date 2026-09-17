@@ -33,7 +33,19 @@ export type Order = {
   /** ISO 8601 avec fuseau, ex. "2026-09-07T08:15:00.000Z" */
   createdAt: string;
   status: OrderStatus;
-  customer: { id: string; fullName: string; email: string; phone: string };
+  /**
+   * Déjà passée au moins une fois par « livrée » (relu dans l'historique avec
+   * la commande) : la case « Notifier le client » est alors décochée par défaut.
+   */
+  wasDelivered: boolean;
+  /** Le client, avec son autorisation des notifications d'état (la case « Notifier le client » en dépend). */
+  customer: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    notifyOrderStatus: boolean;
+  };
   /** date "AAAA-MM-JJ", heures "HH:mm" ; créneau d'une heure (orders/slot.ts). */
   deliverySlot: { date: string; start: string; end: string };
   /**

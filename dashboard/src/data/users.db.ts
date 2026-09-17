@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { toManagedUser, toUserAccount } from "@/db/mappers";
 import { users } from "@/db/schema";
@@ -10,11 +10,32 @@ import type { NewUser, UserPatch } from "@/domain/auth/types";
 
 /*
  * Implémentation Drizzle du contrat UsersSource : table `users`, e-mail comparé
- * sans casse (index unique sur lower(email)), comptes désactivés exclus de la
- * connexion.
- * Le mot de passe n'est jamais lu autrement que par son hachage.
+ * sans casse (index unique sur lower(email)), nom comparé sans casse ni accent
+ * (index unique sur fig_normalize(name), la fonction SQL de la recherche), comptes
+ * désactivés exclus de la connexion et du rappel d'adresse.
+ * Le mot de passe n'est jamais lu autrement que par son hachage ; un compte
+ * invité n'en a pas encore (null).
  */
 const lowerEmail = (email: string) => email.trim().toLowerCase();
+
+const sameName = (name: string) =>
+  eq(sql`fig_normalize(${users.name})`, sql`fig_normalize(${name.trim()})`);
+
+async function nameTakenByAnother(
+  name: string,
+  exceptId: string | null,
+): Promise<boolean> {
+  const [taken] = await getDb()
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      exceptId === null
+        ? sameName(name)
+        : and(sameName(name), ne(users.id, exceptId)),
+    )
+    .limit(1);
+  return taken !== undefined;
+}
 
 export const usersDb: UsersSource = {
   findUserByEmail: async (email: string) => {
@@ -36,6 +57,15 @@ export const usersDb: UsersSource = {
       .select()
       .from(users)
       .where(eq(users.id, id))
+      .limit(1);
+    return row ? toUserAccount(row) : null;
+  },
+
+  findUserByName: async (name: string) => {
+    const [row] = await getDb()
+      .select()
+      .from(users)
+      .where(and(sameName(name), eq(users.active, true)))
       .limit(1);
     return row ? toUserAccount(row) : null;
   },
@@ -62,6 +92,7 @@ export const usersDb: UsersSource = {
       .where(eq(sql`lower(${users.email})`, lowerEmail(input.email)))
       .limit(1);
     if (taken) return "email_taken";
+    if (await nameTakenByAnother(input.name, null)) return "name_taken";
     const [row] = await db
       .insert(users)
       .values({
@@ -77,6 +108,12 @@ export const usersDb: UsersSource = {
   },
 
   updateUser: async (id: string, patch: UserPatch) => {
+    if (
+      patch.name !== undefined &&
+      (await nameTakenByAnother(patch.name, id))
+    ) {
+      return "name_taken";
+    }
     const [row] = await getDb()
       .update(users)
       .set({
@@ -89,10 +126,19 @@ export const usersDb: UsersSource = {
     return row ? toManagedUser(row) : null;
   },
 
-  setPassword: async (id: string, passwordHash: string) => {
+  setPassword: async (id: string, passwordHash: string, changedAt: Date) => {
     const updated = await getDb()
       .update(users)
-      .set({ passwordHash })
+      .set({ passwordHash, passwordChangedAt: changedAt })
+      .where(eq(users.id, id))
+      .returning({ id: users.id });
+    return updated.length > 0;
+  },
+
+  revokeSessions: async (id: string, at: Date) => {
+    const updated = await getDb()
+      .update(users)
+      .set({ passwordChangedAt: at })
       .where(eq(users.id, id))
       .returning({ id: users.id });
     return updated.length > 0;

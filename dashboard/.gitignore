@@ -54,3 +54,6 @@ dumps/
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# mails écrits par le transport « fichier » (développement) : codes et liens dedans
+/.mail/

@@ -61,7 +61,7 @@ import {
 } from "@/lib/format";
 
 /*
- * Métriques : période prédéfinie ou plage libre, montants HT ou TTC, référence
+ * Métriques : période prédéfinie ou personnalisée, montants HT ou TTC, référence
  * de comparaison (N-1 ou période précédente), badge de tendance sur chaque KPI.
  * Rangées par thème, chacune dans sa section titrée :
  *   1. Ventes : commandes, CA, panier moyen, acheteurs (les quatre chiffres
@@ -71,7 +71,9 @@ import {
  *      CLAIM_SUBJECTS, comptées par la base), répartition par statut ;
  *   3. Clients : nouveaux inscrits et parrainages de la période ;
  *   4. Produits : les produits phares ;
- *   5. Usage de l'application sur l'année civile de la période (stores).
+ *   5. Usage de l'application sur l'année civile de la période (stores),
+ *      en deux colonnes sur deux lignes : chaque carte a la place de son
+ *      libellé, de son aide et de son camembert (demande du 2026-09-17).
  * Les ratios sont des camemberts pleins, sans pourcentage écrit : au survol,
  * chaque part dit ce qu'elle représente.
  * Composant serveur : les chiffres des deux périodes, les deux séries, les
@@ -401,7 +403,7 @@ export default async function MetriquesPage({
         title={`Usage de l'application en ${year}`}
         description={`Variations par rapport à ${Number(year) - 1}.`}
       >
-        <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
+        <div className="grid gap-4 @xl/main:grid-cols-2">
           <KpiCard
             label="Téléchargements"
             value={usage.downloads.toLocaleString("fr-FR")}

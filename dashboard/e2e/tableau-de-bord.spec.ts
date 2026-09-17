@@ -4,7 +4,8 @@ import { login } from "./helpers";
 
 /*
  * Tableau de bord : l'alerte quand plus aucun préparateur n'est présent, le
- * raccourci vers les livraisons du jour, la plage libre. Les tests partagent
+ * raccourci vers les livraisons du jour, la période personnalisée. Les tests
+ * partagent
  * la base (un seul worker, dans l'ordre) : les disponibilités modifiées sont
  * remises comme avant.
  */
@@ -84,7 +85,7 @@ test.describe("tableau de bord", () => {
     await expect(page.getByRole("progressbar")).toHaveCount(0);
   });
 
-  test("des dates inversées dans la plage libre affichent l'erreur et gardent la période prédéfinie", async ({
+  test("des dates inversées dans l'URL ouvrent la zone, affichent l'erreur et gardent la période prédéfinie", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.admin);
@@ -94,8 +95,54 @@ test.describe("tableau de bord", () => {
       "La date de début est après la date de fin",
     );
     await expect(form.getByLabel("Du")).toHaveValue("2026-09-09");
+    await expect(form.getByLabel("Période", { exact: true })).toHaveValue(
+      "personnalisee",
+    );
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator("header")).not.toContainText("Du mer.");
+    await expect(page.getByText(/^Hier ·/)).toBeVisible();
+  });
+
+  test("la zone de dates n'existe qu'avec « Période personnalisée » ; le choix survit au passage HT / TTC et se referme avec une période prédéfinie", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/");
+    const form = page.getByRole("form", { name: "Choix de la période" });
+    const period = form.getByLabel("Période", { exact: true });
+    await expect(period).toHaveValue("aujourdhui");
+    await expect(form.getByLabel("Du")).toHaveCount(0);
+
+    // Le choix ouvre la zone sans envoi ; l'envoi met la plage dans l'URL.
+    await period.selectOption("personnalisee");
+    await form.getByLabel("Du").fill("2026-09-05");
+    await form.getByLabel("Au").fill("2026-09-09");
+    await form.getByRole("button", { name: "Afficher" }).click();
+    await expect(page).toHaveURL(
+      /\/\?tva=ht&periode=personnalisee&du=2026-09-05&au=2026-09-09$/,
+    );
+    await expect(period).toHaveValue("personnalisee");
+    await expect(form.getByLabel("Du")).toHaveValue("2026-09-05");
+    await expect(form).toContainText(
+      /Période affichée : du .*5 sept\. au .*9 sept\. 2026\./,
+    );
+
+    // HT / TTC rejoue la période personnalisée.
+    await page
+      .getByRole("group", { name: "Mode de TVA" })
+      .getByRole("link", { name: "TTC" })
+      .click();
+    await expect(page).toHaveURL(
+      /\/\?periode=personnalisee&du=2026-09-05&au=2026-09-09&tva=ttc$/,
+    );
+    await expect(form.getByLabel("Au")).toHaveValue("2026-09-09");
+
+    // Une période prédéfinie referme la zone : les dates ne partent pas dans l'URL.
+    await period.selectOption("hier");
+    await expect(form.getByLabel("Du")).toHaveCount(0);
+    await form.getByRole("button", { name: "Afficher" }).click();
+    await expect(page).toHaveURL(/\/\?tva=ttc&periode=hier$/);
+    await expect(form.getByLabel("Du")).toHaveCount(0);
     await expect(page.getByText(/^Hier ·/)).toBeVisible();
   });
 });

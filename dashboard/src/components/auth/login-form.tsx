@@ -1,8 +1,10 @@
 "use client";
 
-import { CircleAlert, LoaderCircle } from "lucide-react";
+import Link from "next/link";
+import { LoaderCircle } from "lucide-react";
 import { useActionState } from "react";
 import { login } from "@/app/connexion/actions";
+import { ActionStatus } from "@/components/action-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,9 +12,14 @@ import { idleActionResult } from "@/lib/action-result";
 
 /*
  * Formulaire de connexion (client : useActionState). Le succès redirige, seul
- * l'échec s'affiche. `login-stagger` : les champs entrent l'un après l'autre
+ * l'échec s'affiche. Sous le bouton, les deux secours : « Mot de passe
+ * oublié ? » (code par e-mail) et « Adresse e-mail oubliée ? » (rappel par le
+ * nom du compte). `login-stagger` : les champs entrent l'un après l'autre
  * (globals.css, « Connexion »), sans mouvement pour qui le refuse.
  */
+const HELP_LINK =
+  "text-primary text-sm font-medium underline-offset-4 hover:underline";
+
 export function LoginForm() {
   const [result, formAction, pending] = useActionState(login, idleActionResult);
 
@@ -55,17 +62,21 @@ export function LoginForm() {
           "Se connecter"
         )}
       </Button>
-      <p
+      <ActionStatus
         role="alert"
-        className="text-destructive flex items-center gap-1.5 text-sm"
+        result={result.status === "error" ? result : idleActionResult}
+      />
+      <nav
+        aria-label="Aide à la connexion"
+        className="flex flex-wrap justify-between gap-x-4 gap-y-1"
       >
-        {result.status === "error" ? (
-          <>
-            <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
-            {result.message}
-          </>
-        ) : null}
-      </p>
+        <Link href="/connexion/recuperation" className={HELP_LINK}>
+          Mot de passe oublié ?
+        </Link>
+        <Link href="/connexion/adresse-oubliee" className={HELP_LINK}>
+          Adresse e-mail oubliée ?
+        </Link>
+      </nav>
     </form>
   );
 }

@@ -23,8 +23,9 @@ describe("usersDb : connexion", () => {
     );
     expect(found).toMatchObject({ id: "usr-0001", role: "admin" });
     expect(
-      await verifyPassword(TEST_ACCOUNTS.admin.password, found!.passwordHash),
+      await verifyPassword(TEST_ACCOUNTS.admin.password, found!.passwordHash!),
     ).toBe(true);
+    expect(found).toMatchObject({ active: true, passwordChangedAt: null });
     expect(
       await usersDb.findUserByEmail("inconnu@fig-demo.invalid"),
     ).toBeNull();
@@ -73,10 +74,65 @@ describe("usersDb : gestion des comptes", () => {
       await usersDb.updateUser("usr-0002", { name: "Zaki", role: "lecture" }),
     ).toMatchObject({ name: "Zaki", role: "lecture" });
     expect(await usersDb.updateUser("nope", { name: "x" })).toBeNull();
-    expect(await usersDb.setPassword("usr-0002", "scrypt$n$n")).toBe(true);
-    expect((await usersDb.findUserById("usr-0002"))?.passwordHash).toBe(
-      "scrypt$n$n",
+    const at = new Date("2026-09-17T10:00:00.000Z");
+    expect(await usersDb.setPassword("usr-0002", "scrypt$n$n", at)).toBe(true);
+    expect(await usersDb.findUserById("usr-0002")).toMatchObject({
+      passwordHash: "scrypt$n$n",
+      passwordChangedAt: at.toISOString(),
+    });
+    expect(await usersDb.setPassword("nope", "scrypt$n$n", at)).toBe(false);
+  });
+
+  it("revokeSessions ne pose que l'instant, sans toucher au mot de passe", async () => {
+    const before = await usersDb.findUserById("usr-0002");
+    const at = new Date("2026-09-17T11:00:00.000Z");
+    expect(await usersDb.revokeSessions("usr-0002", at)).toBe(true);
+    expect(await usersDb.findUserById("usr-0002")).toMatchObject({
+      passwordHash: before!.passwordHash,
+      passwordChangedAt: at.toISOString(),
+    });
+    expect(await usersDb.revokeSessions("nope", at)).toBe(false);
+  });
+});
+
+describe("usersDb : nom unique et rappel d'adresse", () => {
+  it("retrouve un compte actif par son nom, sans casse ni accent", async () => {
+    expect((await usersDb.findUserByName("gestion e2e"))?.id).toBe("usr-0002");
+    expect((await usersDb.findUserByName("  Gestión E2E "))?.id).toBe(
+      "usr-0002",
     );
-    expect(await usersDb.setPassword("nope", "scrypt$n$n")).toBe(false);
+    expect(await usersDb.findUserByName("Inconnu")).toBeNull();
+    await usersDb.updateUser("usr-0002", { active: false });
+    expect(await usersDb.findUserByName("Gestion E2E")).toBeNull();
+  });
+
+  it("refuse un nom déjà pris à la création et au renommage", async () => {
+    expect(
+      await usersDb.createUser({
+        email: "autre@fig-demo.invalid",
+        name: "gestion E2E",
+        role: "lecture",
+        passwordHash: null,
+      }),
+    ).toBe("name_taken");
+    expect(await usersDb.updateUser("usr-0002", { name: "ADMIN e2e" })).toBe(
+      "name_taken",
+    );
+    // Se renommer soi-même avec son propre nom reste permis.
+    expect(
+      await usersDb.updateUser("usr-0002", { name: "Gestion E2E" }),
+    ).toMatchObject({ name: "Gestion E2E" });
+  });
+
+  it("un compte créé sans mot de passe n'a pas de hachage et ne se connecte pas", async () => {
+    const created = await usersDb.createUser({
+      email: "invite@fig-demo.invalid",
+      name: "Invité Test",
+      role: "lecture",
+      passwordHash: null,
+    });
+    expect(created).toMatchObject({ hasPassword: false, active: true });
+    const account = await usersDb.findUserByEmail("invite@fig-demo.invalid");
+    expect(account?.passwordHash).toBeNull();
   });
 });

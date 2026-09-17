@@ -1,19 +1,21 @@
 "use client";
 
 import {
-  CircleAlert,
-  CircleCheck,
   KeyRound,
   LoaderCircle,
+  MailPlus,
   UserCheck,
   UserX,
 } from "lucide-react";
 import { useActionState, useState } from "react";
 import {
   resetAccountPassword,
+  sendPasswordLink,
   setAccountActive,
   updateAccount,
 } from "@/app/(dashboard)/comptes/actions";
+import { ActionStatus } from "@/components/action-status";
+import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,38 +24,19 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { ROLE_LABELS, ROLES } from "@/domain/auth/roles";
-import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
+import { AUTH_TOKEN_RULES } from "@/domain/auth/tokens";
 import type { ManagedUser } from "@/domain/auth/types";
-import { idleActionResult, type ActionResult } from "@/lib/action-result";
+import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 
 /*
- * Actions sur un compte existant (client) : nom et rôle, activation, nouveau
- * mot de passe. Trois petits formulaires, trois Server Actions, un message de
- * résultat chacun. L'administrateur ne voit pas de bouton pour se désactiver
- * lui-même (l'action le refuse de toute façon).
+ * Actions sur un compte existant (client) : nom et rôle, activation, lien
+ * pour choisir un mot de passe (envoyé par e-mail, le geste normal), et en
+ * dépannage un mot de passe posé ici avec la jauge de la politique. Quatre
+ * petits formulaires, quatre Server Actions, un message de résultat chacun.
+ * L'administrateur ne voit pas de bouton pour se désactiver lui-même
+ * (l'action le refuse de toute façon).
  */
-function Status({ result }: { result: ActionResult }) {
-  return (
-    <p
-      role="status"
-      className={cn(
-        "flex items-center gap-1.5 text-sm",
-        result.status === "success" && "text-success",
-        result.status === "error" && "text-destructive",
-      )}
-    >
-      {result.status === "success" ? (
-        <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
-      ) : null}
-      {result.status === "error" ? (
-        <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
-      ) : null}
-      {result.status === "idle" ? null : result.message}
-    </p>
-  );
-}
-
 export function AccountEditor({
   account,
   isSelf,
@@ -69,11 +52,15 @@ export function AccountEditor({
     setAccountActive,
     idleActionResult,
   );
+  const [linkResult, linkAction, sendingLink] = useActionState(
+    sendPasswordLink,
+    idleActionResult,
+  );
   const [resetResult, resetAction, resetting] = useActionState(
     resetAccountPassword,
     idleActionResult,
   );
-  const [resetting_open, setResetOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
   const ids = {
     name: `${account.id}-name`,
     role: `${account.id}-role`,
@@ -95,6 +82,7 @@ export function AccountEditor({
               id={ids.name}
               name="name"
               required
+              minLength={2}
               maxLength={80}
               defaultValue={account.name}
             />
@@ -119,7 +107,7 @@ export function AccountEditor({
             Enregistrer
           </Button>
         </div>
-        <Status result={updateResult} />
+        <ActionStatus result={updateResult} />
       </form>
 
       <div className="flex flex-wrap items-center gap-2 border-t pt-3">
@@ -152,6 +140,27 @@ export function AccountEditor({
             </Button>
           </form>
         ) : null}
+        {account.active ? (
+          <form action={linkAction}>
+            <input type="hidden" name="userId" value={account.id} />
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={sendingLink}
+              title={`Envoie par e-mail un lien pour choisir un mot de passe, valable ${AUTH_TOKEN_RULES.invitation.validity}`}
+            >
+              {sendingLink ? (
+                <LoaderCircle className="animate-spin" />
+              ) : (
+                <MailPlus />
+              )}
+              {account.hasPassword
+                ? "Envoyer un lien"
+                : "Renvoyer l'invitation"}
+            </Button>
+          </form>
+        ) : null}
         <Button
           type="button"
           variant="ghost"
@@ -161,29 +170,26 @@ export function AccountEditor({
           <KeyRound />
           Nouveau mot de passe
         </Button>
-        <Status result={activeResult} />
+        <ActionStatus result={activeResult} />
+        <ActionStatus result={linkResult} />
       </div>
 
-      {resetting_open ? (
+      {resetOpen ? (
         <form
           action={resetAction}
           className="bg-muted/40 flex flex-col gap-3 rounded-xl border p-3"
         >
           <input type="hidden" name="userId" value={account.id} />
-          <div className="grid gap-1.5">
-            <Label htmlFor={ids.password}>
-              Nouveau mot de passe pour {account.name}
-            </Label>
-            <Input
-              id={ids.password}
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={PASSWORD_MIN_LENGTH}
-              maxLength={200}
-            />
-          </div>
+          <p className="text-muted-foreground text-xs">
+            Dépannage quand le mail ne passe pas : préférez « Envoyer un lien »,
+            la personne choisit alors son mot de passe elle-même.
+          </p>
+          <PasswordField
+            id={ids.password}
+            name="password"
+            label={`Nouveau mot de passe pour ${account.name}`}
+            context={{ email: account.email, name: account.name }}
+          />
           <div className="flex flex-wrap gap-2">
             <Button type="submit" size="sm" disabled={resetting}>
               {resetting ? <LoaderCircle className="animate-spin" /> : null}
@@ -198,7 +204,7 @@ export function AccountEditor({
               Fermer
             </Button>
           </div>
-          <Status result={resetResult} />
+          <ActionStatus result={resetResult} />
         </form>
       ) : null}
     </div>

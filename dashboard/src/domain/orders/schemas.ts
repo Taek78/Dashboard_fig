@@ -31,7 +31,10 @@ export const orderIdSchema = z.string().trim().min(1).max(64);
 /*
  * Changement de statut. Annuler exige un motif (reason) ; « autre » exige une
  * précision (detail, 100 caractères au plus). Pour tout autre statut, motif et
- * précision sont ignorés. Sortie : { orderId, nextStatus, cancellation | null }.
+ * précision sont ignorés. La case « Notifier le client » arrive en `notify`
+ * ("1" cochée ; "0" ou absente = décochée : un formulaire HTML n'envoie pas
+ * une case décochée). Sortie : { orderId, nextStatus, cancellation | null,
+ * notify }.
  */
 export const changeStatusSchema = z
   .object({
@@ -39,6 +42,7 @@ export const changeStatusSchema = z
     nextStatus: z.enum(ORDER_STATUSES),
     reason: z.enum(CANCELLATION_REASONS).optional(),
     detail: z.string().trim().max(CANCELLATION_DETAIL_MAX_LENGTH).optional(),
+    notify: z.enum(["0", "1"]).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.nextStatus !== "cancelled") return;
@@ -56,13 +60,14 @@ export const changeStatusSchema = z
       });
     }
   })
-  .transform(({ orderId, nextStatus, reason, detail }) => ({
+  .transform(({ orderId, nextStatus, reason, detail, notify }) => ({
     orderId,
     nextStatus,
     cancellation:
       nextStatus === "cancelled" && reason
         ? { reason, detail: reason === "other" ? (detail ?? null) : null }
         : null,
+    notify: notify === "1",
   }));
 
 /*
@@ -70,7 +75,8 @@ export const changeStatusSchema = z
  * seul jour, encore lue pour les liens existants). Une date impossible est
  * ignorée comme si le champ était vide ; la règle readDateRange décide ensuite
  * (une seule date = ce jour-là, dates inversées = erreur sans période).
- * Partagée avec les messages et la plage libre des métriques : une seule règle
+ * Partagée avec les messages et la période personnalisée des métriques : une
+ * seule règle
  * pour toutes les recherches par dates.
  */
 const periodParamsSchema = z.object({

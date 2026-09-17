@@ -44,6 +44,7 @@ describe("changeStatusSchema", () => {
         orderId: "cmd-0001",
         nextStatus: "preparing",
         cancellation: null,
+        notify: false,
       });
     }
   });
@@ -91,6 +92,20 @@ describe("changeStatusSchema", () => {
     }
   });
 
+  it('case « Notifier le client » : "1" = cochée, "0" ou absente = décochée, autre valeur refusée', () => {
+    const base = { orderId: "cmd-0001", nextStatus: "delivered" };
+    expect(changeStatusSchema.parse({ ...base, notify: "1" }).notify).toBe(
+      true,
+    );
+    expect(changeStatusSchema.parse({ ...base, notify: "0" }).notify).toBe(
+      false,
+    );
+    expect(changeStatusSchema.parse(base).notify).toBe(false);
+    expect(
+      changeStatusSchema.safeParse({ ...base, notify: "on" }).success,
+    ).toBe(false);
+  });
+
   it("annulée : motif requis, précision requise et bornée pour « autre »", () => {
     const base = { orderId: "cmd-0001", nextStatus: "cancelled" };
     const missing = changeStatusSchema.safeParse(base);
@@ -101,6 +116,7 @@ describe("changeStatusSchema", () => {
     expect(changeStatusSchema.parse({ ...base, reason: "stock" })).toEqual({
       ...base,
       cancellation: { reason: "stock", detail: null },
+      notify: false,
     });
     expect(
       changeStatusSchema.parse({ ...base, reason: "stock", detail: "ignoré" })

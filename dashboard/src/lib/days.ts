@@ -71,7 +71,8 @@ export type DateRangeInput = {
 
 /**
  * Règle commune à toutes les recherches par dates (commandes, messages,
- * historiques des fiches, plage libre du tableau de bord et des métriques),
+ * historiques des fiches, période personnalisée du tableau de bord et des
+ * métriques),
  * décidée avec le client le 2026-09-16 :
  * - aucune date : pas de période ;
  * - une seule date : ce jour-là seulement (du = au) ;

@@ -36,6 +36,28 @@ export const IP_POLICY: RateLimitPolicy = {
   maxLockMs: 60 * MINUTE,
 };
 
+/*
+ * Quotas des pages publiques de récupération (« Mot de passe oublié »,
+ * « Adresse e-mail oubliée ») : chaque DEMANDE compte comme un échec, la
+ * troisième pour un même sujet (e-mail ou nom) verrouille un quart d'heure ;
+ * par adresse IP, la dixième. Un attaquant ne peut ni inonder une boîte mail
+ * ni tester des noms en rafale ; une personne qui s'y reprend à trois fois
+ * n'est pas gênée.
+ */
+export const RECOVERY_SUBJECT_POLICY: RateLimitPolicy = {
+  windowMs: 15 * MINUTE,
+  maxFailures: 3,
+  baseLockMs: 15 * MINUTE,
+  maxLockMs: 60 * MINUTE,
+};
+
+export const RECOVERY_IP_POLICY: RateLimitPolicy = {
+  windowMs: 15 * MINUTE,
+  maxFailures: 10,
+  baseLockMs: 15 * MINUTE,
+  maxLockMs: 60 * MINUTE,
+};
+
 export type AttemptState = {
   failures: number;
   lastFailureAt: number;

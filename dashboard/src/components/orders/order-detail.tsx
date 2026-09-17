@@ -1,7 +1,7 @@
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
-import { OrderStatusForm } from "@/components/orders/order-status-form";
+import { OrderStatusSelect } from "@/components/orders/order-status-select";
 import {
   OrderTeam,
   type AssignmentOptions,
@@ -17,10 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  allowedTransitions,
-  ORDER_STATUS_LABELS,
-} from "@/domain/orders/status";
+import { ORDER_STATUS_LABELS } from "@/domain/orders/status";
 import type { CustomerNotification } from "@/domain/notifications/types";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { formatDiscount } from "@/domain/orders/discount";
@@ -58,7 +55,6 @@ export function OrderDetail({
   order,
   events,
   notifications,
-  notifyOrderStatus,
   canEdit,
   canAssign,
   options,
@@ -68,15 +64,12 @@ export function OrderDetail({
   events: OrderEvent[];
   /** Notifications déposées pour le client, de la plus récente à la plus ancienne. */
   notifications: CustomerNotification[];
-  /** Le client a autorisé les notifications d'état (relu sur sa fiche). */
-  notifyOrderStatus: boolean;
   /** Rôle autorisé à changer le statut. Confort d'affichage : l'action revérifie. */
   canEdit: boolean;
   /** Rôle autorisé à affecter l'équipe. */
   canAssign: boolean;
   options: AssignmentOptions;
 }) {
-  const allowed = allowedTransitions(order.status);
   const done = order.status === "delivered" || order.status === "cancelled";
   const subtotal = computeOrderSubtotalCents(order.lines);
   const kind = orderKindOf(order);
@@ -228,17 +221,16 @@ export function OrderDetail({
               </p>
             ) : null}
           </div>
-          {allowed.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Statut final.</p>
-          ) : !canEdit ? (
+          {!canEdit ? (
             <p className="text-muted-foreground text-sm">
               Compte en lecture seule.
             </p>
           ) : (
-            <OrderStatusForm
+            <OrderStatusSelect
               orderId={order.id}
-              currentStatus={order.status}
-              allowed={allowed}
+              status={order.status}
+              notifyAllowed={order.customer.notifyOrderStatus}
+              wasDelivered={order.wasDelivered}
             />
           )}
           <section aria-labelledby="historique" className="border-t pt-4">
@@ -280,7 +272,7 @@ export function OrderDetail({
             <h3 id="notifications" className="mb-2 text-sm font-semibold">
               Notifications au client
             </h3>
-            {!notifyOrderStatus ? (
+            {!order.customer.notifyOrderStatus ? (
               <p className="text-muted-foreground text-sm">
                 Le client n&apos;a pas autorisé les notifications d&apos;état.
               </p>

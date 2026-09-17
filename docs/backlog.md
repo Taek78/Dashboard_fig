@@ -21,17 +21,17 @@ Dernière mise à jour : 2026-09-16.
 
 ### Dépend du client
 
-| #   | Sujet                                                                            | Ce qui bloque                              |
-| --- | -------------------------------------------------------------------------------- | ------------------------------------------ |
-| 1   | Branchement de l'application FIG à la base (question 14)                         | choix API du dashboard ou accès SQL direct |
-| 2   | Validation du vocabulaire (statuts, créneaux, catégories) et des rôles (livreur) | questions 5 et 9                           |
-| 3   | TVA : base et taux des montants (hypothèse : TTC à 5,5 %)                        | question 10                                |
-| 4   | Adresse de livraison complète pour l'itinéraire, instructions d'accès            | question 13                                |
-| 5   | Source des statistiques d'usage (stores, support)                                | question 11                                |
-| 6   | Hébergement du dashboard et de PostgreSQL, nom de domaine                        | question 8                                 |
-| 7   | RGPD : durées de conservation, propagation de l'anonymisation à l'application, contrat de sous-traitance | questions 18 à 21 ; purge planifiée après validation |
-| 8   | Messages : stockage et URL des pièces jointes, durée de conservation d'une demande traitée | question 22                                |
-| 9   | Notifications d'état : canal d'envoi par l'application, lecture de la file et pose de `sent_at`, durée de conservation | question 23                                |
+| #   | Sujet                                                                                                                  | Ce qui bloque                                        |
+| --- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 1   | Branchement de l'application FIG à la base (question 14)                                                               | choix API du dashboard ou accès SQL direct           |
+| 2   | Validation du vocabulaire (statuts, créneaux, catégories) et des rôles (livreur)                                       | questions 5 et 9                                     |
+| 3   | TVA : base et taux des montants (hypothèse : TTC à 5,5 %)                                                              | question 10                                          |
+| 4   | Adresse de livraison complète pour l'itinéraire, instructions d'accès                                                  | question 13                                          |
+| 5   | Source des statistiques d'usage (stores, support)                                                                      | question 11                                          |
+| 6   | Hébergement du dashboard et de PostgreSQL, nom de domaine                                                              | question 8                                           |
+| 7   | RGPD : durées de conservation, propagation de l'anonymisation à l'application, contrat de sous-traitance               | questions 18 à 21 ; purge planifiée après validation |
+| 8   | Messages : stockage et URL des pièces jointes, durée de conservation d'une demande traitée                             | question 22                                          |
+| 9   | Notifications d'état : canal d'envoi par l'application, lecture de la file et pose de `sent_at`, durée de conservation | question 23                                          |
 
 ### Peut se faire sans le client
 
@@ -40,7 +40,8 @@ Dernière mise à jour : 2026-09-16.
 - Recherche catalogue et clients en SQL (`pg_trgm`) si les tables grossissent.
 - Téléversement d'images produit et article (stockage à définir).
 - Export CSV, impression de bons de livraison.
-- Envoi des notifications par le dashboard lui-même (e-mail ou SMS), si l'application ne lit pas la file : prestataire, dépendance et secrets à décider avec le client.
+- Envoi des notifications par le dashboard lui-même (e-mail ou SMS), si l'application ne lit pas la file : le transport de mail existe désormais (`data/mail.ts`, Brevo), il resterait à décider avec le client si les notifications clients passent par lui.
+- Double authentification (application TOTP) pour les administrateurs : la mesure suivante après la récupération par code, à proposer au client.
 
 ## Questions à poser au client
 
@@ -70,6 +71,7 @@ Dernière mise à jour : 2026-09-16.
     - la durée des preuves des demandes traitées et celle des sauvegardes ;
     - avec le comptable, si les commandes du dashboard sont des pièces justificatives à garder 10 ans ;
     - les bases légales à retenir pour le registre.
+
 19. **RGPD, application** : l'application FIG anonymise-t-elle aussi sa copie d'un client ? Ne recrée-t-elle pas un client anonymisé ici ? Qui reçoit les demandes des personnes, et par quel canal ?
 20. **RGPD, équipe** : combien de temps garder la fiche d'une personne partie (`active = false`) ?
 21. **RGPD, cadre** : il faut fixer quatre points :
@@ -80,10 +82,14 @@ Dernière mise à jour : 2026-09-16.
 22. **Messages, pièces jointes** : où l'application stocke-t-elle les fichiers et sous quelles URL ? Combien de temps garder une demande traitée ? L'application efface-t-elle les fichiers à l'anonymisation ?
 23. **Notifications d'état de commande** : par quel canal l'application les envoie-t-elle (notification du téléphone, e-mail, SMS) ? Lit-elle la file `customer_notifications` (lignes sans `sent_at`, dans l'ordre de dépôt) et pose-t-elle `sent_at` ? Combien de temps garder une notification envoyée ? Transmet-elle la date de chaque choix d'autorisation (`consents_updated_at`) ?
 24. **Frais de livraison et barème** : le barème (4,90 € sous 5 €, 3,90 € dès 5 €, 2,90 € dès 10 €, 1,90 € dès 20 € de panier avant remise, offerts aux communautés) est-il bien celui que l'application facture, et les frais sont-ils au même taux de TVA que les produits (question 10) ?
-25. **Parrainage** : le code « Nom#0000 » est attribué par l'application ; y a-t-il une récompense pour le parrain ou le filleul (rien n'est prévu dans le dashboard), et le code d'un client anonymisé est-il réattribuable ?
+25. **Mails du back-office (Brevo)** : le client doit créer le compte Brevo (offre gratuite suffisante), valider son domaine ou l'adresse d'expédition (SPF, DKIM) et fournir la clé `MAIL_API_KEY` et l'adresse `MAIL_FROM` à l'hébergement ; Brevo devient sous-traitant ultérieur (registre RGPD, hébergement en Union européenne). Accepte-t-il aussi l'appel à Have I Been Pwned (cinq caractères d'un hachage, aucune donnée personnelle) pour refuser les mots de passe fuités ?
+26. **Parrainage** : le code « Nom#0000 » est attribué par l'application ; y a-t-il une récompense pour le parrain ou le filleul (rien n'est prévu dans le dashboard), et le code d'un client anonymisé est-il réattribuable ?
 
 ## Décisions prises
 
+- Commandes (2026-09-17) : **changement de statut libre**, plus de règle d'étape : liste déroulante des quatre statuts sur les cartes et la fiche, qui écrit dès le choix, avec l'icône et la couleur du statut choisi (ambre en préparation, bleu expédiée, vert livrée, rouge annulée) ; livrée directement, retour en préparation ou reprise d'une annulée possibles ; « Annulée » demande toujours le motif avant confirmation ; à chaque changement, la notification d'état est déposée pour le client qui l'a autorisée, retour en préparation compris ; case « Notifier le client » cochée par défaut : décochée, aucune notification n'est déposée même si le client l'a autorisée ; sous la confirmation, « Client notifié » (badge vert) ou « Client non notifié » (gris) ; décochée d'elle-même dès que la commande est passée une fois par « livrée », désactivée et libellée « Notifications non autorisées par le client » quand le client n'a pas donné l'autorisation.
+- Écrans (2026-09-17, huitième lot) : **période personnalisée** du tableau de bord et des métriques : la liste « Période » finit par « Période personnalisée » et la zone de dates « du / au » n'apparaît que pour ce choix (ouverte dès le choix, refermée pour une période prédéfinie : les dates abandonnées ne partent pas dans l'URL) ; bouton « Afficher » et légende « Période affichée » sous la zone ; les anciens liens `?du=&au=` restent lus ; section « Usage de l'application » des métriques en deux colonnes sur deux lignes, cartes plus aérées.
+- Comptes et récupération (2026-09-17, septième lot) : création d'un compte **sans mot de passe** avec lien d'invitation par e-mail (48 h), « Envoyer un lien » et dépannage depuis Comptes ; « Mot de passe oublié » par code à six chiffres (5 min, 5 essais, quotas), « Adresse e-mail oubliée » par le nom du compte (unique) ; alertes par mail à la personne et aux administrateurs, lien « Ce n'était pas moi » qui verrouille le compte ; sessions fermées dès désactivation, verrouillage ou changement de mot de passe ; politique de mots de passe avec jauge et vérification contre les fuites connues ; envoi par Brevo (API HTTP, sans dépendance) ou fichier ; migration 0013.
 - Écrans (2026-09-17, sixième lot) : **type de commande** particulier / communauté (`orderKindOf`, déduit de la communauté portée) : carte, tableau et détail nomment la communauté puis l'interlocuteur (garant, livré pour tous), code couleur des tokens `--individual` / `--community`, filtre `?type=` en commutateur coloré (`TypeSwitch`, partagé avec les Clients), parité SQL testée.
 - Écrans (2026-09-17, cinquième lot, refonte visuelle) :
   - **Panneau de filtres** commun (`FilterTray`) sous chaque barre de recherche, **zone de dates** dédiée pleine largeur (`DateRangeFields`), cases à cocher en puces, barre de recherche partagée (`SearchField`).

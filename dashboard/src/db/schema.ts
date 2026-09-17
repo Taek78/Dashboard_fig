@@ -67,6 +67,12 @@ export const userRoleEnum = pgEnum("user_role", [
   "lecture",
   "livreur",
 ]);
+/** Sortes de jetons d'authentification (domain/auth/tokens.ts). */
+export const authTokenKindEnum = pgEnum("auth_token_kind", [
+  "recovery_code",
+  "lock_link",
+  "invitation",
+]);
 export const staffKindEnum = pgEnum("staff_kind", [
   "livreur",
   "preparateur",
@@ -139,13 +145,49 @@ export const users = pgTable(
   {
     id: text("id").primaryKey(),
     email: text("email").notNull(),
+    /** Unique sans casse ni accent : il sert au rappel de l'adresse e-mail. */
     name: text("name").notNull(),
     role: userRoleEnum("role").notNull(),
-    passwordHash: text("password_hash").notNull(),
+    /** Null tant que l'invitation n'a pas été acceptée : pas de connexion possible. */
+    passwordHash: text("password_hash"),
     active: boolean("active").notNull().default(true),
+    /** Dernier changement de mot de passe ou verrouillage : les sessions antérieures sont refusées. */
+    passwordChangedAt: timestampTz("password_changed_at"),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`)],
+  (t) => [
+    uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`),
+    uniqueIndex("users_name_normalized_idx").on(sql`fig_normalize(${t.name})`),
+  ],
+);
+
+/*
+ * ---------- Jetons d'authentification ----------
+ * Codes de récupération (6 chiffres, 5 min), liens « Ce n'était pas moi »
+ * (24 h) et liens d'invitation (48 h) : seulement le HMAC du secret, jamais le
+ * secret. Consommés une fois (consumed_at), essais comptés pour les codes.
+ * Supprimés avec le compte.
+ */
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: text("id").primaryKey(),
+    kind: authTokenKindEnum("kind").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    secretHash: text("secret_hash").notNull(),
+    expiresAt: timestampTz("expires_at").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    consumedAt: timestampTz("consumed_at"),
+    requestedIp: text("requested_ip"),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("auth_tokens_user_kind_idx").on(t.userId, t.kind),
+    uniqueIndex("auth_tokens_secret_hash_idx").on(t.secretHash),
+    index("auth_tokens_expires_idx").on(t.expiresAt),
+  ],
 );
 
 /* ---------- Équipe du client (personnel) ---------- */

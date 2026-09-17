@@ -241,6 +241,19 @@ describe("ordersFixtures (scénario + historique généré)", () => {
     }
   });
 
+  it("porte l'autorisation de notification de la fiche client, et le passage par « livrée » (historique nominal)", () => {
+    for (const o of ordersFixtures) {
+      const customer = customersFixtures.find((c) => c.id === o.customer.id);
+      expect(customer).toBeDefined();
+      expect(o.customer.notifyOrderStatus).toBe(customer!.consents.orderStatus);
+      expect(o.wasDelivered).toBe(o.status === "delivered");
+    }
+    expect(ordersFixtures.some((o) => o.customer.notifyOrderStatus)).toBe(true);
+    expect(ordersFixtures.some((o) => !o.customer.notifyOrderStatus)).toBe(
+      true,
+    );
+  });
+
   it("est déterministe : deux imports donnent le même jeu", async () => {
     const again = await import("@/domain/orders/fixtures");
     expect(again.ordersFixtures.length).toBe(ordersFixtures.length);

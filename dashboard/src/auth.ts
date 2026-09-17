@@ -1,7 +1,9 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authorizeCredentials } from "@/data/credentials";
+import { findUserById } from "@/data/users";
 import type { Role } from "@/domain/auth/roles";
+import { isSessionAlive } from "@/domain/auth/rules";
 import { getEnv } from "@/lib/env";
 import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-refresh";
 
@@ -16,6 +18,14 @@ import { SESSION_MAX_AGE_SECONDS } from "@/lib/session-refresh";
  * l'e-mail est inconnu OU le mot de passe faux. Le rôle est copié dans le jeton
  * à la connexion (callback jwt) puis exposé à l'app (callback session) :
  * verifySession() le lit sans toucher à la source.
+ *
+ * Contrôle de vie de la session (décision du 2026-09-17) : à chaque LECTURE du
+ * jeton (proxy, page, action), le callback jwt relit le compte par sa clé
+ * primaire et refuse la session (null : Auth.js efface le cookie) si le compte
+ * est désactivé, verrouillé, ou si son mot de passe a changé depuis l'ouverture
+ * de la session (`sat`, posé à la connexion et conservé au rafraîchissement).
+ * Un rôle modifié s'applique aussi à la requête suivante. Coût : une lecture
+ * indexée par requête de page.
  *
  * trustHost n'est pas fixé : Auth.js le déduit lui-même (vrai en développement,
  * vrai en production seulement si AUTH_URL est posée, et AUTH_URL devient alors
@@ -35,11 +45,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.sat = Date.now();
+        return token;
       }
+      if (!token.id) return null;
+      const account = await findUserById(String(token.id));
+      if (!account || !isSessionAlive(account, token.sat)) return null;
+      token.role = account.role;
       return token;
     },
     session({ session, token }) {

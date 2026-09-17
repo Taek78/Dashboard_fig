@@ -88,6 +88,7 @@ export async function seedDatabase(
     await tx.delete(schema.products);
     await tx.delete(schema.articles);
     await tx.delete(schema.engagementMonthly);
+    await tx.delete(schema.authTokens);
     await tx.delete(schema.users);
     await tx.delete(schema.loginAttempts);
 

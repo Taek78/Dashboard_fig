@@ -31,6 +31,12 @@ const PAGES = [
   "/metriques",
   "/comptes",
   "/profil",
+  // Pages publiques de récupération (chargées ici avec une session : elles ne redirigent pas).
+  "/connexion/recuperation",
+  "/connexion/recuperation?etape=code&email=x%40fig-demo.invalid",
+  "/connexion/adresse-oubliee",
+  "/connexion/invitation?jeton=lien-inconnu-0123456789-abcdef",
+  "/connexion/verrouiller?jeton=lien-inconnu-0123456789-abcdef",
 ];
 
 test("aucune page ne viole la CSP au chargement complet", async ({ page }) => {

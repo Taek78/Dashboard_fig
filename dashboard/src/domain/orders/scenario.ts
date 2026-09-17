@@ -38,9 +38,16 @@ const slot = (date: string, start: string) => ({
   end: slotEndFor(start),
 });
 
-/** Les champs d'équipe, de communauté, de remise, d'adresse et de montant sont posés plus bas. */
+/**
+ * Les champs d'équipe, de communauté, de remise, d'adresse et de montant
+ * sont posés plus bas, comme l'autorisation de notification du client (relue
+ * sur sa fiche) et le passage par « livrée » (l'historique factice est
+ * nominal : livrée une fois = livrée aujourd'hui).
+ */
 type ScenarioSeed = Omit<
   Order,
+  | "customer"
+  | "wasDelivered"
   | "community"
   | "discount"
   | "preparer"
@@ -48,7 +55,7 @@ type ScenarioSeed = Omit<
   | "deliveryAddressLine"
   | "deliveryFeeCents"
   | "totalCents"
->;
+> & { customer: Omit<Order["customer"], "notifyOrderStatus"> };
 
 const seeds: readonly ScenarioSeed[] = [
   {
@@ -621,6 +628,15 @@ const ASSIGNMENTS: Record<string, Pick<Order, "preparer" | "driver">> = {
 };
 
 /** Rue de livraison : celle de la fiche du client (aucune communauté dans le scénario). */
+/** L'autorisation des notifications d'état, relue sur la fiche du client. */
+function notifyOrderStatusOf(customerId: string): boolean {
+  const customer = scenarioCustomers.find((c) => c.id === customerId);
+  if (!customer) {
+    throw new Error(`Fixture commande : client ${customerId} introuvable`);
+  }
+  return customer.consents.orderStatus;
+}
+
 function addressOf(customerId: string): string {
   const customer = scenarioCustomers.find((c) => c.id === customerId);
   if (!customer?.addressLine) {
@@ -633,6 +649,11 @@ export const scenarioOrders: readonly Order[] = seeds.map((seed) => {
   const fee = deliveryFeeCents(computeOrderSubtotalCents(seed.lines), false);
   return {
     ...seed,
+    wasDelivered: seed.status === "delivered",
+    customer: {
+      ...seed.customer,
+      notifyOrderStatus: notifyOrderStatusOf(seed.customer.id),
+    },
     deliveryAddressLine: addressOf(seed.customer.id),
     deliveryFeeCents: fee,
     totalCents: computeOrderTotalCents(seed.lines, null, fee),

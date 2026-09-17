@@ -8,7 +8,7 @@ import {
   Phone,
 } from "lucide-react";
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
-import { OrderActions } from "@/components/orders/order-actions";
+import { OrderStatusSelect } from "@/components/orders/order-status-select";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
   OrderStatusBadge,
@@ -43,7 +43,9 @@ import { cn } from "@/lib/utils";
  *      les frais de livraison sont dans le détail seulement), l'e-mail, le
  *      lien vers le détail ;
  *   3. le suivi : l'équipe (préparateur, livreur, en listes déroulantes qui
- *      écrivent aussitôt), puis le geste suivant et l'annulation avec motif.
+ *      écrivent aussitôt), puis la liste du statut (icône et couleur du
+ *      statut choisi, écrit dès le choix ; « Annulée » demande d'abord le
+ *      motif ; tout statut est atteignable depuis n'importe quel autre).
  * Disposition selon la largeur de la ZONE DE CONTENU (@container/main du
  * layout), pas de la fenêtre : empilées quand la page est étroite (mobile,
  * tablette sidebar ouverte), bande 1 en bandeau et bandes 2 et 3 côte à côte
@@ -254,16 +256,17 @@ export function OrderCard({
           canAssign={canAssign && !done}
         />
         <div className="border-t pt-3">
-          {done ? (
-            <p className="text-muted-foreground text-sm">
-              Terminée : {order.status === "delivered" ? "livrée" : "annulée"}.
-            </p>
-          ) : !canChangeStatus ? (
+          {canChangeStatus ? (
+            <OrderStatusSelect
+              orderId={order.id}
+              status={order.status}
+              notifyAllowed={order.customer.notifyOrderStatus}
+              wasDelivered={order.wasDelivered}
+            />
+          ) : (
             <p className="text-muted-foreground text-sm">
               Compte en lecture seule.
             </p>
-          ) : (
-            <OrderActions orderId={order.id} status={order.status} />
           )}
         </div>
       </div>

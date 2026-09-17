@@ -556,7 +556,8 @@
   pointer-events: none;
   z-index: 0;
 }
-.login-layer + * {
+/* La carte passe au-dessus de la couche (le bouton de thème garde son absolute). */
+.login-card {
   position: relative;
 }
 .login-sweep {

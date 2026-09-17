@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 import { TEST_ACCOUNTS, TEST_DATABASE_URL } from "./test/support/config";
 
@@ -9,11 +10,17 @@ import { TEST_ACCOUNTS, TEST_DATABASE_URL } from "./test/support/config";
  * comptes n'existent que pour ces tests : valeurs publiques, sans rapport avec
  * .env.local ni avec un déploiement. Un seul worker : les tests écrivent dans la
  * base partagée par le serveur, l'ordre compte.
+ *
+ * Mails : transport « fichier » dans test-results/mail (vidé par
+ * e2e/global-setup.ts) ; les parcours y lisent codes et liens (e2e/mail.ts).
+ * La vérification des mots de passe contre les fuites (appel externe) est
+ * coupée : les règles pures suffisent aux parcours, l'appel est testé en unitaire.
  */
 const PORT = 3126;
 const baseURL = `http://localhost:${PORT}`;
 
 export const E2E_ACCOUNTS = TEST_ACCOUNTS;
+export const E2E_MAIL_DIR = path.resolve(process.cwd(), "test-results", "mail");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -42,6 +49,9 @@ export default defineConfig({
       DATABASE_URL: TEST_DATABASE_URL,
       AUTH_URL: baseURL,
       AUTH_SECRET: "e2e-secret-fig-dashboard-0123456789-abcdef",
+      MAIL_TRANSPORT: "fichier",
+      MAIL_FILE_DIR: E2E_MAIL_DIR,
+      PASSWORD_BREACH_CHECK: "0",
     },
   },
 });

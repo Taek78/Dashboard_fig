@@ -1,4 +1,4 @@
-import type { ManagedUser, UserPatch } from "@/domain/auth/types";
+import type { ManagedUser, UserAccount, UserPatch } from "@/domain/auth/types";
 
 /*
  * Règles pures de la gestion des comptes, testées dans
@@ -14,8 +14,29 @@ export function sortUsers(users: readonly ManagedUser[]): ManagedUser[] {
   );
 }
 
+/** Les administrateurs actifs : destinataires des alertes de sécurité par mail. */
+export function activeAdmins(users: readonly ManagedUser[]): ManagedUser[] {
+  return users.filter((u) => u.active && u.role === "admin");
+}
+
 export function countActiveAdmins(users: readonly ManagedUser[]): number {
-  return users.filter((u) => u.active && u.role === "admin").length;
+  return activeAdmins(users).length;
+}
+
+/**
+ * Une session ouverte à `signedInAt` (ms) reste valable tant que le compte est
+ * actif et que son mot de passe n'a pas changé depuis (ni verrouillage) :
+ * changer un mot de passe, verrouiller ou désactiver un compte ferme donc ses
+ * sessions à la requête suivante. Un jeton sans date d'ouverture (ancien
+ * format) vaut 0 : fermé au premier changement.
+ */
+export function isSessionAlive(
+  account: Pick<UserAccount, "active" | "passwordChangedAt"> | null,
+  signedInAt: number | undefined,
+): boolean {
+  if (!account || !account.active) return false;
+  if (account.passwordChangedAt === null) return true;
+  return (signedInAt ?? 0) >= Date.parse(account.passwordChangedAt);
 }
 
 /**

@@ -18,5 +18,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     role?: Role;
+    /** Ouverture de la session (ms) : comparée à passwordChangedAt à chaque lecture. */
+    sat?: number;
   }
 }

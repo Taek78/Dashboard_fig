@@ -40,7 +40,7 @@ export default async function ProfilPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <PasswordForm />
+            <PasswordForm context={{ name: user.name }} />
           </CardContent>
         </Card>
       </div>

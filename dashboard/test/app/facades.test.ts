@@ -17,6 +17,8 @@ vi.mock("@/lib/env", () => ({ getEnv }));
 describe("façades de données", () => {
   it.each([
     ["articles", () => import("@/data/articles")],
+    ["auth-tokens", () => import("@/data/auth-tokens")],
+    ["mail", () => import("@/data/mail")],
     ["communities", () => import("@/data/communities")],
     ["customers", () => import("@/data/customers")],
     ["engagement", () => import("@/data/engagement")],

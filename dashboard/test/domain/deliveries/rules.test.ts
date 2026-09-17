@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   itineraryUrl,
-  nextDeliveryStep,
   RECENT_DAYS,
   recentDeliveryDays,
   recentDeliveryDaysFromCounts,
@@ -90,15 +89,6 @@ describe("tourProgress", () => {
       percentDone: 0,
       segments: [],
     });
-  });
-});
-
-describe("nextDeliveryStep", () => {
-  it("suit le cycle nominal et s'arrête aux états terminaux", () => {
-    expect(nextDeliveryStep("preparing")).toBe("delivering");
-    expect(nextDeliveryStep("delivering")).toBe("delivered");
-    expect(nextDeliveryStep("delivered")).toBeNull();
-    expect(nextDeliveryStep("cancelled")).toBeNull();
   });
 });
 

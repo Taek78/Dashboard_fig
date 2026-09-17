@@ -43,8 +43,9 @@ function form(fields: Record<string, string | string[]>): FormData {
   return data;
 }
 
+/* La case « Notifier le client » est cochée par défaut dans le formulaire : run() l'envoie, sauf mention contraire. */
 const run = (fields: Record<string, string | string[]>) =>
-  changeOrderStatus(idleActionResult, form(fields));
+  changeOrderStatus(idleActionResult, form({ notify: "1", ...fields }));
 const assign = (fields: Record<string, string>) =>
   assignOrderStaff(idleActionResult, form(fields));
 
@@ -69,7 +70,11 @@ describe("changeOrderStatus", () => {
   it("expédie une commande en préparation, trace l'historique et revalide", async () => {
     expect(
       await run({ orderId: "cmd-0001", nextStatus: "delivering" }),
-    ).toEqual({ status: "success", message: "Statut mis à jour : Expédiée." });
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : Expédiée.",
+      notified: true,
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
     expect(await getOrderEvents("cmd-0001")).toMatchObject([
       {
@@ -107,19 +112,75 @@ describe("changeOrderStatus", () => {
   it("ne dépose rien pour un client qui n'a pas autorisé les notifications d'état", async () => {
     // cli-0009 (Yanis) : offres seulement. cmd-0010 est en préparation.
     expect(
-      (await run({ orderId: "cmd-0010", nextStatus: "delivering" })).status,
-    ).toBe("success");
+      await run({ orderId: "cmd-0010", nextStatus: "delivering" }),
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : Expédiée.",
+      notified: false,
+    });
     expect(await getOrderNotifications("cmd-0010")).toEqual([]);
   });
 
-  it("refuse une transition hors liste blanche avec un message français", async () => {
-    const result = await run({ orderId: "cmd-0001", nextStatus: "delivered" });
-    expect(result).toEqual({
-      status: "error",
-      message:
-        "Le passage de « En préparation » à « Livrée » n'est pas autorisé.",
+  it("plus de règle d'étape : livrée directement, retour en préparation, reprise d'une annulée, une notification à chaque fois", async () => {
+    expect(await run({ orderId: "cmd-0001", nextStatus: "delivered" })).toEqual(
+      {
+        status: "success",
+        message: "Statut mis à jour : Livrée.",
+        notified: true,
+      },
+    );
+    expect(await run({ orderId: "cmd-0001", nextStatus: "preparing" })).toEqual(
+      {
+        status: "success",
+        message: "Statut mis à jour : En préparation.",
+        notified: true,
+      },
+    );
+    expect(
+      (
+        await run({
+          orderId: "cmd-0001",
+          nextStatus: "cancelled",
+          reason: "stock",
+        })
+      ).status,
+    ).toBe("success");
+    expect(
+      await run({ orderId: "cmd-0001", nextStatus: "delivering" }),
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : Expédiée.",
+      notified: true,
     });
-    expect(revalidatePath).not.toHaveBeenCalled();
+    const order = await getOrder("cmd-0001");
+    expect(order?.status).toBe("delivering");
+    // La reprise d'une annulée efface son motif.
+    expect(order?.cancellation).toBeNull();
+    const events = (await getOrderEvents("cmd-0001")).map(
+      (e) => `${e.from}>${e.to}`,
+    );
+    expect(events).toHaveLength(4);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        "preparing>delivered",
+        "delivered>preparing",
+        "preparing>cancelled",
+        "cancelled>delivering",
+      ]),
+    );
+    // Amel a autorisé les notifications d'état : une par changement, le retour en préparation compris.
+    const notified = (await getOrderNotifications("cmd-0001")).map(
+      (n) => n.orderStatus,
+    );
+    expect(notified).toHaveLength(4);
+    expect(notified).toEqual(
+      expect.arrayContaining([
+        "delivered",
+        "preparing",
+        "cancelled",
+        "delivering",
+      ]),
+    );
   });
 
   it("refuse un statut inconnu (zod), dont l'ancien « pending »", async () => {
@@ -153,28 +214,19 @@ describe("changeOrderStatus", () => {
       currentStatus: "delivering",
       nextStatus: "delivered",
     });
-    expect(result.status).toBe("error");
+    expect(result.status).toBe("success");
+    // L'événement part du statut RELU (en préparation), pas de celui prétendu.
+    expect(await getOrderEvents("cmd-0001")).toMatchObject([
+      { from: "preparing", to: "delivered" },
+    ]);
   });
 
-  it("enchaîne expédiée puis livrée et refuse de sortir d'un état terminal", async () => {
+  it("enchaîne expédiée puis livrée, et annule même une commande livrée, avec son motif", async () => {
     await run({ orderId: "cmd-0001", nextStatus: "delivering" });
     await run({ orderId: "cmd-0001", nextStatus: "delivering" });
     expect(
       (await run({ orderId: "cmd-0001", nextStatus: "delivered" })).status,
     ).toBe("success");
-    expect(
-      (
-        await run({
-          orderId: "cmd-0001",
-          nextStatus: "cancelled",
-          reason: "stock",
-        })
-      ).status,
-    ).toBe("error");
-  });
-
-  it("une commande expédiée ne s'annule plus", async () => {
-    await run({ orderId: "cmd-0001", nextStatus: "delivering" });
     expect(
       await run({
         orderId: "cmd-0001",
@@ -182,8 +234,30 @@ describe("changeOrderStatus", () => {
         reason: "stock",
       }),
     ).toEqual({
-      status: "error",
-      message: "Le passage de « Expédiée » à « Annulée » n'est pas autorisé.",
+      status: "success",
+      message:
+        "Commande annulée. Motif communiqué au client : Stock insuffisant.",
+      notified: true,
+    });
+    expect((await getOrder("cmd-0001"))?.status).toBe("cancelled");
+  });
+
+  it("une commande expédiée s'annule aussi, toujours avec un motif", async () => {
+    await run({ orderId: "cmd-0001", nextStatus: "delivering" });
+    expect(
+      (await run({ orderId: "cmd-0001", nextStatus: "cancelled" })).status,
+    ).toBe("error");
+    expect(
+      await run({
+        orderId: "cmd-0001",
+        nextStatus: "cancelled",
+        reason: "stock",
+      }),
+    ).toEqual({
+      status: "success",
+      message:
+        "Commande annulée. Motif communiqué au client : Stock insuffisant.",
+      notified: true,
     });
   });
 
@@ -229,6 +303,7 @@ describe("changeOrderStatus", () => {
       status: "success",
       message:
         "Commande annulée. Motif communiqué au client : Autre : Client absent.",
+      notified: true,
     });
     expect((await getOrder("cmd-0001"))?.cancellation).toEqual({
       reason: "other",
@@ -259,15 +334,79 @@ describe("changeOrderStatus", () => {
       status: "success",
       message:
         "Commande annulée. Motif communiqué au client : Stock insuffisant.",
+      notified: true,
     });
     expect(
-      (
-        await run({
-          orderId: "cmd-0002",
-          nextStatus: ["delivering", "delivered"],
-        })
-      ).status,
-    ).toBe("error");
+      await run({
+        orderId: "cmd-0002",
+        nextStatus: ["delivering", "delivered"],
+      }),
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : Livrée.",
+      notified: true,
+    });
+    expect((await getOrder("cmd-0002"))?.status).toBe("delivered");
+  });
+
+  it("case « Notifier le client » décochée : aucune notification, même pour un client qui l'a autorisée, et le message le dit", async () => {
+    // cli-0001 (Amel) a autorisé les notifications d'état.
+    expect(
+      await run({ orderId: "cmd-0001", nextStatus: "delivering", notify: "0" }),
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : Expédiée.",
+      notified: false,
+    });
+    // Absente (un formulaire n'envoie pas une case décochée) : pareil.
+    expect(
+      await changeOrderStatus(
+        idleActionResult,
+        form({ orderId: "cmd-0001", nextStatus: "delivered" }),
+      ),
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : Livrée.",
+      notified: false,
+    });
+    expect(
+      await run({
+        orderId: "cmd-0001",
+        nextStatus: "cancelled",
+        reason: "stock",
+        notify: "0",
+      }),
+    ).toEqual({
+      status: "success",
+      message: "Commande annulée. Motif enregistré : Stock insuffisant.",
+      notified: false,
+    });
+    expect(await getOrderNotifications("cmd-0001")).toEqual([]);
+    expect((await getOrderEvents("cmd-0001")).length).toBe(3);
+
+    // Recochée : la notification repart.
+    expect(
+      await run({ orderId: "cmd-0001", nextStatus: "preparing", notify: "1" }),
+    ).toEqual({
+      status: "success",
+      message: "Statut mis à jour : En préparation.",
+      notified: true,
+    });
+    expect(
+      (await getOrderNotifications("cmd-0001")).map((n) => n.orderStatus),
+    ).toEqual(["preparing"]);
+
+    // Une valeur inconnue est refusée avant toute écriture.
+    expect(
+      await run({
+        orderId: "cmd-0001",
+        nextStatus: "delivering",
+        notify: "on",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Le statut choisi n'est pas valide.",
+    });
   });
 });
 

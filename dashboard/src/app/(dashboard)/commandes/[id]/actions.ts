@@ -16,6 +16,13 @@ import {
 } from "@/domain/orders/status";
 import { canBeAssigned, staffFullName } from "@/domain/staff/rules";
 import type { ActionResult } from "@/lib/action-result";
+
+/**
+ * Résultat du changement de statut : la confirmation, et si le client a été
+ * notifié (case cochée ET autorisation relue sur la commande) ; absent quand
+ * rien n'a été écrit (refus, statut déjà en place).
+ */
+export type StatusChangeResult = ActionResult & { notified?: boolean };
 import { logSecurity } from "@/data/security-log";
 
 /*
@@ -41,9 +48,9 @@ const MESSAGES = {
 } as const;
 
 export async function changeOrderStatus(
-  _prev: ActionResult,
+  _prev: StatusChangeResult,
   formData: FormData,
-): Promise<ActionResult> {
+): Promise<StatusChangeResult> {
   // 1. Session : hors development/test le stub lève, panne visible plutôt que back-office ouvert.
   const user = await getCurrentUser();
 
@@ -68,7 +75,7 @@ export async function changeOrderStatus(
       message: reasonIssue ? MESSAGES.reason : MESSAGES.invalid,
     };
   }
-  const { orderId, nextStatus, cancellation } = parsed.data;
+  const { orderId, nextStatus, cancellation, notify } = parsed.data;
 
   try {
     // 4. Relecture : l'état réel, pas celui que le formulaire prétend.
@@ -82,7 +89,9 @@ export async function changeOrderStatus(
       return { status: "success", message: MESSAGES.alreadySet };
     }
 
-    // 6. Règle métier, une seule fois, ici. Résultat stocké puis testé.
+    // 6. Règle métier, une seule fois, ici (depuis le 2026-09-17, tout statut
+    //    différent du courant est permis ; la règle reste dans le domaine pour
+    //    pouvoir être resserrée sans toucher aux écrans).
     const allowed = canTransition(order.status, nextStatus);
     if (!allowed) {
       return {
@@ -94,13 +103,19 @@ export async function changeOrderStatus(
     // 7. Écriture conditionnelle : `from` est le statut RELU, jamais une valeur du
     //    client ; l'acteur vient de la session et entre dans l'historique. La
     //    notification pour le client est composée ici (texte figé) et déposée
-    //    par la source dans la même transaction, seulement s'il l'a autorisée.
+    //    par la source dans la même transaction, seulement s'il l'a autorisée
+    //    et si la case « Notifier le client » est restée cochée (notify).
+    // Le client sera notifié si la case est cochée ET s'il l'a autorisé : la
+    // même colonne que la source relit au moment d'écrire.
+    const notified = notify && order.customer.notifyOrderStatus;
     const updated = await updateOrderStatus(order.id, {
       from: order.status,
       to: nextStatus,
       actor: { id: user.id, name: user.name },
       cancellation,
-      notification: orderStatusNotification(order, nextStatus, cancellation),
+      notification: notify
+        ? orderStatusNotification(order, nextStatus, cancellation)
+        : null,
     });
     if (!updated) {
       revalidatePath("/", "layout");
@@ -122,8 +137,9 @@ export async function changeOrderStatus(
     return {
       status: "success",
       message: cancellation
-        ? `Commande annulée. Motif communiqué au client : ${formatCancellation(cancellation)}.`
+        ? `Commande annulée. Motif ${notified ? "communiqué au client" : "enregistré"} : ${formatCancellation(cancellation)}.`
         : `Statut mis à jour : ${ORDER_STATUS_LABELS[nextStatus]}.`,
+      notified,
     };
   } catch (error) {
     // Côté serveur seulement, sans nom ni e-mail ; le client reçoit un message générique.

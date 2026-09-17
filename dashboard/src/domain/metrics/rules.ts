@@ -99,6 +99,13 @@ export const METRIC_PERIODS = [
 export type MetricPeriod = (typeof METRIC_PERIODS)[number];
 export const DEFAULT_PERIOD: MetricPeriod = "ce-mois";
 
+/**
+ * Le dernier choix de la liste « Période » : pas une période prédéfinie, mais
+ * l'ouverture de la zone de dates « du / au » (fermée pour tout autre choix).
+ */
+export const CUSTOM_PERIOD = "personnalisee";
+export const CUSTOM_PERIOD_LABEL = "Période personnalisée";
+
 export const METRIC_PERIOD_LABELS: Record<MetricPeriod, string> = {
   aujourdhui: "Aujourd'hui",
   hier: "Hier",

@@ -1,8 +1,9 @@
 "use client";
 
-import { CircleAlert, CircleCheck, LoaderCircle, UserPlus } from "lucide-react";
+import { LoaderCircle, UserPlus } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
 import { createAccount } from "@/app/(dashboard)/comptes/actions";
+import { ActionStatus } from "@/components/action-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,14 +12,15 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { ROLE_LABELS, ROLES } from "@/domain/auth/roles";
-import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
+import { AUTH_TOKEN_RULES } from "@/domain/auth/tokens";
 import { idleActionResult } from "@/lib/action-result";
-import { cn } from "@/lib/utils";
 
 /*
- * Création d'un compte par l'administrateur (client : useActionState). Le
- * formulaire est vidé après succès ; le mot de passe initial est à transmettre
- * par un canal sûr, la personne le change ensuite sur /profil.
+ * Création d'un compte par l'administrateur (client : useActionState), SANS
+ * mot de passe : la personne reçoit un lien d'invitation (48 h) et choisit le
+ * sien. Le nom est unique et sert au rappel de l'adresse e-mail (« Adresse
+ * e-mail oubliée ? » sur la page de connexion) : prénom et nom, tels que la
+ * personne les donnera. Le formulaire est vidé après succès.
  */
 export function AccountCreateForm() {
   const [result, formAction, pending] = useActionState(
@@ -33,10 +35,23 @@ export function AccountCreateForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      <div className="grid gap-4 @2xl/main:grid-cols-2">
+      <div className="grid gap-4 @2xl/main:grid-cols-3">
         <div className="grid gap-1.5">
           <Label htmlFor="new-name">Nom</Label>
-          <Input id="new-name" name="name" required maxLength={80} />
+          <Input
+            id="new-name"
+            name="name"
+            autoComplete="off"
+            required
+            minLength={2}
+            maxLength={80}
+            placeholder="Prénom Nom"
+            aria-describedby="new-name-help"
+          />
+          <p id="new-name-help" className="text-muted-foreground text-xs">
+            Prénom et nom, uniques : la personne les saisira pour retrouver son
+            adresse de connexion.
+          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-email">E-mail</Label>
@@ -47,7 +62,12 @@ export function AccountCreateForm() {
             autoComplete="off"
             required
             maxLength={254}
+            aria-describedby="new-email-help"
           />
+          <p id="new-email-help" className="text-muted-foreground text-xs">
+            Reçoit le lien pour choisir son mot de passe, valable{" "}
+            {AUTH_TOKEN_RULES.invitation.validity}.
+          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-role">Rôle</Label>
@@ -64,22 +84,6 @@ export function AccountCreateForm() {
             ))}
           </NativeSelect>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="new-password">Mot de passe initial</Label>
-          <Input
-            id="new-password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={PASSWORD_MIN_LENGTH}
-            maxLength={200}
-            aria-describedby="new-password-help"
-          />
-          <p id="new-password-help" className="text-muted-foreground text-xs">
-            {PASSWORD_MIN_LENGTH} caractères au moins.
-          </p>
-        </div>
       </div>
       <div className="flex flex-col gap-3 @xl/main:flex-row @xl/main:items-center">
         <Button
@@ -89,24 +93,9 @@ export function AccountCreateForm() {
           className="w-full @xl/main:w-auto"
         >
           {pending ? <LoaderCircle className="animate-spin" /> : <UserPlus />}
-          Créer le compte
+          Créer le compte et envoyer l&apos;invitation
         </Button>
-        <p
-          role="status"
-          className={cn(
-            "flex items-center gap-1.5 text-sm",
-            result.status === "success" && "text-success",
-            result.status === "error" && "text-destructive",
-          )}
-        >
-          {result.status === "success" ? (
-            <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
-          ) : null}
-          {result.status === "error" ? (
-            <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
-          ) : null}
-          {result.status === "idle" ? null : result.message}
-        </p>
+        <ActionStatus result={result} />
       </div>
     </form>
   );

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import * as schema from "@/db/schema";
 import { ARTICLE_CATEGORIES } from "@/domain/articles/category";
 import { ROLES } from "@/domain/auth/roles";
+import { AUTH_TOKEN_KINDS } from "@/domain/auth/tokens";
 import {
   COMMUNITY_KINDS,
   COMMUNITY_VISIBILITIES,
@@ -42,6 +43,7 @@ describe("enums du schéma = constantes du domaine", () => {
       ARTICLE_CATEGORIES,
     ],
     ["user_role", schema.userRoleEnum.enumValues, ROLES],
+    ["auth_token_kind", schema.authTokenKindEnum.enumValues, AUTH_TOKEN_KINDS],
     ["staff_kind", schema.staffKindEnum.enumValues, STAFF_KINDS],
     ["staff_shift", schema.staffShiftEnum.enumValues, SHIFTS],
     [

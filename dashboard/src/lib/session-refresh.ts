@@ -47,15 +47,23 @@ export function refreshDue(
   return age >= maxAgeSeconds * fraction;
 }
 
+/** Vrai pour un `Set-Cookie` qui EFFACE le cookie de session (valeur vide). */
+function isSessionCookieDeletion(cookie: string): boolean {
+  return SESSION_COOKIE_NAMES.some((name) => cookie.startsWith(`${name}=;`));
+}
+
 /**
  * Retire des en-têtes de réponse les `Set-Cookie` qui (re)posent le cookie de
- * session, en gardant tous les autres (CSRF, URL de rappel). Renvoie le nombre
- * de cookies retirés. Modifie `headers` en place.
+ * session, en gardant tous les autres (CSRF, URL de rappel) et les
+ * SUPPRESSIONS du cookie de session (session refusée par Auth.js : compte
+ * désactivé, mot de passe changé), qui doivent atteindre le navigateur.
+ * Renvoie le nombre de cookies retirés. Modifie `headers` en place.
  */
 export function stripSessionCookies(headers: Headers): number {
   const all = headers.getSetCookie();
   const kept = all.filter(
     (cookie) =>
+      isSessionCookieDeletion(cookie) ||
       !SESSION_COOKIE_NAMES.some((name) => cookie.startsWith(`${name}=`)),
   );
   if (kept.length === all.length) return 0;

@@ -5,76 +5,62 @@ import {
   allowedTransitions,
   canTransition,
   isFinished,
-  type OrderStatus,
   statusPath,
 } from "@/domain/orders/status";
 
 /*
- * Teste src/domain/orders/status.ts : la machine d'états en liste blanche.
- * On énumère les passages autorisés ici, indépendamment de la matrice du code :
- * si quelqu'un modifie ORDER_TRANSITIONS, ce test le signale et force à relire
- * la décision du client (trois états de parcours, 2026-09-15).
+ * Teste src/domain/orders/status.ts. Depuis le 2026-09-17 (décision du
+ * client), plus de règle d'étape : tout statut différent du courant est
+ * permis. Si quelqu'un resserre la règle un jour, ce test le signale et force
+ * à relire la décision.
  */
-const ALLOWED: ReadonlyArray<[OrderStatus, OrderStatus]> = [
-  ["preparing", "delivering"],
-  ["preparing", "cancelled"],
-  ["delivering", "delivered"],
-];
-
-const isAllowed = (from: OrderStatus, to: OrderStatus) =>
-  ALLOWED.some(([f, t]) => f === from && t === to);
-
 describe("canTransition", () => {
-  it.each(ALLOWED)("autorise %s → %s", (from, to) => {
-    expect(canTransition(from, to)).toBe(true);
-  });
-
-  it("refuse tous les autres couples (chaque couple testé)", () => {
+  it("autorise tout changement, y compris le retour arrière, le saut de fin et la reprise d'une annulée", () => {
     let checked = 0;
     for (const from of ORDER_STATUSES) {
       for (const to of ORDER_STATUSES) {
-        expect(canTransition(from, to)).toBe(isAllowed(from, to));
+        expect(canTransition(from, to)).toBe(from !== to);
         checked += 1;
       }
     }
     expect(checked).toBe(ORDER_STATUSES.length ** 2);
+    expect(canTransition("preparing", "delivered")).toBe(true);
+    expect(canTransition("delivered", "preparing")).toBe(true);
+    expect(canTransition("delivering", "cancelled")).toBe(true);
+    expect(canTransition("cancelled", "preparing")).toBe(true);
   });
 
-  it("refuse de rester sur le même statut", () => {
+  it("refuse seulement de rester sur le même statut", () => {
     for (const status of ORDER_STATUSES) {
       expect(canTransition(status, status)).toBe(false);
     }
   });
 
-  it("n'autorise aucune sortie des statuts terminaux", () => {
-    for (const to of ORDER_STATUSES) {
-      expect(canTransition("delivered", to)).toBe(false);
-      expect(canTransition("cancelled", to)).toBe(false);
-    }
+  it("isFinished : livrée et annulée sont terminales (plus d'affectation tant qu'elles le restent)", () => {
     expect(isFinished("delivered")).toBe(true);
     expect(isFinished("cancelled")).toBe(true);
     expect(isFinished("preparing")).toBe(false);
     expect(isFinished("delivering")).toBe(false);
   });
-
-  it("n'autorise aucun retour arrière, saut de fin ni annulation d'une commande expédiée", () => {
-    expect(canTransition("delivering", "preparing")).toBe(false);
-    expect(canTransition("delivering", "cancelled")).toBe(false);
-    expect(canTransition("preparing", "delivered")).toBe(false);
-  });
 });
 
 describe("allowedTransitions", () => {
-  it("renvoie exactement les cibles de la liste blanche", () => {
-    for (const from of ORDER_STATUSES) {
-      const expected = ALLOWED.filter(([f]) => f === from).map(([, t]) => t);
-      expect(allowedTransitions(from)).toEqual(expected);
-    }
-  });
-
-  it("renvoie un tableau vide pour les statuts terminaux", () => {
-    expect(allowedTransitions("delivered")).toEqual([]);
-    expect(allowedTransitions("cancelled")).toEqual([]);
+  it("renvoie les trois autres statuts, dans l'ordre de la liste", () => {
+    expect(allowedTransitions("preparing")).toEqual([
+      "delivering",
+      "delivered",
+      "cancelled",
+    ]);
+    expect(allowedTransitions("delivered")).toEqual([
+      "preparing",
+      "delivering",
+      "cancelled",
+    ]);
+    expect(allowedTransitions("cancelled")).toEqual([
+      "preparing",
+      "delivering",
+      "delivered",
+    ]);
   });
 
   it("est cohérente avec canTransition dans les deux sens", () => {
@@ -88,12 +74,8 @@ describe("allowedTransitions", () => {
 
   it("renvoie une copie : la muter ne change pas l'appel suivant", () => {
     const first = allowedTransitions("preparing");
-    first.push("delivered");
-    expect(allowedTransitions("preparing")).toEqual([
-      "delivering",
-      "cancelled",
-    ]);
-    expect(canTransition("preparing", "delivered")).toBe(false);
+    first.pop();
+    expect(allowedTransitions("preparing")).toHaveLength(3);
   });
 });
 

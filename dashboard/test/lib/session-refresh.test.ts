@@ -53,6 +53,19 @@ describe("stripSessionCookies", () => {
     ]);
   });
 
+  it("laisse passer la SUPPRESSION du cookie de session (session refusée)", () => {
+    const headers = new Headers();
+    headers.append(
+      "set-cookie",
+      "authjs.session-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly",
+    );
+    headers.append("set-cookie", "authjs.session-token=abc; Path=/; HttpOnly");
+    expect(stripSessionCookies(headers)).toBe(1);
+    expect(headers.getSetCookie()).toEqual([
+      "authjs.session-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly",
+    ]);
+  });
+
   it("ne touche à rien sans cookie de session", () => {
     const headers = new Headers({ "content-type": "text/html" });
     headers.append("set-cookie", "authjs.csrf-token=xyz; Path=/");

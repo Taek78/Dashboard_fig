@@ -15,14 +15,35 @@ import { z } from "zod";
  * croire l'en-tête Host). Les valeurs ne sont jamais reflétées dans les
  * erreurs : zod ne met pas la valeur d'entrée dans ses issues.
  */
+export const MAIL_TRANSPORTS = ["brevo", "fichier"] as const;
+export type MailTransport = (typeof MAIL_TRANSPORTS)[number];
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).optional(),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   AUTH_URL: z.url().optional(),
   AUTH_SECRET: z.string().min(32),
+  /*
+   * Envoi des mails (récupération de compte, invitations, alertes) :
+   * `brevo` par l'API HTTP de Brevo (clé et adresse d'expédition validée chez
+   * Brevo), `fichier` écrit chaque mail dans un dossier (développement, suite
+   * navigateur). Absent : brevo si une clé est posée, sinon fichier.
+   */
+  MAIL_TRANSPORT: z.enum(MAIL_TRANSPORTS).optional(),
+  MAIL_API_KEY: z.string().min(1).optional(),
+  MAIL_FROM: z.email().optional(),
+  MAIL_FROM_NAME: z.string().min(1).max(80).optional(),
+  MAIL_FILE_DIR: z.string().min(1).optional(),
+  /** "0" désactive la vérification des mots de passe contre les fuites (Have I Been Pwned). */
+  PASSWORD_BREACH_CHECK: z.enum(["0", "1"]).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Transport de mail effectif : explicite, sinon brevo dès qu'une clé est posée, sinon fichier. */
+export function mailTransportOf(env: Env): MailTransport {
+  return env.MAIL_TRANSPORT ?? (env.MAIL_API_KEY ? "brevo" : "fichier");
+}
 
 /** Problèmes d'un environnement de PRODUCTION (liste vide = rien à signaler). */
 export function productionProblems(env: Env): string[] {
@@ -31,6 +52,20 @@ export function productionProblems(env: Env): string[] {
     problems.push(
       "AUTH_URL est obligatoire en production (l'hôte n'est plus deviné).",
     );
+  }
+  if (!env.MAIL_TRANSPORT) {
+    problems.push(
+      "MAIL_TRANSPORT est obligatoire en production : brevo (avec MAIL_API_KEY et MAIL_FROM), ou fichier pour un serveur de test qui n'envoie rien.",
+    );
+  } else if (env.MAIL_TRANSPORT === "brevo") {
+    if (!env.MAIL_API_KEY) {
+      problems.push("MAIL_API_KEY est obligatoire avec MAIL_TRANSPORT=brevo.");
+    }
+    if (!env.MAIL_FROM) {
+      problems.push(
+        "MAIL_FROM est obligatoire avec MAIL_TRANSPORT=brevo (adresse validée chez Brevo).",
+      );
+    }
   }
   return problems;
 }

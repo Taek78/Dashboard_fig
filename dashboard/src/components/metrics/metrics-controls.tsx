@@ -11,7 +11,7 @@ import {
   COMPARISONS,
   type DateRange,
 } from "@/domain/metrics/rules";
-import type { MetricsQuery } from "@/domain/metrics/schemas";
+import { periodParams, type MetricsQuery } from "@/domain/metrics/schemas";
 
 /*
  * Contrôles de la page Métriques (serveur) : le formulaire de période partagé
@@ -27,11 +27,7 @@ export function MetricsControls({
   query: MetricsQuery;
   range: DateRange;
 }) {
-  const baseParams = `${
-    query.customRange
-      ? `du=${query.customRange.from}&au=${query.customRange.to}`
-      : `periode=${query.period}`
-  }&comparaison=${query.comparison}`;
+  const baseParams = `${periodParams(query)}&comparaison=${query.comparison}`;
 
   return (
     <Card>
@@ -39,6 +35,7 @@ export function MetricsControls({
         <PeriodForm
           action="/metriques"
           period={query.period}
+          customPeriod={query.customPeriod}
           custom={query.custom}
           range={range}
           hiddenFields={{ tva: query.tax }}

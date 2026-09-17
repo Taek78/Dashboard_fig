@@ -79,6 +79,12 @@ const linesJson = sql<OrderLineRow[]>`(
   where l.order_id = ${orders.id}
 )`;
 
+/** Vrai si un événement d'historique a déjà mené la commande à « livrée » (index order_events_order_idx). */
+const wasDeliveredSql = sql<boolean>`exists (
+  select 1 from ${orderEvents} e
+  where e.order_id = ${orders.id} and e.to_status = 'delivered'
+)`;
+
 type LoadOptions = {
   direction?: "asc" | "desc";
   limit?: number;
@@ -112,6 +118,7 @@ async function loadOrders(
         lastName: driver.lastName,
       },
       lines: linesJson,
+      wasDelivered: wasDeliveredSql,
     })
     .from(orders)
     .innerJoin(customers, eq(orders.customerId, customers.id))
@@ -138,6 +145,7 @@ async function loadOrders(
       community: r.community,
       preparer: r.preparer,
       driver: r.driver,
+      wasDelivered: r.wasDelivered,
     }),
   );
 }

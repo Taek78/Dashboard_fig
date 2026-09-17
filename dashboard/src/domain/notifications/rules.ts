@@ -6,9 +6,10 @@ import type { OrderStatus } from "@/domain/orders/status";
 /*
  * Texte des notifications d'état de commande, en français, sans jamais nommer
  * la personne : la référence et le statut suffisent (le corps est stocké en
- * base et pourrait être relu par l'équipe, minimisation RGPD). « En
- * préparation » n'est jamais annoncé : c'est l'état d'arrivée d'une commande,
- * pas un changement fait par l'équipe.
+ * base et pourrait être relu par l'équipe, minimisation RGPD). Depuis le
+ * changement de statut libre (2026-09-17), chaque statut a son texte, « en
+ * préparation » compris : c'est alors un retour en préparation décidé par
+ * l'équipe, et le client qui a autorisé les notifications en est averti.
  */
 const BODIES: Record<OrderStatus, (reference: string) => string> = {
   preparing: (reference) =>

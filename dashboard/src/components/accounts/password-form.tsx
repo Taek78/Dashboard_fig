@@ -1,17 +1,22 @@
 "use client";
 
-import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
 import { changeOwnPassword } from "@/app/(dashboard)/profil/actions";
+import { ActionStatus } from "@/components/action-status";
+import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
+import { PASSWORD_MAX_LENGTH } from "@/domain/auth/types";
 import { idleActionResult } from "@/lib/action-result";
-import { cn } from "@/lib/utils";
 
-/* Changement de son propre mot de passe (client : useActionState), vidé après succès. */
-export function PasswordForm() {
+/*
+ * Changement de son propre mot de passe (client : useActionState), avec la
+ * jauge de la politique sur le nouveau ; vidé après succès. `context` : le
+ * nom du compte, pour la règle « ni votre nom ni votre e-mail ».
+ */
+export function PasswordForm({ context }: { context: { name: string } }) {
   const [result, formAction, pending] = useActionState(
     changeOwnPassword,
     idleActionResult,
@@ -32,26 +37,15 @@ export function PasswordForm() {
           type="password"
           autoComplete="current-password"
           required
-          maxLength={200}
+          maxLength={PASSWORD_MAX_LENGTH}
         />
       </div>
       <div className="grid gap-4 @2xl/main:grid-cols-2">
-        <div className="grid gap-1.5">
-          <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-          <Input
-            id="newPassword"
-            name="newPassword"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={PASSWORD_MIN_LENGTH}
-            maxLength={200}
-            aria-describedby="newPassword-help"
-          />
-          <p id="newPassword-help" className="text-muted-foreground text-xs">
-            {PASSWORD_MIN_LENGTH} caractères au moins.
-          </p>
-        </div>
+        <PasswordField
+          id="newPassword"
+          label="Nouveau mot de passe"
+          context={context}
+        />
         <div className="grid gap-1.5">
           <Label htmlFor="confirmPassword">Confirmer le nouveau</Label>
           <Input
@@ -60,7 +54,7 @@ export function PasswordForm() {
             type="password"
             autoComplete="new-password"
             required
-            maxLength={200}
+            maxLength={PASSWORD_MAX_LENGTH}
           />
         </div>
       </div>
@@ -79,22 +73,7 @@ export function PasswordForm() {
             "Changer le mot de passe"
           )}
         </Button>
-        <p
-          role="status"
-          className={cn(
-            "flex items-center gap-1.5 text-sm",
-            result.status === "success" && "text-success",
-            result.status === "error" && "text-destructive",
-          )}
-        >
-          {result.status === "success" ? (
-            <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
-          ) : null}
-          {result.status === "error" ? (
-            <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
-          ) : null}
-          {result.status === "idle" ? null : result.message}
-        </p>
+        <ActionStatus result={result} />
       </div>
     </form>
   );

@@ -1,11 +1,20 @@
 import { z } from "zod";
 import { ROLES } from "@/domain/auth/roles";
-import { PASSWORD_MIN_LENGTH } from "@/domain/auth/types";
+import { isRecoveryCode } from "@/domain/auth/tokens";
+import {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  RECOVERY_CODE_LENGTH,
+} from "@/domain/auth/types";
 
 /*
  * Schémas zod des ENTRÉES liées aux comptes : connexion, gestion des comptes
- * (/comptes, admin) et changement de son propre mot de passe (/profil). Le mot de passe n'apparaît jamais dans un
- * message d'erreur : zod ne met pas la valeur d'entrée dans ses issues.
+ * (/comptes, admin), changement de son propre mot de passe (/profil),
+ * récupération par code, invitation, rappel d'adresse et verrouillage. Le mot
+ * de passe n'apparaît jamais dans un message d'erreur : zod ne met pas la
+ * valeur d'entrée dans ses issues. Zod ne vérifie que les bornes du mot de
+ * passe ; la politique complète (password-policy.ts, puis fuites connues) est
+ * appliquée par les actions, qui connaissent le nom et l'e-mail du compte.
  */
 export { PASSWORD_MIN_LENGTH };
 
@@ -13,7 +22,18 @@ const email = z
   .email()
   .max(254)
   .transform((v) => v.toLowerCase());
-const password = z.string().min(PASSWORD_MIN_LENGTH).max(200);
+const password = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);
+const confirmed = <T extends { newPassword: string; confirmPassword: string }>(
+  v: T,
+) => v.newPassword === v.confirmPassword;
+const CONFIRM_MESSAGE = {
+  path: ["confirmPassword"],
+  message: "Les deux saisies du nouveau mot de passe diffèrent",
+};
+/** Nom d'un compte : il sert au rappel de l'adresse, donc court et unique. */
+const accountName = z.string().trim().min(2).max(80);
+/** Jeton d'URL (base64url de 32 octets) ; borné, jamais reflété. */
+const linkToken = z.string().trim().min(20).max(200);
 
 /* Entrée du formulaire de connexion : validée avant toute recherche de compte. */
 export const loginSchema = z.object({
@@ -23,18 +43,20 @@ export const loginSchema = z.object({
 
 export const userIdSchema = z.string().trim().min(1).max(64);
 
+/* Création par l'administrateur : sans mot de passe, la personne le choisit par le lien d'invitation. */
 export const createUserSchema = z.object({
   email,
-  name: z.string().trim().min(1).max(80),
+  name: accountName,
   role: z.enum(ROLES),
-  password,
 });
 
 export const updateUserSchema = z.object({
   userId: userIdSchema,
-  name: z.string().trim().min(1).max(80),
+  name: accountName,
   role: z.enum(ROLES),
 });
+
+export const sendPasswordLinkSchema = z.object({ userId: userIdSchema });
 
 export const setUserActiveSchema = z.object({
   userId: userIdSchema,
@@ -48,15 +70,46 @@ export const resetPasswordSchema = z.object({
 
 export const changeOwnPasswordSchema = z
   .object({
-    currentPassword: z.string().min(1).max(200),
+    currentPassword: z.string().min(1).max(PASSWORD_MAX_LENGTH),
     newPassword: password,
-    confirmPassword: z.string().max(200),
+    confirmPassword: z.string().max(PASSWORD_MAX_LENGTH),
   })
-  .refine((v) => v.newPassword === v.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Les deux saisies du nouveau mot de passe diffèrent",
-  })
+  .refine(confirmed, CONFIRM_MESSAGE)
   .refine((v) => v.newPassword !== v.currentPassword, {
     path: ["newPassword"],
     message: "Le nouveau mot de passe doit être différent de l'actuel",
   });
+
+/* ---------- Récupération, invitation, rappel, verrouillage (pages publiques) ---------- */
+
+/** Étape 1 de « Mot de passe oublié » : l'adresse du compte. */
+export const recoveryRequestSchema = z.object({ email });
+
+/** Étape 2 : le code reçu et le nouveau mot de passe, avec l'adresse rappelée. */
+export const recoveryVerifySchema = z
+  .object({
+    email,
+    code: z
+      .string()
+      .trim()
+      .transform((v) => v.replace(/\s+/g, ""))
+      .refine(isRecoveryCode, `Code de ${RECOVERY_CODE_LENGTH} chiffres`),
+    newPassword: password,
+    confirmPassword: z.string().max(PASSWORD_MAX_LENGTH),
+  })
+  .refine(confirmed, CONFIRM_MESSAGE);
+
+/** « Adresse e-mail oubliée » : le nom du compte, tel que l'administrateur l'a saisi. */
+export const emailReminderSchema = z.object({ name: accountName });
+
+/** Lien d'invitation : le jeton de l'URL et le mot de passe choisi. */
+export const invitationSchema = z
+  .object({
+    token: linkToken,
+    newPassword: password,
+    confirmPassword: z.string().max(PASSWORD_MAX_LENGTH),
+  })
+  .refine(confirmed, CONFIRM_MESSAGE);
+
+/** Lien « Ce n'était pas moi » : le jeton de l'URL, confirmé par un bouton. */
+export const lockAccountSchema = z.object({ token: linkToken });

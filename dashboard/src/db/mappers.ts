@@ -1,5 +1,6 @@
 import type {
   articles,
+  authTokens,
   communities,
   customerMessages,
   customerNotes,
@@ -19,6 +20,7 @@ import type {
   ArticleIllustration,
 } from "@/domain/articles/category";
 import type { Article, ArticleInput } from "@/domain/articles/types";
+import type { AuthToken } from "@/domain/auth/tokens";
 import type { ManagedUser, UserAccount } from "@/domain/auth/types";
 import type { Community, CommunityRef } from "@/domain/communities/types";
 import type {
@@ -118,7 +120,7 @@ export function toOrderLine(row: OrderLineRow): OrderLine {
   };
 }
 
-/** Lignes jointes à la commande : communauté, préparateur, livreur (null si absents). */
+/** Lignes jointes à la commande : communauté, préparateur, livreur (null si absents) ; `wasDelivered` = un événement d'historique a déjà mené la commande à « livrée » (EXISTS calculé par la base). */
 export type OrderJoins = {
   community: CommunityRefRow | null;
   preparer: StaffRefRow | null;
@@ -127,20 +129,25 @@ export type OrderJoins = {
 
 export function toOrder(
   row: OrderRow,
-  customer: Pick<CustomerRow, "id" | "fullName" | "email" | "phone">,
+  customer: Pick<
+    CustomerRow,
+    "id" | "fullName" | "email" | "phone" | "notifyOrderStatus"
+  >,
   lines: readonly OrderLineRow[],
-  joins: OrderJoins,
+  joins: OrderJoins & { wasDelivered: boolean },
 ): Order {
   return {
     id: row.id,
     reference: row.reference,
     createdAt: row.createdAt.toISOString(),
     status: row.status,
+    wasDelivered: joins.wasDelivered,
     customer: {
       id: customer.id,
       fullName: customer.fullName,
       email: customer.email,
       phone: customer.phone,
+      notifyOrderStatus: customer.notifyOrderStatus,
     },
     deliverySlot: {
       date: row.deliveryDate,
@@ -494,6 +501,7 @@ export function toManagedUser(row: UserRow): ManagedUser {
     name: row.name,
     role: row.role,
     active: row.active,
+    hasPassword: row.passwordHash !== null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -505,5 +513,23 @@ export function toUserAccount(row: UserRow): UserAccount {
     name: row.name,
     role: row.role,
     passwordHash: row.passwordHash,
+    active: row.active,
+    passwordChangedAt: row.passwordChangedAt?.toISOString() ?? null,
+  };
+}
+
+export type AuthTokenRow = typeof authTokens.$inferSelect;
+
+export function toAuthToken(row: AuthTokenRow): AuthToken {
+  return {
+    id: row.id,
+    kind: row.kind,
+    userId: row.userId,
+    secretHash: row.secretHash,
+    expiresAt: row.expiresAt.toISOString(),
+    attempts: row.attempts,
+    consumedAt: row.consumedAt?.toISOString() ?? null,
+    requestedIp: row.requestedIp,
+    createdAt: row.createdAt.toISOString(),
   };
 }

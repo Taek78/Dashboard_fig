@@ -97,18 +97,22 @@ Le détail des tables, des migrations, du seed et des sauvegardes est dans [base
 
 Next associe un dossier à une URL. Le groupe `(dashboard)` regroupe toutes les pages protégées sous un même layout (sidebar, bandeau, vérification de session) ; `connexion/` est en dehors, sans sidebar.
 
-| Fichier                           | Rôle                                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------------------- |
-| `layout.tsx` (racine)             | `<html>`, polices, script du thème avec le nonce                                       |
-| `(dashboard)/layout.tsx`          | vérifie la session, pose la coquille                                                   |
-| `<section>/page.tsx`              | page serveur : lit `searchParams` ou `params` (des `Promise`), appelle la façade, rend |
-| `<section>/loading.tsx`           | squelette affiché pendant le chargement (même silhouette que la page)                  |
-| `<section>/[id]/not-found.tsx`    | affiché par `notFound()`                                                               |
-| `commandes/error.tsx`             | frontière d'erreur du segment (composant client, prop `retry`)                         |
-| `<section>/actions.ts`            | Server Actions du domaine                                                              |
-| `api/health/route.ts`             | `{ ok: true }` ou 503 si la base ne répond pas                                         |
-| `clients/[id]/export/route.ts`    | export JSON des données d'un client (RGPD), administrateur seul, `no-store`, journalisé |
-| `api/auth/[...nextauth]/route.ts` | points d'entrée d'Auth.js                                                              |
+| Fichier                           | Rôle                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `layout.tsx` (racine)             | `<html>`, polices, script du thème avec le nonce                                                         |
+| `(dashboard)/layout.tsx`          | vérifie la session, pose la coquille                                                                     |
+| `<section>/page.tsx`              | page serveur : lit `searchParams` ou `params` (des `Promise`), appelle la façade, rend                   |
+| `<section>/loading.tsx`           | squelette affiché pendant le chargement (même silhouette que la page)                                    |
+| `<section>/[id]/not-found.tsx`    | affiché par `notFound()`                                                                                 |
+| `commandes/error.tsx`             | frontière d'erreur du segment (composant client, prop `retry`)                                           |
+| `<section>/actions.ts`            | Server Actions du domaine                                                                                |
+| `api/health/route.ts`             | `{ ok: true }` ou 503 si la base ne répond pas                                                           |
+| `clients/[id]/export/route.ts`    | export JSON des données d'un client (RGPD), administrateur seul, `no-store`, journalisé                  |
+| `api/auth/[...nextauth]/route.ts` | points d'entrée d'Auth.js                                                                                |
+| `connexion/recuperation/`         | « Mot de passe oublié » : l'adresse, puis (`?etape=code&email=`) le code reçu et le nouveau mot de passe |
+| `connexion/adresse-oubliee/`      | « Adresse e-mail oubliée » : rappel de l'adresse par le nom du compte                                    |
+| `connexion/invitation/`           | lien d'invitation (`?jeton=`) : la personne choisit son mot de passe et est connectée                    |
+| `connexion/verrouiller/`          | lien « Ce n'était pas moi » (`?jeton=`) : verrouiller son compte, bouton POST                            |
 
 Sections : `/` tableau de bord (alerte de personnel en tête), `/commandes` (liste et tournée : raccourcis des 7 derniers jours ; `/livraisons` y redirige depuis le 2026-09-16), `/catalogue`, `/articles`, `/clients` (recherche commune particuliers et communautés, fiches `/clients/[id]` et `/clients/communautes/[id]`), `/messages` (boîte de réception, fiche `/messages/[id]`), `/personnel` (équipe, fiche `/personnel/[id]`), `/metriques`, `/comptes` (admin), `/profil`.
 
@@ -117,7 +121,7 @@ Sections : `/` tableau de bord (alerte de personnel en tête), `/commandes` (lis
 Par domaine, deux natures :
 
 - **serveur** (par défaut) : reçoivent des données déjà chargées et les rendent. Cartes (`order-card`, qui sert aussi sur le terrain : créneau en grand, appel, itinéraire ; `product-card`, `article-card`, `staff-card`, `customer-card`, `community-card` avec son bandeau de type et de visibilité `community-banner`, `message-card`), listes, tableaux (`orders-table`, avec `CustomerNameLink` : le nom d'un client est toujours un lien vers sa fiche), en-têtes, badges, les badges de type de client (`client-type-label` : « Particulier », badge « Communauté » d'un membre, type « Communauté » d'un groupe), la catégorie en étoiles (`tier-badge`) et les autorisations en pastilles (`consent-pills`) d'un client, la commande jointe à un message (`message-order`), la pastille violette des pièces jointes (`message-attachments`), le bloc « Équipe » d'une commande (`order-team`, qui choisit entre lecture et listes déroulantes), les recherches (`orders-filters`, `customers-search` avec son commutateur de type en boutons radio, `products-filters`, `staff-search` pour l'équipe : champs serveur dans un `AutoSubmitForm`), leur barre commune (`search-field`), le panneau des filtres qui les suit (`filter-tray`, surface teintée, « Réinitialiser » dans son en-tête, avec `check-chip` pour une case à cocher en puce), la zone de dates « du / au » en dernière ligne du panneau ou seule sur sa surface (`date-range-fields`, partagée par toutes les recherches par dates) et le bandeau bleu d'une période sans résultat (`period-empty-notice`), les raccourcis des 7 derniers jours (`delivery-day-shortcuts`), la barre d'avancement segmentée par statut du tableau de bord (`tour-progress`), l'alerte quand aucun préparateur ou livreur n'est présent (`staff-shortage-alert`), la recherche dans l'historique d'une personne (`staff-history-filters`), les sections titrées d'une page (`section`, métriques et tableau de bord), la jauge de fidélité. Aucun hook.
-- **client** (`"use client"`, seulement quand un hook l'exige) : les formulaires branchés sur une Server Action avec `useActionState` (`order-actions`, `order-status-form`, `staff-assign-field` qui écrit dès le choix dans la liste, `product-form`, `duplicate-product-button`, `staff-form`, `article-form`, `account-editor`…), `auto-submit-form` (recherche GET lancée pendant la saisie, anti-rebond et protection contre les courses), `catalog-settings-form` (case du paramètre « laisser en vente à stock 0 », écrite dès le changement), `date-picker-button`, `login-scene` (parallaxe au pointeur de la page de connexion, les animations restant en CSS) (calendrier maison des champs « du / au » sur tablette et PC, qui écrit le champ natif), `sort-order-toggle` (bouton de sens du tri des clients, flèche qui pivote ; icône serveur `sort-order-icon`), le camembert plein des métriques (`ratio-pie`, étiquette au survol), le sélecteur de thème, le fil d'Ariane, la navigation.
+- **client** (`"use client"`, seulement quand un hook l'exige) : les formulaires branchés sur une Server Action avec `useActionState` (`order-status-select` (liste du statut des cartes et de la fiche : écrit dès le choix, motif demandé avant une annulation), `staff-assign-field` qui écrit dès le choix dans la liste, `product-form`, `duplicate-product-button`, `staff-form`, `article-form`, `account-editor`…), `auto-submit-form` (recherche GET lancée pendant la saisie, anti-rebond et protection contre les courses), `catalog-settings-form` (case du paramètre « laisser en vente à stock 0 », écrite dès le changement), `period-chooser` (liste « Période » du tableau de bord et des métriques, qui ne monte la zone de dates que pour « Période personnalisée »), `date-picker-button`, `login-scene` (parallaxe au pointeur de la page de connexion, les animations restant en CSS) (calendrier maison des champs « du / au » sur tablette et PC, qui écrit le champ natif), `sort-order-toggle` (bouton de sens du tri des clients, flèche qui pivote ; icône serveur `sort-order-icon`), le camembert plein des métriques (`ratio-pie`, étiquette au survol), le sélecteur de thème, le fil d'Ariane, la navigation.
 
 La coquille : le layout `(dashboard)` pose `@container/main` sur le conteneur de page (les composants de page s'adaptent à sa largeur, donc à la sidebar ouverte ou repliée), `app-sidebar` (logo, navigation filtrée par rôle, utilisateur, déconnexion), `site-header` (bouton du menu, marque sur mobile, fil d'Ariane, thème, avatar vers le profil), `page-header` (le seul `h1` de chaque page).
 
@@ -134,7 +138,7 @@ La coquille : le layout `(dashboard)` pose `@container/main` sur le conteneur de
 1. Le proxy laisse passer la requête (session valide, section permise) et pose un nonce.
 2. `commandes/page.tsx` attend `searchParams`, les passe à `parseOrderFilters` (tolérant : recherche, statut, période, préparateur, livreur), et appelle `getOrdersPage(filters, page)` de la façade.
 3. La base filtre, cherche (règle `matchesOrderQuery` reproduite sur des colonnes indexées), renvoie les 40 commandes de la page, les plus récentes d'abord, avec leurs lignes, et compte le total dans une seconde requête lancée en même temps.
-4. La page rend `OrdersCards`, qui rend une `OrderCard` par commande, avec `OrderActions` si le rôle peut écrire.
+4. La page rend `OrdersCards`, qui rend une `OrderCard` par commande, avec `OrderStatusSelect` si le rôle peut écrire.
 5. Pendant l'attente, Next affiche `loading.tsx`.
 
 ### Écriture : changer le statut d'une commande
@@ -143,10 +147,10 @@ La coquille : le layout `(dashboard)` pose `@container/main` sur le conteneur de
 
 1. **session** : `getCurrentUser()` ; sans session, redirection ;
 2. **rôle** : `canChangeOrderStatus(role)`, sinon refus journalisé ;
-3. **validation** : `changeStatusSchema` sur le `FormData` (statut visé, motif si annulation) ;
+3. **validation** : `changeStatusSchema` sur le `FormData` (statut visé, motif si annulation, case « Notifier le client ») ;
 4. **relecture** : `getOrder(id)`, jamais l'état que le formulaire prétend ;
 5. **idempotence** : même statut → succès sans écriture ;
-6. **règle** : `canTransition(courant, visé)` (liste blanche) ;
+6. **règle** : `canTransition(courant, visé)` (depuis le 2026-09-17, tout statut différent du courant ; seule l'annulation exige un motif, tenu par le schéma) ;
 7. **écriture conditionnelle** : `updateOrderStatus(id, { from, to, actor, cancellation })`, qui écrit aussi l'événement d'historique ; `null` si quelqu'un a changé le statut entre-temps ;
 8. **journal et revalidation** : `logSecurity`, `revalidatePath` ;
 9. **résultat** : `{ status, message }` affiché par le formulaire.
@@ -159,21 +163,28 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 - **Comptes** : la table `users`, créée par le seed (comptes de `.env.local`), gérée sur `/comptes`.
 - **Lecture** : la matrice `SECTION_ACCESS` (rôle → sections) est appliquée par le proxy (redirection) et par la navigation (entrées masquées).
 - **Écriture** : une règle `canXxx(role)` par action métier, vérifiée dans chaque Server Action après relecture de la session.
+- **Vie de la session** (2026-09-17) : à chaque lecture du jeton, le callback `jwt` relit le compte (`isSessionAlive`) : désactivé, verrouillé ou mot de passe changé depuis l'ouverture (`sat`) → session refusée, cookie effacé ; un rôle modifié s'applique à la requête suivante.
+- **Récupération et invitations** (`domain/auth/tokens.ts`, `data/auth-tokens.db.ts`, pages publiques sous `connexion/`) : un compte se crée sans mot de passe, la personne le choisit par un lien d'invitation (48 h) ; « Mot de passe oublié » envoie un code à six chiffres (5 min, 5 essais, HMAC en base) ; chaque mail porte un lien « Ce n'était pas moi » (24 h) qui verrouille le compte ; les administrateurs actifs sont alertés par mail au changement effectif, aux essais répétés et au verrouillage. Quotas par sujet et par IP dans `login_attempts` (`checkQuota`). Mails composés par `domain/auth/mails.ts` (texte brut), envoyés après la réponse (`after()`) par la façade `data/mail.ts` : Brevo (API HTTP, `fetch`) en production, un fichier par mail en développement et dans la suite navigateur.
+- **Politique de mots de passe** (`domain/auth/password-policy.ts`, pure, jauge dans les formulaires) : 12 caractères au moins ; sous 16, trois types de caractères ; ni mot courant (liste embarquée), ni nom ou e-mail du compte, ni motif répété, ni suite de clavier ; puis, côté serveur (`data/passwords.ts`), vérification contre les fuites connues par l'API k-anonymity de Have I Been Pwned (`PASSWORD_BREACH_CHECK=0` pour la couper).
 
 ## 6. Sécurité
 
-| Mesure                                                                                                           | Où                                                 |
-| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Server Actions comme frontière de confiance (session, rôle, zod, relecture)                                      | `src/app/**/actions.ts`                            |
-| Limitation de débit progressive sur la connexion, partagée en base, coût constant e-mail inconnu / mot de passe faux | `src/data/credentials.ts`, `src/data/login-attempts.db.ts`, `src/lib/rate-limit.ts` |
-| Écritures concurrentes conditionnelles (statut, affectation) : rien n'est écrasé en silence                     | `src/data/orders.db.ts`                            |
-| Content-Security-Policy avec nonce par requête, HSTS, X-Frame-Options, nosniff                                   | `src/proxy.ts`, `src/lib/csp.ts`, `next.config.ts` |
-| Déconnexion robuste : le cookie de session n'est re-posé ni sur un préchargement ni tant que le jeton est récent | `src/proxy.ts`, `src/lib/session-refresh.ts`       |
-| Journal de sécurité (sortie standard et table `security_events`)                                                 | `src/data/security-log.ts`                         |
-| Gardes de démarrage : base PostgreSQL et secret obligatoires, `AUTH_URL` obligatoire en production                 | `src/lib/env-schema.ts`, `src/instrumentation.ts`  |
-| Mots de passe hachés par scrypt, jamais journalisés                                                              | `src/lib/password.ts`                              |
-| Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                       | schémas zod des domaines                           |
-| RGPD : export et anonymisation d'un client (administrateur, mot `ANONYMISER`, journal sans donnée de la personne), durées de conservation appliquées par un script à aperçu | `src/domain/privacy/`, `src/db/privacy.ts`, `scripts/rgpd-purge.ts`, [rgpd.md](rgpd.md) |
+| Mesure                                                                                                                                                                                                   | Où                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Server Actions comme frontière de confiance (session, rôle, zod, relecture)                                                                                                                              | `src/app/**/actions.ts`                                                                                           |
+| Limitation de débit progressive sur la connexion, partagée en base, coût constant e-mail inconnu / mot de passe faux                                                                                     | `src/data/credentials.ts`, `src/data/login-attempts.db.ts`, `src/lib/rate-limit.ts`                               |
+| Écritures concurrentes conditionnelles (statut, affectation) : rien n'est écrasé en silence                                                                                                              | `src/data/orders.db.ts`                                                                                           |
+| Content-Security-Policy avec nonce par requête, HSTS, X-Frame-Options, nosniff                                                                                                                           | `src/proxy.ts`, `src/lib/csp.ts`, `next.config.ts`                                                                |
+| Déconnexion robuste : le cookie de session n'est re-posé ni sur un préchargement ni tant que le jeton est récent                                                                                         | `src/proxy.ts`, `src/lib/session-refresh.ts`                                                                      |
+| Journal de sécurité (sortie standard et table `security_events`)                                                                                                                                         | `src/data/security-log.ts`                                                                                        |
+| Gardes de démarrage : base PostgreSQL et secret obligatoires, `AUTH_URL` obligatoire en production                                                                                                       | `src/lib/env-schema.ts`, `src/instrumentation.ts`                                                                 |
+| Mots de passe hachés par scrypt, jamais journalisés                                                                                                                                                      | `src/lib/password.ts`                                                                                             |
+| Politique de mots de passe (longueur, composition, mots courants, nom et e-mail, motifs) puis fuites connues (Have I Been Pwned, k-anonymity)                                                            | `src/domain/auth/password-policy.ts`, `src/data/passwords.ts`, `src/data/pwned-passwords.ts`                      |
+| Récupération par code à six chiffres (5 min, 5 essais), invitations et liens de verrouillage : HMAC en base, usage unique, quotas par e-mail, nom et IP, réponses identiques que le compte existe ou non | `src/domain/auth/tokens.ts`, `src/data/auth-tokens.db.ts`, `src/app/connexion/*/actions.ts`, `src/lib/secrets.ts` |
+| Sessions fermées dès qu'un compte est désactivé, verrouillé ou change de mot de passe (relecture du compte à chaque lecture du jeton)                                                                    | `src/auth.ts`, `domain/auth/rules.ts` (`isSessionAlive`)                                                          |
+| Alertes par mail : à la personne (code, mot de passe modifié, lien « Ce n'était pas moi ») et aux administrateurs actifs (changement effectif, codes erronés répétés, verrouillage)                      | `src/domain/auth/mails.ts`, `src/data/mail.ts` (Brevo ou fichier)                                                 |
+| Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                                                                                                               | schémas zod des domaines                                                                                          |
+| RGPD : export et anonymisation d'un client (administrateur, mot `ANONYMISER`, journal sans donnée de la personne), durées de conservation appliquées par un script à aperçu                              | `src/domain/privacy/`, `src/db/privacy.ts`, `scripts/rgpd-purge.ts`, [rgpd.md](rgpd.md)                           |
 
 ## 7. Tests
 

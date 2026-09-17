@@ -40,7 +40,7 @@ import {
   periodRange,
   TAX_MODE_LABELS,
 } from "@/domain/metrics/rules";
-import { parsePeriodQuery } from "@/domain/metrics/schemas";
+import { parsePeriodQuery, periodParams } from "@/domain/metrics/schemas";
 import { assignmentOptions, unavailableRoles } from "@/domain/staff/rules";
 import {
   endSentence,
@@ -54,14 +54,15 @@ import { cn } from "@/lib/utils";
  * Tableau de bord, route « / » : EN PRIORITÉ l'alerte si aucun préparateur ou
  * aucun livreur n'est présent (rien ne peut être préparé ou livré), puis
  * l'activité de la période choisie (défaut : aujourd'hui, mêmes périodes
- * prédéfinies et plage libre que les métriques) et ce qui attend une action,
+ * prédéfinies et période personnalisée que les métriques) et ce qui attend une
+ * action,
  * toutes dates.
  * Les chiffres de la période sont agrégés par la base (getOrderStats : une
  * requête, quelques nombres) puis mis en forme par les règles pures ; montants
  * HT par défaut, TTC par l'interrupteur (même URL ?tva= que les métriques).
  * Sous les KPI, la barre d'avancement des commandes de la période
  * (TourProgress : segments par statut, légende chiffrée) ; sans commande, un
- * état vide bien visible (« Aucune commande »), et une plage libre sans
+ * état vide bien visible (« Aucune commande »), et une période personnalisée sans
  * commande est dite par le bandeau bleu commun.
  * En bas, les commandes en préparation toutes dates : le nombre (compté par la
  * base) et les PREPARING_SHOWN créneaux les plus proches, jamais la liste
@@ -80,9 +81,7 @@ export default async function TableauDeBordPage({
     : METRIC_PERIOD_LABELS[query.period];
   const taxLabel = TAX_MODE_LABELS[query.tax];
   const money = (cents: number) => formatEuros(applyTaxMode(cents, query.tax));
-  const baseParams = query.customRange
-    ? `du=${query.customRange.from}&au=${query.customRange.to}`
-    : `periode=${query.period}`;
+  const baseParams = periodParams(query);
 
   const [stats, preparing, preparingCount, user, staff] = await Promise.all([
     getOrderStats(range),
@@ -109,6 +108,7 @@ export default async function TableauDeBordPage({
           <PeriodForm
             action="/"
             period={query.period}
+            customPeriod={query.customPeriod}
             custom={query.custom}
             range={range}
             hiddenFields={{ tva: query.tax }}

@@ -14,6 +14,8 @@ import {
   toStaffMember,
   toCommunity,
   staffToRow,
+  toAuthToken,
+  toManagedUser,
   toUserAccount,
   type ArticleRow,
   type CustomerNoteRow,
@@ -121,6 +123,7 @@ describe("toOrder / toOrderEvent", () => {
         fullName: o.customer.fullName,
         email: o.customer.email,
         phone: o.customer.phone,
+        notifyOrderStatus: o.customer.notifyOrderStatus,
       };
       // Lignes fournies dans le désordre : le mapper remet l'ordre des positions.
       const lines: OrderLineRow[] = o.lines
@@ -139,6 +142,7 @@ describe("toOrder / toOrderEvent", () => {
           community: o.community,
           preparer: person(o.preparer),
           driver: person(o.driver),
+          wasDelivered: o.wasDelivered,
         }),
       ).toEqual(o);
     }
@@ -396,22 +400,65 @@ describe("toEngagementPoint / toUserAccount", () => {
   });
 
   it("ne garde d'un compte que ce que le contrat expose", () => {
-    expect(
-      toUserAccount({
-        id: "usr-1",
-        email: "a@b.invalid",
-        name: "A",
-        role: "admin",
-        passwordHash: "scrypt$x$y",
-        active: true,
-        createdAt: new Date("2026-01-01T00:00:00.000Z"),
-      }),
-    ).toEqual({
+    const row = {
+      id: "usr-1",
+      email: "a@b.invalid",
+      name: "A",
+      role: "admin" as const,
+      passwordHash: "scrypt$x$y",
+      active: true,
+      passwordChangedAt: new Date("2026-09-17T10:00:00.000Z"),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    expect(toUserAccount(row)).toEqual({
       id: "usr-1",
       email: "a@b.invalid",
       name: "A",
       role: "admin",
       passwordHash: "scrypt$x$y",
+      active: true,
+      passwordChangedAt: "2026-09-17T10:00:00.000Z",
+    });
+    expect(
+      toUserAccount({ ...row, passwordHash: null, passwordChangedAt: null }),
+    ).toMatchObject({ passwordHash: null, passwordChangedAt: null });
+    expect(toManagedUser(row)).toEqual({
+      id: "usr-1",
+      email: "a@b.invalid",
+      name: "A",
+      role: "admin",
+      active: true,
+      hasPassword: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(toManagedUser({ ...row, passwordHash: null }).hasPassword).toBe(
+      false,
+    );
+  });
+
+  it("convertit un jeton d'authentification, dates en ISO", () => {
+    expect(
+      toAuthToken({
+        id: "tok-1",
+        kind: "recovery_code",
+        userId: "usr-1",
+        secretHash: "abc",
+        expiresAt: new Date("2026-09-17T10:05:00.000Z"),
+        attempts: 2,
+        consumedAt: null,
+        requestedIp: "203.0.113.5",
+        createdAt: new Date("2026-09-17T10:00:00.000Z"),
+      }),
+    ).toEqual({
+      id: "tok-1",
+      kind: "recovery_code",
+      userId: "usr-1",
+      secretHash: "abc",
+      expiresAt: "2026-09-17T10:05:00.000Z",
+      attempts: 2,
+      consumedAt: null,
+      requestedIp: "203.0.113.5",
+      createdAt: "2026-09-17T10:00:00.000Z",
     });
   });
 });

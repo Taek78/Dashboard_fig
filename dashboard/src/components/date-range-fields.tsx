@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
  * place pour des raccourcis ou un lien), puis les deux champs à la hauteur
  * des autres champs du formulaire, chacun avec son préfixe visible « Du » /
  * « Au », puis l'erreur ou une légende. Le même composant sert aux commandes,
- * aux messages, aux historiques des fiches et à la plage libre du tableau de
- * bord et des métriques.
+ * aux messages, aux historiques des fiches et à la période personnalisée du
+ * tableau de bord et des métriques (montée seulement pour ce choix).
  *
  * Trois variantes de surface : « row », dernière ligne d'un FilterTray (un
  * filet au-dessus, la teinte est celle du panneau) ; « zone », sa propre
@@ -115,7 +115,7 @@ export function DateRangeFields({
   caption,
   className,
 }: {
-  /** Intitulé de la zone (« Jour de livraison », « Plage libre »…). */
+  /** Intitulé de la zone (« Jour de livraison », « Plage de dates »…). */
   legend: string;
   /** Nom accessible complet du premier champ (« Livraison du ») ; « Du » reste visible. */
   fromLabel: string;

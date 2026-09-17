@@ -559,12 +559,14 @@ function build(): { customers: Customer[]; orders: Order[] } {
         reference: `FIG-${day.slice(2, 4)}${day.slice(5, 7)}${day.slice(8, 10)}-${pad(seq, 3)}`,
         createdAt: `${createdDay}T${pad(createdHour)}:${pad(Math.floor(random() * 60))}:00.000Z`,
         status,
+        wasDelivered: status === "delivered",
         cancellation,
         customer: {
           id: customer.id,
           fullName: customer.fullName,
           email: customer.email,
           phone: customer.phone,
+          notifyOrderStatus: customer.consents.orderStatus,
         },
         deliverySlot: { date: day, start, end: slotEndFor(start) },
         deliveryAddressLine: community

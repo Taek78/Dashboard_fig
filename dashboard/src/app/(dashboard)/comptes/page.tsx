@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
 
 /*
  * Gestion des comptes, administrateur seulement : le proxy refuse
- * déjà les autres rôles, la page revérifie. Création en tête, puis la liste
- * (actifs d'abord) avec, par compte, nom et rôle modifiables, activation et
- * nouveau mot de passe. Le compte courant est signalé et ne peut pas se
- * désactiver.
+ * déjà les autres rôles, la page revérifie. Création en tête (sans mot de
+ * passe : invitation par e-mail), puis la liste (actifs d'abord) avec, par
+ * compte, nom et rôle modifiables, activation, lien de mot de passe et
+ * dépannage. Un compte qui n'a pas encore accepté son invitation porte le
+ * badge « Invitation en attente ». Le compte courant est signalé et ne peut
+ * pas se désactiver.
  */
 export const metadata: Metadata = { title: "Comptes" };
 
@@ -86,6 +88,9 @@ export default async function ComptesPage() {
                     ) : (
                       <Badge variant="destructive">Désactivé</Badge>
                     )}
+                    {!account.hasPassword ? (
+                      <Badge variant="warning">Invitation en attente</Badge>
+                    ) : null}
                     <span className="text-muted-foreground text-sm">
                       {account.email} · créé le{" "}
                       {formatDateFr(account.createdAt)}

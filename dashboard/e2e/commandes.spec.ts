@@ -13,10 +13,15 @@ test.describe("commandes", () => {
       page.getByRole("heading", { level: 1, name: "Commande FIG-260907-001" }),
     ).toBeVisible();
 
-    await page.getByLabel("Nouveau statut").selectOption("delivering");
-    await page.getByRole("button", { name: "Changer le statut" }).click();
-    await expect(page.getByRole("status").first()).toContainText(
-      "Statut mis à jour : Expédiée.",
+    // Choisir un statut l'écrit aussitôt.
+    await page.getByLabel("Statut de la commande").selectOption("delivering");
+    const confirmation = page
+      .getByRole("status")
+      .filter({ hasText: "Statut mis à jour" });
+    await expect(confirmation).toContainText("Statut mis à jour : Expédiée.");
+    await expect(confirmation).toContainText("Client notifié");
+    await expect(page.getByLabel("Statut de la commande")).toHaveValue(
+      "delivering",
     );
 
     const history = page.getByRole("region", { name: "Historique" });
@@ -32,6 +37,15 @@ test.describe("commandes", () => {
       "Votre commande FIG-260907-001 est en route",
     );
     await expect(notifications).toContainText("en attente d'envoi");
+
+    // Case « Notifier le client » décochée : le changement passe, rien n'est déposé.
+    const notify = page.getByLabel("Notifier le client");
+    await expect(notify).toBeChecked();
+    await notify.uncheck();
+    await page.getByLabel("Statut de la commande").selectOption("delivered");
+    await expect(confirmation).toContainText("Statut mis à jour : Livrée.");
+    await expect(confirmation).toContainText("Client non notifié");
+    await expect(notifications).not.toContainText("a été livrée");
 
     // Frais de livraison et adresse dans le détail ; le nom du client mène à sa fiche.
     await expect(page.getByText("Frais de livraison")).toBeVisible();
@@ -49,23 +63,57 @@ test.describe("commandes", () => {
     await expect(
       page.getByRole("region", { name: "Notifications au client" }),
     ).toContainText("n'a pas autorisé les notifications d'état");
+    // La case est désactivée et le dit.
+    const notify = page.getByLabel(
+      "Notifications non autorisées par le client",
+    );
+    await expect(notify).toBeDisabled();
+    await expect(notify).not.toBeChecked();
+    await expect(page.getByLabel("Notifier le client")).toHaveCount(0);
   });
 
-  test("un statut hors liste blanche n'est pas proposé", async ({ page }) => {
+  test("tous les statuts sont proposés : livrée directement, puis retour en préparation", async ({
+    page,
+  }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes/cmd-0009");
-    const select = page.getByLabel("Nouveau statut");
+    const select = page.getByLabel("Statut de la commande");
     const values = await select
       .locator("option")
       .evaluateAll((options) =>
-        options.map((o) => (o as HTMLOptionElement).value).filter(Boolean),
+        options.map((o) => (o as HTMLOptionElement).value),
       );
-    expect(values).toEqual(["delivering", "cancelled"]);
+    expect(values).toEqual([
+      "preparing",
+      "delivering",
+      "delivered",
+      "cancelled",
+    ]);
+    await expect(select).toHaveValue("preparing");
+
+    await select.selectOption("delivered");
+    const status = page
+      .getByRole("status")
+      .filter({ hasText: "Statut mis à jour" });
+    await expect(status).toContainText("Statut mis à jour : Livrée.");
+    await expect(status).toContainText("Client notifié");
+    await expect(select).toHaveValue("delivered");
+    // Livrée une fois : la case « Notifier le client » se décoche d'elle-même (Élise a autorisé).
+    const notify = page.getByLabel("Notifier le client");
+    await expect(notify).toBeEnabled();
+    await expect(notify).not.toBeChecked();
+
+    await select.selectOption("preparing");
+    await expect(status).toContainText("Statut mis à jour : En préparation.");
+    await expect(status).toContainText("Client non notifié");
+    const history = page.getByRole("region", { name: "Historique" });
+    await expect(history).toContainText("En préparation (depuis livrée)");
+    await expect(history).toContainText("Livrée (depuis en préparation)");
   });
 });
 
 test.describe("commandes : cartes, tournée et annulation", () => {
-  test("la carte porte le créneau en grand, l'itinéraire, le nom cliquable et le geste suivant", async ({
+  test("la carte porte le créneau en grand, l'itinéraire, le nom cliquable et la liste du statut", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.admin);
@@ -89,11 +137,21 @@ test.describe("commandes : cartes, tournée et annulation", () => {
       card.getByRole("link", { name: "Théo Marchand" }),
     ).toHaveAttribute("href", "/clients/cli-0002");
 
-    await card.getByRole("button", { name: "Expédier la commande" }).click();
+    const select = card.getByLabel("Statut de la commande");
+    await expect(select).toHaveValue("preparing");
+    await select.selectOption("delivering");
     await expect(card).toContainText("Expédiée");
+    await expect(select).toHaveValue("delivering");
     await expect(
-      card.getByRole("button", { name: "Marquer comme livrée" }),
-    ).toBeVisible();
+      card.getByRole("status").filter({ hasText: "Statut mis à jour" }),
+    ).toContainText("Client notifié");
+    // Cochée par défaut tant que la commande n'a jamais été livrée ; décochée dès qu'elle l'est.
+    const notify = card.getByLabel("Notifier le client");
+    await expect(notify).toBeChecked();
+    await select.selectOption("delivered");
+    await expect(card).toContainText("Livrée");
+    await expect(select).toHaveValue("delivered");
+    await expect(notify).not.toBeChecked();
   });
 
   test("les gommettes disent qui est présent dans la liste d'affectation", async ({
@@ -125,10 +183,9 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-006,/,
     });
-    await expect(
-      card.getByRole("button", { name: "Expédier la commande" }),
-    ).toBeVisible();
-    await card.getByRole("button", { name: "Annuler la commande" }).click();
+    const select = card.getByLabel("Statut de la commande");
+    await expect(select).toHaveValue("preparing");
+    await select.selectOption("cancelled");
     const panel = card.getByRole("group", {
       name: "Annulation de la commande",
     });
@@ -137,6 +194,14 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     await expect(panel).toContainText("26 / 100 caractères");
     await panel.getByRole("button", { name: "Confirmer l'annulation" }).click();
     await expect(card).toContainText("Annulée");
+    await expect(select).toHaveValue("cancelled");
+    // Yanis n'a pas autorisé les notifications : le motif est enregistré, pas communiqué.
+    await expect(
+      card.getByRole("status").filter({ hasText: "Commande annulée" }),
+    ).toContainText("Motif enregistré");
+    await expect(
+      card.getByRole("status").filter({ hasText: "Commande annulée" }),
+    ).toContainText("Client non notifié");
     await expect(card).toContainText("Autre : Client absent, injoignable");
 
     await page.goto("/commandes/cmd-0010");

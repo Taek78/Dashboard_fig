@@ -67,7 +67,29 @@ export type SecurityEvent =
       messageId: string;
       important: boolean;
     }
-  | { type: "password_changed"; userId: string };
+  | { type: "password_changed"; userId: string }
+  // Récupération de compte, invitation, rappel d'adresse et verrouillage
+  // (pages publiques) : l'e-mail ou l'IP saisis, jamais un code ni un jeton.
+  | {
+      type: "recovery_requested";
+      email: string;
+      ip: string;
+      userId: string | null;
+    }
+  | {
+      type: "recovery_throttled";
+      email: string;
+      ip: string;
+      retryAfterMs: number;
+    }
+  | { type: "recovery_failed"; userId: string; ip: string; attempts: number }
+  | { type: "recovery_locked"; userId: string; ip: string }
+  | { type: "password_recovered"; userId: string; ip: string }
+  | { type: "account_locked_by_owner"; userId: string; ip: string }
+  | { type: "invitation_sent"; userId: string; targetId: string }
+  | { type: "invitation_accepted"; userId: string; ip: string }
+  | { type: "email_reminder_requested"; ip: string; userId: string | null }
+  | { type: "mail_failed"; kind: string };
 
 export function formatSecurityEvent(event: SecurityEvent, now: Date): string {
   return JSON.stringify({ ts: now.toISOString(), kind: "security", ...event });

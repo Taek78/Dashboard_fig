@@ -7,7 +7,7 @@ import { addDays } from "@/lib/days";
  * leur statut, depuis la liste des commandes (la section Livraisons a été
  * fondue dans Commandes le 2026-09-16 : elle en était une copie). Restent ici
  * le jour de Paris, les raccourcis des derniers jours, l'avancement segmenté
- * par statut (tableau de bord), le geste suivant et l'itinéraire. Testées
+ * par statut (tableau de bord) et l'itinéraire. Testées
  * dans test/domain/deliveries/rules.test.ts.
  */
 
@@ -117,30 +117,6 @@ export function tourProgress(orders: readonly Order[]): TourProgress {
 }
 
 /* ---------- Écran de terrain ---------- */
-
-/** Le geste naturel suivant en tournée, ou null quand la commande est terminée. */
-export function nextDeliveryStep(status: OrderStatus): OrderStatus | null {
-  switch (status) {
-    case "preparing":
-      return "delivering";
-    case "delivering":
-      return "delivered";
-    default:
-      return null;
-  }
-}
-
-/**
- * Libellé du bouton d'action pour le statut visé. « En préparation » n'est
- * jamais une cible (c'est l'état d'arrivée d'une commande) : son libellé ne
- * sert qu'à compléter le Record.
- */
-export const DELIVERY_STEP_LABELS: Record<OrderStatus, string> = {
-  preparing: "Remettre en préparation",
-  delivering: "Expédier la commande",
-  delivered: "Marquer comme livrée",
-  cancelled: "Annuler la commande",
-};
 
 /**
  * Lien d'itinéraire vers l'adresse (Google Maps, ouvre l'application sur

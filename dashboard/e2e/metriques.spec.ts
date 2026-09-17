@@ -76,7 +76,7 @@ test.describe("métriques", () => {
     ).not.toContainText("Réclamations");
   });
 
-  test("une plage libre sans commande le dit dans un bandeau bleu", async ({
+  test("une période personnalisée sans commande le dit dans un bandeau bleu", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.admin);

@@ -22,7 +22,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Mapper** (piste B3) : une fonction qui convertit une ligne de la base du client (ses noms de colonnes, ses unités) en type métier `Order`. C'est l'unique endroit où les deux vocabulaires se rencontrent.
 
-**Machine d'états** : la liste des passages autorisés entre statuts (`preparing → delivering`, jamais `delivered → preparing`). Écrite en liste blanche dans `ORDER_TRANSITIONS` : tout passage non listé est refusé. `canTransition(from, to)` la consulte, `allowedTransitions(from)` en tire les options du `<select>`.
+**Machine d'états** : autrefois la liste blanche des passages autorisés entre statuts (`ORDER_TRANSITIONS`). Depuis le 2026-09-17, plus de règle d'étape (voir « Changement de statut libre ») : `canTransition(from, to)` n'exclut que le statut courant et `allowedTransitions(from)` renvoie les trois autres. La règle reste dans `domain/orders/status.ts` pour pouvoir être resserrée sans toucher aux écrans.
 
 **Idempotent** : une action qu'on peut rejouer sans effet supplémentaire. Renvoyer « déjà à ce statut » au lieu d'une erreur rend le double clic inoffensif.
 
@@ -49,6 +49,20 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **`server-only`** : un import spécial que Next reconnaît. Si un composant `"use client"` importe un module qui le contient, le build échoue. Il empêche du code serveur (secrets, accès base) de partir dans le navigateur. Rien à installer.
 
 **Fail fast / échouer tôt** : préférer une panne visible immédiate (le serveur ne démarre pas, l'action lève) à un comportement silencieusement faux. Le stub de session qui plante en prod en est un exemple.
+
+**Jeton d'authentification** (`auth_tokens`, `domain/auth/tokens.ts`) : un secret à usage unique lié à un compte, dont la base ne garde que le HMAC (`src/lib/secrets.ts`, clé `AUTH_SECRET`). Trois sortes : le **code de récupération** (six chiffres, 5 minutes, 5 essais, une nouvelle demande annule le précédent), le **lien d'invitation** (48 heures, pour choisir son mot de passe : création d'un compte par l'administrateur, ou « Envoyer un lien » depuis Comptes) et le **lien « Ce n'était pas moi »** (24 heures, dans chaque mail de récupération : verrouille le compte, ferme ses sessions, prévient les administrateurs). Purgés un jour après expiration, à chaque émission.
+
+**Récupération de compte** (pages publiques sous `/connexion`) : « Mot de passe oublié » (code par e-mail), « Adresse e-mail oubliée » (rappel par le **nom du compte**, unique sans casse ni accent, index `users_name_normalized_idx`), invitation et verrouillage. Réponses identiques que le compte existe ou non ; quotas par sujet (e-mail ou nom) et par adresse IP dans `login_attempts` (`checkQuota`, `RECOVERY_*_POLICY`).
+
+**Contrôle de vie de la session** (`isSessionAlive`, callback `jwt` de `src/auth.ts`) : à chaque lecture du jeton, le compte est relu ; désactivé, verrouillé ou mot de passe changé depuis l'ouverture de la session (`sat`, `password_changed_at`, `revokeSessions`) → session refusée et cookie effacé. Le proxy laisse passer la suppression du cookie (`stripSessionCookies`).
+
+**Politique de mots de passe** (`domain/auth/password-policy.ts`) : 12 caractères au moins ; sous 16, trois types de caractères parmi minuscules, majuscules, chiffres, signes ; dès 16, une **phrase de passe** (quatre mots, espaces acceptés) sans autre contrainte ; jamais un mot courant (`common-passwords.ts`, racine sans chiffres ni signes de fin), ni le nom ou l'e-mail du compte, ni un motif répété, ni une suite de clavier ; pas d'expiration forcée. La **jauge** (`PasswordField`) l'applique à la frappe ; le serveur (`data/passwords.ts`) ajoute la vérification contre les fuites connues.
+
+**Have I Been Pwned (k-anonymity)** (`data/pwned-passwords.ts`) : service public qui répertorie les mots de passe apparus dans des fuites ; seuls les cinq premiers caractères du SHA-1 du mot de passe candidat sont envoyés, la comparaison se fait sur le serveur. En panne, le mot de passe est accepté en le signalant ; `PASSWORD_BREACH_CHECK=0` coupe l'appel (suite navigateur).
+
+**Brevo** (`data/mail.brevo.ts`) : fournisseur français d'envoi de mails transactionnels, appelé par son API HTTP avec `fetch` (clé `MAIL_API_KEY`, expéditeur `MAIL_FROM` validé chez Brevo). Le **transport « fichier »** (`data/mail.file.ts`, `MAIL_TRANSPORT=fichier`) écrit chaque mail en JSON dans `dashboard/.mail/` (développement) ou `test-results/mail` (Playwright, `e2e/mail.ts`). Contrat `MailSender`, façade `data/mail.ts` ; `trySendMail` journalise un échec (`mail_failed`) sans casser l'action.
+
+**`after()`** (`next/server`) : exécute une fonction APRÈS l'envoi de la réponse ; les mails partent ainsi sans allonger la réponse, qui ne révèle donc pas si un compte existe.
 
 ## Next.js et interface
 
@@ -176,7 +190,6 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Précondition d'écriture (verrouillage optimiste)** (concurrence) : l'écriture ne passe que si la donnée est encore celle que l'écran affichait (`WHERE status = $2`, `WHERE driver_id IS NOT DISTINCT FROM $2`). Sinon rien n'est écrit et l'utilisateur voit « modifié entre-temps ». Pas de verrou tenu pendant qu'on réfléchit : on vérifie au moment d'écrire. `expectedStaffId` est la précondition de l'affectation.
 
-
 **Énumération de comptes** (sécurité) : deviner quels e-mails existent en observant la réponse. Le message est identique dans les deux cas, et le temps aussi : un e-mail inconnu vérifie un hachage factice (`dummyPasswordHash`).
 
 **En-têtes de sécurité / CSP** (HTTP) : en-têtes envoyés avec chaque réponse pour brider le navigateur. La Content-Security-Policy dit d'où scripts, styles et images peuvent venir et interdit d'afficher le site dans un cadre (`frame-ancestors 'none'`, contre le détournement de clic). HSTS force le HTTPS. Posés dans `next.config.ts`.
@@ -303,7 +316,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Test de parité SQL** (tests) : exécuter une requête filtrée ou agrégée sur la base de test seedée et exiger exactement le résultat de la règle pure appliquée à toutes les commandes (`test/data/orders.db.test.ts`). Détecte qu'un filtre, un arrondi ou un seau de semaine ne dit plus la même chose que le domaine.
 
-**Expédiée** (commandes) : libellé du statut `delivering` : la commande a quitté l'atelier et est en cours de livraison. Parcours : en préparation → expédiée → livrée ; l'annulation n'est possible qu'en préparation.
+**Expédiée** (commandes) : libellé du statut `delivering` : la commande a quitté l'atelier et est en cours de livraison. Parcours nominal : en préparation → expédiée → livrée ; depuis le 2026-09-17, tout changement de statut est permis (voir « Changement de statut libre »).
 
 **Colonne générée (calculée)** (base) : une colonne que PostgreSQL calcule lui-même à chaque écriture de la ligne (`GENERATED ALWAYS AS (…) STORED`) ; personne ne l'écrit. `orders.search_text` contient la référence, la ville et le code postal déjà normalisés : la recherche n'a plus à les recalculer ligne par ligne.
 
@@ -333,10 +346,14 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Panneau de filtres** (toutes les recherches) : sous la barre de recherche, la surface teintée (`FilterTray`, utilitaire `surface-tray`) qui porte les filtres : en tête l'intitulé « Filtres » et, à droite, le lien « Réinitialiser » ; puis les champs, et en dernière ligne la zone de dates s'il y en a une. Les champs posés dessus reprennent la couleur de la carte. Décision du client, 2026-09-17.
 
-**Zone de dates** (commandes, messages, historiques des fiches, tableau de bord, métriques) : l'espace dédié aux deux champs « du / au » (`DateRangeFields`) : un en-tête (icône, intitulé, et à droite des raccourcis ou un lien), les deux champs à la hauteur des autres, chacun avec son préfixe visible « Du » / « Au », puis l'erreur ou la période affichée. Dernière ligne d'un panneau de filtres (variante « row ») ou seule sur sa propre surface (variante « zone », plage libre du tableau de bord et des métriques, historique d'un client).
+**Zone de dates** (commandes, messages, historiques des fiches, tableau de bord, métriques) : l'espace dédié aux deux champs « du / au » (`DateRangeFields`) : un en-tête (icône, intitulé, et à droite des raccourcis ou un lien), les deux champs à la hauteur des autres, chacun avec son préfixe visible « Du » / « Au », puis l'erreur ou la période affichée. Dernière ligne d'un panneau de filtres (variante « row ») ou seule sur sa propre surface (variante « zone », période personnalisée du tableau de bord et des métriques, historique d'un client).
 
 **Avancement des commandes listées** (commandes) : sous le compteur de `/commandes`, la barre segmentée par statut (`TourProgress`) de TOUTES les commandes qui passent la recherche et les filtres, pas seulement de la page affichée : le nombre par statut est compté par la base (`getOrderStatusCounts`, même WHERE que la liste). Sans filtre, elle dit ce qui reste à traiter sur tout l'historique ; avec un jour choisi, c'est la tournée. Sur le tableau de bord, sans commande, un état vide « Aucune commande » bien visible la remplace.
 
 **Scène de connexion** (connexion) : le décor animé de la page de connexion (`LoginScene`, CSS « Connexion » de `globals.css`) : balayage de dégradé, motif verger qui respire, orbes de lumière aux couleurs du thème, mot FIG en filigrane, particules, parallaxe au pointeur ; la carte de connexion en verre au centre. Aucun faux contenu, tout en tokens, immobile pour qui refuse le mouvement.
 
 **Type de commande** (commandes) : une commande est de type **particulier** (livrée chez la personne) ou **communauté** (commande GROUPÉE portée par une communauté). Déduit, jamais stocké (`orderKindOf` : une communauté portée = communauté). Pour une commande de communauté, le client affiché est la communauté, et dessous l'**interlocuteur** : la personne qui a commandé, garante, à qui tout est livré. Code couleur des tokens `--individual` et `--community` sur la bande de la carte, le badge et la pastille des tableaux. Filtre `?type=particulier|communaute` dans les commandes (commutateur coloré, `TypeSwitch`, partagé avec les Clients). Décision du client, 2026-09-17.
+
+**Période personnalisée** (tableau de bord, métriques) : le dernier choix de la liste « Période » (`CUSTOM_PERIOD`, `?periode=personnalisee`). Lui seul fait apparaître la zone de dates « du / au » : `PeriodChooser` (composant client) la monte dès le choix et la démonte pour toute période prédéfinie, si bien que des dates tapées puis abandonnées ne partent pas dans l'URL. Sans plage effective (rien saisi, ou dates inversées), la période prédéfinie de l'URL ou le défaut reste affichée, et la légende « Période affichée » sous le bouton « Afficher » le dit. Des dates dans l'URL ouvrent aussi la zone (anciens liens) ; `periodParams` rejoue le choix dans les liens HT / TTC. Décision du client, 2026-09-17.
+
+**Changement de statut libre** (commandes) : depuis le 2026-09-17, plus de règle d'étape entre les statuts. La liste déroulante du statut (`OrderStatusSelect`, sur les cartes et la fiche) propose toujours les quatre statuts et écrit dès le choix : livrée directement, retour en préparation, reprise d'une annulée. `canTransition` n'exclut que le statut courant, `allowedTransitions` renvoie les trois autres ; l'annulation exige toujours son motif, demandé avant « Confirmer l'annulation ». À côté de la liste, l'icône du statut choisi dans sa couleur (ambre en préparation, bleu expédiée, vert livrée, rouge annulée), la liste prenant la même couleur ; le libellé reste écrit. Chaque changement dépose la notification d'état pour le client qui l'a autorisée, retour en préparation compris, sauf si la case « Notifier le client » (cochée par défaut) a été décochée : rien n'est déposé, même avec l'autorisation. Sous la confirmation du changement, une seconde ligne dit « Client notifié » (badge de validation vert) ou « Client non notifié » (gris). La case se décoche d'elle-même dès que la commande est passée une fois par « livrée » (`wasDelivered`, relu dans l'historique avec la commande), et elle est désactivée avec le libellé « Notifications non autorisées par le client » quand le client n'a pas donné l'autorisation (`customer.notifyOrderStatus`, porté par la commande).
