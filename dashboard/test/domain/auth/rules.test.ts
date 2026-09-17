@@ -2,20 +2,26 @@ import { describe, expect, it } from "vitest";
 import {
   activeAdmins,
   countActiveAdmins,
+  fullName,
+  isLastActiveAdmin,
   isSessionAlive,
   sortUsers,
+  splitFullName,
   wouldRemoveLastAdmin,
 } from "@/domain/auth/rules";
 import type { ManagedUser } from "@/domain/auth/types";
 
 const u = (
   id: string,
-  name: string,
+  firstName: string,
+  lastName: string,
   role: ManagedUser["role"],
   active = true,
 ): ManagedUser => ({
   id,
-  name,
+  firstName,
+  lastName,
+  name: fullName({ firstName, lastName }),
   email: `${id}@fig.invalid`,
   role,
   active,
@@ -24,38 +30,70 @@ const u = (
 });
 
 const users = [
-  u("a", "Zoé", "admin"),
-  u("b", "Amel", "gestionnaire"),
-  u("c", "Bruno", "lecture", false),
-  u("d", "Élise", "admin", false),
+  u("a", "Zoé", "Martin", "admin"),
+  u("b", "Amel", "Benali", "gestionnaire"),
+  u("c", "Bruno", "Adam", "lecture", false),
+  u("d", "Élise", "Moreau", "admin", false),
 ];
 
-describe("sortUsers", () => {
-  it("met les actifs d'abord, puis l'ordre français des noms, sans muter", () => {
-    expect(sortUsers(users).map((x) => x.name)).toEqual([
-      "Amel",
-      "Zoé",
-      "Bruno",
-      "Élise",
-    ]);
-    expect(users[0]?.name).toBe("Zoé");
+describe("fullName / splitFullName", () => {
+  it("compose « Prénom Nom » sans espace superflu, prénom vide compris", () => {
+    expect(fullName({ firstName: "Zoé", lastName: "Martin" })).toBe(
+      "Zoé Martin",
+    );
+    expect(fullName({ firstName: "", lastName: "Martin" })).toBe("Martin");
+  });
+
+  it("découpe un nom d'amorçage : premier mot = prénom, le reste = nom ; un seul mot = nom seul", () => {
+    expect(splitFullName("Zaki Affane")).toEqual({
+      firstName: "Zaki",
+      lastName: "Affane",
+    });
+    expect(splitFullName("  Jean  Le Gall ")).toEqual({
+      firstName: "Jean",
+      lastName: "Le Gall",
+    });
+    expect(splitFullName("Administrateur")).toEqual({
+      firstName: "",
+      lastName: "Administrateur",
+    });
+    expect(splitFullName("   ")).toEqual({ firstName: "", lastName: "" });
   });
 });
 
-describe("countActiveAdmins / wouldRemoveLastAdmin", () => {
+describe("sortUsers", () => {
+  it("met les actifs d'abord, puis l'ordre français des noms puis des prénoms, sans muter", () => {
+    const withHomonym = [...users, u("e", "Anne", "Martin", "lecture")];
+    expect(sortUsers(withHomonym).map((x) => x.name)).toEqual([
+      "Amel Benali",
+      "Anne Martin",
+      "Zoé Martin",
+      "Bruno Adam",
+      "Élise Moreau",
+    ]);
+    expect(users[0]?.name).toBe("Zoé Martin");
+  });
+});
+
+describe("isLastActiveAdmin / wouldRemoveLastAdmin", () => {
   it("ne compte que les administrateurs actifs", () => {
     expect(countActiveAdmins(users)).toBe(1);
+    expect(isLastActiveAdmin(users, "a")).toBe(true);
+    expect(isLastActiveAdmin(users, "b")).toBe(false);
+    expect(isLastActiveAdmin(users, "d")).toBe(false);
+    expect(isLastActiveAdmin(users, "zzz")).toBe(false);
   });
 
   it("refuse de désactiver ou rétrograder le dernier admin actif", () => {
     expect(wouldRemoveLastAdmin(users, "a", { active: false })).toBe(true);
     expect(wouldRemoveLastAdmin(users, "a", { role: "lecture" })).toBe(true);
     expect(wouldRemoveLastAdmin(users, "a", { role: "admin" })).toBe(false);
-    expect(wouldRemoveLastAdmin(users, "a", { name: "Z" })).toBe(false);
+    expect(wouldRemoveLastAdmin(users, "a", { firstName: "Z" })).toBe(false);
   });
 
   it("laisse faire quand un autre admin actif existe, ou sur un non-admin", () => {
-    const two = [...users, u("e", "Nour", "admin")];
+    const two = [...users, u("e", "Nour", "Haddad", "admin")];
+    expect(isLastActiveAdmin(two, "a")).toBe(false);
     expect(wouldRemoveLastAdmin(two, "a", { active: false })).toBe(false);
     expect(wouldRemoveLastAdmin(users, "b", { active: false })).toBe(false);
     expect(wouldRemoveLastAdmin(users, "d", { active: false })).toBe(false);

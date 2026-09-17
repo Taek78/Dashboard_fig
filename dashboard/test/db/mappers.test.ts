@@ -403,7 +403,8 @@ describe("toEngagementPoint / toUserAccount", () => {
     const row = {
       id: "usr-1",
       email: "a@b.invalid",
-      name: "A",
+      firstName: "A",
+      lastName: "B",
       role: "admin" as const,
       passwordHash: "scrypt$x$y",
       active: true,
@@ -413,7 +414,9 @@ describe("toEngagementPoint / toUserAccount", () => {
     expect(toUserAccount(row)).toEqual({
       id: "usr-1",
       email: "a@b.invalid",
-      name: "A",
+      firstName: "A",
+      lastName: "B",
+      name: "A B",
       role: "admin",
       passwordHash: "scrypt$x$y",
       active: true,
@@ -425,7 +428,9 @@ describe("toEngagementPoint / toUserAccount", () => {
     expect(toManagedUser(row)).toEqual({
       id: "usr-1",
       email: "a@b.invalid",
-      name: "A",
+      firstName: "A",
+      lastName: "B",
+      name: "A B",
       role: "admin",
       active: true,
       hasPassword: true,

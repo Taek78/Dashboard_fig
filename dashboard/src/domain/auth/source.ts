@@ -9,16 +9,19 @@ import type {
 /*
  * CONTRAT des comptes du back-office, implémenté par la table `users`
  * (src/data/users.db.ts). Types seulement.
- * - findUserByEmail / findUserById / findUserByName renvoient le compte AVEC
- *   son hachage, pour la vérification d'un mot de passe seulement ;
- *   findUserByEmail et findUserByName ignorent les comptes désactivés (ils ne
- *   se connectent plus). findUserByName compare sans casse ni accent
- *   (fig_normalize) : le nom sert au rappel de l'adresse e-mail, il est unique.
- * - listUsers / getUser / createUser / updateUser / setPassword servent l'écran
- *   /comptes et n'exposent jamais le hachage.
+ * - findUserByEmail / findUserById / findUsersByLastName renvoient le compte
+ *   AVEC son hachage, pour la vérification d'un mot de passe seulement ;
+ *   findUserByEmail et findUsersByLastName ignorent les comptes désactivés
+ *   (ils ne se connectent plus). findUsersByLastName compare le NOM seul,
+ *   sans casse ni accent (fig_normalize) : il sert au rappel de l'adresse
+ *   e-mail, et deux homonymes reçoivent chacun le leur.
+ * - listUsers / getUser / createUser / updateUser / deleteUser / setPassword
+ *   servent l'écran /comptes et n'exposent jamais le hachage ; l'e-mail ne
+ *   se modifie pas (aucun patch ne le porte) ; deleteUser est définitif
+ *   (jetons en cascade), vrai si une ligne a été supprimée.
  * - createUser renvoie "email_taken" si l'e-mail existe déjà (sans casse),
- *   "name_taken" si le nom existe déjà (sans casse ni accent) ; updateUser
- *   renvoie "name_taken" dans le même cas.
+ *   "name_taken" si le couple prénom + nom existe déjà (sans casse ni
+ *   accent) ; updateUser renvoie "name_taken" dans le même cas.
  * - setPassword pose aussi passwordChangedAt = changedAt (horloge de
  *   l'application, la même que celle des sessions) ; revokeSessions ne pose
  *   que cet instant, sans toucher au mot de passe (verrouillage, désactivation).
@@ -26,7 +29,7 @@ import type {
 export type UsersSource = {
   findUserByEmail(email: string): Promise<UserAccount | null>;
   findUserById(id: string): Promise<UserAccount | null>;
-  findUserByName(name: string): Promise<UserAccount | null>;
+  findUsersByLastName(lastName: string): Promise<UserAccount[]>;
   listUsers(): Promise<ManagedUser[]>;
   getUser(id: string): Promise<ManagedUser | null>;
   createUser(
@@ -36,6 +39,7 @@ export type UsersSource = {
     id: string,
     patch: UserPatch,
   ): Promise<ManagedUser | null | "name_taken">;
+  deleteUser(id: string): Promise<boolean>;
   setPassword(
     id: string,
     passwordHash: string,

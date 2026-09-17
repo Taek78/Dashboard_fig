@@ -6,11 +6,32 @@ import type { ManagedUser, UserAccount, UserPatch } from "@/domain/auth/types";
  * relu la liste des comptes : le formulaire ne décide de rien.
  */
 
-/** Copie triée par nom (ordre français), les désactivés en fin de liste. */
+/** « Prénom Nom » affiché partout (session, mails, historique), sans espace superflu. */
+export function fullName(u: { firstName: string; lastName: string }): string {
+  return `${u.firstName} ${u.lastName}`.trim();
+}
+
+/**
+ * Découpe un nom complet d'amorçage (AUTH_BOOTSTRAP_NAME, comptes de test) :
+ * premier mot = prénom, le reste = nom ; un seul mot = nom seul, prénom vide.
+ * La migration 0014 applique la même règle aux comptes existants.
+ */
+export function splitFullName(name: string): {
+  firstName: string;
+  lastName: string;
+} {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { firstName: "", lastName: parts[0] ?? "" };
+  return { firstName: parts[0]!, lastName: parts.slice(1).join(" ") };
+}
+
+/** Copie triée par nom puis prénom (ordre français), les désactivés en fin de liste. */
 export function sortUsers(users: readonly ManagedUser[]): ManagedUser[] {
   return users.toSorted(
     (a, b) =>
-      Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, "fr"),
+      Number(b.active) - Number(a.active) ||
+      a.lastName.localeCompare(b.lastName, "fr") ||
+      a.firstName.localeCompare(b.firstName, "fr"),
   );
 }
 
@@ -40,19 +61,31 @@ export function isSessionAlive(
 }
 
 /**
+ * Vrai si `targetId` est le DERNIER administrateur actif : il ne peut être ni
+ * désactivé, ni rétrogradé, ni supprimé, sinon plus personne ne pourrait gérer
+ * les comptes. D'autres administrateurs peuvent être créés, puis désactivés ou
+ * supprimés tant qu'il en reste un (décision du client, 2026-09-17).
+ */
+export function isLastActiveAdmin(
+  users: readonly ManagedUser[],
+  targetId: string,
+): boolean {
+  const target = users.find((u) => u.id === targetId);
+  if (!target || !target.active || target.role !== "admin") return false;
+  return countActiveAdmins(users) <= 1;
+}
+
+/**
  * Vrai si appliquer `patch` à `targetId` laisserait le back-office sans aucun
- * administrateur actif : désactiver ou rétrograder le dernier admin est refusé,
- * sinon plus personne ne pourrait gérer les comptes.
+ * administrateur actif : désactiver ou rétrograder le dernier admin est refusé.
  */
 export function wouldRemoveLastAdmin(
   users: readonly ManagedUser[],
   targetId: string,
   patch: UserPatch,
 ): boolean {
-  const target = users.find((u) => u.id === targetId);
-  if (!target || !target.active || target.role !== "admin") return false;
   const losesAdmin =
     patch.active === false ||
     (patch.role !== undefined && patch.role !== "admin");
-  return losesAdmin && countActiveAdmins(users) <= 1;
+  return losesAdmin && isLastActiveAdmin(users, targetId);
 }

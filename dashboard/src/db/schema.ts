@@ -145,8 +145,9 @@ export const users = pgTable(
   {
     id: text("id").primaryKey(),
     email: text("email").notNull(),
-    /** Unique sans casse ni accent : il sert au rappel de l'adresse e-mail. */
-    name: text("name").notNull(),
+    /** Prénom et nom : le couple est unique sans casse ni accent ; le nom seul sert au rappel de l'adresse e-mail. */
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
     role: userRoleEnum("role").notNull(),
     /** Null tant que l'invitation n'a pas été acceptée : pas de connexion possible. */
     passwordHash: text("password_hash"),
@@ -157,7 +158,12 @@ export const users = pgTable(
   },
   (t) => [
     uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`),
-    uniqueIndex("users_name_normalized_idx").on(sql`fig_normalize(${t.name})`),
+    uniqueIndex("users_full_name_normalized_idx").on(
+      sql`fig_normalize(btrim(${t.firstName} || ' ' || ${t.lastName}))`,
+    ),
+    index("users_last_name_normalized_idx").on(
+      sql`fig_normalize(${t.lastName})`,
+    ),
   ],
 );
 

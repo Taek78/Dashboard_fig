@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   changeOwnPasswordSchema,
   createUserSchema,
+  deleteUserSchema,
   emailReminderSchema,
   invitationSchema,
   lockAccountSchema,
@@ -26,32 +27,46 @@ describe("loginSchema", () => {
   });
 });
 
-describe("createUserSchema", () => {
+describe("createUserSchema / deleteUserSchema", () => {
   const valid = {
     email: "Nour@FIG.invalid",
-    name: " Nour Benali ",
+    firstName: " Nour ",
+    lastName: " Benali ",
     role: "gestionnaire",
   };
   it("accepte une entrée valide et normalise ; plus de mot de passe (invitation)", () => {
     expect(createUserSchema.parse(valid)).toEqual({
       email: "nour@fig.invalid",
-      name: "Nour Benali",
+      firstName: "Nour",
+      lastName: "Benali",
       role: "gestionnaire",
     });
     expect(
       createUserSchema.parse({ ...valid, password: "ignoré" }),
     ).not.toHaveProperty("password");
   });
-  it("refuse un rôle inconnu, un nom vide ou d'une lettre", () => {
+  it("refuse un rôle inconnu, un prénom vide, un nom vide ou d'une lettre", () => {
     expect(createUserSchema.safeParse({ ...valid, role: "dieu" }).success).toBe(
       false,
     );
-    expect(createUserSchema.safeParse({ ...valid, name: "  " }).success).toBe(
-      false,
-    );
-    expect(createUserSchema.safeParse({ ...valid, name: "N" }).success).toBe(
-      false,
-    );
+    expect(
+      createUserSchema.safeParse({ ...valid, firstName: "  " }).success,
+    ).toBe(false);
+    expect(
+      createUserSchema.safeParse({ ...valid, lastName: "  " }).success,
+    ).toBe(false);
+    expect(
+      createUserSchema.safeParse({ ...valid, lastName: "N" }).success,
+    ).toBe(false);
+  });
+  it("deleteUserSchema exige le mot SUPPRIMER, en toute casse", () => {
+    expect(
+      deleteUserSchema.parse({ userId: " usr-1 ", confirm: " supprimer " }),
+    ).toEqual({ userId: "usr-1", confirm: "SUPPRIMER" });
+    expect(
+      deleteUserSchema.safeParse({ userId: "usr-1", confirm: "oui" }).success,
+    ).toBe(false);
+    expect(deleteUserSchema.safeParse({ userId: "usr-1" }).success).toBe(false);
   });
 });
 
@@ -91,11 +106,16 @@ describe("récupération, invitation, rappel, verrouillage", () => {
     ).toBe(false);
   });
 
-  it("emailReminderSchema borne le nom", () => {
-    expect(emailReminderSchema.parse({ name: " Zaki Affane " })).toEqual({
-      name: "Zaki Affane",
+  it("emailReminderSchema ne prend que le nom, borné", () => {
+    expect(emailReminderSchema.parse({ lastName: " Affane " })).toEqual({
+      lastName: "Affane",
     });
-    expect(emailReminderSchema.safeParse({ name: "Z" }).success).toBe(false);
+    expect(emailReminderSchema.safeParse({ lastName: "A" }).success).toBe(
+      false,
+    );
+    expect(emailReminderSchema.safeParse({ name: "Zaki Affane" }).success).toBe(
+      false,
+    );
   });
 
   it("invitationSchema et lockAccountSchema bornent le jeton", () => {
@@ -128,14 +148,21 @@ describe("updateUserSchema / setUserActiveSchema / resetPasswordSchema", () => {
     expect(
       updateUserSchema.parse({
         userId: "usr-1",
-        name: "Nour",
+        firstName: "Nour",
+        lastName: "Benali",
         role: "lecture",
       }),
-    ).toEqual({ userId: "usr-1", name: "Nour", role: "lecture" });
+    ).toEqual({
+      userId: "usr-1",
+      firstName: "Nour",
+      lastName: "Benali",
+      role: "lecture",
+    });
     expect(
       updateUserSchema.safeParse({
         userId: "usr-1",
-        name: "N",
+        firstName: "Nour",
+        lastName: "B",
         role: "lecture",
       }).success,
     ).toBe(false);

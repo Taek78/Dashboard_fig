@@ -7,17 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/data/session";
 import { listUsers } from "@/data/users";
 import { canManageUsers, ROLE_LABELS } from "@/domain/auth/roles";
+import { isLastActiveAdmin } from "@/domain/auth/rules";
 import { formatDateFr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /*
  * Gestion des comptes, administrateur seulement : le proxy refuse
- * déjà les autres rôles, la page revérifie. Création en tête (sans mot de
- * passe : invitation par e-mail), puis la liste (actifs d'abord) avec, par
- * compte, nom et rôle modifiables, activation, lien de mot de passe et
- * dépannage. Un compte qui n'a pas encore accepté son invitation porte le
- * badge « Invitation en attente ». Le compte courant est signalé et ne peut
- * pas se désactiver.
+ * déjà les autres rôles, la page revérifie. Création en tête (prénom, nom,
+ * e-mail, rôle ; sans mot de passe : invitation par e-mail), puis la liste
+ * (actifs d'abord) avec, par compte, prénom, nom et rôle modifiables, l'e-mail
+ * en lecture seule, activation, lien de mot de passe, dépannage et
+ * suppression confirmée. Un compte qui n'a pas encore accepté son invitation
+ * porte le badge « Invitation en attente ». Le compte courant est signalé et
+ * ne peut ni se désactiver ni se supprimer ; le dernier administrateur actif
+ * non plus (isLastActiveAdmin, règle pure relue ici et par les actions).
  */
 export const metadata: Metadata = { title: "Comptes" };
 
@@ -64,6 +67,7 @@ export default async function ComptesPage() {
         <ul className="flex flex-col gap-4">
           {accounts.map((account) => {
             const isSelf = account.id === user.id;
+            const lastAdmin = isLastActiveAdmin(accounts, account.id);
             return (
               <li key={account.id}>
                 <article
@@ -92,11 +96,14 @@ export default async function ComptesPage() {
                       <Badge variant="warning">Invitation en attente</Badge>
                     ) : null}
                     <span className="text-muted-foreground text-sm">
-                      {account.email} · créé le{" "}
-                      {formatDateFr(account.createdAt)}
+                      créé le {formatDateFr(account.createdAt)}
                     </span>
                   </div>
-                  <AccountEditor account={account} isSelf={isSelf} />
+                  <AccountEditor
+                    account={account}
+                    isSelf={isSelf}
+                    lastAdmin={lastAdmin}
+                  />
                 </article>
               </li>
             );

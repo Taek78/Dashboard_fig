@@ -18,9 +18,11 @@ import { idleActionResult } from "@/lib/action-result";
 /*
  * Création d'un compte par l'administrateur (client : useActionState), SANS
  * mot de passe : la personne reçoit un lien d'invitation (48 h) et choisit le
- * sien. Le nom est unique et sert au rappel de l'adresse e-mail (« Adresse
- * e-mail oubliée ? » sur la page de connexion) : prénom et nom, tels que la
- * personne les donnera. Le formulaire est vidé après succès.
+ * sien. Quatre champs de même hauteur sur une grille (deux colonnes dès @2xl,
+ * quatre dès @4xl), aucune aide sous un champ (elles désalignaient la ligne) :
+ * une seule phrase sous la grille. Prénom et nom sont uniques ensemble ; le
+ * nom seul sert au rappel de l'adresse (« Adresse e-mail oubliée ? »).
+ * Le formulaire est vidé après succès.
  */
 export function AccountCreateForm() {
   const [result, formAction, pending] = useActionState(
@@ -35,23 +37,27 @@ export function AccountCreateForm() {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      <div className="grid gap-4 @2xl/main:grid-cols-3">
+      <div className="grid gap-4 @2xl/main:grid-cols-2 @4xl/main:grid-cols-4">
         <div className="grid gap-1.5">
-          <Label htmlFor="new-name">Nom</Label>
+          <Label htmlFor="new-first-name">Prénom</Label>
           <Input
-            id="new-name"
-            name="name"
+            id="new-first-name"
+            name="firstName"
+            autoComplete="off"
+            required
+            maxLength={80}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="new-last-name">Nom</Label>
+          <Input
+            id="new-last-name"
+            name="lastName"
             autoComplete="off"
             required
             minLength={2}
             maxLength={80}
-            placeholder="Prénom Nom"
-            aria-describedby="new-name-help"
           />
-          <p id="new-name-help" className="text-muted-foreground text-xs">
-            Prénom et nom, uniques : la personne les saisira pour retrouver son
-            adresse de connexion.
-          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-email">E-mail</Label>
@@ -62,12 +68,7 @@ export function AccountCreateForm() {
             autoComplete="off"
             required
             maxLength={254}
-            aria-describedby="new-email-help"
           />
-          <p id="new-email-help" className="text-muted-foreground text-xs">
-            Reçoit le lien pour choisir son mot de passe, valable{" "}
-            {AUTH_TOKEN_RULES.invitation.validity}.
-          </p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-role">Rôle</Label>
@@ -85,6 +86,11 @@ export function AccountCreateForm() {
           </NativeSelect>
         </div>
       </div>
+      <p className="text-muted-foreground text-xs">
+        La personne reçoit un lien pour choisir son mot de passe, valable{" "}
+        {AUTH_TOKEN_RULES.invitation.validity} ; son nom lui servira à retrouver
+        son adresse de connexion. L&apos;e-mail ne se modifie plus ensuite.
+      </p>
       <div className="flex flex-col gap-3 @xl/main:flex-row @xl/main:items-center">
         <Button
           type="submit"

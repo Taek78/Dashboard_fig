@@ -9,6 +9,7 @@ import { notificationsFixtures } from "@/domain/notifications/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { productsFixtures } from "@/domain/products/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
+import { splitFullName } from "@/domain/auth/rules";
 import { hashPassword } from "@/lib/password";
 
 /*
@@ -22,6 +23,7 @@ import { hashPassword } from "@/lib/password";
  * du même état. Refuse un hôte distant (assertLocalDatabase) : ce code n'a rien
  * à faire sur une base partagée. Hors Next : aucun module server-only.
  */
+/** `name` = « Prénom Nom » : le premier mot devient le prénom, le reste le nom (splitFullName). */
 export type SeedAccount = { email: string; password: string; name: string };
 export type SeedAccounts = { admin: SeedAccount; manager?: SeedAccount };
 export type SeedDb = PostgresJsDatabase<typeof schema>;
@@ -58,7 +60,7 @@ export async function seedDatabase(
     {
       id: "usr-0001",
       email: admin.email,
-      name: admin.name,
+      ...splitFullName(admin.name),
       role: "admin",
       passwordHash: await hashPassword(admin.password),
     },
@@ -67,7 +69,7 @@ export async function seedDatabase(
     accounts.push({
       id: "usr-0002",
       email: manager.email,
-      name: manager.name,
+      ...splitFullName(manager.name),
       role: "gestionnaire",
       passwordHash: await hashPassword(manager.password),
     });

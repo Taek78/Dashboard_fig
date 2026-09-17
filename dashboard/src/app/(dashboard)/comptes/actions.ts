@@ -9,6 +9,7 @@ import { logSecurity } from "@/data/security-log";
 import { getCurrentUser, reopenSession } from "@/data/session";
 import {
   createUser,
+  deleteUser,
   getUser,
   listUsers,
   revokeSessions,
@@ -18,9 +19,10 @@ import {
 import { invitationMail } from "@/domain/auth/mails";
 import { PASSWORD_PROBLEM_MESSAGES } from "@/domain/auth/password-policy";
 import { canManageUsers } from "@/domain/auth/roles";
-import { wouldRemoveLastAdmin } from "@/domain/auth/rules";
+import { isLastActiveAdmin, wouldRemoveLastAdmin } from "@/domain/auth/rules";
 import {
   createUserSchema,
+  deleteUserSchema,
   PASSWORD_MIN_LENGTH,
   resetPasswordSchema,
   sendPasswordLinkSchema,
@@ -28,7 +30,11 @@ import {
   updateUserSchema,
 } from "@/domain/auth/schemas";
 import { AUTH_TOKEN_RULES, tokenExpiresAt } from "@/domain/auth/tokens";
-import type { CurrentUser, ManagedUser } from "@/domain/auth/types";
+import {
+  ACCOUNT_DELETE_CONFIRM_WORD,
+  type CurrentUser,
+  type ManagedUser,
+} from "@/domain/auth/types";
 import type { ActionResult } from "@/lib/action-result";
 import { appUrl } from "@/lib/app-url";
 import { getEnv } from "@/lib/env";
@@ -38,9 +44,9 @@ import { generateLinkToken, hashSecret } from "@/lib/secrets";
 /*
  * Server Actions de la gestion des comptes, réservées à
  * l'administrateur. Même discipline : session → rôle → zod → relecture →
- * règles (jamais se désactiver soi-même, jamais retirer le dernier admin) →
- * écriture → journal → revalidation. Les mots de passe sont hachés ici et
- * n'apparaissent dans aucun message ni journal.
+ * règles (jamais se désactiver ni se supprimer soi-même, jamais toucher au
+ * dernier administrateur actif) → écriture → journal → revalidation. Les mots
+ * de passe sont hachés ici et n'apparaissent dans aucun message ni journal.
  *
  * Depuis le 2026-09-17, un compte se crée SANS mot de passe : la personne le
  * choisit par un lien d'invitation (48 h, une seule fois) envoyé après la
@@ -49,18 +55,23 @@ import { generateLinkToken, hashSecret } from "@/lib/secrets";
  * le dépannage quand le mail ne passe pas : il applique la même politique
  * (règles pures puis fuites connues). Désactiver un compte ferme ses sessions
  * sur-le-champ ; changer un mot de passe aussi (le sien est rouvert).
+ * Un compte porte un prénom et un nom (le nom seul sert au rappel de
+ * l'adresse) ; son e-mail se lit mais ne se modifie pas. Supprimer un compte
+ * (mot SUPPRIMER) est définitif : ses jetons partent en cascade, ses sessions
+ * tombent à la requête suivante, l'historique des commandes garde le nom écrit.
  */
 const MESSAGES = {
   forbidden: "Seul un administrateur peut gérer les comptes.",
   invalid:
-    "Vérifiez la saisie : e-mail valide, nom (2 caractères au moins), rôle.",
+    "Vérifiez la saisie : prénom, nom (2 caractères au moins), e-mail valide, rôle.",
   invalidPassword: `Vérifiez la saisie : mot de passe de ${PASSWORD_MIN_LENGTH} caractères au moins.`,
+  confirm: `Tapez ${ACCOUNT_DELETE_CONFIRM_WORD} pour confirmer la suppression.`,
   emailTaken: "Un compte existe déjà avec cet e-mail.",
-  nameTaken:
-    "Un compte porte déjà ce nom. Le nom sert au rappel de l'adresse e-mail : il doit être unique.",
+  nameTaken: "Un compte porte déjà ce prénom et ce nom.",
   notFound: "Ce compte n'existe plus.",
   inactive: "Ce compte est désactivé : réactivez-le avant d'envoyer un lien.",
   self: "Vous ne pouvez pas désactiver votre propre compte.",
+  selfDelete: "Vous ne pouvez pas supprimer votre propre compte.",
   lastAdmin:
     "Impossible : ce compte est le dernier administrateur actif du back-office.",
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
@@ -109,7 +120,8 @@ export async function createAccount(
   try {
     const created = await createUser({
       email: parsed.data.email,
-      name: parsed.data.name,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
       role: parsed.data.role,
       passwordHash: null,
     });
@@ -191,7 +203,7 @@ export async function updateAccount(
   }
   const parsed = updateUserSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { status: "error", message: MESSAGES.invalid };
-  const { userId, name, role } = parsed.data;
+  const { userId, firstName, lastName, role } = parsed.data;
 
   try {
     const users = await listUsers();
@@ -201,7 +213,7 @@ export async function updateAccount(
     if (wouldRemoveLastAdmin(users, userId, { role })) {
       return { status: "error", message: MESSAGES.lastAdmin };
     }
-    const updated = await updateUser(userId, { name, role });
+    const updated = await updateUser(userId, { firstName, lastName, role });
     if (updated === "name_taken") {
       return { status: "error", message: MESSAGES.nameTaken };
     }
@@ -275,6 +287,51 @@ export async function setAccountActive(
   } catch (error) {
     console.error(
       "[setAccountActive]",
+      { userId: user.id, targetId: userId },
+      error,
+    );
+    return { status: "error", message: MESSAGES.failure };
+  }
+}
+
+export async function deleteAccount(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canManageUsers(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "deleteAccount",
+    });
+    return { status: "error", message: MESSAGES.forbidden };
+  }
+  const parsed = deleteUserSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: MESSAGES.confirm };
+  const { userId } = parsed.data;
+  if (userId === user.id) {
+    return { status: "error", message: MESSAGES.selfDelete };
+  }
+
+  try {
+    const users = await listUsers();
+    const target = users.find((u) => u.id === userId);
+    if (!target) return { status: "error", message: MESSAGES.notFound };
+    if (isLastActiveAdmin(users, userId)) {
+      return { status: "error", message: MESSAGES.lastAdmin };
+    }
+    const deleted = await deleteUser(userId);
+    if (!deleted) return { status: "error", message: MESSAGES.notFound };
+    logSecurity({ type: "account_deleted", userId: user.id, targetId: userId });
+    revalidatePath("/comptes", "layout");
+    return {
+      status: "success",
+      message: `Compte « ${target.name} » supprimé.`,
+    };
+  } catch (error) {
+    console.error(
+      "[deleteAccount]",
       { userId: user.id, targetId: userId },
       error,
     );

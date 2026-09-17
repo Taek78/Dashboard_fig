@@ -45,6 +45,7 @@ export type SecurityEvent =
   | { type: "account_updated"; userId: string; targetId: string; role: string }
   | { type: "account_deactivated"; userId: string; targetId: string }
   | { type: "account_reactivated"; userId: string; targetId: string }
+  | { type: "account_deleted"; userId: string; targetId: string }
   | { type: "password_reset"; userId: string; targetId: string }
   | { type: "customer_exported"; userId: string; customerId: string }
   | { type: "customer_anonymized"; userId: string; customerId: string }

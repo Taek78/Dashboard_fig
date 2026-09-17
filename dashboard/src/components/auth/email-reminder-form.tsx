@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { idleActionResult } from "@/lib/action-result";
 
-/* « Adresse e-mail oubliée » : le nom du compte ; la réponse est la même que le nom existe ou non. */
+/* « Adresse e-mail oubliée » : le nom seul (pas le prénom) ; la réponse est la même que le nom existe ou non. */
 export function EmailReminderForm() {
   const [result, formAction, pending] = useActionState(
     requestEmailReminder,
@@ -19,15 +19,15 @@ export function EmailReminderForm() {
   return (
     <form action={formAction} className="login-stagger flex flex-col gap-4">
       <div className="grid gap-1.5">
-        <Label htmlFor="name">Nom du compte</Label>
+        <Label htmlFor="lastName">Nom</Label>
         <Input
-          id="name"
-          name="name"
-          autoComplete="name"
+          id="lastName"
+          name="lastName"
+          autoComplete="family-name"
           required
           minLength={2}
           maxLength={80}
-          placeholder="Prénom Nom"
+          placeholder="Votre nom de famille"
           autoFocus
         />
       </div>

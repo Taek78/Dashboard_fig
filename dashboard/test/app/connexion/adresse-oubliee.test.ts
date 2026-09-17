@@ -50,9 +50,9 @@ const { idleActionResult } = await import("@/lib/action-result");
 const SENT =
   "Si un compte actif porte ce nom, un rappel vient d'être envoyé à son adresse e-mail.";
 
-function remind(name: string) {
+function remind(lastName: string) {
   const data = new FormData();
-  data.append("name", name);
+  data.append("lastName", lastName);
   return requestEmailReminder(idleActionResult, data);
 }
 const flush = () => Promise.all(hoisted.jobs.splice(0));
@@ -66,24 +66,35 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("requestEmailReminder", () => {
-  it("envoie le rappel à l'adresse du compte qui porte ce nom, sans casse ni accent", async () => {
-    expect(await remind("gestión e2e")).toEqual({
+  it("envoie à chaque compte actif qui porte ce NOM son propre rappel, sans casse ni accent (homonymes compris)", async () => {
+    expect(await remind("é2e")).toEqual({
       status: "success",
       message: SENT,
     });
     await flush();
-    expect(hoisted.mails).toEqual([
-      expect.objectContaining({
-        kind: "email_reminder",
-        to: TEST_ACCOUNTS.manager.email,
-      }),
-    ]);
-    expect(hoisted.mails[0]?.text).toContain(TEST_ACCOUNTS.manager.email);
+    expect(hoisted.mails.map((m) => m.to).toSorted()).toEqual(
+      [TEST_ACCOUNTS.admin.email, TEST_ACCOUNTS.manager.email].toSorted(),
+    );
+    for (const mail of hoisted.mails) {
+      expect(mail.kind).toBe("email_reminder");
+      // Chaque rappel ne cite que l'adresse qui le reçoit.
+      expect(mail.text).toContain(mail.to);
+    }
     expect(hoisted.logged).toContainEqual({
       type: "email_reminder_requested",
       ip: "203.0.113.9",
       userId: "usr-0002",
     });
+    expect(hoisted.logged).toContainEqual({
+      type: "email_reminder_requested",
+      ip: "203.0.113.9",
+      userId: "usr-0001",
+    });
+    // Le prénom seul ne suffit pas.
+    hoisted.mails.length = 0;
+    expect((await remind("Gestion")).status).toBe("success");
+    await flush();
+    expect(hoisted.mails).toEqual([]);
   });
 
   it("un nom inconnu reçoit la même réponse, sans mail ; un nom trop court est refusé", async () => {
@@ -104,14 +115,15 @@ describe("requestEmailReminder", () => {
 
   it("limite à trois demandes par quart d'heure pour un même nom", async () => {
     for (let i = 0; i < 3; i++) {
-      expect((await remind("Gestion E2E")).status).toBe("success");
+      expect((await remind("E2E")).status).toBe("success");
     }
-    const fourth = await remind("GESTION E2E");
+    const fourth = await remind("e2e");
     expect(fourth.status).toBe("error");
     if (fourth.status === "error") {
       expect(fourth.message).toMatch(/Trop de demandes/);
     }
     await flush();
-    expect(hoisted.mails).toHaveLength(3);
+    // Deux comptes portent ce nom : deux rappels par demande acceptée.
+    expect(hoisted.mails).toHaveLength(6);
   });
 });

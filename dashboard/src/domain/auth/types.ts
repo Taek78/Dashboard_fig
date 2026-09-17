@@ -3,6 +3,7 @@ import type { Role } from "@/domain/auth/roles";
 /*
  * Utilisateur de la session courante : ce que verifySession() renvoie et ce que
  * toutes les Server Actions consomment (identité et rôle, rien d'autre).
+ * `name` est l'affichage « Prénom Nom ».
  */
 export type CurrentUser = { id: string; name: string; role: Role };
 
@@ -10,6 +11,9 @@ export type CurrentUser = { id: string; name: string; role: Role };
 export type UserAccount = {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  /** « Prénom Nom », dérivé par le mapper (fullName) : affiché partout, jamais stocké. */
   name: string;
   role: Role;
   /**
@@ -29,10 +33,14 @@ export type UserAccount = {
 /*
  * Gestion des comptes : ce que l'écran /comptes manipule. Jamais le
  * hachage : il ne sort de la source que pour la vérification d'un mot de passe.
+ * L'e-mail se lit mais ne se modifie pas (aucun patch ne le porte).
  */
 export type ManagedUser = {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  /** « Prénom Nom », dérivé. */
   name: string;
   role: Role;
   /** Un compte désactivé ne peut plus se connecter ; ses traces restent. */
@@ -49,17 +57,22 @@ export type ManagedUser = {
  */
 export type NewUser = {
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   role: Role;
   passwordHash: string | null;
 };
 
-/** Modification partielle : nom, rôle, activation. */
+/** Modification partielle : prénom, nom, rôle, activation (jamais l'e-mail). */
 export type UserPatch = {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   role?: Role;
   active?: boolean;
 };
+
+/** Mot à taper pour supprimer un compte (exigé par l'écran et par zod). */
+export const ACCOUNT_DELETE_CONFIRM_WORD = "SUPPRIMER";
 
 /** Bornes d'un mot de passe (lues par les formulaires, la politique et zod). */
 export const PASSWORD_MIN_LENGTH = 12;

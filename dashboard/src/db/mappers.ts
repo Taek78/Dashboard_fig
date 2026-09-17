@@ -20,6 +20,7 @@ import type {
   ArticleIllustration,
 } from "@/domain/articles/category";
 import type { Article, ArticleInput } from "@/domain/articles/types";
+import { fullName } from "@/domain/auth/rules";
 import type { AuthToken } from "@/domain/auth/tokens";
 import type { ManagedUser, UserAccount } from "@/domain/auth/types";
 import type { Community, CommunityRef } from "@/domain/communities/types";
@@ -498,7 +499,9 @@ export function toManagedUser(row: UserRow): ManagedUser {
   return {
     id: row.id,
     email: row.email,
-    name: row.name,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    name: fullName(row),
     role: row.role,
     active: row.active,
     hasPassword: row.passwordHash !== null,
@@ -510,7 +513,9 @@ export function toUserAccount(row: UserRow): UserAccount {
   return {
     id: row.id,
     email: row.email,
-    name: row.name,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    name: fullName(row),
     role: row.role,
     passwordHash: row.passwordHash,
     active: row.active,

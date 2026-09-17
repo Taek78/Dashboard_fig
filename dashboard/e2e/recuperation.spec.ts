@@ -17,6 +17,8 @@ test.describe("récupération de compte", () => {
   const stamp = Date.now();
   const account = {
     email: `e2e-recup-${stamp}@fig-demo.invalid`,
+    firstName: "Récup",
+    lastName: `E2E ${stamp % 10_000}`,
     name: `Récup E2E ${stamp % 10_000}`,
   };
   const firstPassword = "Carotte violette du matin";
@@ -29,7 +31,11 @@ test.describe("récupération de compte", () => {
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/comptes");
     const since = new Date().toISOString();
-    await page.getByLabel("Nom").first().fill(account.name);
+    await page.getByLabel("Prénom").first().fill(account.firstName);
+    await page
+      .getByLabel("Nom", { exact: true })
+      .first()
+      .fill(account.lastName);
     await page.getByLabel("E-mail").first().fill(account.email);
     await page.getByLabel("Rôle").first().selectOption("lecture");
     await page.getByRole("button", { name: /Créer le compte/ }).click();
@@ -137,7 +143,8 @@ test.describe("récupération de compte", () => {
     await page.getByRole("link", { name: "Adresse e-mail oubliée ?" }).click();
     await expect(page).toHaveURL(/\/connexion\/adresse-oubliee/);
     const since = new Date().toISOString();
-    await page.getByLabel("Nom du compte").fill(account.name.toUpperCase());
+    // Le nom seul, en majuscules : sans casse ni accent.
+    await page.getByLabel("Nom").fill(account.lastName.toUpperCase());
     await page.getByRole("button", { name: "Envoyer le rappel" }).click();
     await expect(page.getByRole("status")).toContainText(
       "Si un compte actif porte ce nom",

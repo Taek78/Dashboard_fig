@@ -10,11 +10,12 @@ import type { UsersSource } from "@/domain/auth/source";
 export const {
   findUserByEmail,
   findUserById,
-  findUserByName,
+  findUsersByLastName,
   listUsers,
   getUser,
   createUser,
   updateUser,
+  deleteUser,
   setPassword,
   revokeSessions,
 }: UsersSource = usersDb;

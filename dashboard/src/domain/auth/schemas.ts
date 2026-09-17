@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ROLES } from "@/domain/auth/roles";
 import { isRecoveryCode } from "@/domain/auth/tokens";
 import {
+  ACCOUNT_DELETE_CONFIRM_WORD,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   RECOVERY_CODE_LENGTH,
@@ -30,8 +31,9 @@ const CONFIRM_MESSAGE = {
   path: ["confirmPassword"],
   message: "Les deux saisies du nouveau mot de passe diffèrent",
 };
-/** Nom d'un compte : il sert au rappel de l'adresse, donc court et unique. */
-const accountName = z.string().trim().min(2).max(80);
+/** Prénom (1 caractère au moins) et nom (2 au moins) d'un compte ; le nom seul sert au rappel de l'adresse. */
+const firstName = z.string().trim().min(1).max(80);
+const lastName = z.string().trim().min(2).max(80);
 /** Jeton d'URL (base64url de 32 octets) ; borné, jamais reflété. */
 const linkToken = z.string().trim().min(20).max(200);
 
@@ -43,16 +45,18 @@ export const loginSchema = z.object({
 
 export const userIdSchema = z.string().trim().min(1).max(64);
 
-/* Création par l'administrateur : sans mot de passe, la personne le choisit par le lien d'invitation. */
+/* Création par l'administrateur : sans mot de passe, la personne le choisit par le lien d'invitation. L'e-mail ne se modifie plus ensuite. */
 export const createUserSchema = z.object({
   email,
-  name: accountName,
+  firstName,
+  lastName,
   role: z.enum(ROLES),
 });
 
 export const updateUserSchema = z.object({
   userId: userIdSchema,
-  name: accountName,
+  firstName,
+  lastName,
   role: z.enum(ROLES),
 });
 
@@ -61,6 +65,16 @@ export const sendPasswordLinkSchema = z.object({ userId: userIdSchema });
 export const setUserActiveSchema = z.object({
   userId: userIdSchema,
   active: z.enum(["1", "0"]).transform((v) => v === "1"),
+});
+
+/** Suppression définitive : le mot SUPPRIMER, en toute casse, tapé par l'administrateur. */
+export const deleteUserSchema = z.object({
+  userId: userIdSchema,
+  confirm: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .pipe(z.literal(ACCOUNT_DELETE_CONFIRM_WORD)),
 });
 
 export const resetPasswordSchema = z.object({
@@ -99,8 +113,8 @@ export const recoveryVerifySchema = z
   })
   .refine(confirmed, CONFIRM_MESSAGE);
 
-/** « Adresse e-mail oubliée » : le nom du compte, tel que l'administrateur l'a saisi. */
-export const emailReminderSchema = z.object({ name: accountName });
+/** « Adresse e-mail oubliée » : le NOM seul, tel que l'administrateur l'a saisi. */
+export const emailReminderSchema = z.object({ lastName });
 
 /** Lien d'invitation : le jeton de l'URL et le mot de passe choisi. */
 export const invitationSchema = z

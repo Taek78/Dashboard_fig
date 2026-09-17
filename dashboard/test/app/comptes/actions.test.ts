@@ -72,6 +72,7 @@ isolateEachTest();
 
 const {
   createAccount,
+  deleteAccount,
   resetAccountPassword,
   sendPasswordLink,
   setAccountActive,
@@ -107,7 +108,8 @@ describe("createAccount", () => {
     const email = "nour@fig-demo.invalid";
     const result = await run(createAccount, {
       email,
-      name: "Nour Benali",
+      firstName: "Nour",
+      lastName: "Benali",
       role: "gestionnaire",
     });
     expect(result.status).toBe("success");
@@ -140,7 +142,8 @@ describe("createAccount", () => {
     expect(
       await run(createAccount, {
         email: email.toUpperCase(),
-        name: "Nour bis",
+        firstName: "Nour",
+        lastName: "Bis",
         role: "lecture",
       }),
     ).toEqual({
@@ -149,12 +152,13 @@ describe("createAccount", () => {
     });
     const sameName = await run(createAccount, {
       email: "autre@fig-demo.invalid",
-      name: "nour benali",
+      firstName: "nour",
+      lastName: "benali",
       role: "lecture",
     });
     expect(sameName.status).toBe("error");
     if (sameName.status === "error") {
-      expect(sameName.message).toMatch(/porte déjà ce nom/);
+      expect(sameName.message).toMatch(/porte déjà ce prénom et ce nom/);
     }
   });
 
@@ -164,7 +168,8 @@ describe("createAccount", () => {
       (
         await run(createAccount, {
           email: "x@fig-demo.invalid",
-          name: "X Y",
+          firstName: "X",
+          lastName: "Yz",
           role: "lecture",
         })
       ).status,
@@ -174,7 +179,8 @@ describe("createAccount", () => {
       (
         await run(createAccount, {
           email: "x@fig-demo.invalid",
-          name: "X",
+          firstName: "X",
+          lastName: "Y",
           role: "lecture",
         })
       ).status,
@@ -219,7 +225,8 @@ describe("setAccountActive / updateAccount", () => {
     });
     const demote = await run(updateAccount, {
       userId: "usr-0001",
-      name: "Admin E2E",
+      firstName: "Admin",
+      lastName: "E2E",
       role: "lecture",
     });
     expect(demote.status).toBe("error");
@@ -244,22 +251,97 @@ describe("setAccountActive / updateAccount", () => {
   it("refuse de renommer un compte avec le nom d'un autre", async () => {
     const taken = await run(updateAccount, {
       userId: "usr-0002",
-      name: "admin e2e",
+      firstName: "admin",
+      lastName: "e2e",
       role: "gestionnaire",
     });
     expect(taken.status).toBe("error");
     if (taken.status === "error") {
-      expect(taken.message).toMatch(/porte déjà ce nom/);
+      expect(taken.message).toMatch(/porte déjà ce prénom et ce nom/);
     }
     expect(
       (
         await run(updateAccount, {
           userId: "usr-0002",
-          name: "Gestion Deux",
+          firstName: "Gestion",
+          lastName: "Deux",
           role: "gestionnaire",
         })
       ).status,
     ).toBe("success");
+  });
+});
+
+describe("deleteAccount", () => {
+  it("exige le mot SUPPRIMER (en toute casse), refuse son propre compte, le dernier administrateur actif et un non-administrateur", async () => {
+    expect(
+      await run(deleteAccount, { userId: "usr-0002", confirm: "oui" }),
+    ).toEqual({
+      status: "error",
+      message: "Tapez SUPPRIMER pour confirmer la suppression.",
+    });
+    expect(
+      await run(deleteAccount, { userId: "usr-0001", confirm: "supprimer" }),
+    ).toEqual({
+      status: "error",
+      message: "Vous ne pouvez pas supprimer votre propre compte.",
+    });
+    // Depuis un autre administrateur : usr-0001 reste le dernier admin actif.
+    hoisted.session.id = "usr-0002";
+    expect(
+      await run(deleteAccount, { userId: "usr-0001", confirm: "SUPPRIMER" }),
+    ).toEqual({
+      status: "error",
+      message:
+        "Impossible : ce compte est le dernier administrateur actif du back-office.",
+    });
+    hoisted.session.id = "usr-0001";
+    hoisted.session.role = "gestionnaire";
+    expect(
+      (await run(deleteAccount, { userId: "usr-0002", confirm: "SUPPRIMER" }))
+        .status,
+    ).toBe("error");
+    expect(await findUserById("usr-0002")).not.toBeNull();
+  });
+
+  it("supprime un compte et ses jetons, journalise, revalide ; un second administrateur reste supprimable tant que le premier demeure", async () => {
+    await run(sendPasswordLink, { userId: "usr-0002" });
+    expect(await findActiveToken("invitation", "usr-0002")).not.toBeNull();
+    expect(
+      await run(deleteAccount, { userId: "usr-0002", confirm: " supprimer " }),
+    ).toEqual({
+      status: "success",
+      message: "Compte « Gestion E2E » supprimé.",
+    });
+    expect(await findUserById("usr-0002")).toBeNull();
+    expect(await findActiveToken("invitation", "usr-0002")).toBeNull();
+    expect(hoisted.logged).toContainEqual({
+      type: "account_deleted",
+      userId: "usr-0001",
+      targetId: "usr-0002",
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/comptes", "layout");
+    expect(
+      (await run(deleteAccount, { userId: "usr-0002", confirm: "SUPPRIMER" }))
+        .status,
+    ).toBe("error");
+
+    const created = await run(createAccount, {
+      email: "second@fig-demo.invalid",
+      firstName: "Second",
+      lastName: "Admin",
+      role: "admin",
+    });
+    expect(created.status).toBe("success");
+    const second = (await listUsers()).find(
+      (u) => u.email === "second@fig-demo.invalid",
+    );
+    expect(
+      await run(deleteAccount, { userId: second!.id, confirm: "SUPPRIMER" }),
+    ).toEqual({
+      status: "success",
+      message: "Compte « Second Admin » supprimé.",
+    });
   });
 });
 

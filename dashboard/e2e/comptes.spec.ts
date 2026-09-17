@@ -16,11 +16,14 @@ test.describe("comptes et profil", () => {
 
     const stamp = Date.now();
     const email = `nour-${stamp}@fig-demo.invalid`;
-    const name = `Nour Test ${stamp % 10_000}`;
+    const firstName = "Nour";
+    const lastName = `Test ${stamp % 10_000}`;
+    const name = `${firstName} ${lastName}`;
     // Ni le nom ni l'e-mail dedans : la politique le refuserait.
     const password = "Betterave rouge du dimanche";
     const since = new Date().toISOString();
-    await page.getByLabel("Nom").first().fill(name);
+    await page.getByLabel("Prénom").first().fill(firstName);
+    await page.getByLabel("Nom", { exact: true }).first().fill(lastName);
     await page.getByLabel("E-mail").first().fill(email);
     await page.getByLabel("Rôle").first().selectOption("lecture");
     await page.getByRole("button", { name: /Créer le compte/ }).click();
@@ -30,6 +33,10 @@ test.describe("comptes et profil", () => {
     const card = page.getByRole("article", { name: `Compte ${name}` });
     await expect(card).toContainText("Lecture seule");
     await expect(card).toContainText("Invitation en attente");
+    // L'e-mail se lit sur la carte mais ne se modifie pas.
+    const shownEmail = card.getByLabel(/E-mail/);
+    await expect(shownEmail).toHaveValue(email);
+    await expect(shownEmail).toHaveAttribute("readonly", "");
 
     // La personne choisit son mot de passe par le lien reçu, dans un autre contexte.
     const invitation = await waitForMail(email, { subject: /accès/i, since });
@@ -65,6 +72,27 @@ test.describe("comptes et profil", () => {
       "E-mail ou mot de passe incorrect.",
     );
     await again.close();
+
+    // Suppression définitive, confirmée par le mot SUPPRIMER : la carte disparaît.
+    await card.getByRole("button", { name: "Supprimer ce compte" }).click();
+    const panel = card.getByRole("alert");
+    await panel.getByLabel(/pour confirmer/).fill("supprimer");
+    await panel
+      .getByRole("button", { name: "Supprimer définitivement" })
+      .click();
+    await expect(card).toHaveCount(0);
+
+    // Le dernier administrateur actif n'a ni « Désactiver » ni « Supprimer », et le dit.
+    const own = page.getByRole("article", {
+      name: `Compte ${E2E_ACCOUNTS.admin.name}`,
+    });
+    await expect(own).toContainText("Dernier administrateur actif");
+    await expect(
+      own.getByRole("button", { name: "Supprimer ce compte" }),
+    ).toHaveCount(0);
+    await expect(own.getByRole("button", { name: "Désactiver" })).toHaveCount(
+      0,
+    );
   });
 
   test("le gestionnaire ne voit pas la section Comptes mais change son mot de passe", async ({
