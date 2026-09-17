@@ -35,7 +35,7 @@ Dashboard_fig/
 ├── README.md                    présentation et mise en route
 ├── CLAUDE.md                    conventions de travail (pour l'assistant et pour l'équipe)
 ├── docs/                        cette documentation
-├── .github/workflows/ci.yml     intégration continue (check et Playwright sur PostgreSQL, audit)
+├── .github/workflows/           ci.yml (check, audit des dépendances, Playwright sur PostgreSQL), codeql.yml, gitleaks.yml ; actions épinglées par SHA
 └── dashboard/                   l'application
     ├── src/
     │   ├── app/                 routes Next.js (pages, layouts, actions, états de chargement)
@@ -185,6 +185,9 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 | Alertes par mail : à la personne (code, mot de passe modifié, lien « Ce n'était pas moi ») et aux administrateurs actifs (changement effectif, codes erronés répétés, verrouillage)                      | `src/domain/auth/mails.ts`, `src/data/mail.ts` (Brevo ou fichier)                                                 |
 | Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                                                                                                               | schémas zod des domaines                                                                                          |
 | RGPD : export et anonymisation d'un client (administrateur, mot `ANONYMISER`, journal sans donnée de la personne), durées de conservation appliquées par un script à aperçu                              | `src/domain/privacy/`, `src/db/privacy.ts`, `scripts/rgpd-purge.ts`, [rgpd.md](rgpd.md)                           |
+| Route de santé `/api/health` : corps `{ ok }` sans détail, `no-store`, jeton `HEALTH_TOKEN` en Bearer (401 sans lui, sans toucher à la base), une sonde par fenêtre de cinq secondes | `src/app/api/health/route.ts`, `src/lib/env-schema.ts` |
+| Scripts qui écrivent en base (seed, purge RGPD, restauration, base de test) : garde d'hôte partagée, base locale seulement sauf variable explicite | `src/lib/database-url.ts`, `scripts/seed-database.ts`, `scripts/rgpd-purge.ts`, `scripts/restore.ps1` |
+| CI : permissions en lecture seule, actions épinglées par SHA, exécutions superposées annulées, délais bornés, audit des dépendances, CodeQL et Gitleaks hebdomadaires, migrations rejouées depuis la version précédente avec des lignes | `.github/workflows/*.yml`, `.gitleaks.toml`, `test/data/migrations.db.test.ts` |
 
 ## 7. Tests
 

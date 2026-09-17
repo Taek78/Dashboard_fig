@@ -87,6 +87,29 @@ describe("garde de production", () => {
   });
 });
 
+describe("HEALTH_TOKEN", () => {
+  const base = {
+    DATABASE_URL: "postgresql://fig:fig@localhost:5432/fig",
+    AUTH_SECRET: "s".repeat(32),
+  };
+
+  it("facultatif, 16 caractères au moins, jamais reflété dans l'erreur", () => {
+    expect(parseEnv(base).HEALTH_TOKEN).toBeUndefined();
+    expect(
+      parseEnv({ ...base, HEALTH_TOKEN: "jeton-de-sante-0123456789" })
+        .HEALTH_TOKEN,
+    ).toBe("jeton-de-sante-0123456789");
+    let message = "";
+    try {
+      parseEnv({ ...base, HEALTH_TOKEN: "court-1234" });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toMatch(/HEALTH_TOKEN/);
+    expect(message).not.toContain("court-1234");
+  });
+});
+
 describe("mailTransportOf", () => {
   it("explicite, sinon brevo dès qu'une clé est posée, sinon fichier", () => {
     expect(mailTransportOf(parseEnv(base))).toBe("fichier");

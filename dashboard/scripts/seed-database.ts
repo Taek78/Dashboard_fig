@@ -1,5 +1,6 @@
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
+import { remoteDatabaseProblem } from "@/lib/database-url";
 import { articlesFixtures } from "@/domain/articles/fixtures";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
@@ -28,16 +29,15 @@ export type SeedAccount = { email: string; password: string; name: string };
 export type SeedAccounts = { admin: SeedAccount; manager?: SeedAccount };
 export type SeedDb = PostgresJsDatabase<typeof schema>;
 
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "::1"];
-
-/** Lève si l'URL ne vise pas une base locale (SEED_ALLOW_REMOTE=1 pour forcer). */
+/** Lève si l'URL ne vise pas une base locale (SEED_ALLOW_REMOTE=1 pour forcer) : règle partagée de src/lib/database-url.ts. */
 export function assertLocalDatabase(url: string): void {
-  const host = new URL(url).hostname;
-  if (!LOCAL_HOSTS.includes(host) && process.env.SEED_ALLOW_REMOTE !== "1") {
-    throw new Error(
-      `Hôte ${host} refusé : le seed ne vise qu'une base locale (SEED_ALLOW_REMOTE=1 pour forcer).`,
-    );
-  }
+  const problem = remoteDatabaseProblem(
+    url,
+    "SEED_ALLOW_REMOTE",
+    process.env,
+    "le seed",
+  );
+  if (problem) throw new Error(problem);
 }
 
 /** Insère par paquets de 400 lignes : postgres.js limite les paramètres d'une requête. */

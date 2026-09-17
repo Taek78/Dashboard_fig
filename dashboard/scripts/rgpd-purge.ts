@@ -5,6 +5,7 @@ import type { DbExecutor } from "@/db/client";
 import { purgeExpiredData } from "@/db/privacy";
 import * as schema from "@/db/schema";
 import { RETENTION } from "@/domain/privacy/retention";
+import { databaseHost, remoteDatabaseProblem } from "@/lib/database-url";
 
 /*
  * `npm run rgpd:purge` : applique les durées de conservation RGPD
@@ -25,7 +26,6 @@ if (!process.env.DATABASE_URL && existsSync(".env.local")) {
   process.loadEnvFile(".env.local");
 }
 
-const LOCAL_HOSTS = ["localhost", "127.0.0.1", "::1"];
 const SHOWN_IDS = 20;
 const PROGRESS_EVERY = 25;
 
@@ -37,13 +37,15 @@ const list = (ids: readonly string[]) =>
 async function main(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL manquante dans l'environnement.");
-  // Une adresse IPv6 arrive entre crochets dans URL.hostname : "[::1]".
-  const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
-  if (!LOCAL_HOSTS.includes(host) && process.env.RGPD_ALLOW_REMOTE !== "1") {
-    throw new Error(
-      `Hôte ${host} refusé : base non locale (RGPD_ALLOW_REMOTE=1 pour confirmer).`,
-    );
-  }
+  // Règle partagée avec le seed et la restauration (src/lib/database-url.ts).
+  const problem = remoteDatabaseProblem(
+    url,
+    "RGPD_ALLOW_REMOTE",
+    process.env,
+    "la purge",
+  );
+  if (problem) throw new Error(problem);
+  const host = databaseHost(url);
   const apply = process.argv.includes("--apply");
   console.info(
     `[rgpd] ${apply ? "APPLICATION" : "APERÇU (rien n'est écrit ; --apply pour appliquer)"} sur ${host}`,

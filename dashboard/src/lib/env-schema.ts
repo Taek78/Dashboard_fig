@@ -36,6 +36,13 @@ export const envSchema = z.object({
   MAIL_FILE_DIR: z.string().min(1).optional(),
   /** "0" désactive la vérification des mots de passe contre les fuites (Have I Been Pwned). */
   PASSWORD_BREACH_CHECK: z.enum(["0", "1"]).optional(),
+  /**
+   * Jeton attendu par la route de santé /api/health (en-tête
+   * « Authorization: Bearer … », 16 caractères au moins). Sans lui, la route
+   * est publique et chaque appel sonde la base : à poser en production, pour
+   * le moniteur externe.
+   */
+  HEALTH_TOKEN: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

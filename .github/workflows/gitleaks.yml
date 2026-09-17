@@ -1,0 +1,32 @@
+# Recherche de secrets dans l'historique (Gitleaks) : à chaque push et pull
+# request, puis chaque semaine. Historique complet (fetch-depth 0) : un secret
+# commité puis retiré reste visible. Faux positifs connus (configuration
+# publique des tests) listés dans .gitleaks.toml. Compte personnel : aucune
+# licence requise. Action épinglée par SHA (Dependabot la met à jour).
+name: Gitleaks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

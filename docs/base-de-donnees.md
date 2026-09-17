@@ -30,7 +30,7 @@ Ne jamais modifier une migration déjà appliquée ailleurs : en écrire une nou
 
 ## 3. Base de développement et base de test
 
-Le dashboard fonctionne toujours sur PostgreSQL (plus de mode sans base depuis le 2026-09-15). `npm run dev` lit `DATABASE_URL` ; `/api/health` répond 200 si la base est joignable, 503 sinon.
+Le dashboard fonctionne toujours sur PostgreSQL (plus de mode sans base depuis le 2026-09-15). `npm run dev` lit `DATABASE_URL` ; `/api/health` répond 200 si la base est joignable, 503 sinon (401 sans le jeton `HEALTH_TOKEN` quand il est posé ; une sonde par cinq secondes au plus).
 
 Les tests n'utilisent jamais la base de travail. `npm run db:test` démarre la base jetable `test-db` de `compose.yaml` (port **5434**, en mémoire, vide à chaque démarrage). Vitest (projet `db`) et Playwright la migrent et la seedent eux-mêmes avant de commencer (`test/support/global-setup.ts`, comptes de test publics de `test/support/config.ts`) ; sous Vitest, chaque test s'exécute dans une transaction annulée à la fin et repart donc des fixtures. Ne pas lancer `npm run check` et `npm run test:e2e` en même temps : ils partagent cette base. `TEST_DATABASE_URL` la remplace si besoin (la CI utilise un PostgreSQL de service).
 
@@ -73,13 +73,15 @@ Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `prod
 
 ## 6. Sauvegarder et restaurer
 
-`npm run db:backup` écrit un fichier `fig-AAAAMMJJ-HHmm.dump` (format custom de `pg_dump`, compressé) dans `%LOCALAPPDATA%\fig-backups`, hors OneDrive et hors dépôt. `npm run db:restore -- <chemin du .dump>` le rejoue dans la base de `DATABASE_URL` (contenu des tables remplacé ; base locale seulement sans `SEED_ALLOW_REMOTE=1`). À faire avant toute migration sur une base qui compte, et à automatiser chez l'hébergeur (une sauvegarde quotidienne conservée trente jours est un bon départ).
+`npm run db:backup` écrit un fichier `fig-AAAAMMJJ-HHmm.dump` (format custom de `pg_dump`, compressé) dans `%LOCALAPPDATA%\fig-backups`, hors OneDrive et hors dépôt. `npm run db:restore -- <chemin du .dump>` le rejoue dans la base de `DATABASE_URL` (contenu des tables remplacé ; base locale seulement sans `SEED_ALLOW_REMOTE=1`). À faire avant toute migration sur une base qui compte, et à automatiser chez l'hébergeur (une sauvegarde quotidienne conservée trente jours est un bon départ). Répéter la restauration avant la mise en ligne puis chaque trimestre : `npm run db:restore` sur une base locale vide, `npm run dev`, vérifier qu'une commande récente s'affiche ; une sauvegarde jamais restaurée n'est pas une sauvegarde.
 
 Le journal de sécurité (`security_events`) est dans la sauvegarde ; il est en JSON (`details`) pour rester lisible en SQL : `select at, type, details->>'email' from security_events order by at desc limit 50;`.
 
 ## 7. Avant une mise en ligne
 
-Rôle applicatif dédié aux droits d'écriture ciblés (pas `fig` propriétaire, jamais `postgres`), TLS vers la base, sauvegardes, `AUTH_URL` et secrets par l'hébergeur, journal de sécurité en base. Voir le backlog, section sécurité.
+Rôle applicatif dédié aux droits d'écriture ciblés (pas `fig` propriétaire, jamais `postgres`), TLS vers la base, sauvegardes, `AUTH_URL` et secrets par l'hébergeur, journal de sécurité en base, `HEALTH_TOKEN` pour le moniteur externe. Voir le backlog, section sécurité.
+
+**Rotation d'`AUTH_SECRET`** (compromission, départ d'un administrateur, ou par principe une fois par an) : changer la valeur chez l'hébergeur et redémarrer. Toutes les sessions sont fermées (chacun se reconnecte) et tous les jetons en cours (invitations, codes de récupération, liens « Ce n'était pas moi », signés en HMAC par ce secret) deviennent inutilisables : renvoyer les invitations en attente depuis Comptes, la personne redemande un code si besoin. Rien en base ne dépend du secret : aucune migration.
 
 ## 8. RGPD : anonymisation et durées de conservation
 

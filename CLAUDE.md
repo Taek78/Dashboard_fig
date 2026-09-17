@@ -39,7 +39,7 @@ Une seule app Next.js dans `dashboard/` ; toutes les commandes npm s'y lancent. 
 
 `dashboard/CLAUDE.md` importe `AGENTS.md`, regénéré par `next dev` : le commiter avec le travail en cours.
 
-Git : racine du dépôt = ce dossier, branche `main`, remote `origin` = `Taek78/Dashboard_fig`. Le dossier utilisateur est lui aussi un dépôt git : ne jamais lancer `git` hors de ce dossier. CI : `.github/workflows/ci.yml`, Dependabot hebdomadaire.
+Git : racine du dépôt = ce dossier, branche `main`, remote `origin` = `Taek78/Dashboard_fig`. Le dossier utilisateur est lui aussi un dépôt git : ne jamais lancer `git` hors de ce dossier. CI : `.github/workflows/ci.yml` (check, audit des dépendances, Playwright), `codeql.yml` et `gitleaks.yml` hebdomadaires (faux positifs des fixtures de test dans `.gitleaks.toml`), actions épinglées par SHA avec le tag en commentaire, Dependabot hebdomadaire. Tout script qui écrit dans une base (seed, purge RGPD, restauration, base de test) passe par la garde d'hôte `src/lib/database-url.ts` : base locale seulement, sauf `SEED_ALLOW_REMOTE=1` ou `RGPD_ALLOW_REMOTE=1`. `test/data/migrations.db.test.ts` rejoue les migrations depuis la version précédente avec des lignes, sur une base jetable.
 
 ## Commandes
 
@@ -71,7 +71,7 @@ ESLint doit rester en version 9 (la 10 casse le plugin React de `eslint-config-n
 - **zod v4** pour les entrées (`z.email()`, `z.iso.date()`, `.catch(undefined)` en lecture tolérante, `superRefine` + `transform` en écriture).
 - **Auth.js v5** (`next-auth@beta`) : Credentials, JWT 8 h avec le rôle et l'instant d'ouverture `sat`, `trustHost` déduit d'`AUTH_URL` (obligatoire en production). Le callback `jwt` relit le compte à chaque lecture (`isSessionAlive`) : désactivé, verrouillé ou mot de passe changé depuis → session refusée, cookie effacé (le proxy laisse passer cette suppression). Mots de passe scrypt (`src/lib/password.ts`), secrets à usage unique en HMAC (`src/lib/secrets.ts`).
 - Graphiques sans bibliothèque (SVG et HTML, `src/lib/chart.ts`, `src/lib/pie.ts`) ; **Playwright** pour les parcours navigateur.
-- **Environnement** (`src/lib/env-schema.ts`) : `DATABASE_URL` (postgres, obligatoire), `AUTH_SECRET` ≥ 32 ; en production : `AUTH_URL` et `MAIL_TRANSPORT` (`brevo` avec `MAIL_API_KEY` et `MAIL_FROM`, ou `fichier` pour un serveur de test) ; `MAIL_FROM_NAME`, `MAIL_FILE_DIR`, `PASSWORD_BREACH_CHECK=0` facultatifs. Playwright tourne en `fichier` (`test-results/mail`) sans appel aux fuites. `AUTH_BOOTSTRAP_*` et `AUTH_MANAGER_*` ne servent qu'à `npm run db:seed` ; `TEST_DATABASE_URL` (défaut : `test-db` de `compose.yaml`) aux tests. Jamais `process.env` dans un composant client.
+- **Environnement** (`src/lib/env-schema.ts`) : `DATABASE_URL` (postgres, obligatoire), `AUTH_SECRET` ≥ 32 ; en production : `AUTH_URL` et `MAIL_TRANSPORT` (`brevo` avec `MAIL_API_KEY` et `MAIL_FROM`, ou `fichier` pour un serveur de test) ; `MAIL_FROM_NAME`, `MAIL_FILE_DIR`, `PASSWORD_BREACH_CHECK=0`, `HEALTH_TOKEN` (route de santé `/api/health` en « Authorization: Bearer », 16 caractères au moins, recommandé en production ; sans lui la route est publique ; une seule sonde de la base par cinq secondes dans tous les cas) facultatifs. Playwright tourne en `fichier` (`test-results/mail`) sans appel aux fuites. `AUTH_BOOTSTRAP_*` et `AUTH_MANAGER_*` ne servent qu'à `npm run db:seed` ; `TEST_DATABASE_URL` (défaut : `test-db` de `compose.yaml`) aux tests. Jamais `process.env` dans un composant client.
 
 ## Conventions
 

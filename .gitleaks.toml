@@ -1,0 +1,27 @@
+# Configuration Gitleaks du dépôt : règles par défaut, plus les faux positifs
+# connus. Les valeurs ci-dessous sont PUBLIQUES par construction : comptes,
+# mots de passe et secret de la suite de tests (test/, e2e/,
+# playwright.config.ts), qui n'ouvrent qu'une base locale jetable et sont
+# tenus fictifs par la règle du projet (CLAUDE.md : jamais un secret dans un
+# test). Deux commits anciens portaient un mot de passe de test dans la CI et
+# dans la documentation, retirés depuis. Aucun vrai secret n'est jamais
+# commité : .env.local est ignoré par git.
+title = "FIG Back-office"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Suite de tests publique et deux commits anciens de fixtures"
+paths = [
+  '''^dashboard/test/''',
+  '''^dashboard/e2e/''',
+  '''^dashboard/playwright\.config\.ts$''',
+]
+regexes = [
+  '''e2e-secret-fig-dashboard-0123456789-abcdef''',
+]
+commits = [
+  "3acaeb609cf312466021174af05620d2fed96554",
+  "8b13bd6319921d34a79ab0733c919a04f301495d",
+]
