@@ -15,6 +15,9 @@ import { TEST_ACCOUNTS, TEST_DATABASE_URL } from "./test/support/config";
  * e2e/global-setup.ts) ; les parcours y lisent codes et liens (e2e/mail.ts).
  * La vérification des mots de passe contre les fuites (appel externe) est
  * coupée : les règles pures suffisent aux parcours, l'appel est testé en unitaire.
+ * HEALTH_TOKEN : obligatoire en production, donc posé ici (valeur publique) ;
+ * la sonde de démarrage de Playwright reçoit un 401 sans jeton, ce qui vaut
+ * « serveur prêt » pour elle.
  */
 const PORT = 3126;
 const baseURL = `http://localhost:${PORT}`;
@@ -52,6 +55,7 @@ export default defineConfig({
       MAIL_TRANSPORT: "fichier",
       MAIL_FILE_DIR: E2E_MAIL_DIR,
       PASSWORD_BREACH_CHECK: "0",
+      HEALTH_TOKEN: "e2e-jeton-de-sante-fig-dashboard-0123456789",
     },
   },
 });

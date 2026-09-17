@@ -59,20 +59,46 @@ describe("garde de production", () => {
     MAIL_API_KEY: "xkeysib-test",
     MAIL_FROM: "noreply@fig.example.invalid",
   };
+  const health = { HEALTH_TOKEN: "jeton-de-sante-0123456789" };
 
   it("en production, exige AUTH_URL", () => {
     expect(() => parseEnv(prod)).toThrow(/AUTH_URL/);
     expect(() => parseEnv(prod, { enforceProduction: false })).not.toThrow();
     expect(
       productionProblems(parseEnv(prod, { enforceProduction: false })),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(() =>
-      parseEnv({ ...prod, ...mailed, AUTH_URL: "https://fig.example.invalid" }),
+      parseEnv({
+        ...prod,
+        ...mailed,
+        ...health,
+        AUTH_URL: "https://fig.example.invalid",
+      }),
+    ).not.toThrow();
+  });
+
+  it("en production, exige HEALTH_TOKEN ; hors production, non", () => {
+    const ready = {
+      ...prod,
+      ...mailed,
+      AUTH_URL: "https://fig.example.invalid",
+    };
+    expect(() => parseEnv(ready)).toThrow(/HEALTH_TOKEN/);
+    expect(
+      productionProblems(parseEnv(ready, { enforceProduction: false })),
+    ).toEqual([expect.stringMatching(/HEALTH_TOKEN[\s\S]*supervision/)]);
+    expect(() => parseEnv({ ...ready, ...health })).not.toThrow();
+    expect(() =>
+      parseEnv({ ...ready, NODE_ENV: "test", HEALTH_TOKEN: undefined }),
     ).not.toThrow();
   });
 
   it("en production, exige le transport de mail, et la clé et l'expéditeur avec brevo", () => {
-    const withUrl = { ...prod, AUTH_URL: "https://fig.example.invalid" };
+    const withUrl = {
+      ...prod,
+      ...health,
+      AUTH_URL: "https://fig.example.invalid",
+    };
     expect(() => parseEnv(withUrl)).toThrow(/MAIL_TRANSPORT/);
     expect(() => parseEnv({ ...withUrl, MAIL_TRANSPORT: "brevo" })).toThrow(
       /MAIL_API_KEY[\s\S]*MAIL_FROM/,

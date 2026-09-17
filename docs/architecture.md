@@ -185,14 +185,14 @@ Le formulaire client ne décide de rien : il propose des options calculées par 
 | Alertes par mail : à la personne (code, mot de passe modifié, lien « Ce n'était pas moi ») et aux administrateurs actifs (changement effectif, codes erronés répétés, verrouillage)                      | `src/domain/auth/mails.ts`, `src/data/mail.ts` (Brevo ou fichier)                                                 |
 | Suppressions confirmées côté serveur (mot `SUPPRIMER`, motif d'annulation)                                                                                                                               | schémas zod des domaines                                                                                          |
 | RGPD : export et anonymisation d'un client (administrateur, mot `ANONYMISER`, journal sans donnée de la personne), durées de conservation appliquées par un script à aperçu                              | `src/domain/privacy/`, `src/db/privacy.ts`, `scripts/rgpd-purge.ts`, [rgpd.md](rgpd.md)                           |
-| Route de santé `/api/health` : corps `{ ok }` sans détail, `no-store`, jeton `HEALTH_TOKEN` en Bearer (401 sans lui, sans toucher à la base), une sonde par fenêtre de cinq secondes | `src/app/api/health/route.ts`, `src/lib/env-schema.ts` |
+| Route de santé `/api/health` : corps `{ ok }` sans détail, `no-store`, jeton `HEALTH_TOKEN` en Bearer, obligatoire en production (401 sans lui, sans toucher à la base), une sonde par fenêtre de cinq secondes | `src/app/api/health/route.ts`, `src/lib/env-schema.ts` |
 | Scripts qui écrivent en base (seed, purge RGPD, restauration, base de test) : garde d'hôte partagée, base locale seulement sauf variable explicite | `src/lib/database-url.ts`, `scripts/seed-database.ts`, `scripts/rgpd-purge.ts`, `scripts/restore.ps1` |
 | CI : permissions en lecture seule, actions épinglées par SHA, exécutions superposées annulées, délais bornés, audit des dépendances, CodeQL et Gitleaks hebdomadaires, migrations rejouées depuis la version précédente avec des lignes | `.github/workflows/*.yml`, `.gitleaks.toml`, `test/data/migrations.db.test.ts` |
 
 ## 7. Tests
 
 - **Vitest** (`test/`, miroir de `src/`), deux projets : `unit` (règles pures, schémas, fixtures, mappers, sans base) et `db` (couche données et Server Actions de bout en bout sur la base de test Docker, migrée et seedée une fois, chaque test dans une transaction annulée ; `server-only`, `next/cache` et la session neutralisés par `vi.mock`). Chaque requête SQL filtrée ou agrégée est comparée à sa règle pure sur toutes les commandes seedées (recherche avec caractères spéciaux comprise). La géométrie des graphiques (`src/lib/chart.ts`) est testée à part.
-- **Playwright** (`e2e/`) : parcours réels dans Chromium contre le serveur construit, sur la base de test (migrée et seedée avant la suite, comptes de test) ; rejoués en CI contre un PostgreSQL de service.
+- **Playwright** (`e2e/`) : parcours réels dans Chromium contre le serveur construit, sur la base de test (migrée et seedée avant la suite, comptes de test) ; rejoués en CI contre un PostgreSQL de service. `e2e/accessibilite.spec.ts` passe axe-core (WCAG 2.x A et AA, bonnes pratiques) sur les pages publiques et les écrans principaux : seules les violations sérieuses ou critiques bloquent, les autres sont jointes au rapport.
 
 ## 8. Performances
 

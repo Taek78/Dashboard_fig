@@ -79,7 +79,7 @@ Le journal de sécurité (`security_events`) est dans la sauvegarde ; il est en 
 
 ## 7. Avant une mise en ligne
 
-Rôle applicatif dédié aux droits d'écriture ciblés (pas `fig` propriétaire, jamais `postgres`), TLS vers la base, sauvegardes, `AUTH_URL` et secrets par l'hébergeur, journal de sécurité en base, `HEALTH_TOKEN` pour le moniteur externe. Voir le backlog, section sécurité.
+Rôle applicatif dédié aux droits d'écriture ciblés (pas `fig` propriétaire, jamais `postgres`), TLS vers la base, sauvegardes, `AUTH_URL` et secrets par l'hébergeur, journal de sécurité en base, `HEALTH_TOKEN` (obligatoire en production, le démarrage refuse sans lui) à fournir au moniteur externe. Voir le backlog, section sécurité.
 
 **Rotation d'`AUTH_SECRET`** (compromission, départ d'un administrateur, ou par principe une fois par an) : changer la valeur chez l'hébergeur et redémarrer. Toutes les sessions sont fermées (chacun se reconnecte) et tous les jetons en cours (invitations, codes de récupération, liens « Ce n'était pas moi », signés en HMAC par ce secret) deviennent inutilisables : renvoyer les invitations en attente depuis Comptes, la personne redemande un code si besoin. Rien en base ne dépend du secret : aucune migration.
 

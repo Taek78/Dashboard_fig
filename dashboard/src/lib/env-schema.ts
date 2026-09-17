@@ -39,8 +39,9 @@ export const envSchema = z.object({
   /**
    * Jeton attendu par la route de santé /api/health (en-tête
    * « Authorization: Bearer … », 16 caractères au moins). Sans lui, la route
-   * est publique et chaque appel sonde la base : à poser en production, pour
-   * le moniteur externe.
+   * est publique et chaque appel sonde la base : facultatif en développement
+   * et dans les tests, OBLIGATOIRE en production (productionProblems), à
+   * fournir au système de supervision.
    */
   HEALTH_TOKEN: z.string().min(16).optional(),
 });
@@ -58,6 +59,11 @@ export function productionProblems(env: Env): string[] {
   if (!env.AUTH_URL) {
     problems.push(
       "AUTH_URL est obligatoire en production (l'hôte n'est plus deviné).",
+    );
+  }
+  if (!env.HEALTH_TOKEN) {
+    problems.push(
+      "HEALTH_TOKEN est obligatoire en production (16 caractères au moins) : la route de santé /api/health ne doit pas être publique ; fournir ce jeton au système de supervision.",
     );
   }
   if (!env.MAIL_TRANSPORT) {

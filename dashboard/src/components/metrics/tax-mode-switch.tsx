@@ -37,7 +37,7 @@ export function TaxModeSwitch({
             <Link
               key={mode}
               href={`${action}?${baseParams}&tva=${mode}`}
-              aria-pressed={active}
+              aria-current={active ? "true" : undefined}
               className={cn(
                 "focus-visible:ring-ring/50 rounded-md px-3 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-3",
                 active
