@@ -60,9 +60,9 @@ test.describe("métriques", () => {
     // Septembre 2026 : 5 réclamations dans les messages seedés (question et « autre » exclus).
     await page.goto("/metriques?du=2026-09-01&au=2026-09-30");
     const orders = page.getByRole("region", { name: "Commandes" });
-    // Libellé, badge de tendance, valeur, puis l'aide : la valeur juste avant l'aide.
+    // Libellé, valeur, badge de tendance (texte sr-only compris), puis l'aide.
     await expect(orders).toContainText(
-      /Réclamations[\s\S]*?5\s*messages reçus/,
+      /Réclamations\s*5\s*\+100 %[\s\S]*?messages reçus/,
     );
     const clients = page.getByRole("region", { name: "Clients" });
     await expect(clients).toContainText("Nouveaux clients");

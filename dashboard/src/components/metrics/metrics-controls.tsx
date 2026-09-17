@@ -15,9 +15,10 @@ import type { MetricsQuery } from "@/domain/metrics/schemas";
 
 /*
  * Contrôles de la page Métriques (serveur) : le formulaire de période partagé
- * (PeriodForm) complété par le choix de la référence de comparaison, puis
- * l'interrupteur HT / TTC partagé (TaxModeSwitch). Tout passe par l'URL ; le
- * mode TVA est conservé d'une recherche à l'autre grâce au champ caché.
+ * (PeriodForm) complété par le choix de la référence de comparaison, et
+ * l'interrupteur HT / TTC partagé (TaxModeSwitch) sur la même ligne. Tout
+ * passe par l'URL ; le mode TVA est conservé d'une recherche à l'autre grâce
+ * au champ caché.
  */
 export function MetricsControls({
   query,
@@ -34,15 +35,22 @@ export function MetricsControls({
 
   return (
     <Card>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent>
         <PeriodForm
           action="/metriques"
           period={query.period}
           custom={query.custom}
           range={range}
           hiddenFields={{ tva: query.tax }}
+          tools={
+            <TaxModeSwitch
+              action="/metriques"
+              tax={query.tax}
+              baseParams={baseParams}
+            />
+          }
         >
-          <div className="grid gap-1.5 @2xl/main:w-52">
+          <div className="grid min-w-0 gap-1.5 @2xl/main:w-52">
             <Label htmlFor="comparaison">Comparer à</Label>
             <NativeSelect
               id="comparaison"
@@ -58,12 +66,6 @@ export function MetricsControls({
             </NativeSelect>
           </div>
         </PeriodForm>
-
-        <TaxModeSwitch
-          action="/metriques"
-          tax={query.tax}
-          baseParams={baseParams}
-        />
       </CardContent>
     </Card>
   );

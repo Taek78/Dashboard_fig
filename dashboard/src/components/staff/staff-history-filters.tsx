@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { LoaderCircle, RotateCcw, Search } from "lucide-react";
+import { LoaderCircle, Search } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
 import { DateRangeFields } from "@/components/date-range-fields";
-import { buttonVariants } from "@/components/ui/button";
+import { FilterTray } from "@/components/filter-tray";
 import { NativeInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,15 +16,14 @@ import {
   type StaffHistoryFilters as Filters,
 } from "@/domain/staff/rules";
 import type { DateRangeInput } from "@/lib/days";
-import { cn } from "@/lib/utils";
 
 /*
  * Recherche dans l'historique d'une personne (serveur ; AutoSubmitForm, client,
- * la lance pendant la saisie, vers la fiche elle-même) : référence ou client,
- * rôle tenu (préparation, livraison), statut, période de livraison en un seul
- * filtre (DateRangeFields). Les champs deviennent l'URL de la fiche
- * (?q=&role=&statut=&du=&au=) ; la position de défilement est gardée : la
- * recherche est sous le formulaire de la fiche.
+ * la lance pendant la saisie, vers la fiche elle-même) : un champ (référence
+ * ou client), puis le panneau des filtres : rôle tenu (préparation,
+ * livraison), statut, et la zone de dates de livraison. Les champs deviennent
+ * l'URL de la fiche (?q=&role=&statut=&du=&au=) ; la position de défilement
+ * est gardée : la recherche est sous le formulaire de la fiche.
  */
 export function StaffHistoryFilters({
   staffId,
@@ -42,7 +40,7 @@ export function StaffHistoryFilters({
     <AutoSubmitForm
       action={`/personnel/${staffId}`}
       aria-label="Recherche dans l'historique"
-      className="bg-muted/30 flex flex-col gap-3 rounded-xl border p-3"
+      className="flex flex-col gap-3"
     >
       <div className="relative">
         <Search
@@ -64,38 +62,50 @@ export function StaffHistoryFilters({
           className="pl-8"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3 @4xl/main:grid-cols-4 @4xl/main:items-start">
-        <div className="grid gap-1.5">
-          <Label htmlFor="historique-role">Rôle</Label>
-          <NativeSelect
-            id="historique-role"
-            name="role"
-            defaultValue={filters.role ?? ""}
-            className="w-full"
-          >
-            <NativeSelectOption value="">Tous les rôles</NativeSelectOption>
-            {STAFF_HISTORY_ROLES.map((role) => (
-              <NativeSelectOption key={role} value={role}>
-                {STAFF_HISTORY_ROLE_LABELS[role]}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="historique-statut">Statut</Label>
-          <NativeSelect
-            id="historique-statut"
-            name="statut"
-            defaultValue={filters.status ?? ""}
-            className="w-full"
-          >
-            <NativeSelectOption value="">Tous les statuts</NativeSelectOption>
-            {ORDER_STATUSES.map((status) => (
-              <NativeSelectOption key={status} value={status}>
-                {ORDER_STATUS_LABELS[status]}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+      <FilterTray
+        reset={
+          canReset
+            ? {
+                href: `/personnel/${staffId}`,
+                label: "Réinitialiser la recherche",
+                scroll: false,
+              }
+            : null
+        }
+      >
+        <div className="grid grid-cols-2 gap-3 @2xl/main:max-w-md">
+          <div className="grid min-w-0 gap-1.5">
+            <Label htmlFor="historique-role">Rôle</Label>
+            <NativeSelect
+              id="historique-role"
+              name="role"
+              defaultValue={filters.role ?? ""}
+              className="w-full"
+            >
+              <NativeSelectOption value="">Tous les rôles</NativeSelectOption>
+              {STAFF_HISTORY_ROLES.map((role) => (
+                <NativeSelectOption key={role} value={role}>
+                  {STAFF_HISTORY_ROLE_LABELS[role]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
+          <div className="grid min-w-0 gap-1.5">
+            <Label htmlFor="historique-statut">Statut</Label>
+            <NativeSelect
+              id="historique-statut"
+              name="statut"
+              defaultValue={filters.status ?? ""}
+              className="w-full"
+            >
+              <NativeSelectOption value="">Tous les statuts</NativeSelectOption>
+              {ORDER_STATUSES.map((status) => (
+                <NativeSelectOption key={status} value={status}>
+                  {ORDER_STATUS_LABELS[status]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
         </div>
         <DateRangeFields
           legend="Jour de livraison"
@@ -103,22 +113,8 @@ export function StaffHistoryFilters({
           toLabel="Livraison au"
           idPrefix="historique"
           period={period}
-          className="col-span-2"
         />
-      </div>
-      {canReset ? (
-        <Link
-          href={`/personnel/${staffId}`}
-          scroll={false}
-          className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "self-start",
-          )}
-        >
-          <RotateCcw />
-          Réinitialiser la recherche
-        </Link>
-      ) : null}
+      </FilterTray>
     </AutoSubmitForm>
   );
 }

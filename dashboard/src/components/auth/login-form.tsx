@@ -8,12 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { idleActionResult } from "@/lib/action-result";
 
-/* Formulaire de connexion (client : useActionState). Le succès redirige, seul l'échec s'affiche. */
+/*
+ * Formulaire de connexion (client : useActionState). Le succès redirige, seul
+ * l'échec s'affiche. `login-stagger` : les champs entrent l'un après l'autre
+ * (globals.css, « Connexion »), sans mouvement pour qui le refuse.
+ */
 export function LoginForm() {
   const [result, formAction, pending] = useActionState(login, idleActionResult);
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="login-stagger flex flex-col gap-4">
       <div className="grid gap-1.5">
         <Label htmlFor="email">E-mail</Label>
         <Input

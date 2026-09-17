@@ -6,6 +6,7 @@ import type {
   OrderStats,
   ProductPoint,
   SeriesPoint,
+  StatusCounts,
 } from "@/domain/metrics/rules";
 import type { StaffAssignment } from "@/domain/orders/assignment";
 import type { Page } from "@/domain/orders/rules";
@@ -32,7 +33,9 @@ import type { StaffWorkSummary } from "@/domain/staff/rules";
  * - getOrders : commandes complètes filtrées (recherche comprise), triées par
  *   créneau ; pour des listes bornées par nature (une tournée de 7 jours au
  *   plus) ou par `limit` (les plus proches d'abord).
- * - countOrders : le nombre de commandes qui passent les filtres.
+ * - countOrders : le nombre de commandes qui passent les filtres ;
+ *   getOrderStatusCounts : ce nombre par statut (barre d'avancement de la
+ *   liste, toutes pages confondues), chaque statut présent, 0 compris.
  * - getOrdersPage : une page de la liste, les plus récentes d'abord ; filtre,
  *   recherche, compte et découpage faits par la base (pageWindow).
  * - getOrderStats, getOrderSeries, getTopProducts : les chiffres d'une période,
@@ -61,6 +64,7 @@ export type OrdersSource = {
     options?: { limit?: number },
   ): Promise<Order[]>;
   countOrders(filters: OrderFilters): Promise<number>;
+  getOrderStatusCounts(filters: OrderFilters): Promise<StatusCounts>;
   getOrdersPage(
     filters: OrderFilters,
     page: number,

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Inbox, SearchX } from "lucide-react";
+import { Activity, Inbox, SearchX } from "lucide-react";
+import { TourProgress } from "@/components/deliveries/tour-progress";
 import { DeliveryDayShortcuts } from "@/components/orders/delivery-day-shortcuts";
 import { OrdersCards } from "@/components/orders/orders-cards";
 import { OrdersFilters } from "@/components/orders/orders-filters";
@@ -8,6 +9,7 @@ import { OrdersPagination } from "@/components/orders/orders-pagination";
 import { PageHeader } from "@/components/page-header";
 import { PeriodEmptyNotice } from "@/components/period-empty-notice";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -16,7 +18,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { getDeliveryDayCounts, getOrdersPage } from "@/data/orders";
+import {
+  getDeliveryDayCounts,
+  getOrderStatusCounts,
+  getOrdersPage,
+} from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
@@ -24,7 +30,9 @@ import {
   RECENT_DAYS,
   recentDeliveryDaysFromCounts,
   todayInParis,
+  tourProgressFromCounts,
 } from "@/domain/deliveries/rules";
+import { countByStatus } from "@/domain/metrics/rules";
 import {
   hasOrderFilters,
   orderFiltersQuery,
@@ -38,7 +46,12 @@ import {
 import type { Order } from "@/domain/orders/types";
 import { assignmentOptions, staffFilterOptions } from "@/domain/staff/rules";
 import { addDays } from "@/lib/days";
-import { endSentence, formatOrdersCount, formatPeriodFr } from "@/lib/format";
+import {
+  endSentence,
+  formatDayLongFr,
+  formatOrdersCount,
+  formatPeriodFr,
+} from "@/lib/format";
 import { readSimulationMode } from "@/lib/simulation";
 
 /*
@@ -49,10 +62,12 @@ import { readSimulationMode } from "@/lib/simulation";
  * (@/data/orders) UNE page : la base filtre, cherche, compte et découpe (40
  * commandes, les plus récentes d'abord) au lieu de charger tout l'historique.
  * Avec l'équipe (pour les listes déroulantes d'affectation), la page rend la
- * recherche et les filtres (référence, client, statut, période, équipe), les
- * raccourcis des RECENT_DAYS derniers jours (chacun avec son nombre de
- * livraisons, compté par la base, en gardant la recherche en cours), le
- * compteur, les cartes et la pagination, ou l'un des états vides.
+ * recherche et les filtres (référence, client, statut, période, équipe) avec,
+ * dans leur zone de dates, les raccourcis des RECENT_DAYS derniers jours
+ * (chacun avec son nombre de livraisons, compté par la base, en gardant la
+ * recherche en cours), le compteur, l'AVANCEMENT des commandes listées
+ * (toutes pages : nombre par statut compté par la base, barre segmentée), les
+ * cartes et la pagination, ou l'un des états vides.
  *
  * Trois états vides : une période sans commande (bandeau bleu, la période
  * était valide, il n'y a juste rien ce jour-là), « rien ne correspond aux
@@ -80,10 +95,13 @@ export default async function CommandesPage({
   const isFiltered = hasOrderFilters(filters) || period.error !== null;
   const today = todayInParis(new Date());
   const weekStart = addDays(today, -(RECENT_DAYS - 1));
-  const [page, dayCounts, user, staff] = await Promise.all([
+  const [page, statusCounts, dayCounts, user, staff] = await Promise.all([
     mode === "vide"
       ? Promise.resolve(EMPTY_PAGE)
       : getOrdersPage(filters, parsePage(raw)),
+    mode === "vide"
+      ? Promise.resolve(countByStatus([]))
+      : getOrderStatusCounts(filters),
     getDeliveryDayCounts({ from: weekStart, to: today }),
     getCurrentUser(),
     listStaff(),
@@ -95,6 +113,17 @@ export default async function CommandesPage({
     from: undefined,
     to: undefined,
   });
+  const singleDay =
+    filters.from !== undefined && filters.from === filters.to
+      ? filters.from
+      : null;
+  const progressScope = singleDay
+    ? `tournée du ${formatDayLongFr(singleDay)}`
+    : period.range
+      ? `livraison ${formatPeriodFr(period.range.from, period.range.to)}`
+      : isFiltered
+        ? "commandes trouvées"
+        : "toutes les commandes";
 
   return (
     <>
@@ -105,12 +134,14 @@ export default async function CommandesPage({
           period={period}
           staff={staffFilterOptions(staff)}
           canReset={isFiltered}
-        />
-        <DeliveryDayShortcuts
-          days={recentDeliveryDaysFromCounts(dayCounts, today)}
-          today={today}
-          weekStart={weekStart}
-          filters={filters}
+          shortcuts={
+            <DeliveryDayShortcuts
+              days={recentDeliveryDaysFromCounts(dayCounts, today)}
+              today={today}
+              weekStart={weekStart}
+              filters={filters}
+            />
+          }
         />
         <p role="status" className="text-base font-semibold">
           {formatOrdersCount(page.total)}
@@ -127,6 +158,21 @@ export default async function CommandesPage({
         </p>
         {page.total > 0 ? (
           <>
+            <Card>
+              <CardContent className="flex flex-col gap-3">
+                <h2 className="flex items-center gap-2 text-sm font-medium">
+                  <Activity
+                    className="text-primary size-4"
+                    aria-hidden="true"
+                  />
+                  Avancement · {progressScope}
+                </h2>
+                <TourProgress
+                  progress={tourProgressFromCounts(statusCounts)}
+                  label="Avancement des commandes listées"
+                />
+              </CardContent>
+            </Card>
             <OrdersCards
               orders={page.items}
               canChangeStatus={canChangeOrderStatus(user.role)}

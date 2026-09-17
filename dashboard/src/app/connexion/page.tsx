@@ -1,28 +1,41 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Carrot, Leaf, ShieldCheck, Truck } from "lucide-react";
+import { Carrot } from "lucide-react";
 import { auth } from "@/auth";
 import { LoginForm } from "@/components/auth/login-form";
+import { LoginScene } from "@/components/auth/login-scene";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /*
  * Page de connexion, hors du groupe (dashboard) : pas de sidebar. Un utilisateur
  * déjà connecté est renvoyé à l'accueil.
  *
- * Deux panneaux sur grand écran : à gauche la marque (dégradé, logo qui flotte
- * doucement, trois promesses du produit), à droite la carte de connexion. Sur
- * mobile, seule la carte reste, avec le logo au-dessus.
+ * Une SCÈNE abstraite plein écran (LoginScene : parallaxe au pointeur) sur le
+ * fond de la fenêtre : un balayage de dégradé très lent, le motif verger qui
+ * respire, trois orbes de lumière aux couleurs du thème (marque, particulier),
+ * le mot FIG en filigrane et quelques particules qui montent. Au centre, la
+ * carte de connexion en verre, qui entre en fondu, ses champs l'un après
+ * l'autre. Aucun faux contenu : rien que la marque et le formulaire. Tout est
+ * en tokens et en animations CSS sur transform et opacity ; immobile pour qui
+ * refuse le mouvement (globals.css, « Connexion »).
  */
 export const metadata: Metadata = { title: "Connexion" };
 
-const PROMISES = [
-  { icon: Truck, text: "La tournée du jour, prête à être livrée." },
-  { icon: Leaf, text: "Le catalogue de saison, à jour en un geste." },
-  {
-    icon: ShieldCheck,
-    text: "Chaque action vérifiée, chaque changement tracé.",
-  },
+/** Particules : position en %, décalage et durée en secondes, fixés (pas d'aléa au rendu). */
+const PARTICLES = [
+  [8, 22, 0, 9],
+  [16, 68, 1.5, 11],
+  [27, 38, 3, 8],
+  [36, 82, 0.8, 12],
+  [44, 14, 2.2, 10],
+  [58, 76, 4, 9],
+  [66, 28, 1.1, 13],
+  [74, 58, 2.8, 8],
+  [83, 18, 0.4, 11],
+  [90, 72, 3.6, 10],
+  [52, 46, 5, 12],
+  [12, 48, 2.5, 10],
 ] as const;
 
 export default async function ConnexionPage() {
@@ -30,69 +43,53 @@ export default async function ConnexionPage() {
   if (session?.user) redirect("/");
 
   return (
-    <main className="relative flex flex-1 items-center justify-center p-4 md:p-8">
-      <ThemeToggle className="absolute top-4 right-4 z-10" />
-      <div className="bg-card ring-foreground/10 grid w-full max-w-4xl overflow-hidden rounded-3xl shadow-xl ring-1 lg:grid-cols-[1.1fr_1fr]">
-        <section
-          aria-label="FIG Back-office"
-          className="bg-gradient-brand relative hidden flex-col justify-between p-10 text-white lg:flex"
-        >
-          <div
-            aria-hidden="true"
-            className="absolute -top-24 -right-24 size-72 rounded-full bg-white/15 blur-3xl"
+    <LoginScene className="relative flex flex-1 items-center justify-center p-4 md:p-8">
+      <div aria-hidden="true" className="login-layer">
+        <span className="login-sweep" />
+        <span className="login-verger" />
+        <span className="login-orb login-orb-1" />
+        <span className="login-orb login-orb-2" />
+        <span className="login-orb login-orb-3" />
+        <span className="login-wordmark text-gradient-brand">FIG</span>
+        {PARTICLES.map(([x, y, delay, duration]) => (
+          <span
+            key={`${x}-${y}`}
+            className="login-particle"
+            style={
+              {
+                left: `${x}%`,
+                top: `${y}%`,
+                "--delay": `${delay}s`,
+                "--duration": `${duration}s`,
+              } as CSSProperties
+            }
           />
-          <div
-            aria-hidden="true"
-            className="absolute -bottom-32 -left-16 size-80 rounded-full bg-black/10 blur-3xl"
-          />
-          <div className="relative flex items-center gap-3">
-            <span className="float-soft flex size-14 items-center justify-center rounded-2xl bg-white/20 shadow-lg ring-1 ring-white/30 backdrop-blur">
-              <Carrot className="size-7" aria-hidden="true" />
-            </span>
-            <span className="text-2xl font-bold tracking-tight">FIG</span>
-          </div>
-          <div className="relative flex flex-col gap-6">
-            <p className="text-3xl leading-tight font-semibold text-balance">
-              Le back-office des fruits et légumes livrés chez vos clients.
-            </p>
-            <ul className="flex flex-col gap-3 text-sm text-white/90">
-              {PROMISES.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-3">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/25">
-                    <Icon className="size-4" aria-hidden="true" />
-                  </span>
-                  {text}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <p className="relative text-xs text-white/70">
-            Accès réservé à l&apos;équipe FIG.
-          </p>
-        </section>
-
-        <Card className="rounded-none border-0 shadow-none ring-0">
-          <CardHeader className="items-center pt-6 text-center lg:items-start lg:text-left">
-            <div
-              aria-hidden="true"
-              className="bg-gradient-brand mb-3 flex size-12 items-center justify-center rounded-2xl text-white shadow-md lg:hidden"
-            >
-              <Carrot className="size-6" />
-            </div>
-            <CardTitle>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Bienvenue
-              </h1>
-            </CardTitle>
-            <p className="text-muted-foreground text-sm">
-              Connectez-vous avec votre compte d&apos;équipe.
-            </p>
-          </CardHeader>
-          <CardContent className="pb-6">
-            <LoginForm />
-          </CardContent>
-        </Card>
+        ))}
       </div>
-    </main>
+
+      <ThemeToggle className="absolute top-4 right-4 z-10" />
+
+      <div className="login-card bg-card/85 supports-backdrop-filter:bg-card/70 ring-foreground/10 relative w-full max-w-md rounded-3xl p-6 shadow-2xl ring-1 backdrop-blur-xl md:p-8">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
+          <span
+            aria-hidden="true"
+            className="float-soft bg-gradient-brand flex size-14 items-center justify-center rounded-2xl text-white shadow-lg ring-1 ring-white/30"
+          >
+            <Carrot className="size-7" />
+          </span>
+          <span className="text-gradient-brand text-xs font-bold tracking-[0.22em] uppercase">
+            FIG Back-office
+          </span>
+          <h1 className="text-3xl font-semibold tracking-tight">Bienvenue</h1>
+          <p className="text-muted-foreground text-sm">
+            Connectez-vous avec votre compte d&apos;équipe.
+          </p>
+        </div>
+        <LoginForm />
+        <p className="text-muted-foreground mt-6 text-center text-xs">
+          Accès réservé à l&apos;équipe FIG.
+        </p>
+      </div>
+    </LoginScene>
   );
 }

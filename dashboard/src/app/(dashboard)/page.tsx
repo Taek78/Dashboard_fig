@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, Euro, ShoppingBasket, Truck, Wallet } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  CalendarX2,
+  Euro,
+  ShoppingBasket,
+  Truck,
+  Wallet,
+} from "lucide-react";
 import { TourProgress } from "@/components/deliveries/tour-progress";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { PeriodForm } from "@/components/metrics/period-form";
@@ -7,9 +15,17 @@ import { TaxModeSwitch } from "@/components/metrics/tax-mode-switch";
 import { OrdersCards } from "@/components/orders/orders-cards";
 import { PageHeader } from "@/components/page-header";
 import { PeriodEmptyNotice } from "@/components/period-empty-notice";
+import { Section } from "@/components/section";
 import { StaffShortageAlert } from "@/components/staff/staff-shortage-alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { countOrders, getOrderStats, getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
@@ -44,8 +60,9 @@ import { cn } from "@/lib/utils";
  * requête, quelques nombres) puis mis en forme par les règles pures ; montants
  * HT par défaut, TTC par l'interrupteur (même URL ?tva= que les métriques).
  * Sous les KPI, la barre d'avancement des commandes de la période
- * (TourProgress : segments par statut, légende chiffrée) ; une plage libre
- * sans commande est dite par un bandeau bleu.
+ * (TourProgress : segments par statut, légende chiffrée) ; sans commande, un
+ * état vide bien visible (« Aucune commande »), et une plage libre sans
+ * commande est dite par le bandeau bleu commun.
  * En bas, les commandes en préparation toutes dates : le nombre (compté par la
  * base) et les PREPARING_SHOWN créneaux les plus proches, jamais la liste
  * entière (elle grandit avec l'activité) ; le lien mène à la liste complète.
@@ -88,15 +105,21 @@ export default async function TableauDeBordPage({
       <StaffShortageAlert roles={unavailableRoles(staff)} />
 
       <Card>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent>
           <PeriodForm
             action="/"
             period={query.period}
             custom={query.custom}
             range={range}
             hiddenFields={{ tva: query.tax }}
+            tools={
+              <TaxModeSwitch
+                action="/"
+                tax={query.tax}
+                baseParams={baseParams}
+              />
+            }
           />
-          <TaxModeSwitch action="/" tax={query.tax} baseParams={baseParams} />
         </CardContent>
       </Card>
 
@@ -129,8 +152,9 @@ export default async function TableauDeBordPage({
 
       <Card>
         <CardContent className="flex flex-col gap-3">
-          <h2 className="text-muted-foreground text-sm font-medium">
-            Avancement des commandes :{" "}
+          <h2 className="flex items-center gap-2 text-sm font-medium">
+            <Activity className="text-primary size-4" aria-hidden="true" />
+            Avancement des commandes ·{" "}
             {query.customRange ? "période choisie" : title.toLowerCase()}
           </h2>
           {kpis.orderCount > 0 ? (
@@ -147,9 +171,23 @@ export default async function TableauDeBordPage({
               resetLabel="Revenir à aujourd'hui"
             />
           ) : (
-            <p className="text-muted-foreground text-sm">
-              Aucune commande sur la période.
-            </p>
+            <Empty className="bg-muted/30 border py-8">
+              <EmptyHeader>
+                <EmptyMedia
+                  variant="icon"
+                  className="bg-gradient-brand size-12 rounded-xl text-white shadow-sm [&_svg]:size-6"
+                >
+                  <CalendarX2 />
+                </EmptyMedia>
+                <EmptyTitle className="text-lg font-semibold">
+                  Aucune commande
+                </EmptyTitle>
+                <EmptyDescription>
+                  {title} : rien à préparer ni à livrer. Choisissez une autre
+                  période ci-dessus.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
         </CardContent>
       </Card>
@@ -178,21 +216,26 @@ export default async function TableauDeBordPage({
         ))}
       </nav>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">
-          Commandes en préparation ({preparingCount}, toutes dates)
-        </h2>
-        {preparingCount > preparing.length ? (
-          <p className="text-muted-foreground text-sm">
-            Les {preparing.length} créneaux les plus proches.{" "}
+      <Section
+        id="preparation"
+        title={`Commandes en préparation (${preparingCount}, toutes dates)`}
+        description={
+          preparingCount > preparing.length
+            ? `Les ${preparing.length} créneaux les plus proches.`
+            : undefined
+        }
+        actions={
+          preparingCount > preparing.length ? (
             <Link
               href="/commandes?statut=preparing"
-              className="text-foreground font-medium underline-offset-4 hover:underline"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
-              Voir les {preparingCount} commandes en préparation
+              Voir les {preparingCount} commandes
+              <ArrowRight />
             </Link>
-          </p>
-        ) : null}
+          ) : null
+        }
+      >
         {preparing.length > 0 ? (
           <OrdersCards
             orders={preparing}
@@ -205,7 +248,7 @@ export default async function TableauDeBordPage({
             Aucune commande en préparation.
           </p>
         )}
-      </div>
+      </Section>
     </>
   );
 }

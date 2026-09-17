@@ -8,9 +8,11 @@ import { cn } from "@/lib/utils";
 
 /*
  * Interrupteur HT / TTC (serveur), partagé par le tableau de bord et les
- * métriques. Deux liens vers la même page avec ?tva= : le choix vit dans
- * l'URL, sans JavaScript. `baseParams` rejoue les autres paramètres de la page
- * (période, plage, comparaison) pour ne pas les perdre en basculant.
+ * métriques : un commutateur compact, posé sur la ligne des listes du
+ * formulaire de période. Deux liens vers la même page avec ?tva= : le choix
+ * vit dans l'URL, sans JavaScript. `baseParams` rejoue les autres paramètres
+ * de la page (période, plage, comparaison) pour ne pas les perdre en
+ * basculant.
  */
 export function TaxModeSwitch({
   action,
@@ -22,12 +24,12 @@ export function TaxModeSwitch({
   baseParams: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-      <span className="text-sm font-medium">Montants affichés</span>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="text-sm font-medium">Montants</span>
       <div
         role="group"
         aria-label="Mode de TVA"
-        className="bg-muted/60 inline-flex items-center gap-0.5 rounded-full border p-0.5"
+        className="bg-card border-input inline-flex h-9 items-center gap-0.5 rounded-lg border p-0.5"
       >
         {TAX_MODES.map((mode) => {
           const active = mode === tax;
@@ -37,9 +39,9 @@ export function TaxModeSwitch({
               href={`${action}?${baseParams}&tva=${mode}`}
               aria-pressed={active}
               className={cn(
-                "focus-visible:ring-ring/50 rounded-full px-3 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-3",
+                "focus-visible:ring-ring/50 rounded-md px-3 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-3",
                 active
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-primary/12 text-primary shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -48,7 +50,7 @@ export function TaxModeSwitch({
           );
         })}
       </div>
-      <span className="text-muted-foreground text-sm">TVA 5,5 %.</span>
+      <span className="text-muted-foreground text-xs">TVA 5,5 %</span>
     </div>
   );
 }

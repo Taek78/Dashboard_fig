@@ -28,8 +28,9 @@ import {
 } from "@/db/schema";
 import type { StaffAssignment } from "@/domain/orders/assignment";
 import { ORDERS_PAGE_SIZE, pageWindow } from "@/domain/orders/rules";
-import { FINISHED_STATUSES } from "@/domain/orders/status";
+import { FINISHED_STATUSES, ORDER_STATUSES } from "@/domain/orders/status";
 import type { OrdersSource } from "@/domain/orders/source";
+import type { StatusCounts } from "@/domain/metrics/rules";
 import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
 import {
   containsPattern,
@@ -204,6 +205,21 @@ const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
 
   countOrders: (filters: OrderFilters) =>
     countWhere(getDb(), whereFor(filters)),
+
+  // Un GROUP BY sur le même WHERE que la liste : la barre d'avancement de
+  // /commandes résume toutes les pages, pas seulement celle affichée.
+  getOrderStatusCounts: async (filters: OrderFilters) => {
+    const rows = await getDb()
+      .select({ status: orders.status, total: count() })
+      .from(orders)
+      .where(whereFor(filters))
+      .groupBy(orders.status);
+    const counts = Object.fromEntries(
+      ORDER_STATUSES.map((status) => [status, 0]),
+    ) as StatusCounts;
+    for (const row of rows) counts[row.status] = row.total;
+    return counts;
+  },
 
   getOrdersPage: async (
     filters: OrderFilters,

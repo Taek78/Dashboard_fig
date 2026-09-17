@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
  * nombre) et les autres parts s'estompent. Pour un lecteur d'écran, le
  * camembert est une image dont le nom énumère les parts : aucune information
  * n'est réservée à la souris. SVG pur, géométrie calculée par pieSlicePaths.
+ * Sans aucune valeur, un simple anneau en pointillé : pas de disque gris qui
+ * ressemblerait à une donnée.
  */
 export const PIE_TONES = {
   brand: "var(--primary)",
@@ -23,23 +25,24 @@ export const PIE_TONES = {
 export type PieTone = keyof typeof PIE_TONES;
 export type PieSlice = { label: string; value: number; tone: PieTone };
 
-const SIZE = 64;
-const RADIUS = SIZE / 2;
-
 export function RatioPie({
   slices,
   label,
+  size = 56,
   className,
 }: {
   slices: PieSlice[];
   /** Ce que représente le camembert (nom accessible, avant le détail des parts). */
   label: string;
+  /** Diamètre en pixels. */
+  size?: number;
   className?: string;
 }) {
   const [active, setActive] = useState<number | null>(null);
+  const radius = size / 2;
   const paths = pieSlicePaths(
     slices.map((s) => s.value),
-    RADIUS,
+    radius,
   );
   const current = active === null ? null : slices[active];
   const description = `${label} : ${slices
@@ -54,12 +57,20 @@ export function RatioPie({
       <svg
         role="img"
         aria-label={description}
-        width={SIZE}
-        height={SIZE}
-        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
       >
         {paths.length === 0 ? (
-          <circle cx={RADIUS} cy={RADIUS} r={RADIUS} fill={PIE_TONES.rest} />
+          <circle
+            cx={radius}
+            cy={radius}
+            r={radius - 1.5}
+            fill="none"
+            stroke={PIE_TONES.rest}
+            strokeWidth={2}
+            strokeDasharray="3 4"
+          />
         ) : (
           paths.map((slice) => (
             <path

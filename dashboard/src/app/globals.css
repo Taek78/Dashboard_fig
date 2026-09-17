@@ -452,6 +452,18 @@
   contain-intrinsic-size: auto 16rem;
 }
 
+/*
+ * Panneau de filtres (FilterTray) et zone de dates (DateRangeFields) : une
+ * surface teintée posée SUR une carte, solide (pas de flou : les listes sont
+ * longues et backdrop-filter coûte cher sur téléphone), signée d'un liseré
+ * clair en haut.
+ */
+@utility surface-tray {
+  background-color: color-mix(in oklch, var(--muted) 55%, var(--card));
+  box-shadow: inset 0 1px 0 0
+    color-mix(in oklch, var(--foreground) 5%, transparent);
+}
+
 /* Halo de marque très doux en coin de carte (KPI, connexion). */
 @utility glow-brand {
   position: relative;
@@ -493,6 +505,21 @@
   background-color: color-mix(in oklch, var(--background) 50%, transparent);
 }
 
+/*
+ * Champs posés sur une surface teintée (panneau de filtres, zone de dates) :
+ * ils reprennent la couleur de la carte pour se détacher de la teinte. Hors
+ * couche exprès : la règle prime sur bg-transparent et dark:bg-input/30 des
+ * composants shadcn, sans les modifier.
+ */
+:is([data-slot="filter-tray"], [data-slot="date-range"])
+  :is([data-slot="input"], [data-slot="native-select"]) {
+  background-color: var(--card);
+}
+:is([data-slot="filter-tray"], [data-slot="date-range"])
+  [data-slot="native-select"]:hover {
+  background-color: color-mix(in oklch, var(--card) 80%, var(--input));
+}
+
 /* Entrée de page : fondu et léger glissement, uniquement si le mouvement est accepté. */
 @utility page-in {
   @media (prefers-reduced-motion: no-preference) {
@@ -503,5 +530,232 @@
 @utility float-soft {
   @media (prefers-reduced-motion: no-preference) {
     animation: var(--animate-float);
+  }
+}
+
+/*
+ * ---------- Connexion : scène animée ----------
+ * Couches décoratives de la page de connexion (src/app/connexion/page.tsx),
+ * toutes en tokens du thème : un balayage conique très léger qui tourne, le
+ * motif verger qui respire, trois orbes de lumière floues (marque, seconde
+ * teinte de marque, particulier), le mot FIG en filigrane et des particules
+ * qui montent. Le pointeur décale les couches en parallaxe : LoginScene pose
+ * --px / --py (de -1 à 1) et chaque couche en tire sa translation (propriété
+ * `translate`, indépendante du `transform` animé). Tout est sur transform et
+ * opacity (rien à recalculer en mise en page) ; sous prefers-reduced-motion,
+ * rien ne bouge et la scène reste un décor fixe.
+ */
+.login-scene {
+  --px: 0;
+  --py: 0;
+}
+.login-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.login-layer + * {
+  position: relative;
+}
+.login-sweep {
+  position: absolute;
+  inset: -60%;
+  opacity: 0.8;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 18%,
+    color-mix(in oklch, var(--brand-to) 14%, transparent) 30%,
+    transparent 42%,
+    color-mix(in oklch, var(--individual) 10%, transparent) 64%,
+    transparent 76%
+  );
+}
+.login-verger {
+  position: absolute;
+  inset: -6%;
+  opacity: calc(var(--decor-art-opacity) * 1.6);
+  background-image: linear-gradient(
+    135deg,
+    var(--brand-from),
+    var(--brand-to) 55%,
+    var(--individual)
+  );
+  mask-image: url("/fond/verger.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: cover;
+  translate: calc(var(--px) * -10px) calc(var(--py) * -10px);
+  transition: translate 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.login-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(40px);
+  opacity: 0.6;
+  translate: calc(var(--px) * var(--depth)) calc(var(--py) * var(--depth));
+  transition: translate 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.login-orb-1 {
+  --depth: 18px;
+  width: 44rem;
+  height: 44rem;
+  top: -16rem;
+  left: -14rem;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--brand-from) 55%, transparent),
+    transparent 66%
+  );
+}
+.login-orb-2 {
+  --depth: 28px;
+  width: 38rem;
+  height: 38rem;
+  right: -12rem;
+  bottom: -14rem;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--brand-to) 50%, transparent),
+    transparent 66%
+  );
+}
+.login-orb-3 {
+  --depth: 36px;
+  width: 28rem;
+  height: 28rem;
+  top: 38%;
+  left: 58%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--individual) 45%, transparent),
+    transparent 66%
+  );
+}
+.login-wordmark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  translate: calc(var(--px) * 22px) calc(var(--py) * 22px);
+  transition: translate 500ms cubic-bezier(0.22, 1, 0.36, 1);
+  font-size: clamp(14rem, 42vw, 36rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  opacity: 0.07;
+  user-select: none;
+}
+.login-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  opacity: 0.45;
+  background: color-mix(in oklch, var(--brand-to) 60%, var(--foreground));
+  box-shadow: 0 0 14px 3px color-mix(in oklch, var(--brand-to) 45%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .login-sweep {
+    animation: login-sweep 80s linear infinite;
+  }
+  .login-verger {
+    animation: login-breathe 26s ease-in-out infinite alternate;
+  }
+  .login-orb-1 {
+    animation: login-orb-a 28s ease-in-out infinite alternate;
+  }
+  .login-orb-2 {
+    animation: login-orb-b 34s ease-in-out infinite alternate;
+  }
+  .login-orb-3 {
+    animation: login-orb-c 22s ease-in-out infinite alternate;
+  }
+  .login-particle {
+    opacity: 0;
+    animation: login-particle var(--duration, 10s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+  }
+  .login-card {
+    animation: login-card 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .login-stagger > * {
+    animation: page-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .login-stagger > :nth-child(1) {
+    animation-delay: 160ms;
+  }
+  .login-stagger > :nth-child(2) {
+    animation-delay: 240ms;
+  }
+  .login-stagger > :nth-child(3) {
+    animation-delay: 320ms;
+  }
+  .login-stagger > :nth-child(4) {
+    animation-delay: 400ms;
+  }
+}
+@keyframes login-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes login-breathe {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.07);
+  }
+}
+@keyframes login-orb-a {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(7rem, 5rem) scale(1.15);
+  }
+}
+@keyframes login-orb-b {
+  from {
+    transform: translate(0, 0) scale(1.1);
+  }
+  to {
+    transform: translate(-6rem, -7rem) scale(0.95);
+  }
+}
+@keyframes login-orb-c {
+  from {
+    transform: translate(0, 0) scale(0.9);
+  }
+  to {
+    transform: translate(-9rem, 6rem) scale(1.2);
+  }
+}
+@keyframes login-particle {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  60% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-7rem);
+  }
+}
+@keyframes login-card {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

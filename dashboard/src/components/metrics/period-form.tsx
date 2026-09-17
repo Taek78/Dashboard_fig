@@ -15,17 +15,20 @@ import {
   type MetricPeriod,
 } from "@/domain/metrics/rules";
 import type { DateRangeInput } from "@/lib/days";
-import { endSentence, formatDateFr } from "@/lib/format";
+import { formatPeriodFr } from "@/lib/format";
 
 /*
  * Formulaire de période (serveur, GET via next/form), partagé par le tableau de
- * bord et les métriques : période prédéfinie OU plage libre « Du / Au » en un
- * seul filtre (DateRangeFields : une date = ce jour-là, dates inversées =
- * erreur rouge et la période prédéfinie s'applique), tout passe par l'URL
- * (partageable, sans JavaScript). `hiddenFields` conserve les autres
- * paramètres de la page (mode TVA…) ; `children` insère des champs propres à
- * la page avant le bouton (la comparaison des métriques). La clé sur les
- * champs de dates les remonte quand l'URL change (defaultValue relu).
+ * bord et les métriques. Deux lignes : les listes (période prédéfinie,
+ * `children` propres à la page comme la comparaison des métriques) avec, à
+ * droite, les `tools` de la page (interrupteur HT / TTC) ; puis la zone de la
+ * plage libre « Du / Au » sur sa propre surface (DateRangeFields : une date =
+ * ce jour-là, dates inversées = erreur rouge et la période prédéfinie
+ * s'applique), avec le bouton « Afficher » et, en légende, la période
+ * effectivement affichée. Tout passe par l'URL (partageable, sans
+ * JavaScript) ; `hiddenFields` conserve les autres paramètres de la page
+ * (mode TVA…). La clé sur la zone de dates la remonte quand l'URL change
+ * (defaultValue relu).
  */
 export function PeriodForm({
   action,
@@ -34,6 +37,7 @@ export function PeriodForm({
   range,
   hiddenFields = {},
   children,
+  tools,
 }: {
   action: string;
   period: MetricPeriod;
@@ -41,57 +45,65 @@ export function PeriodForm({
   custom: DateRangeInput;
   range: DateRange;
   hiddenFields?: Record<string, string>;
+  /** Champs propres à la page, sur la ligne des listes. */
   children?: ReactNode;
+  /** Commandes de la page (liens), à droite de la ligne des listes. */
+  tools?: ReactNode;
 }) {
   const customRange = custom.range;
   return (
     <Form
       action={action}
       aria-label="Choix de la période"
-      className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:flex-wrap @2xl/main:items-start"
+      className="flex flex-col gap-4"
     >
       {Object.entries(hiddenFields).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}
-      <div className="grid gap-1.5 @2xl/main:w-60">
-        <Label htmlFor="periode">Période</Label>
-        <NativeSelect
-          id="periode"
-          name="periode"
-          defaultValue={customRange ? "" : period}
-          className="w-full"
-        >
-          {customRange ? (
-            <NativeSelectOption value="">
-              Plage personnalisée
-            </NativeSelectOption>
-          ) : null}
-          {METRIC_PERIODS.map((p) => (
-            <NativeSelectOption key={p} value={p}>
-              {METRIC_PERIOD_LABELS[p]}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+      <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:flex-wrap @2xl/main:items-end">
+        <div className="grid min-w-0 gap-1.5 @2xl/main:w-56">
+          <Label htmlFor="periode">Période</Label>
+          <NativeSelect
+            id="periode"
+            name="periode"
+            defaultValue={customRange ? "" : period}
+            className="w-full"
+          >
+            {customRange ? (
+              <NativeSelectOption value="">
+                Plage personnalisée
+              </NativeSelectOption>
+            ) : null}
+            {METRIC_PERIODS.map((p) => (
+              <NativeSelectOption key={p} value={p}>
+                {METRIC_PERIOD_LABELS[p]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+        {children}
+        {tools ? (
+          <div className="min-w-0 @2xl/main:ml-auto @2xl/main:pb-0.5">
+            {tools}
+          </div>
+        ) : null}
       </div>
       <DateRangeFields
         key={`${custom.from ?? ""}-${custom.to ?? ""}`}
+        variant="zone"
         legend="Plage libre"
         fromLabel="Du"
         toLabel="Au"
         idPrefix="periode"
         period={custom}
-        className="@2xl/main:w-80"
+        action={
+          <Button type="submit" className="w-full @xl/main:w-auto">
+            <CalendarRange />
+            Afficher
+          </Button>
+        }
+        caption={`Période affichée : ${formatPeriodFr(range.from, range.to)}.`}
       />
-      {children}
-      <Button type="submit" className="w-full @2xl/main:mt-6 @2xl/main:w-auto">
-        <CalendarRange />
-        Afficher
-      </Button>
-      <p className="text-muted-foreground text-sm @2xl/main:mt-8 @2xl/main:ml-auto">
-        {endSentence(
-          `Du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`,
-        )}
-      </p>
     </Form>
   );
 }

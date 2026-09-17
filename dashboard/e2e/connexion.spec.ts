@@ -60,6 +60,24 @@ test.describe("connexion et accès", () => {
     ).toBeVisible();
   });
 
+  test("la page de connexion tient sur un téléphone, sans défilement horizontal", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 400, height: 860 });
+    await page.goto("/connexion");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Bienvenue" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("Mot de passe")).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(0);
+  });
+
   test("la déconnexion ramène à la page de connexion", async ({ page }) => {
     await login(page, E2E_ACCOUNTS.admin);
     await page.getByRole("button", { name: "Se déconnecter" }).click();

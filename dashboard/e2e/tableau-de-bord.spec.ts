@@ -69,6 +69,21 @@ test.describe("tableau de bord", () => {
     await expect(page).toHaveURL(/\/\?tva=ht$/);
   });
 
+  test("sans commande aujourd'hui, l'état vide « Aucune commande » remplace la barre", async ({
+    page,
+  }) => {
+    // Les données de démonstration s'arrêtent le 14 septembre 2026 (HISTORY_TO).
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/");
+    await expect(
+      page.getByText("Aucune commande", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Aujourd'hui : rien à préparer ni à livrer/),
+    ).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
+  });
+
   test("des dates inversées dans la plage libre affichent l'erreur et gardent la période prédéfinie", async ({
     page,
   }) => {

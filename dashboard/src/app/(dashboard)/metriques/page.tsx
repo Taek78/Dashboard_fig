@@ -17,7 +17,7 @@ import {
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { MetricsControls } from "@/components/metrics/metrics-controls";
 import { ComparisonChart } from "@/components/metrics/comparison-chart";
-import { MetricsSection } from "@/components/metrics/metrics-section";
+import { Section } from "@/components/section";
 import { RatioPie } from "@/components/metrics/ratio-pie";
 import { StatusChart } from "@/components/metrics/status-chart";
 import { TrendBadge } from "@/components/metrics/trend-badge";
@@ -183,7 +183,7 @@ export default async function MetriquesPage({
         />
       ) : null}
 
-      <MetricsSection id="ventes" title="Ventes">
+      <Section id="ventes" title="Ventes">
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
           <KpiCard
             label="Commandes"
@@ -231,9 +231,9 @@ export default async function MetriquesPage({
             />
           </CardContent>
         </Card>
-      </MetricsSection>
+      </Section>
 
-      <MetricsSection id="commandes" title="Commandes">
+      <Section id="commandes" title="Commandes">
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
           <KpiCard
             label="Annulées"
@@ -304,9 +304,9 @@ export default async function MetriquesPage({
             <StatusChart points={statuses} />
           </CardContent>
         </Card>
-      </MetricsSection>
+      </Section>
 
-      <MetricsSection id="clients" title="Clients">
+      <Section id="clients" title="Clients">
         <div className="grid gap-4 @xl/main:grid-cols-2">
           <KpiCard
             label="Nouveaux clients"
@@ -343,9 +343,9 @@ export default async function MetriquesPage({
             }
           />
         </div>
-      </MetricsSection>
+      </Section>
 
-      <MetricsSection id="produits" title="Produits">
+      <Section id="produits" title="Produits">
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -394,9 +394,9 @@ export default async function MetriquesPage({
             </Table>
           </CardContent>
         </Card>
-      </MetricsSection>
+      </Section>
 
-      <MetricsSection
+      <Section
         id="usage"
         title={`Usage de l'application en ${year}`}
         description={`Variations par rapport à ${Number(year) - 1}.`}
@@ -464,7 +464,7 @@ export default async function MetriquesPage({
             trend={trend(usage.rating, usageRef.rating, false, yearLabel)}
           />
         </div>
-      </MetricsSection>
+      </Section>
     </>
   );
 }

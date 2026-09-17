@@ -11,12 +11,19 @@ export default function MetriquesLoading() {
         <Card>
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 @2xl/main:flex-row @2xl/main:items-end">
-              <Skeleton className="h-8 w-full @2xl/main:w-60" />
-              <Skeleton className="h-8 w-40" />
-              <Skeleton className="h-8 w-40" />
-              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-9 w-full rounded-lg @2xl/main:w-56" />
+              <Skeleton className="h-9 w-full rounded-lg @2xl/main:w-52" />
+              <Skeleton className="h-9 w-full rounded-lg @2xl/main:ml-auto @2xl/main:w-64" />
             </div>
-            <Skeleton className="h-8 w-56" />
+            <div className="surface-tray grid gap-2.5 rounded-xl p-3">
+              <Skeleton className="h-4 w-24" />
+              <div className="grid gap-2 @xl/main:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                <Skeleton className="h-9 w-full rounded-lg" />
+                <Skeleton className="h-9 w-full rounded-lg" />
+                <Skeleton className="h-9 w-full rounded-lg @xl/main:w-28" />
+              </div>
+              <Skeleton className="h-3 w-64 max-w-full" />
+            </div>
           </CardContent>
         </Card>
         <div className="grid gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">

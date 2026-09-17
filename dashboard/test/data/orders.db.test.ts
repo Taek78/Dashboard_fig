@@ -6,6 +6,7 @@ import { directoryStatsFromOrders } from "@/domain/customers/directory";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import { loyalTierEvents } from "@/domain/customers/tier";
 import {
+  countByStatus,
   filterByRange,
   orderStats,
   revenueSeries,
@@ -243,6 +244,20 @@ describe("lectures bornées et agrégats ciblés = règles pures", () => {
       filterOrders(all, { query: "benali" }).length,
     );
     expect(await ordersDb.countOrders({})).toBe(all.length);
+  });
+
+  it("getOrderStatusCounts : le nombre par statut de la liste filtrée, 0 compris", async () => {
+    const all = await ordersDb.getOrders();
+    for (const filters of [
+      {},
+      { from: "2026-09-07", to: "2026-09-07" },
+      { status: "delivered" as const },
+      { query: "benali", preparerId: null },
+    ] satisfies OrderFilters[]) {
+      expect(await ordersDb.getOrderStatusCounts(filters)).toEqual(
+        countByStatus(filterOrders(all, filters)),
+      );
+    }
   });
 
   it("recherche : caractères spéciaux de LIKE, ligatures, casse et téléphone comme la règle pure", async () => {

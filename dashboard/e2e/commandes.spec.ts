@@ -307,6 +307,38 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     await expect(today).toHaveAttribute("aria-current", "date");
   });
 
+  test("l'avancement résume toutes les commandes listées ; « Aujourd'hui » ouvre la ligne des raccourcis", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?du=2026-09-07&au=2026-09-07");
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: /Avancement · tournée du lundi 7 septembre 2026/,
+      }),
+    ).toBeVisible();
+    const bar = page.getByRole("progressbar", {
+      name: "Avancement des commandes listées",
+    });
+    await expect(bar).toHaveAttribute("aria-valuemax", "5");
+    const shortcuts = page.getByRole("navigation", {
+      name: "7 derniers jours",
+    });
+    const first = shortcuts.getByRole("link").first();
+    await expect(first).toHaveText(/^Aujourd'hui/);
+    await expect(first).toHaveAttribute("data-today", "true");
+
+    // Toutes pages : la barre compte au-delà des 40 commandes de la page.
+    await page.goto("/commandes?statut=delivered");
+    const total = Number(
+      await page
+        .getByRole("progressbar", { name: "Avancement des commandes listées" })
+        .getAttribute("aria-valuemax"),
+    );
+    expect(total).toBeGreaterThan(40);
+  });
+
   test("le filtre préparateur garde ses commandes, « Réinitialiser » rend la liste complète", async ({
     page,
   }) => {

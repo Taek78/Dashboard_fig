@@ -84,6 +84,12 @@ Dernière mise à jour : 2026-09-16.
 
 ## Décisions prises
 
+- Écrans (2026-09-17, cinquième lot, refonte visuelle) :
+  - **Panneau de filtres** commun (`FilterTray`) sous chaque barre de recherche, **zone de dates** dédiée pleine largeur (`DateRangeFields`), cases à cocher en puces, barre de recherche partagée (`SearchField`).
+  - **Commandes** : raccourcis des 7 derniers jours dans la zone de dates, « Aujourd'hui » en tête et en évidence ; barre d'**avancement des commandes listées** (toutes pages, `getOrderStatusCounts`).
+  - **Tableau de bord** : état vide « Aucune commande » bien visible ; section « Commandes en préparation » titrée comme les métriques (`Section`).
+  - **Métriques** : cartes KPI réorganisées (libellé pleine largeur, tendance à côté de la valeur, camembert à droite), anneau pointillé sans donnée, formulaire de période sur deux lignes avec HT / TTC à droite.
+  - **Connexion** : scène animée abstraite (orbes, balayage, motif verger, particules, parallaxe), carte en verre.
 - Écrans (2026-09-16, quatrième lot) :
   - **Gommette grise** sur le préparateur et le livreur d'une commande livrée ou annulée : la gommette verte ou rouge ne sert qu'à affecter le jour même.
   - **Catalogue** : statut de vente en pastille sur l'image (en vente, rupture de stock, indisponible, masqué) ; case « Laisser en vente les produits dont le stock est à 0 » entre la recherche et la grille, paramètre global en base (migration 0012) lu par l'application.

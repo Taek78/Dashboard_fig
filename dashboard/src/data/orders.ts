@@ -12,6 +12,7 @@ import type { OrdersSource } from "@/domain/orders/source";
 export const {
   getOrders,
   countOrders,
+  getOrderStatusCounts,
   getOrdersPage,
   getOrder,
   updateOrderStatus,

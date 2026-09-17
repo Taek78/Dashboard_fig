@@ -16,20 +16,23 @@ export default function PersonnelLoading() {
           <CardContent className="flex flex-col gap-4">
             <Skeleton className="h-5 w-48" />
             <Skeleton className="h-11 w-full" />
-            <div className="grid grid-cols-2 gap-3 border-t pt-4 @3xl/main:grid-cols-3 @5xl/main:grid-cols-5">
-              {FILTERS.map((field) => (
-                <div
-                  key={field}
-                  className={
-                    field === 1
-                      ? "col-span-2 grid gap-1.5 @3xl/main:col-span-1"
-                      : "grid gap-1.5"
-                  }
-                >
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ))}
+            <div className="surface-tray grid gap-3 rounded-xl p-3">
+              <Skeleton className="h-5 w-20" />
+              <div className="grid grid-cols-2 gap-3 @3xl/main:grid-cols-3 @5xl/main:grid-cols-5">
+                {FILTERS.map((field) => (
+                  <div
+                    key={field}
+                    className={
+                      field === 1
+                        ? "col-span-2 grid gap-1.5 @3xl/main:col-span-1"
+                        : "grid gap-1.5"
+                    }
+                  >
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,10 +1,9 @@
-import Link from "next/link";
-import { LoaderCircle, RotateCcw, Search } from "lucide-react";
 import { AutoSubmitForm } from "@/components/auto-submit-form";
+import { CheckChip } from "@/components/check-chip";
 import { DateRangeFields } from "@/components/date-range-fields";
-import { buttonVariants } from "@/components/ui/button";
+import { FilterTray } from "@/components/filter-tray";
+import { SearchField } from "@/components/search-field";
 import { Card, CardContent } from "@/components/ui/card";
-import { NativeInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   NativeSelect,
@@ -31,14 +30,15 @@ import type { DateRangeInput } from "@/lib/days";
  * (?q=…&statut=…&objet=…&du=…&au=…&important=oui) : URL partageable, retour
  * arrière gratuit, l'écran reste affiché pendant le chargement.
  *
+ * - La barre de recherche, puis le panneau des filtres (FilterTray) : statut,
+ *   objet et la puce « importants » sur une ligne, la zone de dates en
+ *   dernier, pleine largeur.
  * - Reçoit des filtres déjà validés (parseMessageFilters), jamais l'URL brute,
- *   et la saisie « du / au » telle quelle pour les deux champs de dates,
- *   groupés en un seul filtre (DateRangeFields).
+ *   et la saisie « du / au » telle quelle.
  * - Les noms de champs sont les clés françaises que parseMessageFilters attend.
- * - La case « importants » n'a pas d'état « non » : décochée, elle n'envoie
+ * - La puce « importants » n'a pas d'état « non » : décochée, elle n'envoie
  *   rien et il n'y a donc pas de filtre (une case cochée applique tout de
  *   suite, sans anti-rebond).
- * - Page étroite : deux colonnes ; quatre dès que la zone de contenu le permet.
  */
 export function MessagesFilters({
   filters,
@@ -57,70 +57,61 @@ export function MessagesFilters({
           aria-label="Recherche et filtres des messages"
           className="flex flex-col gap-4"
         >
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="q" className="text-base">
-              Rechercher un message
-            </Label>
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 group-aria-busy/recherche:hidden"
-              />
-              <LoaderCircle
-                aria-hidden="true"
-                className="text-primary pointer-events-none absolute top-1/2 left-3 hidden size-5 -translate-y-1/2 animate-spin group-aria-busy/recherche:block"
-              />
-              <NativeInput
-                id="q"
-                name="q"
-                type="search"
-                maxLength={MESSAGE_SEARCH_MAX_LENGTH}
-                placeholder="Nom, e-mail, mot du message, référence…"
-                defaultValue={filters.query ?? ""}
-                className="h-11 pl-10 text-base"
-              />
-            </div>
-          </div>
+          <SearchField
+            label="Rechercher un message"
+            placeholder="Nom, e-mail, mot du message, référence…"
+            maxLength={MESSAGE_SEARCH_MAX_LENGTH}
+            defaultValue={filters.query}
+          />
 
-          <div
-            role="group"
-            aria-label="Filtres"
-            className="grid grid-cols-2 gap-3 border-t pt-4 @4xl/main:grid-cols-4 @4xl/main:items-start"
-          >
-            <div className="grid gap-1.5">
-              <Label htmlFor="statut">Statut</Label>
-              <NativeSelect
-                id="statut"
-                name="statut"
-                defaultValue={filters.status ?? ""}
-                className="w-full"
-              >
-                <NativeSelectOption value="">Tous</NativeSelectOption>
-                {MESSAGE_STATUSES.map((status) => (
-                  <NativeSelectOption key={status} value={status}>
-                    {MESSAGE_STATUS_LABELS[status]}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </div>
+          <FilterTray reset={canReset ? { href: "/messages" } : null}>
+            <div className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] @2xl/main:items-end">
+              <div className="grid min-w-0 gap-1.5">
+                <Label htmlFor="statut">Statut</Label>
+                <NativeSelect
+                  id="statut"
+                  name="statut"
+                  defaultValue={filters.status ?? ""}
+                  className="w-full"
+                >
+                  <NativeSelectOption value="">Tous</NativeSelectOption>
+                  {MESSAGE_STATUSES.map((status) => (
+                    <NativeSelectOption key={status} value={status}>
+                      {MESSAGE_STATUS_LABELS[status]}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="objet">Objet</Label>
-              <NativeSelect
-                id="objet"
-                name="objet"
-                defaultValue={filters.subject ?? ""}
-                className="w-full"
-              >
-                <NativeSelectOption value="">
-                  Tous les objets
-                </NativeSelectOption>
-                {MESSAGE_SUBJECTS.map((subject) => (
-                  <NativeSelectOption key={subject} value={subject}>
-                    {MESSAGE_SUBJECT_LABELS[subject]}
+              <div className="grid min-w-0 gap-1.5">
+                <Label htmlFor="objet">Objet</Label>
+                <NativeSelect
+                  id="objet"
+                  name="objet"
+                  defaultValue={filters.subject ?? ""}
+                  className="w-full"
+                >
+                  <NativeSelectOption value="">
+                    Tous les objets
                   </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                  {MESSAGE_SUBJECTS.map((subject) => (
+                    <NativeSelectOption key={subject} value={subject}>
+                      {MESSAGE_SUBJECT_LABELS[subject]}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </div>
+
+              <CheckChip
+                id="important"
+                name="important"
+                value={IMPORTANT_FILTER}
+                defaultChecked={filters.important === true}
+                accent="destructive"
+                className="col-span-2 justify-self-start @2xl/main:col-span-1"
+              >
+                Seulement les messages signalés importants
+              </CheckChip>
             </div>
 
             <DateRangeFields
@@ -129,35 +120,8 @@ export function MessagesFilters({
               toLabel="Reçu au"
               idPrefix="messages"
               period={period}
-              className="col-span-2"
             />
-          </div>
-
-          <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:items-center @xl/main:justify-between">
-            <Label
-              htmlFor="important"
-              className="flex items-center gap-2 text-sm font-normal"
-            >
-              <input
-                id="important"
-                type="checkbox"
-                name="important"
-                value={IMPORTANT_FILTER}
-                defaultChecked={filters.important === true}
-                className="accent-destructive size-4"
-              />
-              Seulement les messages signalés importants
-            </Label>
-            {canReset ? (
-              <Link
-                href="/messages"
-                className={`${buttonVariants({ variant: "ghost", size: "sm" })} self-start @xl/main:self-auto`}
-              >
-                <RotateCcw />
-                Réinitialiser
-              </Link>
-            ) : null}
-          </div>
+          </FilterTray>
         </AutoSubmitForm>
       </CardContent>
     </Card>

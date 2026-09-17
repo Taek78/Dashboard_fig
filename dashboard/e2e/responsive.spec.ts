@@ -13,6 +13,7 @@ const PAGES = [
   "/",
   "/commandes",
   "/commandes?du=2026-09-07&au=2026-09-07",
+  "/commandes?statut=preparing",
   "/commandes/cmd-0001",
   "/catalogue",
   "/articles",

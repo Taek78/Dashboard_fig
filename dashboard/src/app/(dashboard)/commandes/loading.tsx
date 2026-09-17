@@ -5,12 +5,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 /*
  * État de chargement de /commandes. Next l'affiche automatiquement pendant que
  * page.tsx attend la base (frontière Suspense). Composant serveur.
- * On reproduit la silhouette de la recherche, des raccourcis des 7 derniers
- * jours et des cartes (même grille, mêmes bandes, mêmes seuils de largeur de
- * contenu que OrderCard) pour éviter un saut de mise en page quand les
- * données arrivent.
+ * On reproduit la silhouette de la recherche (raccourcis des 7 derniers jours
+ * compris), de la barre d'avancement et des cartes (même grille, mêmes
+ * bandes, mêmes seuils de largeur de contenu que OrderCard) pour éviter un
+ * saut de mise en page quand les données arrivent.
  */
-const SHORTCUTS = [1, 2, 3, 4, 5, 6, 7, 8];
 const ROWS = [1, 2, 3, 4];
 
 export default function CommandesLoading() {
@@ -21,13 +20,16 @@ export default function CommandesLoading() {
         <p className="sr-only">Chargement des commandes…</p>
         {/* Silhouette de la recherche et des filtres : loading.tsx ne connaît pas l'URL. */}
         <OrdersFiltersSkeleton />
-        <div className="bg-card/60 ring-foreground/10 flex flex-wrap items-center gap-1.5 rounded-xl px-3 py-2 ring-1">
-          <Skeleton className="h-4 w-28" />
-          {SHORTCUTS.map((shortcut) => (
-            <Skeleton key={shortcut} className="h-6 w-20" />
-          ))}
-        </div>
         <Skeleton className="h-4 w-28" />
+        <div className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-xl p-4 ring-1">
+          <Skeleton className="h-4 w-56" />
+          <div className="flex items-end justify-between gap-4">
+            <Skeleton className="h-4 w-44" />
+            <Skeleton className="h-6 w-12" />
+          </div>
+          <Skeleton className="h-3 w-full rounded-full" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
         <ul className="flex flex-col gap-4">
           {ROWS.map((row) => (
             <li
