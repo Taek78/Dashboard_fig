@@ -106,7 +106,7 @@ test.describe("comptes et profil", () => {
     const againPage = await again.newPage();
     await againPage.goto("/connexion");
     await againPage.getByLabel("E-mail").fill(email);
-    await againPage.getByLabel("Mot de passe").fill(password);
+    await againPage.getByLabel("Mot de passe", { exact: true }).fill(password);
     await againPage.getByRole("button", { name: "Se connecter" }).click();
     await expect(againPage.locator("form").getByRole("alert")).toContainText(
       "E-mail ou mot de passe incorrect.",

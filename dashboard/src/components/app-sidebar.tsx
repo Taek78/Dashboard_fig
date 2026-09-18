@@ -57,7 +57,7 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
         <NavMain role={user.role} />
       </SidebarContent>
 
-      <SidebarFooter className="border-sidebar-border border-t">
+      <SidebarFooter className="border-sidebar-border mb-4 border-t pt-3 pb-3">
         <SocialLinks />
       </SidebarFooter>
 

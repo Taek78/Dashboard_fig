@@ -6,7 +6,7 @@ export type Account = { email: string; password: string; name: string };
 export async function login(page: Page, account: Account): Promise<void> {
   await page.goto("/connexion");
   await page.getByLabel("E-mail").fill(account.email);
-  await page.getByLabel("Mot de passe").fill(account.password);
+  await page.getByLabel("Mot de passe", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page).toHaveURL(/\/(\?.*)?$/);
   await expect(

@@ -398,6 +398,8 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Fenêtre de confirmation** (écrans) : la boîte qui interrompt une action définitive par une question et deux réponses (« Confirmer / Annuler » pour supprimer un produit, une personne ou un article ; « Oui / Non » pour se déconnecter). Le focus va d'abord sur la réponse sans risque ; un clic à côté ne la ferme pas.
 
+**Bouton œil** (connexion) : le petit bouton dans le champ du mot de passe qui l'affiche en clair (œil ouvert) ou le masque de nouveau (œil barré), pour vérifier ce qu'on a tapé.
+
 **Néon** (design) : un halo lumineux léger de la couleur d'un élément, obtenu par une ombre floue (`box-shadow`, `drop-shadow`) ; au survol des icônes Facebook et Instagram du pied du menu.
 
 **Horloge du tableau de bord** (tableau de bord, métriques) : en haut à droite, le jour en toutes lettres et l'heure de Paris dessous ; seuls les chiffres qui changent défilent à chaque minute (`DashboardClock`).

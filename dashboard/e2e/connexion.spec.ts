@@ -18,7 +18,9 @@ test.describe("connexion et accès", () => {
   }) => {
     await page.goto("/connexion");
     await page.getByLabel("E-mail").fill(E2E_ACCOUNTS.admin.email);
-    await page.getByLabel("Mot de passe").fill("Pas-le-bon-mot-de-passe");
+    await page
+      .getByLabel("Mot de passe", { exact: true })
+      .fill("Pas-le-bon-mot-de-passe");
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page.locator("form").getByRole("alert")).toContainText(
       "E-mail ou mot de passe incorrect.",
@@ -81,6 +83,25 @@ test.describe("connexion et accès", () => {
     ).toBeVisible();
   });
 
+  test("l'œil montre puis cache le mot de passe, sans rien envoyer", async ({
+    page,
+  }) => {
+    await page.goto("/connexion");
+    const field = page.getByLabel("Mot de passe", { exact: true });
+    const eye = page.getByRole("button", { name: "Voir le mot de passe" });
+    await field.fill("Un-secret-de-test");
+    await expect(field).toHaveAttribute("type", "password");
+    await expect(eye).toHaveAttribute("aria-pressed", "false");
+    await eye.click();
+    await expect(field).toHaveAttribute("type", "text");
+    await expect(eye).toHaveAttribute("aria-pressed", "true");
+    await expect(field).toHaveValue("Un-secret-de-test");
+    await eye.click();
+    await expect(field).toHaveAttribute("type", "password");
+    // Le bouton n'a pas envoyé le formulaire.
+    await expect(page).toHaveURL(/\/connexion$/);
+  });
+
   test("la page de connexion tient sur un téléphone, sans défilement horizontal", async ({
     page,
   }) => {
@@ -89,7 +110,9 @@ test.describe("connexion et accès", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Bienvenue" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Mot de passe")).toBeVisible();
+    await expect(
+      page.getByLabel("Mot de passe", { exact: true }),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         () =>

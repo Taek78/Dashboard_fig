@@ -20,7 +20,9 @@ test.describe("journal de sécurité", () => {
     const unknown = `intrus-${stamp}@fig-demo.invalid`;
     await page.goto("/connexion");
     await page.getByLabel("E-mail").fill(unknown);
-    await page.getByLabel("Mot de passe").fill("mauvais mot de passe");
+    await page
+      .getByLabel("Mot de passe", { exact: true })
+      .fill("mauvais mot de passe");
     await page.getByRole("button", { name: /Se connecter/ }).click();
     await expect(page.locator("form").getByRole("alert")).toContainText(
       "E-mail ou mot de passe incorrect.",

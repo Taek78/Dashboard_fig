@@ -135,7 +135,7 @@ test.describe("récupération de compte", () => {
   }) => {
     await page.goto("/connexion");
     await page.getByLabel("E-mail").fill(account.email);
-    await page.getByLabel("Mot de passe").fill(firstPassword);
+    await page.getByLabel("Mot de passe", { exact: true }).fill(firstPassword);
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page.locator("form").getByRole("alert")).toContainText(
       "E-mail ou mot de passe incorrect.",
@@ -166,7 +166,9 @@ test.describe("récupération de compte", () => {
     const otherPage = await other.newPage();
     await otherPage.goto("/connexion");
     await otherPage.getByLabel("E-mail").fill(account.email);
-    await otherPage.getByLabel("Mot de passe").fill(secondPassword);
+    await otherPage
+      .getByLabel("Mot de passe", { exact: true })
+      .fill(secondPassword);
     await otherPage.getByRole("button", { name: "Se connecter" }).click();
     await expect(
       otherPage.getByRole("heading", { level: 1, name: "Tableau de bord" }),
@@ -196,7 +198,7 @@ test.describe("récupération de compte", () => {
 
     await page.goto("/connexion");
     await page.getByLabel("E-mail").fill(account.email);
-    await page.getByLabel("Mot de passe").fill(secondPassword);
+    await page.getByLabel("Mot de passe", { exact: true }).fill(secondPassword);
     await page.getByRole("button", { name: "Se connecter" }).click();
     await expect(page.locator("form").getByRole("alert")).toContainText(
       "E-mail ou mot de passe incorrect.",
