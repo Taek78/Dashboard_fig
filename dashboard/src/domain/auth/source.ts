@@ -6,6 +6,7 @@ import type {
   UserAccount,
   UserPatch,
 } from "@/domain/auth/types";
+import type { MailOutcome } from "@/domain/mail/types";
 
 /*
  * CONTRAT des comptes du back-office, implémenté par la table `users`
@@ -27,7 +28,10 @@ import type {
  *   l'application, la même que celle des sessions) ; revokeSessions ne pose
  *   que cet instant, sans toucher au mot de passe (verrouillage, désactivation).
  * - listUsers et getUser joignent l'expiration du dernier lien d'invitation
- *   (invitationExpiresAt) : l'écran en déduit « en attente » ou « expirée ».
+ *   (invitationExpiresAt) : l'écran en déduit « en attente » ou « expirée »,
+ *   et l'issue du dernier envoi de ce lien (invitationMail), posée par
+ *   setInvitationMailOutcome : un seul état courant, l'envoi confirmé et
+ *   l'échec s'effaçant l'un l'autre.
  * - expireInvitations(now) : les comptes actifs sans mot de passe dont le
  *   dernier lien d'invitation est expiré à `now` et qui n'ont pas encore été
  *   notifiés pour ce lien ; ils sont MARQUÉS (invitation_expired_at =
@@ -55,6 +59,11 @@ export type UsersSource = {
     changedAt: Date,
   ): Promise<boolean>;
   revokeSessions(id: string, at: Date): Promise<boolean>;
+  setInvitationMailOutcome(
+    id: string,
+    outcome: MailOutcome,
+    at: Date,
+  ): Promise<boolean>;
   expireInvitations(now: Date): Promise<ExpiredInvitation[]>;
 };
 

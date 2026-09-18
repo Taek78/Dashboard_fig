@@ -12,9 +12,12 @@ import { formatDateTimeFr } from "@/lib/format";
  * qui suit une demande dit quoi faire si la personne n'en est pas l'auteur :
  * le lien « Ce n'était pas moi » verrouille le compte (24 heures), et
  * l'administrateur est le recours. Les avis à une personne (activation,
- * expiration, désactivation, suppression) nomment l'administrateur à
- * contacter AVEC son adresse (adminContact) : c'est la possibilité concrète de
- * le joindre, demandée par le client le 2026-09-17.
+ * expiration, désactivation, suppression) donnent l'ADRESSE de
+ * l'administrateur à contacter, jamais son nom (adminContact) : la personne
+ * garde un recours concret, sans qu'un membre de l'équipe soit nommé dans un
+ * message qui sort du back-office (demande du 2026-09-18, qui restreint la
+ * décision du 2026-09-17). Les avis ENTRE administrateurs gardent le nom de
+ * celui qui a agi : c'est la traçabilité interne d'un geste sur un compte.
  */
 const SIGNATURE =
   "\n\nBien cordialement,\nL'équipe FIG\n\nFIG Back-office\nMessage automatique : il ne sert à rien d'y répondre.";
@@ -24,16 +27,16 @@ const greet = (name: string) => `Bonjour ${name},\n\n`;
 export type AccountSummary = { name: string; email: string };
 
 /**
- * « votre administrateur, Amel Benali (amel@fig.example) », ou la liste
- * quand ils sont plusieurs ; sans administrateur connu, le mot seul.
+ * « votre administrateur (admin@fig.example) », ou la liste des adresses
+ * quand ils sont plusieurs ; sans adresse connue, le mot seul. Le NOM n'y
+ * figure pas : la personne doit pouvoir écrire à quelqu'un, pas savoir qui
+ * est derrière la décision.
  */
 export function adminContact(admins: readonly AccountSummary[]): string {
-  const named = admins.map((a) =>
-    a.email ? `${a.name} (${a.email})` : a.name,
-  );
-  if (named.length === 0) return "votre administrateur";
-  if (named.length === 1) return `votre administrateur, ${named[0]}`;
-  return `l'un de vos administrateurs : ${named.join(", ")}`;
+  const emails = admins.map((a) => a.email).filter((email) => email !== "");
+  if (emails.length === 0) return "votre administrateur";
+  if (emails.length === 1) return `votre administrateur (${emails[0]})`;
+  return `l'un de vos administrateurs : ${emails.join(", ")}`;
 }
 
 export function recoveryCodeMail(input: {
@@ -125,14 +128,13 @@ export function adminAccountLockedMail(input: {
 export function invitationMail(input: {
   to: MailRecipient & { name: string };
   url: string;
-  byName: string;
   reason: "creation" | "reset";
 }): MailMessage {
   const { validity } = AUTH_TOKEN_RULES.invitation;
   const intro =
     input.reason === "creation"
-      ? `${input.byName} vous a créé un compte sur le back-office FIG avec cette adresse.`
-      : `${input.byName} vous invite à choisir un nouveau mot de passe pour votre compte du back-office FIG.`;
+      ? `L'administrateur vous a créé un compte sur le back-office FIG avec cette adresse.`
+      : `L'administrateur vous invite à choisir un nouveau mot de passe pour votre compte du back-office FIG.`;
   return {
     to: input.to,
     subject:
@@ -164,9 +166,10 @@ export function emailReminderMail(input: {
 
 /**
  * Compte activé (demande du 2026-09-17) : à la personne, dès que son mot de
- * passe existe. `by` null = elle l'a choisi par le lien d'invitation ; sinon
- * le nom de l'administrateur qui le lui a attribué (dépannage), qu'elle devra
- * changer. Tout ce qu'il faut pour se connecter, jamais le mot de passe.
+ * passe existe. `byAdmin` faux = elle l'a choisi par le lien d'invitation ;
+ * vrai = un administrateur le lui a attribué (dépannage) et elle devra le
+ * changer. Tout ce qu'il faut pour se connecter, jamais le mot de passe, et
+ * jamais le nom de l'administrateur (demande du 2026-09-18).
  */
 export function accountActivatedMail(input: {
   to: MailRecipient & { name: string };
@@ -174,12 +177,12 @@ export function accountActivatedMail(input: {
   role: Role;
   loginUrl: string;
   admins: readonly AccountSummary[];
-  by: string | null;
+  /** Vrai quand un administrateur a posé le mot de passe (dépannage), faux quand la personne l'a choisi. */
+  byAdmin: boolean;
 }): MailMessage {
-  const password =
-    input.by === null
-      ? "celui que vous venez de choisir. Nous ne le connaissons pas et ne vous le demanderons jamais."
-      : `celui que ${input.by} vous a attribué et vous communiquera par un canal sûr. Changez-le dès votre première connexion, depuis votre profil.`;
+  const password = input.byAdmin
+    ? "celui que l'administrateur vous a attribué et vous communiquera par un canal sûr. Changez-le dès votre première connexion, depuis votre profil."
+    : "celui que vous venez de choisir. Nous ne le connaissons pas et ne vous le demanderons jamais.";
   return {
     to: input.to,
     subject: "Votre compte du back-office FIG est activé",
@@ -296,6 +299,29 @@ export function accountDeactivatedMail(input: {
  * peut y être créé, sur invitation ; seul un administrateur est habilité à
  * créer un compte et à envoyer cette invitation.
  */
+/**
+ * Invitation annulée avant son acceptation : le compte n'a jamais existé
+ * autrement que comme une invitation, et le lien reçu ne fonctionne plus. Le
+ * ton reste neutre et court : la personne n'a rien fait, elle n'a rien à
+ * faire, et l'administrateur est nommé si elle attendait cet accès.
+ */
+export function invitationCancelledMail(input: {
+  to: MailRecipient & { name: string };
+  at: string;
+  admin: AccountSummary;
+}): MailMessage {
+  return {
+    to: input.to,
+    subject: "Votre invitation au back-office FIG a été annulée",
+    text:
+      greet(input.to.name) +
+      `L'invitation à créer votre accès au back-office FIG (${input.to.email}) a été annulée le ${formatDateTimeFr(input.at)}.\n\n` +
+      `Le lien que vous avez reçu ne fonctionne plus et aucun compte n'a été créé à votre nom. Vous n'avez rien à faire.\n\n` +
+      `Si vous attendiez cet accès, ou si cette annulation vous surprend, contactez ${adminContact([input.admin])} : une nouvelle invitation peut vous être envoyée.` +
+      SIGNATURE,
+  };
+}
+
 export function accountDeletedMail(input: {
   to: MailRecipient & { name: string };
   at: string;

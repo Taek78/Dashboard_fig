@@ -13,6 +13,10 @@ const hoisted = vi.hoisted(() => ({
   SECRET: "e2e-secret-fig-dashboard-0123456789-abcdef",
   session: { id: "usr-0001", role: "admin" },
   mails: [] as { kind: string; to: string; subject: string; text: string }[],
+  /** Ce que le fournisseur répondra au prochain envoi (pilotable par test). */
+  mailOutcome: { sent: true } as
+    | { sent: true }
+    | { sent: false; reason: "adresse_refusee" | "configuration" },
   jobs: [] as Promise<unknown>[],
   logged: [] as Record<string, unknown>[],
   reopenSession: vi.fn(),
@@ -45,6 +49,21 @@ vi.mock("next/server", () => ({
 }));
 vi.mock("@/data/mail", () => ({
   sendMail: vi.fn(),
+  sendMailChecked: async (
+    kind: string,
+    message: { to: { email: string }; subject: string; text: string },
+  ) => {
+    // Un envoi refusé n'écrit rien : le mail n'existe pas côté destinataire.
+    if (hoisted.mailOutcome.sent) {
+      hoisted.mails.push({
+        kind,
+        to: message.to.email,
+        subject: message.subject,
+        text: message.text,
+      });
+    }
+    return hoisted.mailOutcome;
+  },
   trySendMail: async (
     kind: string,
     message: { to: { email: string }; subject: string; text: string },
@@ -98,6 +117,7 @@ beforeEach(() => {
   hoisted.session.id = "usr-0001";
   hoisted.session.role = "admin";
   hoisted.mails.length = 0;
+  hoisted.mailOutcome = { sent: true };
   hoisted.logged.length = 0;
   hoisted.jobs.length = 0;
   hoisted.reopenSession.mockReset();
@@ -138,7 +158,11 @@ describe("createAccount", () => {
     expect(hoisted.mails[0]?.text).toContain(
       "http://localhost:3126/connexion/invitation?jeton=",
     );
-    expect(hoisted.mails[0]?.text).toContain("Admin E2E vous a créé un compte");
+    expect(hoisted.mails[0]?.text).toContain(
+      "L'administrateur vous a créé un compte",
+    );
+    // Le nom de l'administrateur ne sort jamais du back-office (2026-09-18).
+    expect(hoisted.mails[0]?.text).not.toContain("Admin E2E");
 
     expect(
       await run(createAccount, {
@@ -187,6 +211,105 @@ describe("createAccount", () => {
       ).status,
     ).toBe("error");
     expect(hoisted.mails).toEqual([]);
+  });
+});
+
+describe("invitation : ce que l'écran apprend de l'envoi", () => {
+  const nour = {
+    email: "nour-envoi@fig-demo.invalid",
+    firstName: "Nour",
+    lastName: "Envoi",
+    role: "gestionnaire",
+  };
+
+  it("un envoi refusé : le compte existe, l'écran avertit, la carte garde la cause", async () => {
+    hoisted.mailOutcome = { sent: false, reason: "adresse_refusee" };
+    const result = await run(createAccount, nour);
+
+    // Ni vert ni rouge : le compte EST créé, mais l'invitation n'est pas partie.
+    expect(result.status).toBe("warning");
+    if (result.status === "warning") {
+      expect(result.message).toMatch(/n'est pas partie/);
+      expect(result.message).toMatch(/orthographe/);
+      expect(result.message).toMatch(/Renvoyer l'invitation/);
+    }
+    const account = (await listUsers()).find((u) => u.email === nour.email);
+    expect(account?.hasPassword).toBe(false);
+    // Aucun mail n'est parti, et le lien existe quand même (il servira au renvoi).
+    await flush();
+    expect(hoisted.mails).toEqual([]);
+    expect(await findActiveToken("invitation", account!.id)).not.toBeNull();
+    // La cause survit au rechargement de la page.
+    expect(account?.invitationMail).toMatchObject({
+      state: "failed",
+      reason: "adresse_refusee",
+    });
+    // Journalisée avec sa cause, jamais avec l'adresse ni le lien.
+    expect(hoisted.logged).toContainEqual({
+      type: "invitation_mail_failed",
+      userId: "usr-0001",
+      targetId: account!.id,
+      reason: "adresse_refusee",
+    });
+    expect(hoisted.logged).not.toContainEqual(
+      expect.objectContaining({ type: "invitation_sent" }),
+    );
+  });
+
+  it("le renvoi qui réussit efface l'alerte et confirme l'envoi", async () => {
+    hoisted.mailOutcome = { sent: false, reason: "configuration" };
+    await run(createAccount, nour);
+    const failed = (await listUsers()).find((u) => u.email === nour.email);
+    expect(failed?.invitationMail?.state).toBe("failed");
+
+    hoisted.mailOutcome = { sent: true };
+    const again = await run(sendPasswordLink, { userId: failed!.id });
+    expect(again.status).toBe("success");
+    if (again.status === "success") {
+      expect(again.message).toMatch(/bien envoyé/);
+    }
+    const fixed = (await listUsers()).find((u) => u.email === nour.email);
+    expect(fixed?.invitationMail).toMatchObject({ state: "sent" });
+    await flush();
+    expect(hoisted.mails).toEqual([
+      expect.objectContaining({ kind: "invitation", to: nour.email }),
+    ]);
+  });
+
+  it("annuler une invitation jamais partie n'écrit à personne", async () => {
+    hoisted.mailOutcome = { sent: false, reason: "adresse_refusee" };
+    await run(createAccount, nour);
+    const pending = (await listUsers()).find((u) => u.email === nour.email);
+    hoisted.mails.length = 0;
+
+    const result = await run(cancelInvitation, { userId: pending!.id });
+    expect(result.status).toBe("success");
+    if (result.status === "success") {
+      expect(result.message).toMatch(/Aucun message envoyé/);
+    }
+    // L'adresse était peut-être fausse : ne pas écrire à un inconnu.
+    await flush();
+    expect(hoisted.mails).toEqual([]);
+    expect(await findUserById(pending!.id)).toBeNull();
+  });
+
+  it("annuler une invitation partie prévient la personne, sans rien lui demander", async () => {
+    await run(createAccount, nour);
+    const pending = (await listUsers()).find((u) => u.email === nour.email);
+    await flush();
+    hoisted.mails.length = 0;
+
+    await run(cancelInvitation, { userId: pending!.id });
+    await flush();
+    expect(hoisted.mails).toEqual([
+      expect.objectContaining({
+        kind: "invitation_cancelled",
+        to: nour.email,
+      }),
+    ]);
+    expect(hoisted.mails[0]?.subject).toMatch(/annulée/i);
+    expect(hoisted.mails[0]?.text).toMatch(/Vous n'avez rien à faire/);
+    expect(hoisted.mails[0]?.text).not.toMatch(/jeton|http/i);
   });
 });
 
@@ -248,7 +371,7 @@ describe("setAccountActive / updateAccount", () => {
       expect.objectContaining({ kind: "account_deactivated", to: email }),
     ]);
     expect(hoisted.mails[0]?.text).toContain(
-      `contactez votre administrateur, Admin E2E (${TEST_ACCOUNTS.admin.email}).`,
+      `contactez votre administrateur (${TEST_ACCOUNTS.admin.email}).`,
     );
     expect(
       (await run(setAccountActive, { userId: "usr-0002", active: "1" })).status,
@@ -388,7 +511,7 @@ describe("cancelInvitation", () => {
     expect(await run(cancelInvitation, { userId: pending!.id })).toEqual({
       status: "success",
       message:
-        "Invitation de « Lina Attente » annulée : le compte est supprimé et le lien reçu ne fonctionne plus.",
+        "Invitation de « Lina Attente » annulée : le compte est supprimé et le lien reçu ne fonctionne plus. Un message le lui annonce.",
     });
     expect(await findUserById(pending!.id)).toBeNull();
     expect(await findActiveToken("invitation", pending!.id)).toBeNull();
@@ -398,9 +521,12 @@ describe("cancelInvitation", () => {
       targetId: pending!.id,
     });
     expect(revalidatePath).toHaveBeenCalledWith("/comptes", "layout");
-    // Aucun mail : la personne n'a jamais eu de compte actif.
+    // Un avis part à la personne : elle avait reçu le lien (demande du 2026-09-18).
     await flush();
-    expect(hoisted.mails).toEqual([]);
+    expect(hoisted.mails).toEqual([
+      expect.objectContaining({ kind: "invitation_cancelled", to: email }),
+    ]);
+    hoisted.mails.length = 0;
 
     // Un compte activé ne s'annule pas : c'est une suppression, avec son mot.
     const refused = await run(cancelInvitation, { userId: "usr-0002" });
@@ -445,7 +571,7 @@ describe("resetAccountPassword", () => {
       ["admin_account_activated", TEST_ACCOUNTS.admin.email],
     ]);
     expect(hoisted.mails[0]?.text).toContain(
-      "celui que Admin E2E vous a attribué",
+      "celui que l'administrateur vous a attribué",
     );
     expect(hoisted.mails[0]?.text).toContain("rôle attribué : Livreur");
     expect(hoisted.mails[0]?.text).toContain("http://localhost:3126/connexion");

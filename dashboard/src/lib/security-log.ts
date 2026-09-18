@@ -6,6 +6,8 @@
  * est pur et testé ; l'écriture (sortie standard et table security_events)
  * vit dans src/data/security-log.ts.
  */
+import type { MailFailureReason } from "@/domain/mail/failure";
+
 export type SecurityEvent =
   | { type: "login_success"; email: string; ip: string }
   | { type: "login_failure"; email: string; ip: string }
@@ -88,6 +90,13 @@ export type SecurityEvent =
   | { type: "password_recovered"; userId: string; ip: string }
   | { type: "account_locked_by_owner"; userId: string; ip: string }
   | { type: "invitation_sent"; userId: string; targetId: string }
+  // Le fournisseur a refusé l'envoi : la cause, jamais l'adresse ni le lien.
+  | {
+      type: "invitation_mail_failed";
+      userId: string;
+      targetId: string;
+      reason: MailFailureReason;
+    }
   | { type: "invitation_accepted"; userId: string; ip: string }
   | { type: "invitation_cancelled"; userId: string; targetId: string }
   // Balayage sans acteur : le compte dont le lien a expiré sans être utilisé.

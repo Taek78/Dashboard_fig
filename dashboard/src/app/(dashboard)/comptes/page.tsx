@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { after } from "next/server";
 import { AccountCreateForm } from "@/components/accounts/account-create-form";
 import { AccountEditor } from "@/components/accounts/account-editor";
+import { InvitationMailNotice } from "@/components/accounts/invitation-mail-notice";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,6 +141,9 @@ export default async function ComptesPage() {
                         : "Aucun lien d'invitation en cours"}{" "}
                       : renvoyez l&apos;invitation ou annulez-la.
                     </p>
+                  ) : null}
+                  {invitation !== "none" ? (
+                    <InvitationMailNotice state={account.invitationMail} />
                   ) : null}
                   <AccountEditor
                     account={account}

@@ -511,6 +511,16 @@ export function toManagedUser(
     active: row.active,
     hasPassword: row.passwordHash !== null,
     invitationExpiresAt: invitationExpiresAt?.toISOString() ?? null,
+    invitationMail:
+      row.invitationMailFailedAt && row.invitationMailError
+        ? {
+            state: "failed",
+            at: row.invitationMailFailedAt.toISOString(),
+            reason: row.invitationMailError,
+          }
+        : row.invitationMailSentAt
+          ? { state: "sent", at: row.invitationMailSentAt.toISOString() }
+          : null,
     createdAt: row.createdAt.toISOString(),
   };
 }

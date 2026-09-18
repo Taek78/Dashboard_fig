@@ -4,9 +4,10 @@ import { sendWithBrevo } from "@/data/mail.brevo";
 import { sendToFile } from "@/data/mail.file";
 import { logSecurity } from "@/data/security-log";
 import type { MailSender } from "@/domain/mail/source";
-import type { MailMessage } from "@/domain/mail/types";
+import type { MailMessage, MailOutcome } from "@/domain/mail/types";
 import { getEnv } from "@/lib/env";
 import { mailTransportOf } from "@/lib/env-schema";
+import { MailSendError, reasonOf } from "@/lib/mail-error";
 
 /*
  * FAÇADE d'envoi de mail : le seul module que les Server Actions importent.
@@ -27,7 +28,8 @@ export const sendMail: MailSender["sendMail"] = async (
   const env = getEnv();
   if (mailTransportOf(env) === "brevo") {
     if (!env.MAIL_API_KEY || !env.MAIL_FROM) {
-      throw new Error(
+      throw new MailSendError(
+        "configuration",
         "Transport brevo sans MAIL_API_KEY ou MAIL_FROM : envoi impossible.",
       );
     }
@@ -46,16 +48,30 @@ export const sendMail: MailSender["sendMail"] = async (
   );
 };
 
+/**
+ * Envoi dont on ATTEND le résultat : rend la cause de l'échec (jamais le
+ * message d'erreur du fournisseur, qui n'est pas pour l'écran). À utiliser
+ * quand la suite dépend de l'envoi — l'invitation, sans laquelle personne ne
+ * peut entrer. Ne lève pas : l'appelant décide quoi faire de l'échec.
+ */
+export async function sendMailChecked(
+  kind: string,
+  message: MailMessage,
+): Promise<MailOutcome> {
+  try {
+    await sendMail(message);
+    return { sent: true };
+  } catch (error) {
+    console.error("[mail] envoi impossible", { kind }, error);
+    logSecurity({ type: "mail_failed", kind });
+    return { sent: false, reason: reasonOf(error) };
+  }
+}
+
 export async function trySendMail(
   kind: string,
   message: MailMessage,
 ): Promise<boolean> {
-  try {
-    await sendMail(message);
-    return true;
-  } catch (error) {
-    console.error("[mail] envoi impossible", { kind }, error);
-    logSecurity({ type: "mail_failed", kind });
-    return false;
-  }
+  const outcome = await sendMailChecked(kind, message);
+  return outcome.sent;
 }

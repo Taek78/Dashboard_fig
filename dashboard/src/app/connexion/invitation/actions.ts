@@ -102,7 +102,7 @@ export async function acceptInvitation(
             role: user.role,
             loginUrl,
             admins,
-            by: null,
+            byAdmin: false,
           }),
         );
         await Promise.all(

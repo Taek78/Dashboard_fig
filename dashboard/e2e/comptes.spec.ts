@@ -30,11 +30,21 @@ test.describe("comptes et profil", () => {
     await expect(page.getByRole("status").first()).toContainText(
       `Compte « ${name} » créé`,
     );
+    // L'envoi est ATTENDU : le message confirme qu'il est bien parti.
+    await expect(page.getByRole("status").first()).toContainText(
+      "a bien été envoyé",
+    );
     const card = page.getByRole("article", { name: `Compte ${name}` });
     await expect(card).toContainText("Lecture seule");
     // En attente d'activation : carte translucide en pointillés, validité du lien, pas de « Désactiver ».
     await expect(card).toContainText("En attente d'activation");
     await expect(card).toContainText("Lien d'invitation valable jusqu'au");
+    // La carte garde la preuve de l'envoi, au rechargement près.
+    await expect(card).toContainText(/Invitation envoyée le .*acceptée/);
+    await page.reload();
+    await expect(
+      page.getByRole("article", { name: `Compte ${name}` }),
+    ).toContainText("Invitation envoyée le");
     await expect(card).toHaveAttribute("data-invitation", "pending");
     await expect(card.getByRole("button", { name: "Désactiver" })).toHaveCount(
       0,
@@ -138,6 +148,12 @@ test.describe("comptes et profil", () => {
       .getByRole("button", { name: "Confirmer l'annulation" })
       .click();
     await expect(pendingCard).toHaveCount(0);
+    // La personne invitée est prévenue que son invitation est annulée.
+    const cancelled = await waitForMail(cancelledEmail, {
+      subject: /annulée/i,
+      since,
+    });
+    expect(cancelled.text).toMatch(/Vous n'avez rien à faire/);
 
     // Le dernier administrateur actif n'a ni « Désactiver » ni « Supprimer », et le dit.
     const own = page.getByRole("article", {

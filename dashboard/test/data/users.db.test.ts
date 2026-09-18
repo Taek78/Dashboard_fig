@@ -115,6 +115,43 @@ describe("usersDb : gestion des comptes", () => {
     expect(await usersDb.revokeSessions("nope", at)).toBe(false);
   });
 
+  it("garde l'issue du dernier envoi d'invitation, un seul état à la fois", async () => {
+    const failedAt = new Date("2026-09-18T09:00:00.000Z");
+    const sentAt = new Date("2026-09-18T09:05:00.000Z");
+    // Aucun envoi tenté sur un compte seedé : rien à afficher.
+    expect((await usersDb.getUser("usr-0002"))!.invitationMail).toBeNull();
+
+    expect(
+      await usersDb.setInvitationMailOutcome(
+        "usr-0002",
+        { sent: false, reason: "adresse_refusee" },
+        failedAt,
+      ),
+    ).toBe(true);
+    expect((await usersDb.getUser("usr-0002"))!.invitationMail).toEqual({
+      state: "failed",
+      at: failedAt.toISOString(),
+      reason: "adresse_refusee",
+    });
+
+    // Un envoi réussi efface l'échec : la carte ne doit pas garder une alerte périmée.
+    expect(
+      await usersDb.setInvitationMailOutcome(
+        "usr-0002",
+        { sent: true },
+        sentAt,
+      ),
+    ).toBe(true);
+    expect((await usersDb.getUser("usr-0002"))!.invitationMail).toEqual({
+      state: "sent",
+      at: sentAt.toISOString(),
+    });
+
+    expect(
+      await usersDb.setInvitationMailOutcome("nope", { sent: true }, sentAt),
+    ).toBe(false);
+  });
+
   it("supprime un compte et ses jetons en cascade ; faux si inconnu", async () => {
     await authTokensDb.createToken({
       kind: "invitation",

@@ -187,7 +187,7 @@ describe("notifyExpiredInvitations", () => {
     expect(person?.text).toContain("Bonjour Nour Retard");
     expect(person?.text).toContain("a expiré le jeu. 17 sept. 2026, 13:00");
     expect(person?.text).toContain(
-      `votre administrateur, Admin E2E (${TEST_ACCOUNTS.admin.email})`,
+      `votre administrateur (${TEST_ACCOUNTS.admin.email})`,
     );
     expect(person?.text).not.toContain("padmin@");
     expect(admin?.subject).toContain("Nour Retard");

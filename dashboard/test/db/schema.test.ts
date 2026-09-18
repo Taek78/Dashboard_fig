@@ -11,6 +11,7 @@ import {
 import { ATTACHMENT_CONTENT_TYPES } from "@/domain/messages/attachment";
 import { MESSAGE_STATUSES } from "@/domain/messages/status";
 import { MESSAGE_SUBJECTS } from "@/domain/messages/subject";
+import { MAIL_FAILURE_REASONS } from "@/domain/mail/failure";
 import { NOTIFICATION_KINDS } from "@/domain/notifications/types";
 import { DISCOUNT_KINDS } from "@/domain/orders/discount";
 import { AVAILABILITIES, SHIFTS, STAFF_KINDS } from "@/domain/staff/kind";
@@ -44,6 +45,11 @@ describe("enums du schéma = constantes du domaine", () => {
     ],
     ["user_role", schema.userRoleEnum.enumValues, ROLES],
     ["auth_token_kind", schema.authTokenKindEnum.enumValues, AUTH_TOKEN_KINDS],
+    [
+      "mail_failure_reason",
+      schema.mailFailureReasonEnum.enumValues,
+      MAIL_FAILURE_REASONS,
+    ],
     ["staff_kind", schema.staffKindEnum.enumValues, STAFF_KINDS],
     ["staff_shift", schema.staffShiftEnum.enumValues, SHIFTS],
     [

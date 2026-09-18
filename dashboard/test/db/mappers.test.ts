@@ -411,6 +411,9 @@ describe("toEngagementPoint / toUserAccount", () => {
       active: true,
       passwordChangedAt: new Date("2026-09-17T10:00:00.000Z"),
       invitationExpiredAt: null,
+      invitationMailFailedAt: null,
+      invitationMailError: null,
+      invitationMailSentAt: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
     expect(toUserAccount(row)).toEqual({
@@ -437,11 +440,31 @@ describe("toEngagementPoint / toUserAccount", () => {
       active: true,
       hasPassword: true,
       invitationExpiresAt: null,
+      invitationMail: null,
       createdAt: "2026-01-01T00:00:00.000Z",
     });
     expect(toManagedUser({ ...row, passwordHash: null }).hasPassword).toBe(
       false,
     );
+    // L'issue du dernier envoi : l'échec l'emporte sur un envoi confirmé plus ancien.
+    expect(
+      toManagedUser({
+        ...row,
+        invitationMailSentAt: new Date("2026-09-17T09:00:00.000Z"),
+      }).invitationMail,
+    ).toEqual({ state: "sent", at: "2026-09-17T09:00:00.000Z" });
+    expect(
+      toManagedUser({
+        ...row,
+        invitationMailSentAt: new Date("2026-09-17T09:00:00.000Z"),
+        invitationMailFailedAt: new Date("2026-09-17T11:00:00.000Z"),
+        invitationMailError: "adresse_refusee" as const,
+      }).invitationMail,
+    ).toEqual({
+      state: "failed",
+      at: "2026-09-17T11:00:00.000Z",
+      reason: "adresse_refusee",
+    });
     // L'expiration du dernier lien d'invitation, jointe par la source, passe en ISO.
     expect(
       toManagedUser(row, new Date("2026-09-19T10:00:00.000Z"))

@@ -11,6 +11,7 @@ import type {
   NewUser,
   UserPatch,
 } from "@/domain/auth/types";
+import type { MailOutcome } from "@/domain/mail/types";
 
 /*
  * Implémentation Drizzle du contrat UsersSource : table `users`, e-mail comparé
@@ -201,6 +202,32 @@ export const usersDb: UsersSource = {
     const updated = await getDb()
       .update(users)
       .set({ passwordHash, passwordChangedAt: changedAt })
+      .where(eq(users.id, id))
+      .returning({ id: users.id });
+    return updated.length > 0;
+  },
+
+  setInvitationMailOutcome: async (
+    id: string,
+    outcome: MailOutcome,
+    at: Date,
+  ) => {
+    // Un seul état courant : l'échec efface l'envoi confirmé, et l'inverse.
+    const updated = await getDb()
+      .update(users)
+      .set(
+        outcome.sent
+          ? {
+              invitationMailSentAt: at,
+              invitationMailFailedAt: null,
+              invitationMailError: null,
+            }
+          : {
+              invitationMailSentAt: null,
+              invitationMailFailedAt: at,
+              invitationMailError: outcome.reason,
+            },
+      )
       .where(eq(users.id, id))
       .returning({ id: users.id });
     return updated.length > 0;

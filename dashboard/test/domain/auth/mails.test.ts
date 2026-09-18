@@ -10,6 +10,7 @@ import {
   adminPasswordRecoveredMail,
   adminRecoveryLockedMail,
   emailReminderMail,
+  invitationCancelledMail,
   invitationExpiredMail,
   invitationMail,
   passwordRecoveredMail,
@@ -85,28 +86,29 @@ describe("mails de récupération", () => {
     expect(byOwner.text).toMatch(/téléphone/);
   });
 
-  it("l'invitation porte le lien, sa validité et qui invite, selon la raison", () => {
+  it("l'invitation porte le lien et sa validité, sans nommer l'administrateur", () => {
     const creation = invitationMail({
       to: zaki,
       url: "https://fig.example.invalid/connexion/invitation?jeton=xyz",
-      byName: "Amel",
       reason: "creation",
     });
     expect(creation.subject).toMatch(/accès/);
-    expect(creation.text).toContain("Amel vous a créé un compte");
+    expect(creation.text).toContain("L'administrateur vous a créé un compte");
     expect(creation.text).toContain("jeton=xyz");
     expect(creation.text).toContain("48 heures");
 
     const reset = invitationMail({
       to: zaki,
       url: "https://x.invalid/connexion/invitation?jeton=xyz",
-      byName: "Amel",
       reason: "reset",
     });
     expect(reset.subject).toMatch(/nouveau mot de passe/i);
     expect(reset.text).toContain(
-      "vous invite à choisir un nouveau mot de passe",
+      "L'administrateur vous invite à choisir un nouveau mot de passe",
     );
+    for (const mail of [creation, reset]) {
+      expect(mail.text).not.toContain("Amel");
+    }
   });
 
   it("désactivation et suppression : ton professionnel, date, administrateur à contacter avec son adresse ; la suppression dit qu'un nouveau compte peut être créé à la même adresse, par un administrateur seulement", () => {
@@ -118,7 +120,7 @@ describe("mails de récupération", () => {
     expect(off.text).toMatch(/2026/);
     expect(off.text).toMatch(/n'est pas supprimé/);
     expect(off.text).toContain(
-      "contactez votre administrateur, Amel (admin@fig.invalid).",
+      "contactez votre administrateur (admin@fig.invalid).",
     );
 
     const gone = accountDeletedMail({ to: zaki, at: AT, admin });
@@ -127,7 +129,7 @@ describe("mails de récupération", () => {
     expect(gone.text).toContain("depuis cette adresse");
     expect(gone.text).toMatch(/Seul un administrateur est habilité/);
     expect(gone.text).toContain(
-      "contactez votre administrateur, Amel (admin@fig.invalid).",
+      "contactez votre administrateur (admin@fig.invalid).",
     );
     for (const mail of [off, gone]) {
       expect(mail.text).not.toMatch(/jeton|code|mot de passe/i);
@@ -135,19 +137,48 @@ describe("mails de récupération", () => {
     }
   });
 
-  it("adminContact nomme l'administrateur avec son adresse, la liste s'ils sont plusieurs, le mot seul sinon", () => {
+  it("l'annulation d'une invitation se dit sans alarmer et sans rien demander", () => {
+    const mail = invitationCancelledMail({ to: zaki, at: AT, admin });
+    expect(mail.to).toEqual(zaki);
+    expect(mail.subject).toMatch(/invitation.*annulée/i);
+    // Ce qui a changé, daté, et ce que la personne a à faire : rien.
+    expect(mail.text).toMatch(/a été annulée le .*17 sept\. 2026/);
+    expect(mail.text).toMatch(/ne fonctionne plus/);
+    expect(mail.text).toMatch(/aucun compte n'a été créé/i);
+    expect(mail.text).toMatch(/Vous n'avez rien à faire/);
+    // Le recours est nommé, avec son adresse : la personne attendait peut-être cet accès.
+    expect(mail.text).toContain(
+      "contactez votre administrateur (admin@fig.invalid)",
+    );
+    // Jamais le lien annulé, ni un secret, ni un reproche.
+    expect(mail.text).not.toMatch(/jeton|http|mot de passe/i);
+    expect(mail.text).toMatch(SIGNED);
+  });
+
+  it("adminContact donne l'adresse de l'administrateur, jamais son nom", () => {
     expect(adminContact([])).toBe("votre administrateur");
     expect(adminContact([admin])).toBe(
-      "votre administrateur, Amel (admin@fig.invalid)",
+      "votre administrateur (admin@fig.invalid)",
     );
+    // Sans adresse connue, le mot seul : jamais un nom en remplacement.
     expect(adminContact([{ name: "Amel", email: "" }])).toBe(
-      "votre administrateur, Amel",
+      "votre administrateur",
     );
     expect(
       adminContact([admin, { name: "Karim", email: "karim@fig.invalid" }]),
     ).toBe(
-      "l'un de vos administrateurs : Amel (admin@fig.invalid), Karim (karim@fig.invalid)",
+      "l'un de vos administrateurs : admin@fig.invalid, karim@fig.invalid",
     );
+    // Un administrateur sans adresse ne fait pas basculer la phrase au pluriel.
+    expect(adminContact([admin, { name: "Karim", email: "" }])).toBe(
+      "votre administrateur (admin@fig.invalid)",
+    );
+    for (const contact of [
+      adminContact([admin]),
+      adminContact([admin, { name: "Karim", email: "karim@fig.invalid" }]),
+    ]) {
+      expect(contact).not.toMatch(/Amel|Karim/);
+    }
   });
 
   it("compte activé : à la personne tout ce qu'il faut pour se connecter (jamais le mot de passe), aux administrateurs l'information", () => {
@@ -157,7 +188,7 @@ describe("mails de récupération", () => {
       role: "gestionnaire",
       loginUrl: "https://fig.example.invalid/connexion",
       admins: [admin],
-      by: null,
+      byAdmin: false,
     });
     expect(welcome.to).toEqual(zaki);
     expect(welcome.subject).toMatch(/activé/);
@@ -169,9 +200,11 @@ describe("mails de récupération", () => {
     expect(welcome.text).toContain("rôle attribué : Gestionnaire");
     expect(welcome.text).toMatch(/Mot de passe oublié/);
     expect(welcome.text).toMatch(/pas à l'origine de cette activation/);
+    // L'adresse pour écrire, jamais le nom (demande du 2026-09-18).
     expect(welcome.text).toContain(
-      "contactez votre administrateur, Amel (admin@fig.invalid).",
+      "contactez votre administrateur (admin@fig.invalid).",
     );
+    expect(welcome.text).not.toContain("Amel");
     expect(welcome.text).toMatch(SIGNED);
 
     const given = accountActivatedMail({
@@ -180,9 +213,10 @@ describe("mails de récupération", () => {
       role: "lecture",
       loginUrl: "https://fig.example.invalid/connexion",
       admins: [admin],
-      by: "Amel",
+      byAdmin: true,
     });
-    expect(given.text).toContain("celui que Amel vous a attribué");
+    expect(given.text).toContain("celui que l'administrateur vous a attribué");
+    expect(given.text).not.toContain("Amel");
     expect(given.text).toMatch(/Changez-le dès votre première connexion/);
 
     const notice = adminAccountActivatedMail({
@@ -230,7 +264,7 @@ describe("mails de récupération", () => {
     expect(person.text).toMatch(/Seul un administrateur est habilité/);
     expect(person.text).toMatch(/pas cette invitation, vous pouvez ignorer/);
     expect(person.text).toContain(
-      "contactez votre administrateur, Amel (admin@fig.invalid).",
+      "contactez votre administrateur (admin@fig.invalid).",
     );
 
     const alert = adminInvitationExpiredMail({

@@ -1,4 +1,5 @@
 import type { Role } from "@/domain/auth/roles";
+import type { MailFailureReason } from "@/domain/mail/failure";
 
 /*
  * Utilisateur de la session courante : ce que verifySession() renvoie et ce que
@@ -53,9 +54,22 @@ export type ManagedUser = {
    * « en attente » ou « expirée » de l'invitation (invitationState).
    */
   invitationExpiresAt: string | null;
+  /**
+   * Ce qu'a donné le dernier envoi d'invitation : confirmé par le
+   * fournisseur, ou échoué avec sa cause (domain/mail/failure.ts) ; null si
+   * aucun envoi n'a encore été tenté (comptes d'avant la migration 0017, ou
+   * amorcés par le seed). L'écran le dit sur la carte et propose de
+   * réessayer : sans lien, la personne ne peut pas entrer.
+   */
+  invitationMail: InvitationMailState | null;
   /** ISO 8601. */
   createdAt: string;
 };
+
+/** ISO 8601 dans les deux cas : l'instant de l'envoi confirmé ou de l'échec. */
+export type InvitationMailState =
+  | { state: "sent"; at: string }
+  | { state: "failed"; at: string; reason: MailFailureReason };
 
 /**
  * Compte dont l'invitation vient d'être constatée expirée par le balayage

@@ -74,6 +74,16 @@ export const authTokenKindEnum = pgEnum("auth_token_kind", [
   "lock_link",
   "invitation",
 ]);
+/** Pourquoi un mail n'est pas parti (domain/mail/failure.ts). */
+export const mailFailureReasonEnum = pgEnum("mail_failure_reason", [
+  "adresse_refusee",
+  "expedition_refusee",
+  "configuration",
+  "quota_depasse",
+  "service_indisponible",
+  "injoignable",
+  "autre",
+]);
 export const staffKindEnum = pgEnum("staff_kind", [
   "livreur",
   "preparateur",
@@ -161,6 +171,17 @@ export const users = pgTable(
      * renvoyée ensuite (jeton plus récent) pourra être notifiée à son tour.
      */
     invitationExpiredAt: timestampTz("invitation_expired_at"),
+    /**
+     * Dernier envoi d'invitation qui a ÉCHOUÉ (migration 0017) : l'instant et
+     * la cause, pour que l'écran Comptes le dise encore après rechargement et
+     * propose de réessayer. Les deux colonnes repassent à null dès qu'un envoi
+     * réussit : elles décrivent l'état courant, pas un historique (le journal
+     * de sécurité garde la trace de chaque échec).
+     */
+    invitationMailFailedAt: timestampTz("invitation_mail_failed_at"),
+    invitationMailError: mailFailureReasonEnum("invitation_mail_error"),
+    /** Dernier envoi d'invitation CONFIRMÉ par le fournisseur ; null si aucun. */
+    invitationMailSentAt: timestampTz("invitation_mail_sent_at"),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
   },
   (t) => [

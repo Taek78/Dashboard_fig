@@ -171,7 +171,7 @@ describe("acceptInvitation", () => {
     expect(welcome?.text).toContain("celui que vous venez de choisir");
     expect(welcome?.text).toContain("rôle attribué : Gestionnaire");
     expect(welcome?.text).toContain(
-      `votre administrateur, Admin E2E (${TEST_ACCOUNTS.admin.email})`,
+      `votre administrateur (${TEST_ACCOUNTS.admin.email})`,
     );
     expect(welcome?.text).not.toContain("Carotte violette");
     expect(notice?.subject).toBe("Compte activé : Nour Benali");

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { createToken } from "@/data/auth-tokens";
-import { trySendMail } from "@/data/mail";
+import { sendMailChecked, trySendMail } from "@/data/mail";
 import { findPasswordProblem } from "@/data/passwords";
 import { logSecurity } from "@/data/security-log";
 import { getCurrentUser, reopenSession } from "@/data/session";
@@ -13,6 +13,7 @@ import {
   getUser,
   listUsers,
   revokeSessions,
+  setInvitationMailOutcome,
   setPassword,
   updateUser,
 } from "@/data/users";
@@ -21,6 +22,7 @@ import {
   accountDeactivatedMail,
   accountDeletedMail,
   adminAccountActivatedMail,
+  invitationCancelledMail,
   invitationMail,
   type AccountSummary,
 } from "@/domain/auth/mails";
@@ -47,6 +49,8 @@ import {
   type CurrentUser,
   type ManagedUser,
 } from "@/domain/auth/types";
+import { mailFailureText } from "@/domain/mail/failure";
+import type { MailOutcome } from "@/domain/mail/types";
 import type { ActionResult } from "@/lib/action-result";
 import { appUrl } from "@/lib/app-url";
 import { getEnv } from "@/lib/env";
@@ -61,12 +65,14 @@ import { generateLinkToken, hashSecret } from "@/lib/secrets";
  * de passe sont hachés ici et n'apparaissent dans aucun message ni journal.
  *
  * Depuis le 2026-09-17, un compte se crée SANS mot de passe : la personne le
- * choisit par un lien d'invitation (48 h, une seule fois) envoyé après la
- * réponse ; « Envoyer un lien » renvoie ce lien à tout compte actif (compte
+ * choisit par un lien d'invitation (48 h, une seule fois) dont l'envoi est
+ * ATTENDU (2026-09-18) — l'écran dit s'il est parti, et sinon pourquoi et quoi
+ * faire ; « Envoyer un lien » renvoie ce lien à tout compte actif (compte
  * jamais activé, ou mot de passe à remplacer). Tant que le mot de passe
  * n'existe pas, le compte est EN ATTENTE D'ACTIVATION : « Annuler
- * l'invitation » le supprime (jamais activé, rien à conserver), et le lien
- * cesse de fonctionner. Quand il s'active (lien accepté, ou dépannage ici), la
+ * l'invitation » le supprime (jamais activé, rien à conserver), le lien cesse
+ * de fonctionner et la personne en est avertie par mail si son invitation
+ * était bien partie. Quand il s'active (lien accepté, ou dépannage ici), la
  * personne et les administrateurs reçoivent un avis d'activation. « Nouveau
  * mot de passe » reste le dépannage quand le mail ne passe pas : il applique
  * la même politique (règles pures puis fuites connues). Désactiver un compte
@@ -76,8 +82,8 @@ import { generateLinkToken, hashSecret } from "@/lib/secrets";
  * un compte (mot SUPPRIMER) est définitif : ses jetons partent en cascade, ses
  * sessions tombent à la requête suivante, l'historique des commandes garde le
  * nom écrit. Désactiver ou supprimer un compte envoie un mail à la personne,
- * après la réponse (after) : la date, ce que cela change, l'administrateur qui
- * agit, nommé avec son adresse.
+ * après la réponse (after) : la date, ce que cela change, et l'ADRESSE de
+ * l'administrateur à qui écrire, jamais son nom (demande du 2026-09-18).
  */
 const MESSAGES = {
   forbidden: "Seul un administrateur peut gérer les comptes.",
@@ -98,7 +104,7 @@ const MESSAGES = {
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
 } as const;
 
-/** L'administrateur qui agit, avec son adresse : le contact nommé dans l'avis à la personne. */
+/** L'administrateur qui agit : seule son adresse paraît dans l'avis à la personne (adminContact). */
 function contactOf(
   users: readonly ManagedUser[],
   user: CurrentUser,
@@ -107,12 +113,23 @@ function contactOf(
   return { name: user.name, email: me?.email ?? "" };
 }
 
-/** Crée le lien d'invitation, programme son envoi après la réponse, journalise. */
+/**
+ * Crée le lien d'invitation, ATTEND son envoi, écrit l'issue sur le compte,
+ * journalise.
+ *
+ * L'attente est délibérée, contrairement aux mails d'information (avis de
+ * désactivation, de suppression) qui partent en `after()` : sans ce lien, la
+ * personne ne peut pas entrer, donc l'administrateur doit savoir tout de
+ * suite si le mail est parti, et pourquoi sinon. Le coût est un aller-retour
+ * HTTP vers le fournisseur (10 s au pire, délai du transport) sur une action
+ * rare. L'issue est aussi écrite en base : la carte le dit encore après un
+ * rechargement.
+ */
 async function issueInvitation(
   target: ManagedUser,
   by: CurrentUser,
   reason: "creation" | "reset",
-): Promise<void> {
+): Promise<MailOutcome> {
   const secret = generateLinkToken();
   await createToken({
     kind: "invitation",
@@ -124,11 +141,21 @@ async function issueInvitation(
   const mail = invitationMail({
     to: { email: target.email, name: target.name },
     url: appUrl(`/connexion/invitation?jeton=${secret}`),
-    byName: by.name,
     reason,
   });
-  after(() => trySendMail("invitation", mail));
-  logSecurity({ type: "invitation_sent", userId: by.id, targetId: target.id });
+  const outcome = await sendMailChecked("invitation", mail);
+  await setInvitationMailOutcome(target.id, outcome, new Date());
+  logSecurity(
+    outcome.sent
+      ? { type: "invitation_sent", userId: by.id, targetId: target.id }
+      : {
+          type: "invitation_mail_failed",
+          userId: by.id,
+          targetId: target.id,
+          reason: outcome.reason,
+        },
+  );
+  return outcome;
 }
 
 /**
@@ -158,7 +185,7 @@ function announceActivation(
         role: target.role,
         loginUrl,
         admins,
-        by,
+        byAdmin: true,
       }),
     );
     await Promise.all(
@@ -208,11 +235,17 @@ export async function createAccount(
       targetId: created.id,
       role: created.role,
     });
-    await issueInvitation(created, user, "creation");
+    const outcome = await issueInvitation(created, user, "creation");
     revalidatePath("/comptes", "layout");
+    if (!outcome.sent) {
+      return {
+        status: "warning",
+        message: `Compte « ${created.name} » créé, mais l'invitation n'est pas partie. ${mailFailureText(outcome.reason)} Sa carte porte « Renvoyer l'invitation ».`,
+      };
+    }
     return {
       status: "success",
-      message: `Compte « ${created.name} » créé, en attente d'activation : un lien pour choisir son mot de passe lui a été envoyé (${created.email}, valable ${AUTH_TOKEN_RULES.invitation.validity}).`,
+      message: `Compte « ${created.name} » créé, en attente d'activation : un lien pour choisir son mot de passe a bien été envoyé à ${created.email}, valable ${AUTH_TOKEN_RULES.invitation.validity}.`,
     };
   } catch (error) {
     console.error("[createAccount]", { userId: user.id }, error);
@@ -240,16 +273,22 @@ export async function sendPasswordLink(
     const target = await getUser(parsed.data.userId);
     if (!target) return { status: "error", message: MESSAGES.notFound };
     if (!target.active) return { status: "error", message: MESSAGES.inactive };
-    await issueInvitation(
+    const outcome = await issueInvitation(
       target,
       user,
       target.hasPassword ? "reset" : "creation",
     );
-    // La carte affiche la nouvelle validité du lien.
+    // La carte affiche la nouvelle validité du lien, et l'issue de l'envoi.
     revalidatePath("/comptes", "layout");
+    if (!outcome.sent) {
+      return {
+        status: "warning",
+        message: `Le lien pour « ${target.name} » n'est pas parti. ${mailFailureText(outcome.reason)}`,
+      };
+    }
     return {
       status: "success",
-      message: `Lien envoyé à « ${target.name} » (${target.email}), valable ${AUTH_TOKEN_RULES.invitation.validity}.`,
+      message: `Lien bien envoyé à « ${target.name} » (${target.email}), valable ${AUTH_TOKEN_RULES.invitation.validity}.`,
     };
   } catch (error) {
     console.error(
@@ -285,6 +324,7 @@ export async function cancelInvitation(
     if (target.hasPassword) {
       return { status: "error", message: MESSAGES.activated };
     }
+    const users = await listUsers();
     const deleted = await deleteUser(userId);
     if (!deleted) return { status: "error", message: MESSAGES.notFound };
     logSecurity({
@@ -292,10 +332,28 @@ export async function cancelInvitation(
       userId: user.id,
       targetId: userId,
     });
+    /*
+     * Avis à la personne, après la réponse : elle a peut-être reçu le lien et
+     * s'apprêtait à l'utiliser. Seulement si l'invitation était bien PARTIE :
+     * quand l'envoi a échoué (adresse fausse, par exemple), écrire à cette
+     * adresse n'apprendrait rien à personne et pourrait déranger un inconnu.
+     */
+    if (target.invitationMail?.state === "sent") {
+      const mail = invitationCancelledMail({
+        to: { email: target.email, name: target.name },
+        at: new Date().toISOString(),
+        admin: contactOf(users, user),
+      });
+      after(() => trySendMail("invitation_cancelled", mail));
+    }
     revalidatePath("/comptes", "layout");
     return {
       status: "success",
-      message: `Invitation de « ${target.name} » annulée : le compte est supprimé et le lien reçu ne fonctionne plus.`,
+      message: `Invitation de « ${target.name} » annulée : le compte est supprimé et le lien reçu ne fonctionne plus.${
+        target.invitationMail?.state === "sent"
+          ? " Un message le lui annonce."
+          : " Aucun message envoyé : son invitation n'était jamais partie."
+      }`,
     };
   } catch (error) {
     console.error(

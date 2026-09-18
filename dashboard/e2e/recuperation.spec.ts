@@ -46,7 +46,8 @@ test.describe("récupération de compte", () => {
     await expect(card).toContainText("En attente d'activation");
 
     const mail = await waitForMail(account.email, { subject: /accès/i, since });
-    expect(mail.text).toContain("Admin E2E vous a créé un compte");
+    expect(mail.text).toContain("L'administrateur vous a créé un compte");
+    expect(mail.text).not.toContain("Admin E2E");
     const url = linkIn(mail, "/connexion/invitation");
 
     const other = await browser.newContext();
