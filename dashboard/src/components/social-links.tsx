@@ -3,19 +3,20 @@ import {
   SOCIAL_LABELS,
   SOCIAL_NETWORKS,
   socialHref,
+  socialLinkLabel,
   type SocialNetwork,
 } from "@/lib/social";
 import { cn } from "@/lib/utils";
 
 /*
- * Pied du menu : FIG sur Facebook et Instagram (demande du 2026-09-18).
- * Composant serveur. Logos dessinés ici (lucide n'a plus de logos de marque),
- * dans les couleurs du thème au repos, à la couleur de leur réseau au survol
- * avec un néon léger. Adresse renseignée (src/lib/social.ts) : un lien qui
- * s'ouvre dans un nouvel onglet, sans rien transmettre de la page (noopener
- * noreferrer). Adresse vide : l'icône est là, estompée et en pointillés,
- * annoncée « bientôt disponible » ; elle réagit au survol mais ne mène nulle
- * part. Menu replié en icônes : les deux ronds s'empilent.
+ * Pied du menu : Facebook et Instagram (demande du 2026-09-18). Composant
+ * serveur. Logos dessinés ici (lucide n'a plus de logos de marque), EN
+ * COULEUR dès le repos, à la couleur de leur réseau (tokens --facebook,
+ * --instagram, clairs sur fond sombre et soutenus sur fond clair), pour se
+ * voir nettement ; au survol, un néon léger. Chaque icône est un lien, jamais
+ * mort : la page de FIG si elle est renseignée, sinon la page d'accueil du
+ * réseau (src/lib/social.ts). Nouvel onglet, sans rien transmettre de la page
+ * (noopener noreferrer). Menu replié en icônes : les deux ronds s'empilent.
  */
 const LOGOS: Record<SocialNetwork, ReactNode> = {
   facebook: (
@@ -39,16 +40,16 @@ const ROUND =
   "group/social flex size-9 items-center justify-center rounded-full border outline-none motion-safe:transition-[color,border-color,background-color,box-shadow,translate,scale] motion-safe:duration-300 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-90";
 
 /*
- * Survol et focus clavier : la couleur du réseau (tokens --facebook,
- * --instagram) et un NÉON léger, un halo de cette couleur autour du rond
+ * Au repos, la couleur du réseau (logo, contour, fond léger) ; au survol et
+ * au focus clavier, un NÉON léger : un halo de cette couleur autour du rond
  * (box-shadow) et du logo (drop-shadow), adouci par color-mix. Classes
  * écrites en entier : Tailwind ne voit pas un nom de classe construit.
  */
 const TONE: Record<SocialNetwork, string> = {
   facebook:
-    "hover:text-facebook hover:border-facebook/60 hover:bg-facebook/10 hover:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--facebook)_70%,transparent)] focus-visible:text-facebook focus-visible:border-facebook/60 focus-visible:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--facebook)_70%,transparent)] hover:[&_svg]:drop-shadow-[0_0_4px_var(--facebook)]",
+    "text-facebook border-facebook/50 bg-facebook/10 hover:border-facebook hover:bg-facebook/20 hover:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--facebook)_70%,transparent)] focus-visible:text-facebook focus-visible:border-facebook/60 focus-visible:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--facebook)_70%,transparent)] hover:[&_svg]:drop-shadow-[0_0_4px_var(--facebook)]",
   instagram:
-    "hover:text-instagram hover:border-instagram/60 hover:bg-instagram/10 hover:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--instagram)_70%,transparent)] focus-visible:text-instagram focus-visible:border-instagram/60 focus-visible:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--instagram)_70%,transparent)] hover:[&_svg]:drop-shadow-[0_0_4px_var(--instagram)]",
+    "text-instagram border-instagram/50 bg-instagram/10 hover:border-instagram hover:bg-instagram/20 hover:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--instagram)_70%,transparent)] focus-visible:text-instagram focus-visible:border-instagram/60 focus-visible:shadow-[0_0_14px_-2px_color-mix(in_oklch,var(--instagram)_70%,transparent)] hover:[&_svg]:drop-shadow-[0_0_4px_var(--instagram)]",
 };
 
 export function SocialLinks({ className }: { className?: string }) {
@@ -61,7 +62,6 @@ export function SocialLinks({ className }: { className?: string }) {
       )}
     >
       {SOCIAL_NETWORKS.map((network) => {
-        const href = socialHref(network);
         const label = SOCIAL_LABELS[network];
         const logo = (
           <svg
@@ -77,35 +77,20 @@ export function SocialLinks({ className }: { className?: string }) {
         );
         return (
           <li key={network}>
-            {href ? (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`FIG sur ${label} (nouvel onglet)`}
-                title={`FIG sur ${label}`}
-                className={cn(
-                  ROUND,
-                  TONE[network],
-                  "text-sidebar-foreground/80 focus-visible:ring-ring/50 focus-visible:ring-3",
-                )}
-              >
-                {logo}
-              </a>
-            ) : (
-              <span
-                role="img"
-                aria-label={`${label} : bientôt disponible`}
-                title={`${label} : bientôt disponible`}
-                className={cn(
-                  ROUND,
-                  TONE[network],
-                  "text-sidebar-foreground/40 border-dashed",
-                )}
-              >
-                {logo}
-              </span>
-            )}
+            <a
+              href={socialHref(network)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={socialLinkLabel(network)}
+              title={label}
+              className={cn(
+                ROUND,
+                TONE[network],
+                "focus-visible:ring-ring/50 focus-visible:ring-3",
+              )}
+            >
+              {logo}
+            </a>
           </li>
         );
       })}

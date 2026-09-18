@@ -43,18 +43,18 @@ test.describe("connexion et accès", () => {
     ]) {
       await expect(nav.getByRole("link", { name: section })).toBeVisible();
     }
-    // Pied du menu : Facebook et Instagram, inactifs tant que leurs adresses
-    // ne sont pas renseignées (src/lib/social.ts).
+    // Pied du menu : Facebook et Instagram, en couleur, jamais un lien mort
+    // (page d'accueil du réseau tant que celles de FIG ne sont pas connues).
     const social = page.getByRole("list", {
       name: "FIG sur les réseaux sociaux",
     });
     await expect(
-      social.getByRole("img", { name: "Facebook : bientôt disponible" }),
-    ).toBeVisible();
+      social.getByRole("link", { name: "Facebook (nouvel onglet)" }),
+    ).toHaveAttribute("href", "https://www.facebook.com/");
     await expect(
-      social.getByRole("img", { name: "Instagram : bientôt disponible" }),
-    ).toBeVisible();
-    await expect(social.getByRole("link")).toHaveCount(0);
+      social.getByRole("link", { name: "Instagram (nouvel onglet)" }),
+    ).toHaveAttribute("href", "https://www.instagram.com/");
+    await expect(social.getByText(/bientôt/)).toHaveCount(0);
     // Le badge du bandeau porte le rôle dans son nom (plus en texte visible).
     await expect(
       page.getByRole("link", {
