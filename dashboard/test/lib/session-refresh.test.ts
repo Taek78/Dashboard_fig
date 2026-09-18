@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isBackgroundPoll,
   isPrefetch,
   refreshDue,
   SESSION_MAX_AGE_SECONDS,
@@ -15,6 +16,15 @@ describe("isPrefetch", () => {
     expect(isPrefetch(new Headers({ purpose: "prefetch" }))).toBe(true);
     expect(isPrefetch(new Headers({ rsc: "1" }))).toBe(false);
     expect(isPrefetch(new Headers())).toBe(false);
+  });
+});
+
+describe("isBackgroundPoll", () => {
+  it("le relevé des alertes ne renouvelle jamais la session, les pages si", () => {
+    expect(isBackgroundPoll("/alertes")).toBe(true);
+    expect(isBackgroundPoll("/alertes/x")).toBe(false);
+    expect(isBackgroundPoll("/commandes")).toBe(false);
+    expect(isBackgroundPoll("/")).toBe(false);
   });
 });
 

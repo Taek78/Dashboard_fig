@@ -31,6 +31,17 @@ export function isPrefetch(headers: Headers): boolean {
 }
 
 /**
+ * Chemins relevés en tâche de fond par un onglet ouvert (flux des alertes,
+ * toutes les 5 s) : ils ne renouvellent JAMAIS la session, sinon un onglet
+ * oublié ouvert la prolongerait sans fin, sans personne devant l'écran.
+ */
+export const BACKGROUND_POLL_PATHS = ["/alertes"] as const;
+
+export function isBackgroundPoll(pathname: string): boolean {
+  return (BACKGROUND_POLL_PATHS as readonly string[]).includes(pathname);
+}
+
+/**
  * Vrai si le jeton mérite d'être renouvelé : plus de `fraction` de sa durée de
  * vie est écoulée (par défaut la moitié). `exp` est l'expiration du jeton en
  * secondes (champ JWT) ; sans `exp` lisible, on laisse Auth.js faire.

@@ -56,6 +56,21 @@ describe("parseCustomerHistoryPeriod", () => {
   });
 });
 
+describe("parseClientsSearch sans l'argent (livreur)", () => {
+  it("?tri=montant retombe sur le nom ; les autres tris restent", () => {
+    expect(parseClientsSearch({ tri: "montant" }, false)).toMatchObject({
+      sort: "nom",
+      order: "croissant",
+    });
+    expect(parseClientsSearch({ tri: "commandes" }, false)).toMatchObject({
+      sort: "commandes",
+    });
+    expect(parseClientsSearch({ tri: "montant" })).toMatchObject({
+      sort: "montant",
+    });
+  });
+});
+
 describe("parseClientsSearch", () => {
   it("lit recherche, type, tri (avec ou sans sens) et page", () => {
     expect(

@@ -36,7 +36,7 @@ const KIND_ORDER: Record<StaffKind, number> = Object.fromEntries(
   STAFF_KINDS.map((kind, index) => [kind, index]),
 ) as Record<StaffKind, number>;
 
-/** Copie triée : actifs d'abord, puis par métier (livreurs, préparateurs, gestionnaires), puis par nom. */
+/** Copie triée : actifs d'abord, puis par métier (livreurs, préparateurs, préparateurs-livreurs, gestionnaires), puis par nom. */
 export function sortStaff(members: readonly StaffMember[]): StaffMember[] {
   return members.toSorted(
     (a, b) =>
@@ -147,11 +147,27 @@ export function hasStaffSearch(search: StaffSearch): boolean {
   return Object.values(search).some((value) => value !== undefined);
 }
 
-/** Métier attendu pour chaque rôle d'affectation sur une commande. */
+/** Métier de référence de chaque rôle d'affectation (liens « Voir les livreurs »). */
 export const KIND_FOR_ROLE: Record<AssignmentRole, StaffKind> = {
   preparer: "preparateur",
   driver: "livreur",
 };
+
+/**
+ * Métiers qui peuvent tenir chaque rôle sur une commande : le
+ * préparateur-livreur (demande du 2026-09-18) prépare ET livre, il est
+ * proposé dans les deux listes, et peut tenir les deux rôles d'une même
+ * commande.
+ */
+export const KINDS_FOR_ROLE: Record<AssignmentRole, readonly StaffKind[]> = {
+  preparer: ["preparateur", "preparateur_livreur"],
+  driver: ["livreur", "preparateur_livreur"],
+};
+
+/** Vrai si ce métier peut tenir ce rôle sur une commande. */
+export function kindTakesRole(kind: StaffKind, role: AssignmentRole): boolean {
+  return KINDS_FOR_ROLE[role].includes(kind);
+}
 
 /**
  * Personnes proposables dans la liste déroulante d'affectation : du bon
@@ -163,7 +179,7 @@ export function assignableStaff(
   role: AssignmentRole,
 ): StaffMember[] {
   return members
-    .filter((m) => m.active && m.kind === KIND_FOR_ROLE[role])
+    .filter((m) => m.active && kindTakesRole(m.kind, role))
     .toSorted(
       (a, b) =>
         Number(a.availability !== "disponible") -
@@ -178,7 +194,7 @@ export function canBeAssigned(
   member: StaffMember,
   role: AssignmentRole,
 ): boolean {
-  return member.active && member.kind === KIND_FOR_ROLE[role];
+  return member.active && kindTakesRole(member.kind, role);
 }
 
 /** Présente pour une affectation aujourd'hui : dans l'équipe et « disponible » (peu importe la raison d'une absence). */
@@ -196,8 +212,7 @@ export function unavailableRoles(
   members: readonly StaffMember[],
 ): AssignmentRole[] {
   return ASSIGNMENT_ROLES.filter(
-    (role) =>
-      !members.some((m) => isPresent(m) && m.kind === KIND_FOR_ROLE[role]),
+    (role) => !members.some((m) => isPresent(m) && kindTakesRole(m.kind, role)),
   );
 }
 
@@ -287,7 +302,7 @@ export function staffFilterOptions(
   members: readonly StaffMember[],
 ): Record<AssignmentRole, StaffFilterOption[]> {
   const optionsFor = (role: AssignmentRole) =>
-    sortStaff(filterStaff(members, KIND_FOR_ROLE[role])).map((m) => ({
+    sortStaff(members.filter((m) => kindTakesRole(m.kind, role))).map((m) => ({
       id: m.id,
       name: staffFullName(m),
       active: m.active,

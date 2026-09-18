@@ -6,6 +6,8 @@ import {
 } from "@/components/customers/customers-results";
 import { CustomersSearch } from "@/components/customers/customers-search";
 import { PageHeader } from "@/components/page-header";
+import { getCurrentUser } from "@/data/session";
+import { canSeeRevenue } from "@/domain/auth/roles";
 import { directorySearchQuery } from "@/domain/customers/directory";
 import { parseClientsSearch } from "@/domain/customers/schemas";
 
@@ -20,21 +22,29 @@ import { parseClientsSearch } from "@/domain/customers/schemas";
  * une transition, les résultats précédents restent affichés jusqu'aux
  * suivants au lieu de clignoter en squelette à chaque frappe (le squelette ne
  * sert qu'au premier chargement).
+ * Un rôle qui ne voit pas l'argent (livreur, canSeeRevenue) n'a ni le montant
+ * dépensé ni les remises sur les cartes, ni le tri par montant.
  */
 export const metadata: Metadata = { title: "Clients" };
 
 export default async function ClientsPage({
   searchParams,
 }: PageProps<"/clients">) {
-  const search = parseClientsSearch(await searchParams);
+  const user = await getCurrentUser();
+  const showSpending = canSeeRevenue(user.role);
+  const search = parseClientsSearch(await searchParams, showSpending);
   const canReset = directorySearchQuery(search) !== "";
 
   return (
     <>
       <PageHeader title="Clients" />
-      <CustomersSearch search={search} canReset={canReset} />
+      <CustomersSearch
+        search={search}
+        canReset={canReset}
+        showSpending={showSpending}
+      />
       <Suspense fallback={<CustomersResultsSkeleton />}>
-        <CustomersResults search={search} />
+        <CustomersResults search={search} showSpending={showSpending} />
       </Suspense>
     </>
   );

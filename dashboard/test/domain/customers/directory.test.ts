@@ -17,6 +17,7 @@ import {
   SORT_ORDER_LABELS,
   sortDirectory,
   sortOptions,
+  isSortAvailable,
   type DirectoryEntry,
 } from "@/domain/customers/directory";
 import { customersFixtures } from "@/domain/customers/fixtures";
@@ -320,6 +321,15 @@ describe("parseSortParam / parseOrderParam / sortOptions", () => {
     ]);
     expect(sortOptions("communautes").map((o) => o.value)).toContain("membres");
     expect(new Set(all.map((o) => o.label)).size).toBe(all.length);
+  });
+
+  it("sans l'argent (livreur), pas de tri par montant dépensé", () => {
+    expect(sortOptions("tous", false).map((o) => o.value)).not.toContain(
+      "montant",
+    );
+    expect(isSortAvailable("montant", "tous", false)).toBe(false);
+    expect(isSortAvailable("montant", "tous")).toBe(true);
+    expect(isSortAvailable("nom", "tous", false)).toBe(true);
   });
 
   it("lettres pour le nom, chiffres pour le reste ; chaque sens a son libellé", () => {

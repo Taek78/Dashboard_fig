@@ -3,6 +3,8 @@ import {
   ROLES,
   SECTION_ACCESS,
   SECTIONS,
+  alertScopeFor,
+  canSeeRevenue,
   canAddCustomerNote,
   canAssignStaff,
   canChangeOrderStatus,
@@ -63,6 +65,29 @@ describe("règles d'écriture : admin et gestionnaire oui, lecture non", () => {
   );
 });
 
+describe("canSeeRevenue (CA, panier moyen, montant dépensé)", () => {
+  it("tout le monde sauf le livreur, comme les métriques", () => {
+    expect(canSeeRevenue("admin")).toBe(true);
+    expect(canSeeRevenue("gestionnaire")).toBe(true);
+    expect(canSeeRevenue("lecture")).toBe(true);
+    expect(canSeeRevenue("livreur")).toBe(false);
+  });
+});
+
+describe("alertScopeFor (alertes en direct)", () => {
+  it("chaque rôle n'est averti que de ce qu'il peut ouvrir", () => {
+    const all = { orders: true, messages: true, stock: true };
+    expect(alertScopeFor("admin")).toEqual(all);
+    expect(alertScopeFor("gestionnaire")).toEqual(all);
+    expect(alertScopeFor("lecture")).toEqual(all);
+    expect(alertScopeFor("livreur")).toEqual({
+      orders: true,
+      messages: false,
+      stock: false,
+    });
+  });
+});
+
 describe("lecture des sections", () => {
   it("chaque entrée de navigation est une section connue", () => {
     for (const item of NAV_ITEMS) expect(SECTIONS).toContain(item.href);
@@ -87,14 +112,19 @@ describe("lecture des sections", () => {
     expect(canManageUsers("gestionnaire")).toBe(false);
   });
 
-  it("le livreur ne voit que les commandes (sa tournée) et son profil ; les autres tout sauf /comptes et /journal", () => {
+  it("le livreur voit commandes (sa page d'accueil), tableau de bord, clients et son profil ; les autres tout sauf /comptes et /journal", () => {
     expect(canViewSection("livreur", "/commandes?du=2026-09-07")).toBe(true);
     expect(canViewSection("livreur", "/commandes/cmd-0001")).toBe(true);
+    expect(homeFor("livreur")).toBe("/commandes");
     // Ancienne section : plus une section connue, laissée à la redirection.
     expect(sectionOf("/livraisons")).toBeNull();
-    expect(canViewSection("livreur", "/")).toBe(false);
+    expect(canViewSection("livreur", "/")).toBe(true);
+    expect(canViewSection("livreur", "/clients/cli-0001")).toBe(true);
+    expect(canViewSection("livreur", "/clients/communautes/com-0001")).toBe(
+      true,
+    );
     expect(canViewSection("livreur", "/metriques")).toBe(false);
-    expect(canViewSection("livreur", "/clients/cli-0001")).toBe(false);
+    expect(canViewSection("livreur", "/catalogue")).toBe(false);
     expect(canViewSection("livreur", "/personnel")).toBe(false);
     // La boîte de réception parle des clients : le livreur n'y a pas accès.
     expect(canViewSection("livreur", "/messages")).toBe(false);

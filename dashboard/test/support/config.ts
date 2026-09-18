@@ -20,4 +20,11 @@ export const TEST_ACCOUNTS = {
     password: "E2E-FIG-2026-gestion",
     name: "Gestion E2E",
   },
+  // Rôle livreur : ce qu'il voit (tableau de bord sans montants, clients sans dépenses).
+  driver: {
+    id: "usr-0003",
+    email: "e2e-livreur@fig-demo.invalid",
+    password: "E2E-FIG-2026-livreur",
+    name: "Livreur Tournee",
+  },
 } as const;

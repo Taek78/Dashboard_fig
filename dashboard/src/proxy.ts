@@ -10,6 +10,7 @@ import { canViewSection, homeFor } from "@/domain/auth/roles";
 import { cspFor } from "@/lib/csp";
 import { getEnv } from "@/lib/env";
 import {
+  isBackgroundPoll,
   isPrefetch,
   refreshDue,
   SESSION_COOKIE_NAMES,
@@ -26,8 +27,8 @@ import {
  *    redirection vers /connexion?callbackUrl= ; rôle sans accès à la section
  *    (matrice SECTION_ACCESS) → redirection vers la page d'accueil du rôle ;
  * 3. le cookie de session qu'Auth.js re-pose à chaque réponse est retiré
- *    quand le rafraîchissement n'a pas lieu d'être (préchargement, jeton
- *    récent) : sinon une réponse en vol après la déconnexion reconnecterait
+ *    quand le rafraîchissement n'a pas lieu d'être (préchargement, relevé des
+ *    alertes en tâche de fond, jeton récent) : sinon une réponse en vol après la déconnexion reconnecterait
  *    la personne (src/lib/session-refresh.ts).
  * Les pages revérifient de toute façon via verifySession() et les Server
  * Actions relisent le rôle : le proxy évite juste de rendre quoi que ce soit.
@@ -96,7 +97,10 @@ async function limitSessionRefresh(
     request.cookies.has(name),
   );
   if (!cookieName) return;
-  if (isPrefetch(request.headers)) {
+  if (
+    isPrefetch(request.headers) ||
+    isBackgroundPoll(request.nextUrl.pathname)
+  ) {
     stripSessionCookies(response.headers);
     return;
   }

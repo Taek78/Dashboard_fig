@@ -88,6 +88,7 @@ export const mailFailureReasonEnum = pgEnum("mail_failure_reason", [
 export const staffKindEnum = pgEnum("staff_kind", [
   "livreur",
   "preparateur",
+  "preparateur_livreur",
   "gestionnaire",
 ]);
 export const staffShiftEnum = pgEnum("staff_shift", [
@@ -492,6 +493,8 @@ export const orders = pgTable(
       t.createdAt.desc(),
       t.id.desc(),
     ),
+    // Alertes en direct : les commandes créées depuis le dernier relevé (0020).
+    index("orders_created_idx").on(t.createdAt.desc()),
     index("orders_community_idx").on(t.communityId),
     index("orders_preparer_idx").on(t.preparerId),
     index("orders_driver_idx").on(t.driverId),

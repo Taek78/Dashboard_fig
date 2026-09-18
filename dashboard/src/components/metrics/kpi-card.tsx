@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
  * la largeur, la valeur avec son badge de tendance sur la même ligne (le
  * badge passe dessous si la place manque), un complément, et à droite un
  * petit visuel facultatif (RatioPie). Rien ne se chevauche, même à quatre
- * colonnes. La valeur est déjà formatée par l'appelant.
+ * colonnes. La valeur est déjà formatée par l'appelant. Sur une zone étroite
+ * (téléphone, deux cartes par ligne), l'icône passe AU-DESSUS du libellé et
+ * rétrécit : la valeur garde toute la largeur de la carte.
  * `tone="brand"` : carte au dégradé de marque pour le chiffre principal d'un écran.
  */
 export function KpiCard({
@@ -39,22 +41,22 @@ export function KpiCard({
           : "glow-brand",
       )}
     >
-      <CardContent className="relative flex items-start gap-3">
+      <CardContent className="relative flex flex-col items-start gap-2 @xl/main:flex-row @xl/main:gap-3">
         <div
           aria-hidden="true"
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm [&_svg]:size-5",
+            "flex size-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm @xl/main:size-10 [&_svg]:size-4 @xl/main:[&_svg]:size-5",
             brand ? "bg-white/20 ring-1 ring-white/30" : "bg-gradient-brand",
           )}
         >
           {icon}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-muted-foreground text-xs leading-snug">
             {label}
           </span>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-2xl font-semibold tracking-tight tabular-nums @2xl/main:text-[1.75rem]">
+            <span className="text-xl font-semibold tracking-tight tabular-nums @xl/main:text-2xl @2xl/main:text-[1.75rem]">
               {value}
             </span>
             {trend}
@@ -64,7 +66,9 @@ export function KpiCard({
           ) : null}
         </div>
         {visual ? (
-          <div className="shrink-0 self-center pl-1">{visual}</div>
+          <div className="shrink-0 self-end @xl/main:self-center @xl/main:pl-1">
+            {visual}
+          </div>
         ) : null}
       </CardContent>
     </Card>

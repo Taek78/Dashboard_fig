@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCommunity } from "@/data/communities";
 import { getCustomers } from "@/data/customers";
 import { getDirectoryStats, getOrdersPage } from "@/data/orders";
+import { getCurrentUser } from "@/data/session";
+import { canSeeRevenue } from "@/domain/auth/roles";
 import { communityDiscountPercent } from "@/domain/communities/discount";
 import {
   COMMUNITY_KIND_LABELS,
@@ -46,15 +48,17 @@ export default async function CommunautePage({
 
   const community = await getCommunity(parsed.data);
   if (!community) notFound();
-  const [members, directory, latest] = await Promise.all([
+  const [members, directory, latest, user] = await Promise.all([
     getCustomers({ communityId: community.id }),
     getDirectoryStats({ communityId: community.id }),
     getOrdersPage({ communityId: community.id }, 1, RECENT),
+    getCurrentUser(),
   ]);
   const summary = directory.communities.get(community.id) ?? NO_SUMMARY;
   const recent = latest.items;
   const discountPercent = communityDiscountPercent(members.length);
   const now = new Date().toISOString();
+  const showSpending = canSeeRevenue(user.role);
 
   return (
     <>
@@ -154,14 +158,21 @@ export default async function CommunautePage({
               <dd className="font-medium tabular-nums">{members.length}</dd>
               <dt className="text-muted-foreground">Commandes</dt>
               <dd className="font-medium tabular-nums">{summary.orderCount}</dd>
-              <dt className="text-muted-foreground">Total (hors annulées)</dt>
-              <dd className="font-medium tabular-nums">
-                {formatEuros(summary.totalCents)}
-              </dd>
-              <dt className="text-muted-foreground">Remises accordées</dt>
-              <dd className="font-medium tabular-nums">
-                {formatEuros(summary.discountCents)}
-              </dd>
+              {/* Montants : jamais pour le livreur (canSeeRevenue). */}
+              {showSpending ? (
+                <>
+                  <dt className="text-muted-foreground">
+                    Total (hors annulées)
+                  </dt>
+                  <dd className="font-medium tabular-nums">
+                    {formatEuros(summary.totalCents)}
+                  </dd>
+                  <dt className="text-muted-foreground">Remises accordées</dt>
+                  <dd className="font-medium tabular-nums">
+                    {formatEuros(summary.discountCents)}
+                  </dd>
+                </>
+              ) : null}
               <dt className="text-muted-foreground">Dernier retrait</dt>
               <dd className="font-medium">
                 {summary.lastDeliveryDate
@@ -179,7 +190,7 @@ export default async function CommunautePage({
           <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
             {buildCustomerEntries(members, directory, now).map((entry) => (
               <li key={entry.id}>
-                <CustomerCard entry={entry} />
+                <CustomerCard entry={entry} showSpending={showSpending} />
               </li>
             ))}
           </ul>

@@ -30,7 +30,14 @@ import { cn } from "@/lib/utils";
  * Le code de parrainage et les filleuls ne sont PAS sur la carte : ils
  * n'apparaissent que dans la fiche (décision du client).
  */
-export function CustomerCard({ entry }: { entry: CustomerEntry }) {
+export function CustomerCard({
+  entry,
+  showSpending = true,
+}: {
+  entry: CustomerEntry;
+  /** Faux pour le livreur (canSeeRevenue) : le montant dépensé n'est pas rendu. */
+  showSpending?: boolean;
+}) {
   const { customer, stats, loyalty, tier, nextDiscount } = entry;
   const notes = customer.notes.length;
   const anonymized = customer.anonymizedAt !== null;
@@ -130,17 +137,24 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
       {anonymized ? null : <ConsentPills consents={customer.consents} />}
 
       {/* 4. Chiffres, fidélité, notes */}
-      <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-xl p-3 text-center">
+      <dl
+        className={cn(
+          "bg-muted/40 grid gap-2 rounded-xl p-3 text-center",
+          showSpending ? "grid-cols-3" : "grid-cols-2",
+        )}
+      >
         <div>
           <dt className="text-muted-foreground text-xs">Commandes</dt>
           <dd className="text-lg font-bold tabular-nums">{stats.orderCount}</dd>
         </div>
-        <div>
-          <dt className="text-muted-foreground text-xs">Dépensé</dt>
-          <dd className="text-sm font-bold tabular-nums">
-            {formatEuros(stats.totalSpentCents)}
-          </dd>
-        </div>
+        {showSpending ? (
+          <div>
+            <dt className="text-muted-foreground text-xs">Dépensé</dt>
+            <dd className="text-sm font-bold tabular-nums">
+              {formatEuros(stats.totalSpentCents)}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-muted-foreground text-xs">Dernière</dt>
           <dd className="text-sm font-medium">

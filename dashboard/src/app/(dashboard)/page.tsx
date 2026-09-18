@@ -30,7 +30,11 @@ import {
 import { countOrders, getOrderStats, getOrders } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
-import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
+import {
+  canAssignStaff,
+  canChangeOrderStatus,
+  canSeeRevenue,
+} from "@/domain/auth/roles";
 import {
   todayInParis,
   tourProgressFromCounts,
@@ -65,6 +69,10 @@ import { cn } from "@/lib/utils";
  * (TourProgress : segments par statut, légende chiffrée) ; sans commande, un
  * état vide bien visible (« Aucune commande »), et une période personnalisée sans
  * commande est dite par le bandeau bleu commun.
+ * Le livreur (canSeeRevenue faux) ne voit AUCUN montant : ni CA ni panier
+ * moyen (les cartes ne sont pas rendues, rien n'arrive au navigateur), ni
+ * l'interrupteur HT / TTC, ni le raccourci vers les Métriques ; il garde
+ * Commandes et Expédiées.
  * En bas, les commandes en préparation toutes dates : le nombre (compté par la
  * base) et les PREPARING_SHOWN créneaux les plus proches, jamais la liste
  * entière (elle grandit avec l'activité) ; le lien mène à la liste complète.
@@ -95,12 +103,18 @@ export default async function TableauDeBordPage({
   const { kpis } = stats;
   const delivering = stats.statusCounts.delivering;
   const plural = (n: number) => (n > 1 ? "s" : "");
+  const revenue = canSeeRevenue(user.role);
+  const shortcuts = [
+    ["/commandes?statut=preparing", "Commandes en préparation"],
+    [`/commandes?du=${today}&au=${today}`, "Livraisons du jour"],
+    ...(revenue ? [["/metriques", "Métriques"]] : []),
+  ];
 
   return (
     <>
       <PageHeader
         title="Tableau de bord"
-        description={`${title} · montants ${taxLabel}.`}
+        description={revenue ? `${title} · montants ${taxLabel}.` : title}
         actions={<DashboardClock initial={now.toISOString()} />}
       />
 
@@ -116,35 +130,46 @@ export default async function TableauDeBordPage({
             range={range}
             hiddenFields={{ tva: query.tax }}
             tools={
-              <TaxModeSwitch
-                action="/"
-                tax={query.tax}
-                baseParams={baseParams}
-              />
+              revenue ? (
+                <TaxModeSwitch
+                  action="/"
+                  tax={query.tax}
+                  baseParams={baseParams}
+                />
+              ) : undefined
             }
           />
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-3 @xl/main:gap-4",
+          revenue && "@4xl/main:grid-cols-4",
+        )}
+      >
         <KpiCard
           label="Commandes"
           value={String(kpis.orderCount)}
           hint={`${kpis.cancelledCount} annulée${plural(kpis.cancelledCount)}`}
           icon={<ShoppingBasket />}
         />
-        <KpiCard
-          label={`CA ${taxLabel}`}
-          value={money(kpis.revenueCents)}
-          hint="hors annulées"
-          icon={<Euro />}
-          tone="brand"
-        />
-        <KpiCard
-          label={`Panier moyen ${taxLabel}`}
-          value={money(kpis.averageBasketCents)}
-          icon={<Wallet />}
-        />
+        {revenue ? (
+          <>
+            <KpiCard
+              label={`CA ${taxLabel}`}
+              value={money(kpis.revenueCents)}
+              hint="hors annulées"
+              icon={<Euro />}
+              tone="brand"
+            />
+            <KpiCard
+              label={`Panier moyen ${taxLabel}`}
+              value={money(kpis.averageBasketCents)}
+              icon={<Wallet />}
+            />
+          </>
+        ) : null}
         <KpiCard
           label="Expédiées"
           value={String(delivering)}
@@ -200,11 +225,7 @@ export default async function TableauDeBordPage({
         aria-label="Raccourcis"
         className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap"
       >
-        {[
-          ["/commandes?statut=preparing", "Commandes en préparation"],
-          [`/commandes?du=${today}&au=${today}`, "Livraisons du jour"],
-          ["/metriques", "Métriques"],
-        ].map(([href, label]) => (
+        {shortcuts.map(([href, label]) => (
           <Link
             key={href}
             href={href!}

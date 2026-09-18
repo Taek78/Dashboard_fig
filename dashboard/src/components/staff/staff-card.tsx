@@ -15,7 +15,11 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
 import { SHIFT_LABELS, WEEKDAY_LABELS, WEEKDAYS } from "@/domain/staff/kind";
-import { staffFullName, type StaffWorkSummary } from "@/domain/staff/rules";
+import {
+  kindTakesRole,
+  staffFullName,
+  type StaffWorkSummary,
+} from "@/domain/staff/rules";
 import type { StaffMember } from "@/domain/staff/types";
 import { initials } from "@/lib/text";
 import { formatDateFr, toTelHref } from "@/lib/format";
@@ -41,7 +45,19 @@ export function StaffCard({
   canManage?: boolean;
 }) {
   const name = staffFullName(member);
-  const isDriver = member.kind === "livreur";
+  // Les compteurs du métier : préparées, livrées, ou les deux pour un préparateur-livreur.
+  const counters = [
+    ...(kindTakesRole(member.kind, "preparer")
+      ? [{ label: "Préparées", value: summary.prepared }]
+      : []),
+    ...(kindTakesRole(member.kind, "driver")
+      ? [{ label: "Livrées", value: summary.delivered }]
+      : []),
+    ...(member.kind === "gestionnaire"
+      ? [{ label: "Préparées", value: summary.prepared }]
+      : []),
+    { label: "En cours", value: summary.inProgress },
+  ];
 
   return (
     <article
@@ -139,21 +155,22 @@ export function StaffCard({
         </dd>
       </dl>
 
-      <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-xl p-3 text-center">
-        <div>
-          <dt className="text-muted-foreground text-xs">
-            {isDriver ? "Livrées" : "Préparées"}
-          </dt>
-          <dd className="text-lg font-semibold tabular-nums">
-            {isDriver ? summary.delivered : summary.prepared}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground text-xs">En cours</dt>
-          <dd className="text-lg font-semibold tabular-nums">
-            {summary.inProgress}
-          </dd>
-        </div>
+      <dl
+        className={cn(
+          "bg-muted/40 grid gap-2 rounded-xl p-3 text-center",
+          counters.length > 2
+            ? "grid-cols-2 @xl/main:grid-cols-4"
+            : "grid-cols-3",
+        )}
+      >
+        {counters.map((counter) => (
+          <div key={counter.label}>
+            <dt className="text-muted-foreground text-xs">{counter.label}</dt>
+            <dd className="text-lg font-semibold tabular-nums">
+              {counter.value}
+            </dd>
+          </div>
+        ))}
         <div>
           <dt className="text-muted-foreground text-xs">Dernière</dt>
           <dd className="text-sm font-medium">

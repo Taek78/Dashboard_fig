@@ -59,7 +59,14 @@ export function CommunityDiscountBadges({
   );
 }
 
-export function CommunityCard({ entry }: { entry: CommunityEntry }) {
+export function CommunityCard({
+  entry,
+  showSpending = true,
+}: {
+  entry: CommunityEntry;
+  /** Faux pour le livreur (canSeeRevenue) : les remises accordées ne sont pas rendues. */
+  showSpending?: boolean;
+}) {
   const { community, memberCount, discountPercent, summary } = entry;
 
   return (
@@ -136,7 +143,12 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
         </dd>
       </dl>
 
-      <dl className="bg-muted/40 grid grid-cols-3 gap-2 rounded-xl p-3 text-center">
+      <dl
+        className={cn(
+          "bg-muted/40 grid gap-2 rounded-xl p-3 text-center",
+          showSpending ? "grid-cols-3" : "grid-cols-2",
+        )}
+      >
         <div>
           <dt className="text-muted-foreground text-xs">Membres</dt>
           <dd className="text-lg font-bold tabular-nums">{memberCount}</dd>
@@ -147,12 +159,14 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
             {summary.orderCount}
           </dd>
         </div>
-        <div>
-          <dt className="text-muted-foreground text-xs">Remises accordées</dt>
-          <dd className="text-sm font-bold tabular-nums">
-            {formatEuros(summary.discountCents)}
-          </dd>
-        </div>
+        {showSpending ? (
+          <div>
+            <dt className="text-muted-foreground text-xs">Remises accordées</dt>
+            <dd className="text-sm font-bold tabular-nums">
+              {formatEuros(summary.discountCents)}
+            </dd>
+          </div>
+        ) : null}
       </dl>
 
       <p className="text-muted-foreground text-xs">

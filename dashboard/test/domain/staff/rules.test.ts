@@ -8,6 +8,7 @@ import {
   filterStaff,
   isPresent,
   KIND_FOR_ROLE,
+  kindTakesRole,
   sortStaff,
   splitByPresence,
   unavailableRoles,
@@ -148,8 +149,52 @@ describe("searchStaff / hasStaffSearch", () => {
 });
 
 function order(kind: StaffMember["kind"]): number {
-  return { livreur: 0, preparateur: 1, gestionnaire: 2 }[kind];
+  return {
+    livreur: 0,
+    preparateur: 1,
+    preparateur_livreur: 2,
+    gestionnaire: 3,
+  }[kind];
 }
+
+describe("préparateur-livreur (KINDS_FOR_ROLE)", () => {
+  const both: StaffMember = {
+    ...byId("stf-0005"),
+    id: "stf-mixte",
+    kind: "preparateur_livreur",
+    lastName: "Mixte",
+  };
+  const team = [...staffFixtures, both];
+
+  it("peut tenir les deux rôles, et lui seul parmi les métiers", () => {
+    expect(kindTakesRole("preparateur_livreur", "preparer")).toBe(true);
+    expect(kindTakesRole("preparateur_livreur", "driver")).toBe(true);
+    expect(kindTakesRole("livreur", "preparer")).toBe(false);
+    expect(kindTakesRole("preparateur", "driver")).toBe(false);
+    expect(kindTakesRole("gestionnaire", "driver")).toBe(false);
+    expect(canBeAssigned(both, "preparer")).toBe(true);
+    expect(canBeAssigned(both, "driver")).toBe(true);
+    expect(canBeAssigned({ ...both, active: false }, "driver")).toBe(false);
+  });
+
+  it("est proposé dans les deux listes d'affectation et les deux filtres", () => {
+    const options = assignmentOptions(team);
+    expect(options.preparer.map((o) => o.id)).toContain("stf-mixte");
+    expect(options.driver.map((o) => o.id)).toContain("stf-mixte");
+    const filters = staffFilterOptions(team);
+    expect(filters.preparer.map((o) => o.id)).toContain("stf-mixte");
+    expect(filters.driver.map((o) => o.id)).toContain("stf-mixte");
+  });
+
+  it("présent, il suffit à lever l'alerte des deux rôles", () => {
+    const nobody = staffFixtures.map((m) => ({
+      ...m,
+      availability: "indisponible" as const,
+    }));
+    expect(unavailableRoles(nobody)).toEqual(["preparer", "driver"]);
+    expect(unavailableRoles([...nobody, both])).toEqual([]);
+  });
+});
 
 describe("assignableStaff / canBeAssigned / assignmentOptions", () => {
   it("ne propose que le bon métier, actif, disponibles d'abord", () => {

@@ -96,10 +96,12 @@ describe("groupNavItems", () => {
     );
   });
 
-  it("n'affiche pas un groupe vide (rôle aux sections limitées)", () => {
+  it("n'affiche pas un groupe vide ; un groupe d'une seule entrée prend son nom (livreur)", () => {
     const livreur = NAV_ITEMS.filter((i) =>
-      ["/", "/commandes"].includes(i.href),
+      ["/", "/commandes", "/clients"].includes(i.href),
     );
-    expect(groupNavItems(livreur).map((g) => g.group)).toEqual(["activite"]);
+    const groups = groupNavItems(livreur);
+    expect(groups.map((g) => g.group)).toEqual(["activite", "relations"]);
+    expect(groups.map((g) => g.label)).toEqual(["Activité", "Clients"]);
   });
 });

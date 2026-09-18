@@ -70,6 +70,8 @@ Listes de valeurs : enums Postgres (`order_status`, `cancellation_reason`, `prod
 
 `orders.payment_reference` : référence du paiement transmise par l'application à la création ; l'enum `cancellation_reason` gagne `customer` (« Annulée par le client » : annulation par la personne depuis l'application, en préparation seulement). Trois index composites servent les listes « mes commandes », « mes messages » et « mes notifications » par curseur (`orders_customer_created_idx`, `customer_messages_customer_received_idx`, `customer_notifications_customer_created_idx`). Rien de destructeur dans cette migration.
 
+Migration 0019 : `staff.left_at` (date de sortie) et les valeurs `h24` et `arret_maladie`. Migration 0021 : la valeur `preparateur_livreur` de `staff_kind` (une personne affectable comme préparateur et comme livreur). Migration 0020 : l'index `orders_created_idx` (`created_at` décroissant), qui sert le flux des alertes en direct (`GET /alertes`, les commandes créées depuis le dernier relevé, toutes les 5 s par onglet ouvert). Rien de destructeur.
+
 ## 5. Comment le code lit la base
 
 `src/data/<domaine>.db.ts` implémente le contrat du domaine ; `src/data/<domaine>.ts` le réexporte. Les lignes Drizzle ne sortent jamais de `src/data/` : `src/db/mappers.ts` les convertit en types métier (dates ISO, motif d'annulation, lignes triées). Deux choix à connaître :

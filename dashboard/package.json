@@ -20,6 +20,7 @@
     "db:backup": "tsx scripts/backup.ts",
     "db:restore": "tsx scripts/restore.ts",
     "rgpd:purge": "tsx scripts/rgpd-purge.ts",
+    "demo:commandes": "tsx scripts/demo-commandes.ts",
     "api:openapi": "tsx scripts/openapi.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test"

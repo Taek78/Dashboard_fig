@@ -97,6 +97,9 @@
   --animate-clock-in: clock-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-clock-out: clock-out 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-clock-colon: clock-colon 2s ease-in-out infinite;
+  --animate-alert-drop: alert-drop 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-alert-lift: alert-lift 220ms ease-in both;
+  --animate-alert-countdown: alert-countdown 4s linear both;
 
   @keyframes shimmer {
     from {
@@ -147,6 +150,36 @@
     to {
       opacity: 0;
       transform: translateY(-70%);
+    }
+  }
+  /* Notification en direct : elle descend de sous le bandeau, remonte en partant. */
+  @keyframes alert-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-110%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes alert-lift {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-110%);
+    }
+  }
+  /* Barre du temps restant (4 s, ALERT_DISPLAY_MS). */
+  @keyframes alert-countdown {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
     }
   }
   @keyframes clock-colon {
@@ -590,6 +623,26 @@
 @utility clock-colon {
   @media (prefers-reduced-motion: no-preference) {
     animation: var(--animate-clock-colon);
+  }
+}
+
+/* Notifications en direct (AlertCenter) : immobiles sous prefers-reduced-motion. */
+@utility alert-drop {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-alert-drop);
+  }
+}
+
+@utility alert-lift {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-alert-lift);
+  }
+}
+
+@utility alert-countdown {
+  transform-origin: left;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-alert-countdown);
   }
 }
 

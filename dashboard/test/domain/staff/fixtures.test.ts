@@ -3,8 +3,10 @@ import { STAFF_KINDS, WEEKDAYS } from "@/domain/staff/kind";
 import { staffFixtures } from "@/domain/staff/fixtures";
 
 describe("staffFixtures", () => {
-  it("couvre les trois métiers, avec une personne partie pour l'historique", () => {
-    for (const kind of STAFF_KINDS) {
+  it("couvre les trois métiers de base, avec une personne partie pour l'historique", () => {
+    // Le préparateur-livreur n'a pas de fiche de démonstration : il lèverait
+    // l'alerte « aucun préparateur » que les parcours Playwright provoquent.
+    for (const kind of STAFF_KINDS.filter((k) => k !== "preparateur_livreur")) {
       expect(staffFixtures.some((m) => m.kind === kind && m.active)).toBe(true);
     }
     expect(staffFixtures.some((m) => !m.active)).toBe(true);

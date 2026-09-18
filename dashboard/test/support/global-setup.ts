@@ -28,6 +28,7 @@ export default async function setup(): Promise<void> {
     await seedDatabase(db, {
       admin: TEST_ACCOUNTS.admin,
       manager: TEST_ACCOUNTS.manager,
+      driver: TEST_ACCOUNTS.driver,
     });
   } finally {
     await sql.end();

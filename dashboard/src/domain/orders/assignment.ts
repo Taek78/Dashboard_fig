@@ -2,8 +2,8 @@
  * Affectation d'une personne de l'équipe à une commande : un préparateur
  * (qui prépare le panier) et un livreur (qui livre). Deux rôles, un même
  * geste : choisir dans une liste déroulante, ou retirer l'affectation. Le
- * métier attendu pour chaque rôle est dans src/domain/staff/rules.ts
- * (KIND_FOR_ROLE) ; la Server Action assignOrderStaff le vérifie.
+ * métiers admis pour chaque rôle sont dans src/domain/staff/rules.ts
+ * (KINDS_FOR_ROLE : le préparateur-livreur tient les deux) ; la Server Action assignOrderStaff le vérifie.
  */
 export const ASSIGNMENT_ROLES = ["preparer", "driver"] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];

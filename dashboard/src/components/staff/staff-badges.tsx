@@ -18,6 +18,7 @@ type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 const KIND_VARIANT: Record<StaffKind, BadgeVariant> = {
   livreur: "default",
   preparateur: "secondary",
+  preparateur_livreur: "success",
   gestionnaire: "outline",
 };
 

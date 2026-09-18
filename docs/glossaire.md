@@ -256,7 +256,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Affectation (préparateur, livreur)** (métier) : rattacher une personne de l'équipe à une commande, dans l'un des deux rôles (`AssignmentRole`). Une liste déroulante par rôle sur les cartes et la fiche, qui écrit dès le choix (`staff-assign-field.tsx`) ; l'action `assignOrderStaff` relit la personne et vérifie son métier (`KIND_FOR_ROLE`).
 
-**Personnel (staff)** (métier) : l'équipe du client, trois métiers (livreur, préparateur de commandes, gestionnaire), avec coordonnées, créneau de travail (matin, après-midi, soir, journée ou « 24 h/24 », sans horaire fixe), disponibilité (disponible, indisponible, en congé, arrêt maladie), jours travaillés. La liste est coupée en deux sections : « Dans l'entreprise », puis « Partis de l'entreprise » (`splitByPresence`). Les gestionnaires listés sont des personnes ; leur accès au back-office se gère dans Comptes. Son historique de traitement se calcule à partir des commandes affectées (`summarizeStaffWork`).
+**Personnel (staff)** (métier) : l'équipe du client, quatre métiers (livreur, préparateur de commandes, préparateur-livreur, gestionnaire), avec coordonnées, créneau de travail (matin, après-midi, soir, journée ou « 24 h/24 », sans horaire fixe), disponibilité (disponible, indisponible, en congé, arrêt maladie), jours travaillés. La liste est coupée en deux sections : « Dans l'entreprise », puis « Partis de l'entreprise » (`splitByPresence`). Les gestionnaires listés sont des personnes ; leur accès au back-office se gère dans Comptes. Son historique de traitement se calcule à partir des commandes affectées (`summarizeStaffWork`).
 
 **Communauté** (métier) : groupe de clients qui commandent ensemble et récupèrent leurs produits à un même point de retrait, à l'horaire que chacun choisit en commandant dans l'application. Trois types (`COMMUNITY_KINDS`) : voisinage, entreprise, point relais ; publique ou privée (`visibility`), posée par l'application ; ni l'un ni l'autre n'est jamais vide. Créée par l'application FIG ; livraison offerte à toutes ; sa remise dépend de son nombre de membres (`communityDiscountPercent` : rien jusqu'à 3, −5 % de 4 à 9, −10 % dès 10) et l'application l'applique sur chaque commande des membres ; le dashboard la lit (recherche commune de la section Clients, fiche) et affiche la remise sur les commandes.
 
@@ -405,6 +405,16 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Bouton œil** (connexion) : le petit bouton dans le champ du mot de passe qui l'affiche en clair (œil ouvert) ou le masque de nouveau (œil barré), pour vérifier ce qu'on a tapé.
 
 **Néon** (design) : un halo lumineux léger de la couleur d'un élément, obtenu par une ombre floue (`box-shadow`, `drop-shadow`) ; au survol des icônes Facebook et Instagram du pied du menu.
+
+**Préparateur-livreur** (personnel, 2026-09-18) : le métier d'une personne qui prépare ET livre ; elle est proposée dans les deux listes d'affectation d'une commande et peut tenir les deux rôles de la même commande (`KINDS_FOR_ROLE`). Présente, elle lève à elle seule l'alerte « aucun préparateur » et « aucun livreur ».
+
+**Notification groupée** (alertes en direct) : une seule notification s'affiche à la fois ; ce qui arrive pendant qu'elle est visible s'y ajoute et relance ses 4 s (« 3 nouvelles commandes », « 2 commandes · 1 message »), au lieu d'empiler des cartes (`summarizeNotices`).
+
+**Alerte en direct** (écrans, 2026-09-18) : la notification qui descend de sous le bandeau pendant 4 s quand une commande arrive, qu'un client écrit, ou qu'un produit passe en stock critique ou à 0. Le navigateur **relève** (*polling*) le flux `GET /alertes` toutes les 5 s et le compare au relevé précédent : seul ce qui est nouveau depuis l'ouverture de la page est annoncé. Une nouvelle commande sonne.
+
+**Polling (relevé périodique)** : le navigateur redemande régulièrement au serveur s'il y a du nouveau, au lieu que le serveur le prévienne (WebSocket, Server-Sent Events). Plus simple, suffisant pour une petite équipe ; le prix est une requête courte toutes les 5 s par onglet visible.
+
+**Web Audio API** : l'interface du navigateur qui synthétise un son (oscillateur, volume) sans fichier audio ; le carillon d'une nouvelle commande en est fait (`src/lib/chime.ts`). Les navigateurs le gardent muet jusqu'au premier clic ou à la première touche sur la page (*autoplay policy*).
 
 **Horloge du tableau de bord** (tableau de bord, métriques) : en haut à droite, le jour en toutes lettres et l'heure de Paris dessous ; seuls les chiffres qui changent défilent à chaque minute (`DashboardClock`).
 

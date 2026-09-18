@@ -1,3 +1,4 @@
+import { AlertCenter } from "@/components/alerts/alert-center";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -23,6 +24,8 @@ import { verifySession } from "@/lib/dal";
  *   (dégradé et motif) est posé sur toute la fenêtre par globals.css.
  * - min-w-0 sur le conteneur de page : un enfant large (tableau, graphe) défile
  *   dans son propre cadre au lieu d'élargir la page sur mobile.
+ * - AlertCenter : les notifications en direct (nouvelle commande, message,
+ *   stock), qui descendent de sous le bandeau ; le son d'une commande.
  * - @container/main : le conteneur de page est un conteneur de requêtes. Les
  *   composants de page choisissent leur disposition selon SA largeur
  *   (@xl/main:, @2xl/main:, @4xl/main:…) et non celle de la fenêtre : à 768 px,
@@ -51,6 +54,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
           {children}
         </div>
       </SidebarInset>
+      <AlertCenter />
     </SidebarProvider>
   );
 }

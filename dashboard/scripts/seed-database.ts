@@ -30,7 +30,12 @@ import { hashPassword } from "@/lib/password";
  */
 /** `name` = « Prénom Nom » : le premier mot devient le prénom, le reste le nom (splitFullName). */
 export type SeedAccount = { email: string; password: string; name: string };
-export type SeedAccounts = { admin: SeedAccount; manager?: SeedAccount };
+export type SeedAccounts = {
+  admin: SeedAccount;
+  manager?: SeedAccount;
+  /** Compte au rôle livreur (tests seulement). */
+  driver?: SeedAccount;
+};
 export type SeedDb = PostgresJsDatabase<typeof schema>;
 
 /** Lève si l'URL ne vise pas une base locale (SEED_ALLOW_REMOTE=1 pour forcer) : règle partagée de src/lib/database-url.ts. */
@@ -58,7 +63,7 @@ async function inChunks<T>(
 /** Vide et remplit la base ; renvoie le résumé des lignes insérées. */
 export async function seedDatabase(
   db: SeedDb,
-  { admin, manager }: SeedAccounts,
+  { admin, manager, driver }: SeedAccounts,
 ): Promise<string> {
   const accounts: (typeof schema.users.$inferInsert)[] = [
     {
@@ -76,6 +81,15 @@ export async function seedDatabase(
       ...splitFullName(manager.name),
       role: "gestionnaire",
       passwordHash: await hashPassword(manager.password),
+    });
+  }
+  if (driver) {
+    accounts.push({
+      id: "usr-0003",
+      email: driver.email,
+      ...splitFullName(driver.name),
+      role: "livreur",
+      passwordHash: await hashPassword(driver.password),
     });
   }
 

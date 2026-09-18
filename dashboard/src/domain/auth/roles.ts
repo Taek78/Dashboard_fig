@@ -7,9 +7,11 @@
  * côté serveur, jamais en faisant confiance au client.
  *
  * Rôles à confirmer avec le client (question 5) : « livreur » est le cas concret
- * d'un rôle qui ne doit voir ni le chiffre d'affaires, ni les clients, ni le
- * catalogue.
+ * d'un rôle qui ne voit ni le chiffre d'affaires ni un montant dépensé, ni le
+ * catalogue ; il voit les clients depuis le 2026-09-18 (demande de l'auteur).
  */
+import type { AlertScope } from "@/domain/alerts/types";
+
 export const ROLES = ["admin", "gestionnaire", "lecture", "livreur"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -100,6 +102,20 @@ export function canReadMessageFiles(role: Role): boolean {
 
 /* ---------- Lecture : quelles sections chaque rôle peut ouvrir ---------- */
 
+/**
+ * Alertes en direct : un rôle n'est averti que de ce qu'il peut ouvrir
+ * (commandes, messages, catalogue pour le stock). Le livreur n'entend donc
+ * que les nouvelles commandes.
+ */
+export function alertScopeFor(role: Role): AlertScope {
+  const sections = SECTION_ACCESS[role];
+  return {
+    orders: sections.includes("/commandes"),
+    messages: sections.includes("/messages"),
+    stock: sections.includes("/catalogue"),
+  };
+}
+
 /** Les sections du back-office, par préfixe d'URL (la racine n'est que "/"). */
 export const SECTIONS = [
   "/",
@@ -127,15 +143,27 @@ const TEAM_SECTIONS: readonly Section[] = SECTIONS.filter(
  * /comptes (gestion des comptes) et /journal (journal de sécurité : adresses
  * e-mail, adresses IP, traces de toute l'équipe) sont réservés à
  * l'administrateur ; /profil
- * (son propre mot de passe) est ouvert à tous. Le livreur suit ses tournées
- * depuis Commandes (raccourcis des derniers jours).
+ * (son propre mot de passe) est ouvert à tous. Le livreur (demande du
+ * 2026-09-18) : Commandes (sa page d'accueil, la tournée), le tableau de bord
+ * et les Clients, jamais un montant d'activité (canSeeRevenue).
  */
 export const SECTION_ACCESS: Record<Role, readonly Section[]> = {
   admin: SECTIONS,
   gestionnaire: TEAM_SECTIONS,
   lecture: TEAM_SECTIONS,
-  livreur: ["/commandes", "/profil"],
+  livreur: ["/commandes", "/", "/clients", "/profil"],
 };
+
+/**
+ * Voir l'argent de l'activité : chiffre d'affaires et panier moyen du tableau
+ * de bord, montant dépensé par un client ou une communauté (cartes, fiches,
+ * tri « Montant dépensé »), remises accordées. Même règle que l'accès aux
+ * Métriques : le livreur n'en voit aucun. Les pages ne rendent pas ces
+ * chiffres (rien n'arrive au navigateur), le tri refusé retombe sur le nom.
+ */
+export function canSeeRevenue(role: Role): boolean {
+  return SECTION_ACCESS[role].includes("/metriques");
+}
 
 /** Section d'un chemin : "/commandes/cmd-1" → "/commandes" ; inconnu → null. */
 export function sectionOf(pathname: string): Section | null {

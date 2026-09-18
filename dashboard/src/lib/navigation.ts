@@ -70,16 +70,25 @@ export const NAV_ITEMS = [
 
 /**
  * Range des entrées (déjà filtrées par rôle) sous leurs groupes, dans l'ordre
- * de NAV_GROUPS ; un groupe sans entrée n'apparaît pas.
+ * de NAV_GROUPS ; un groupe sans entrée n'apparaît pas. Un groupe réduit à UNE
+ * entrée prend le nom de cette entrée : pour le livreur, « Clients et
+ * équipe » ne contient que Clients et s'appelle donc « Clients ».
  */
-export function groupNavItems<T extends { group: NavGroup }>(
+export function groupNavItems<T extends { group: NavGroup; title: string }>(
   items: readonly T[],
 ): { group: NavGroup; label: string; items: T[] }[] {
   return NAV_GROUPS.map((group) => ({
     group,
-    label: NAV_GROUP_LABELS[group],
     items: items.filter((item) => item.group === group),
-  })).filter((entry) => entry.items.length > 0);
+  }))
+    .filter((entry) => entry.items.length > 0)
+    .map((entry) => ({
+      ...entry,
+      label:
+        entry.items.length === 1
+          ? entry.items[0]!.title
+          : NAV_GROUP_LABELS[entry.group],
+    }));
 }
 
 /** La racine n'est active que sur "/" ; une section reste active sur ses sous-pages. */

@@ -120,7 +120,8 @@ export function DashboardClock({ initial }: { initial: string }) {
   const previous = clock.previous ?? [];
 
   return (
-    <div className="flex flex-col gap-1 @2xl/main:items-end @2xl/main:pt-1 @2xl/main:text-right">
+    // Téléphone : une seule ligne, le jour à gauche et l'heure à droite ; plus large, l'un sous l'autre, en haut à droite.
+    <div className="flex w-full items-center justify-between gap-3 @2xl/main:w-auto @2xl/main:flex-col @2xl/main:items-end @2xl/main:gap-1 @2xl/main:pt-1 @2xl/main:text-right">
       <p className="sr-only">
         <time dateTime={clock.iso}>{`${day}, ${h1}${h2} h ${m1}${m2}`}</time>
       </p>
@@ -134,7 +135,7 @@ export function DashboardClock({ initial }: { initial: string }) {
       <span
         aria-hidden="true"
         data-testid="horloge"
-        className="text-foreground flex items-baseline text-4xl leading-none font-semibold tracking-tight tabular-nums"
+        className="text-foreground flex items-baseline text-2xl leading-none font-semibold tracking-tight tabular-nums @2xl/main:text-4xl"
       >
         <Digit value={h1} previous={previous[0]} tick={clock.tick} />
         <Digit value={h2} previous={previous[1]} tick={clock.tick} />

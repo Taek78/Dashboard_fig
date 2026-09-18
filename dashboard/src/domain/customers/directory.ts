@@ -107,9 +107,19 @@ export function oppositeOrder(order: DirectoryOrder): DirectoryOrder {
   return order === "croissant" ? "decroissant" : "croissant";
 }
 
-/** Le tri par membres n'a de sens que sur les communautés. */
-export function isSortAvailable(sort: DirectorySort, type: DirectoryType) {
-  return sort !== "membres" || type === "communautes";
+/**
+ * Le tri par membres n'a de sens que sur les communautés ; le tri par montant
+ * dépensé n'existe que pour un rôle qui voit l'argent (canSeeRevenue).
+ */
+export function isSortAvailable(
+  sort: DirectorySort,
+  type: DirectoryType,
+  showSpending = true,
+) {
+  return (
+    (sort !== "membres" || type === "communautes") &&
+    (sort !== "montant" || showSpending)
+  );
 }
 
 /**
@@ -184,10 +194,13 @@ export function parseOrderParam(
 }
 
 /** Critères de la liste déroulante pour un type affiché. */
-export function sortOptions(type: DirectoryType): DirectorySortOption[] {
-  return DIRECTORY_SORTS.filter((sort) => isSortAvailable(sort, type)).map(
-    (sort) => ({ value: sort, label: DIRECTORY_SORT_LABELS[sort] }),
-  );
+export function sortOptions(
+  type: DirectoryType,
+  showSpending = true,
+): DirectorySortOption[] {
+  return DIRECTORY_SORTS.filter((sort) =>
+    isSortAvailable(sort, type, showSpending),
+  ).map((sort) => ({ value: sort, label: DIRECTORY_SORT_LABELS[sort] }));
 }
 
 /** Cartes par page de la section Clients. */

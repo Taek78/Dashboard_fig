@@ -35,7 +35,14 @@ import { paginate } from "@/domain/orders/rules";
  * filtrés et triés par les règles pures de l'annuaire, DIRECTORY_PAGE_SIZE par page ; chaque carte mène
  * à sa fiche par un bouton dédié.
  */
-export async function CustomersResults({ search }: { search: ClientsSearch }) {
+export async function CustomersResults({
+  search,
+  showSpending = true,
+}: {
+  search: ClientsSearch;
+  /** Faux pour le livreur : ni montant dépensé ni remises sur les cartes. */
+  showSpending?: boolean;
+}) {
   const [customers, communities, stats] = await Promise.all([
     getCustomers(),
     listCommunities(),
@@ -97,9 +104,9 @@ export async function CustomersResults({ search }: { search: ClientsSearch }) {
         {page.items.map((entry) => (
           <li key={`${entry.kind}-${entry.id}`}>
             {entry.kind === "community" ? (
-              <CommunityCard entry={entry} />
+              <CommunityCard entry={entry} showSpending={showSpending} />
             ) : (
-              <CustomerCard entry={entry} />
+              <CustomerCard entry={entry} showSpending={showSpending} />
             )}
           </li>
         ))}

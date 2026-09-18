@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { RotateCcw, SlidersHorizontal } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { CollapsibleTray } from "@/components/collapsible-tray";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +14,9 @@ import { cn } from "@/lib/utils";
  * la surface reprennent la couleur de la carte (règle de globals.css sur
  * data-slot="filter-tray"). Le lien est un vrai lien : il vide l'URL et
  * AutoSubmitForm remonte les champs.
+ * Sur téléphone (zone de contenu sous @xl/main), l'intitulé devient un bouton
+ * qui replie les champs (CollapsibleTray, client), fermés d'emblée sauf si un
+ * filtre est actif (le lien de réinitialisation existe alors).
  */
 export function FilterTray({
   label = "Filtres",
@@ -37,17 +41,13 @@ export function FilterTray({
         className,
       )}
     >
-      <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <span className="flex items-center gap-2 text-sm font-medium">
-          <SlidersHorizontal
-            className="text-primary size-4"
-            aria-hidden="true"
-          />
-          {label}
-        </span>
-        {reset ? <ResetLink {...reset} /> : null}
-      </div>
-      {children}
+      <CollapsibleTray
+        label={label}
+        reset={reset ? <ResetLink {...reset} /> : null}
+        defaultOpen={Boolean(reset)}
+      >
+        {children}
+      </CollapsibleTray>
     </div>
   );
 }

@@ -36,7 +36,11 @@ import {
   getOrdersPage,
 } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
-import { canHandlePrivacyRequest } from "@/domain/auth/roles";
+import {
+  canAddCustomerNote,
+  canHandlePrivacyRequest,
+  canSeeRevenue,
+} from "@/domain/auth/roles";
 import {
   CONSENT_DESCRIPTIONS,
   CONSENT_KEYS,
@@ -263,15 +267,18 @@ export default async function ClientPage({
                   {stats.orderCount}
                 </dd>
               </div>
-              <div className={TILE}>
-                <dt className={TILE_LABEL}>
-                  <Euro className={TILE_ICON} aria-hidden="true" />
-                  Total (hors annulées)
-                </dt>
-                <dd className={cn("font-medium tabular-nums", STAT_VALUE)}>
-                  {formatEuros(stats.totalSpentCents)}
-                </dd>
-              </div>
+              {/* Montant dépensé : jamais pour le livreur (canSeeRevenue). */}
+              {canSeeRevenue(user.role) ? (
+                <div className={TILE}>
+                  <dt className={TILE_LABEL}>
+                    <Euro className={TILE_ICON} aria-hidden="true" />
+                    Total (hors annulées)
+                  </dt>
+                  <dd className={cn("font-medium tabular-nums", STAT_VALUE)}>
+                    {formatEuros(stats.totalSpentCents)}
+                  </dd>
+                </div>
+              ) : null}
               <div className={TILE}>
                 <dt className={TILE_LABEL}>
                   <CalendarCheck className={TILE_ICON} aria-hidden="true" />
@@ -315,7 +322,9 @@ export default async function ClientPage({
                 ))}
               </ul>
             )}
-            {anonymized ? null : <CustomerNoteForm customerId={customer.id} />}
+            {anonymized || !canAddCustomerNote(user.role) ? null : (
+              <CustomerNoteForm customerId={customer.id} />
+            )}
           </CardContent>
         </Card>
       </div>

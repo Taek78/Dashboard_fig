@@ -1,17 +1,24 @@
 /*
- * Vocabulaire du personnel : trois métiers, cinq créneaux de travail (dont
+ * Vocabulaire du personnel : quatre métiers (dont « préparateur-livreur »,
+ * affectable aux deux rôles d'une commande, 2026-09-18), cinq créneaux de travail (dont
  * « 24 h/24 », sans horaire fixe), quatre disponibilités (dont « Arrêt
  * maladie », 2026-09-18) et les jours de la semaine. Clés anglaises ou françaises sans
  * accent (identifiants de code), libellés français (interface). Les enums
  * Postgres staff_kind, staff_shift et staff_availability reprennent ces clés
  * (test/db/schema.test.ts le vérifie).
  */
-export const STAFF_KINDS = ["livreur", "preparateur", "gestionnaire"] as const;
+export const STAFF_KINDS = [
+  "livreur",
+  "preparateur",
+  "preparateur_livreur",
+  "gestionnaire",
+] as const;
 export type StaffKind = (typeof STAFF_KINDS)[number];
 
 export const STAFF_KIND_LABELS: Record<StaffKind, string> = {
   livreur: "Livreur",
   preparateur: "Préparateur de commandes",
+  preparateur_livreur: "Préparateur-livreur",
   gestionnaire: "Gestionnaire",
 };
 
@@ -19,6 +26,7 @@ export const STAFF_KIND_LABELS: Record<StaffKind, string> = {
 export const STAFF_KIND_PLURALS: Record<StaffKind, string> = {
   livreur: "Livreurs",
   preparateur: "Préparateurs de commandes",
+  preparateur_livreur: "Préparateurs-livreurs",
   gestionnaire: "Gestionnaires",
 };
 

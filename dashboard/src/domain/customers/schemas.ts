@@ -56,8 +56,13 @@ const clientsSearchSchema = z
 
 export function parseClientsSearch(
   raw: Record<string, string | string[] | undefined>,
+  /** Faux pour un rôle qui ne voit pas l'argent : ?tri=montant retombe sur le nom. */
+  showSpending = true,
 ): ClientsSearch {
-  return clientsSearchSchema.parse(raw);
+  const search = clientsSearchSchema.parse(raw);
+  return isSortAvailable(search.sort, search.type, showSpending)
+    ? search
+    : { ...search, sort: "nom", order: DEFAULT_DIRECTORY_ORDER.nom };
 }
 
 /**

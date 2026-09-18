@@ -51,9 +51,12 @@ const TYPE_OPTIONS: readonly TypeSwitchOption[] = DIRECTORY_TYPES.map(
 export function CustomersSearch({
   search,
   canReset,
+  showSpending = true,
 }: {
   search: ClientsSearch;
   canReset: boolean;
+  /** Faux pour le livreur : pas de tri par montant dépensé. */
+  showSpending?: boolean;
 }) {
   return (
     <Card>
@@ -87,7 +90,7 @@ export function CustomersSearch({
                     defaultValue={search.sort}
                     className="min-w-0 flex-1"
                   >
-                    {sortOptions(search.type).map((option) => (
+                    {sortOptions(search.type, showSpending).map((option) => (
                       <NativeSelectOption
                         key={option.value}
                         value={option.value}
