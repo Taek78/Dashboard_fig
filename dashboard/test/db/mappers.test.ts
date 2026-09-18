@@ -339,6 +339,7 @@ describe("toStaffMember / staffToRow / toCommunity", () => {
           ...columns,
           notes: columns.notes ?? null,
           active: columns.active ?? true,
+          leftAt: columns.leftAt ?? null,
         }),
       ).toEqual(m);
     }

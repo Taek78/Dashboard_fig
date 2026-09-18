@@ -55,7 +55,6 @@ const base = {
   workDays: ["jeu", "ven", "sam"],
   startedAt: "2026-09-14",
   notes: "Scooter",
-  active: "on",
 };
 
 type Outcome = {

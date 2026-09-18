@@ -6,6 +6,7 @@ import {
   addStaffMember,
   saveStaffMember,
 } from "@/app/(dashboard)/personnel/actions";
+import { DepartureField } from "@/components/staff/departure-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,8 @@ import { cn } from "@/lib/utils";
  * est faite par zod côté serveur. Les jours travaillés sont des cases à
  * cocher de même nom (workDays) : l'action les lit avec formData.getAll.
  * `template` (duplication) préremplit métier, créneau, disponibilité, jours
- * et présence d'une création ; l'identité reste vide.
+ * d'une création ; l'identité reste vide et la copie est dans l'entreprise. La case « Parti de
+ * l'entreprise » et la date de sortie sont dans DepartureField.
  */
 const field = "grid gap-1.5";
 const DEFAULT_DAYS = ["lun", "mar", "mer", "jeu", "ven"];
@@ -202,19 +204,11 @@ export function StaffForm({
             ))}
           </div>
         </fieldset>
-        <div className="flex items-center gap-2 @2xl/main:col-span-2">
-          <input
-            id="active"
-            name="active"
-            type="checkbox"
-            defaultChecked={member?.active ?? template?.active ?? true}
-            className="accent-primary size-4"
-          />
-          <Label htmlFor="active">
-            Dans l&apos;équipe (décocher quand la personne part : elle reste
-            dans l&apos;historique, plus dans les listes)
-          </Label>
-        </div>
+        <DepartureField
+          departed={member ? !member.active : false}
+          leftAt={member?.leftAt ?? null}
+          name={member ? `${member.firstName} ${member.lastName}` : undefined}
+        />
       </fieldset>
 
       <div className={field}>

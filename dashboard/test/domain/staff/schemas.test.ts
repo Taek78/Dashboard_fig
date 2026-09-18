@@ -18,7 +18,6 @@ const base = {
   workDays: ["ven", "lun", "lun"],
   startedAt: "2024-11-04",
   notes: "  ",
-  active: "on",
 };
 
 describe("staffInputSchema", () => {
@@ -36,16 +35,64 @@ describe("staffInputSchema", () => {
       startedAt: "2024-11-04",
       notes: null,
       active: true,
+      leftAt: null,
     });
   });
 
-  it("une case décochée = inactif, aucun jour = tableau vide", () => {
-    const { active, workDays, ...rest } = base;
-    void active;
+  it("aucun jour = tableau vide", () => {
+    const { workDays, ...rest } = base;
     void workDays;
-    const parsed = staffInputSchema.parse(rest);
-    expect(parsed.active).toBe(false);
-    expect(parsed.workDays).toEqual([]);
+    expect(staffInputSchema.parse(rest).workDays).toEqual([]);
+  });
+
+  it("« Parti de l'entreprise » cochée : inactif avec sa date de sortie", () => {
+    expect(
+      staffInputSchema.parse({
+        ...base,
+        departed: "on",
+        leftAt: "2026-09-30",
+      }),
+    ).toMatchObject({ active: false, leftAt: "2026-09-30" });
+    // Sortie le jour même de l'entrée : acceptée.
+    expect(
+      staffInputSchema.parse({
+        ...base,
+        departed: "on",
+        leftAt: "2024-11-04",
+      }).leftAt,
+    ).toBe("2024-11-04");
+  });
+
+  it("case cochée : date de sortie obligatoire, valide et pas avant l'entrée", () => {
+    const issue = (fields: Record<string, unknown>) =>
+      staffInputSchema.safeParse({ ...base, departed: "on", ...fields }).error
+        ?.issues[0];
+    expect(issue({})).toMatchObject({
+      path: ["leftAt"],
+      message: "Date de sortie obligatoire pour une personne partie.",
+    });
+    expect(issue({ leftAt: "" })?.path).toEqual(["leftAt"]);
+    expect(issue({ leftAt: "30/09/2026" })?.path).toEqual(["leftAt"]);
+    expect(issue({ leftAt: "2024-11-03" })).toMatchObject({
+      path: ["leftAt"],
+      message: "La date de sortie ne précède pas la date d'entrée.",
+    });
+  });
+
+  it("case décochée : dans l'entreprise, une date envoyée est ignorée", () => {
+    expect(
+      staffInputSchema.parse({ ...base, leftAt: "2026-09-30" }),
+    ).toMatchObject({ active: true, leftAt: null });
+  });
+
+  it("accepte le créneau 24 h/24 et l'arrêt maladie", () => {
+    expect(
+      staffInputSchema.parse({
+        ...base,
+        shift: "h24",
+        availability: "arret_maladie",
+      }),
+    ).toMatchObject({ shift: "h24", availability: "arret_maladie" });
   });
 
   it("refuse un métier inconnu, un e-mail invalide, un téléphone ou une date mal formés", () => {

@@ -2,6 +2,7 @@
 
 import { DELETE_CONFIRM_MESSAGE } from "@/lib/confirm-delete";
 import { revalidatePath } from "next/cache";
+import type { z } from "zod";
 import { redirect } from "next/navigation";
 import { logSecurity } from "@/data/security-log";
 import { getCurrentUser } from "@/data/session";
@@ -32,6 +33,14 @@ const MESSAGES = {
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
 } as const;
 
+/** Le message précis d'une date de sortie refusée, sinon le message général. */
+function invalidMessage(error: z.ZodError): string {
+  return (
+    error.issues.find((issue) => issue.path[0] === "leftAt")?.message ??
+    MESSAGES.invalid
+  );
+}
+
 function fields(formData: FormData): Record<string, unknown> {
   return {
     ...Object.fromEntries(formData),
@@ -53,7 +62,9 @@ export async function addStaffMember(
     return { status: "error", message: MESSAGES.forbidden };
   }
   const input = staffInputSchema.safeParse(fields(formData));
-  if (!input.success) return { status: "error", message: MESSAGES.invalid };
+  if (!input.success) {
+    return { status: "error", message: invalidMessage(input.error) };
+  }
 
   let createdId: string;
   try {
@@ -92,8 +103,9 @@ export async function saveStaffMember(
   const raw = fields(formData);
   const id = updateStaffSchema.safeParse(raw);
   const input = staffInputSchema.safeParse(raw);
-  if (!id.success || !input.success) {
-    return { status: "error", message: MESSAGES.invalid };
+  if (!id.success) return { status: "error", message: MESSAGES.invalid };
+  if (!input.success) {
+    return { status: "error", message: invalidMessage(input.error) };
   }
 
   try {

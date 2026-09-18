@@ -72,6 +72,7 @@ export function StaffCard({
             <AvailabilityBadge
               availability={member.availability}
               active={member.active}
+              leftAt={member.leftAt}
             />
           </div>
         </div>

@@ -72,7 +72,11 @@ export default async function PersonnePage({
     <>
       <PageHeader
         title={name}
-        description={`${STAFF_KIND_LABELS[member.kind]} · dans l'équipe depuis le ${formatDateFr(member.startedAt)}`}
+        description={
+          member.leftAt
+            ? `${STAFF_KIND_LABELS[member.kind]} · dans l'entreprise du ${formatDateFr(member.startedAt)} au ${formatDateFr(member.leftAt)}`
+            : `${STAFF_KIND_LABELS[member.kind]} · dans l'équipe depuis le ${formatDateFr(member.startedAt)}`
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             {canManage ? (
@@ -109,6 +113,7 @@ export default async function PersonnePage({
         <AvailabilityBadge
           availability={member.availability}
           active={member.active}
+          leftAt={member.leftAt}
         />
       </div>
 

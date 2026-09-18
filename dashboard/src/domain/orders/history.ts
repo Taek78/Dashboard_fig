@@ -426,14 +426,11 @@ const PREPARED_STATUSES: readonly OrderStatus[] = [
   "delivered",
 ];
 const DRIVEN_STATUSES: readonly OrderStatus[] = ["delivering", "delivered"];
-/** Une personne inactive n'est plus affectée à partir de cette date (départ). */
-const INACTIVE_UNTIL = "2026-03-01";
-
 function toRef(member: StaffMember): StaffRef {
   return { id: member.id, name: staffFullName(member) };
 }
 
-/** Une personne du métier, entrée dans l'équipe avant ce jour ; null sinon. */
+/** Une personne du métier, entrée dans l'équipe avant ce jour et pas encore sortie ; null sinon. */
 function pickStaff(
   kind: StaffMember["kind"],
   day: string,
@@ -443,7 +440,7 @@ function pickStaff(
     (m) =>
       m.kind === kind &&
       m.startedAt <= day &&
-      (m.active || day < INACTIVE_UNTIL),
+      (m.leftAt === null ? m.active : day <= m.leftAt),
   );
   if (pool.length === 0) return null;
   return toRef(pool[Math.floor(random() * pool.length)]!);

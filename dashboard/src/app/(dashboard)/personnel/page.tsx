@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleCheck, Plus, SearchX, UserCog, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Section } from "@/components/section";
 import { StaffCard } from "@/components/staff/staff-card";
 import { StaffSearch } from "@/components/staff/staff-search";
 import { buttonVariants } from "@/components/ui/button";
@@ -20,6 +21,8 @@ import { canManageStaff } from "@/domain/auth/roles";
 import {
   hasStaffSearch,
   searchStaff,
+  splitByPresence,
+  STAFF_PRESENCE_LABELS,
   summarizeStaffWork,
 } from "@/domain/staff/rules";
 import { parseStaffSearch } from "@/domain/staff/schemas";
@@ -29,7 +32,9 @@ import { parseStaffSearch } from "@/domain/staff/schemas";
  * commandes, gestionnaires). Une recherche automatique (nom, prénom, e-mail,
  * téléphone) et cinq filtres (métier ?type=, disponibilité, créneau, jour
  * travaillé, présence), puis les cartes avec les compteurs d'activité agrégés
- * par la base pour toute l'équipe (getStaffWorkSummaries, une requête). Un rôle qui gère le personnel voit le
+ * par la base pour toute l'équipe (getStaffWorkSummaries, une requête),
+ * rangées en deux sections : dans l'entreprise, puis partis de l'entreprise
+ * (splitByPresence ; une section vide n'est pas affichée). Un rôle qui gère le personnel voit le
  * bouton de création ; les autres consultent. ?supprime=1 confirme une
  * suppression.
  */
@@ -51,6 +56,19 @@ export default async function PersonnelPage({
   ]);
   const canManage = canManageStaff(user.role);
   const members = searchStaff(everyone, search);
+  const { present, departed } = splitByPresence(members);
+  const groups = [
+    {
+      id: "personnel-present",
+      title: STAFF_PRESENCE_LABELS.actifs,
+      members: present,
+    },
+    {
+      id: "personnel-parti",
+      title: STAFF_PRESENCE_LABELS.partis,
+      members: departed,
+    },
+  ];
   const newHref = search.kind
     ? `/personnel/nouveau?type=${search.kind}`
     : "/personnel/nouveau";
@@ -104,20 +122,33 @@ export default async function PersonnelPage({
             : `${members.length} personne${plural(members.length)} dans l'équipe`}
         </p>
         {members.length > 0 ? (
-          <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
-            {members.map((member) => (
-              <li key={member.id}>
-                <StaffCard
-                  member={member}
-                  summary={
-                    summaries.get(member.id) ??
-                    summarizeStaffWork([], member.id)
-                  }
-                  canManage={canManage}
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-8">
+            {groups.map((group) =>
+              group.members.length > 0 ? (
+                <Section
+                  key={group.id}
+                  id={group.id}
+                  title={group.title}
+                  description={`${group.members.length} personne${plural(group.members.length)}`}
+                >
+                  <ul className="grid gap-4 @2xl/main:grid-cols-2 @5xl/main:grid-cols-3">
+                    {group.members.map((member) => (
+                      <li key={member.id}>
+                        <StaffCard
+                          member={member}
+                          summary={
+                            summaries.get(member.id) ??
+                            summarizeStaffWork([], member.id)
+                          }
+                          canManage={canManage}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+              ) : null,
+            )}
+          </div>
         ) : filtered ? (
           <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">
             <EmptyHeader>

@@ -26,7 +26,9 @@ import {
  * liste), écriture stricte (fiche, création, suppression). Les jours travaillés
  * arrivent en plusieurs valeurs de FormData (formData.getAll) : l'action les
  * passe en tableau, le schéma les dédoublonne et les remet dans l'ordre de la
- * semaine.
+ * semaine. La case « Parti de l'entreprise » (departed) retire la personne
+ * de l'équipe et exige une date de sortie (leftAt), jamais avant la date
+ * d'entrée ; décochée, la personne est dans l'équipe et n'a pas de date.
  */
 export const staffIdSchema = z.string().trim().min(1).max(64);
 
@@ -100,11 +102,32 @@ export const staffInputSchema = z
       .trim()
       .max(STAFF_NOTES_MAX_LENGTH)
       .transform((v) => (v === "" ? null : v)),
-    active: checkbox,
+    departed: checkbox,
+    leftAt: z.string().trim().optional(),
   })
-  .transform((v): StaffInput => ({
+  .superRefine((v, ctx) => {
+    if (!v.departed) return;
+    const leftAt = z.iso.date().safeParse(v.leftAt);
+    if (!leftAt.success) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["leftAt"],
+        message: "Date de sortie obligatoire pour une personne partie.",
+      });
+    } else if (leftAt.data < v.startedAt) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["leftAt"],
+        message: "La date de sortie ne précède pas la date d'entrée.",
+      });
+    }
+  })
+  .transform(({ departed, leftAt, ...v }): StaffInput => ({
     ...v,
     workDays: WEEKDAYS.filter((d) => v.workDays.includes(d)),
+    active: !departed,
+    // Une date envoyée alors que la case est décochée est ignorée.
+    leftAt: departed && leftAt ? leftAt : null,
   }));
 
 export const updateStaffSchema = z.object({ staffId: staffIdSchema });

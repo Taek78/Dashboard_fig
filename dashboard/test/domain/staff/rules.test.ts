@@ -9,6 +9,7 @@ import {
   isPresent,
   KIND_FOR_ROLE,
   sortStaff,
+  splitByPresence,
   unavailableRoles,
   staffFilterOptions,
   staffFullName,
@@ -52,6 +53,26 @@ describe("sortStaff / filterStaff", () => {
     expect(filterStaff(staffFixtures, "gestionnaire").map((m) => m.id)).toEqual(
       ["stf-0008", "stf-0009"],
     );
+  });
+});
+
+describe("splitByPresence", () => {
+  it("les présents dans l'ordre reçu, puis les partis, sortis le plus récemment d'abord, sans date en dernier", () => {
+    const left = (id: string, leftAt: string | null): StaffMember => ({
+      ...byId("stf-0010"),
+      id,
+      leftAt,
+    });
+    const present = sortStaff(staffFixtures).filter((m) => m.active);
+    const { present: kept, departed } = splitByPresence([
+      left("ancien", null),
+      ...present,
+      left("mars", "2026-03-31"),
+      left("sept", "2026-09-01"),
+    ]);
+    expect(kept.map((m) => m.id)).toEqual(present.map((m) => m.id));
+    expect(departed.map((m) => m.id)).toEqual(["sept", "mars", "ancien"]);
+    expect(splitByPresence([])).toEqual({ present: [], departed: [] });
   });
 });
 
@@ -168,6 +189,9 @@ describe("isPresent / unavailableRoles (alerte du tableau de bord)", () => {
     expect(isPresent(byId("stf-0003"))).toBe(false); // en congé
     expect(isPresent(byId("stf-0007"))).toBe(false); // indisponible
     expect(isPresent({ ...byId("stf-0001"), active: false })).toBe(false);
+    expect(
+      isPresent({ ...byId("stf-0001"), availability: "arret_maladie" }),
+    ).toBe(false);
   });
 
   it("aucun rôle manquant avec l'équipe de démonstration", () => {
@@ -265,11 +289,16 @@ describe("staffTemplate", () => {
       shift: malik.shift,
       availability: malik.availability,
       workDays: malik.workDays,
-      active: malik.active,
     });
     expect(template.workDays).not.toBe(malik.workDays);
     expect(template).not.toHaveProperty("email");
     expect(template).not.toHaveProperty("notes");
+  });
+
+  it("la copie d'une personne partie arrive dans l'entreprise : ni présence ni date de sortie reprises", () => {
+    const template = staffTemplate(byId("stf-0010"));
+    expect(template).not.toHaveProperty("active");
+    expect(template).not.toHaveProperty("leftAt");
   });
 });
 

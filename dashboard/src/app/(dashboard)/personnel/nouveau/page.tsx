@@ -15,8 +15,8 @@ import { parseStaffKind, staffIdSchema } from "@/domain/staff/schemas";
  * Création d'une personne : le même formulaire que la fiche, sans personne,
  * avec le métier présélectionné depuis l'onglet d'origine (?type=). Depuis
  * « Dupliquer » (?depuis=id), la fiche d'origine préremplit métier, créneau,
- * disponibilité, jours et présence (staffTemplate) ; l'identité reste à
- * saisir. Le rôle est vérifié ici pour l'affichage, et par l'action.
+ * disponibilité et jours (staffTemplate) ; l'identité reste à saisir et la
+ * copie arrive dans l'entreprise, même d'une personne partie. Le rôle est vérifié ici pour l'affichage, et par l'action.
  */
 export const metadata: Metadata = { title: "Nouvelle personne" };
 

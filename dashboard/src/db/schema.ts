@@ -95,11 +95,13 @@ export const staffShiftEnum = pgEnum("staff_shift", [
   "apres_midi",
   "soir",
   "journee",
+  "h24",
 ]);
 export const staffAvailabilityEnum = pgEnum("staff_availability", [
   "disponible",
   "indisponible",
   "conge",
+  "arret_maladie",
 ]);
 export const communityKindEnum = pgEnum("community_kind", [
   "voisinage",
@@ -247,9 +249,19 @@ export const staff = pgTable(
     startedAt: date("started_at", { mode: "string" }).notNull(),
     notes: text("notes"),
     active: boolean("active").notNull().default(true),
+    /** Date de sortie : seulement pour une personne partie, jamais avant l'entrée. */
+    leftAt: date("left_at", { mode: "string" }),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
   },
   (t) => [
+    check(
+      "staff_left_at_departed",
+      sql`${t.leftAt} IS NULL OR NOT ${t.active}`,
+    ),
+    check(
+      "staff_left_at_after_start",
+      sql`${t.leftAt} IS NULL OR ${t.leftAt} >= ${t.startedAt}`,
+    ),
     uniqueIndex("staff_email_lower_idx").on(sql`lower(${t.email})`),
     index("staff_kind_idx").on(t.kind),
   ],

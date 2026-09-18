@@ -477,6 +477,7 @@ export function toStaffMember(row: StaffRow): StaffMember {
     startedAt: row.startedAt,
     notes: row.notes,
     active: row.active,
+    leftAt: row.leftAt,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -497,6 +498,7 @@ export function staffToRow(
     startedAt: input.startedAt,
     notes: input.notes,
     active: input.active,
+    leftAt: input.leftAt,
   };
 }
 

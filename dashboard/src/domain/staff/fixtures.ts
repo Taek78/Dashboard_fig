@@ -31,6 +31,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2024-11-04",
     notes: "Vélo cargo, secteur Paris Est.",
     active: true,
+    leftAt: null,
   }),
   s(2, {
     kind: "livreur",
@@ -43,6 +44,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2025-02-10",
     notes: "Utilitaire électrique, petite couronne.",
     active: true,
+    leftAt: null,
   }),
   s(3, {
     kind: "livreur",
@@ -55,6 +57,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2025-06-02",
     notes: "Congé jusqu'au 21 septembre.",
     active: true,
+    leftAt: null,
   }),
   s(4, {
     kind: "livreur",
@@ -67,6 +70,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2026-03-16",
     notes: null,
     active: true,
+    leftAt: null,
   }),
   s(5, {
     kind: "preparateur",
@@ -79,6 +83,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2024-11-04",
     notes: "Référent chambre froide.",
     active: true,
+    leftAt: null,
   }),
   s(6, {
     kind: "preparateur",
@@ -91,6 +96,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2025-04-14",
     notes: null,
     active: true,
+    leftAt: null,
   }),
   s(7, {
     kind: "preparateur",
@@ -103,6 +109,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2025-09-01",
     notes: "Arrêt de travail, retour à confirmer.",
     active: true,
+    leftAt: null,
   }),
   s(8, {
     kind: "gestionnaire",
@@ -115,6 +122,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2024-10-01",
     notes: "Responsable de l'exploitation.",
     active: true,
+    leftAt: null,
   }),
   s(9, {
     kind: "gestionnaire",
@@ -127,6 +135,7 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2025-05-05",
     notes: "Relation clients et communautés.",
     active: true,
+    leftAt: null,
   }),
   s(10, {
     kind: "livreur",
@@ -139,5 +148,6 @@ export const staffFixtures: readonly StaffMember[] = [
     startedAt: "2025-01-06",
     notes: "A quitté l'équipe en mars 2026 ; conservé pour l'historique.",
     active: false,
+    leftAt: "2026-02-28",
   }),
 ];

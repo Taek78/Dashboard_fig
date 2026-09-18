@@ -33,6 +33,12 @@ export type StaffMember = {
   notes: string | null;
   /** Une personne partie reste dans l'historique mais n'est plus proposée. */
   active: boolean;
+  /**
+   * "AAAA-MM-JJ", date de sortie de l'entreprise : seulement pour une personne
+   * partie (null sinon ; null aussi pour un départ antérieur à la migration
+   * 0019, dont la date n'a jamais été saisie).
+   */
+  leftAt: string | null;
   /** ISO 8601. */
   createdAt: string;
 };

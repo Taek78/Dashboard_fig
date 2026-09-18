@@ -91,6 +91,94 @@ test.describe("personnel", () => {
     await expect(page.getByText("Personne ne correspond")).toBeVisible();
   });
 
+  test("24 h/24, arrêt maladie, puis départ confirmé par Oui / Non : date de sortie et section des partis", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/personnel/nouveau?type=preparateur");
+    const stamp = Date.now();
+    const name = `Inès Morel ${stamp}`;
+    await page.getByLabel("Prénom").fill("Inès");
+    await page.getByLabel("Nom", { exact: true }).fill(`Morel ${stamp}`);
+    await page.getByLabel("E-mail").fill(`ines.${stamp}@fig-demo.invalid`);
+    await page.getByLabel("Téléphone").fill("06 39 98 90 51");
+    await page.getByLabel("Date d'entrée").fill("2026-01-05");
+    await page
+      .getByLabel("Créneau de travail")
+      .selectOption({ label: "24 h/24 (sans horaire fixe)" });
+    await page.getByLabel("Disponibilité").selectOption("arret_maladie");
+    await page.getByRole("button", { name: "Ajouter à l'équipe" }).click();
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
+    await expect(page.getByText("Arrêt maladie").first()).toBeVisible();
+
+    // Pas de date de sortie tant que la case n'est pas cochée.
+    const departed = page.getByLabel("Parti de l'entreprise");
+    const leftAt = page.getByLabel("Date de sortie");
+    await expect(departed).not.toBeChecked();
+    await expect(leftAt).toHaveCount(0);
+
+    // Cocher demande confirmation : « Non » laisse la case décochée.
+    await departed.click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toContainText(
+      `Voulez-vous vraiment indiquer que ${name} a quitté l'entreprise ?`,
+    );
+    await expect(dialog.getByRole("button", { name: "Non" })).toBeFocused();
+    await dialog.getByRole("button", { name: "Non" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(departed).not.toBeChecked();
+    await expect(leftAt).toHaveCount(0);
+
+    // « Oui » coche la case et fait apparaître la date, qui prend le focus.
+    await departed.click();
+    await dialog.getByRole("button", { name: "Oui" }).click();
+    await expect(departed).toBeChecked();
+    await expect(leftAt).toBeFocused();
+
+    // Décocher cache la date sans question ; recocher redemande.
+    await departed.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(leftAt).toHaveCount(0);
+    await departed.click();
+    await dialog.getByRole("button", { name: "Oui" }).click();
+
+    // Une date avant l'entrée est refusée par le serveur.
+    await leftAt.fill("2025-12-31");
+    const save = page.getByRole("button", {
+      name: "Enregistrer les modifications",
+    });
+    await save.click();
+    await expect(
+      page.getByText("La date de sortie ne précède pas la date d'entrée."),
+    ).toBeVisible();
+    await leftAt.fill("2026-09-15");
+    await save.click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "enregistrée" }),
+    ).toContainText(`Fiche de ${name} enregistrée.`);
+
+    // La liste sépare les présents des partis.
+    await page.goto(`/personnel?q=${stamp}`);
+    const gone = page.getByRole("region", { name: "Partis de l'entreprise" });
+    await expect(
+      gone.getByRole("article", { name: `Personne ${name}` }),
+    ).toContainText("Parti·e le mar. 15 sept. 2026");
+    await expect(
+      page.getByRole("region", { name: "Dans l'entreprise" }),
+    ).toHaveCount(0);
+    await page.goto("/personnel");
+    await expect(
+      page
+        .getByRole("region", { name: "Dans l'entreprise" })
+        .getByRole("article", { name: "Personne Malik Dembélé" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Partis de l'entreprise" })
+        .getByRole("article", { name: "Personne Paul Girard" }),
+    ).toBeVisible();
+  });
+
   test("le filtre des gestionnaires renvoie vers les comptes", async ({
     page,
   }) => {
@@ -119,6 +207,14 @@ test.describe("personnel", () => {
     ).toBeVisible();
     await expect(page.getByLabel("Métier")).toHaveValue("livreur");
     await expect(page.getByLabel("E-mail")).toHaveValue("");
+
+    // La copie d'une personne partie arrive dans l'entreprise, sans date de sortie.
+    await page.goto("/personnel/nouveau?depuis=stf-0010");
+    await expect(
+      page.getByText("Duplication de la fiche de Paul Girard"),
+    ).toBeVisible();
+    await expect(page.getByLabel("Parti de l'entreprise")).not.toBeChecked();
+    await expect(page.getByLabel("Date de sortie")).toHaveCount(0);
 
     await page.goto("/personnel/stf-0001");
     await expect(

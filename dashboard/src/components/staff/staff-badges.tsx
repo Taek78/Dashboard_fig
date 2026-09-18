@@ -6,6 +6,7 @@ import {
   type Availability,
   type StaffKind,
 } from "@/domain/staff/kind";
+import { formatDateFr } from "@/lib/format";
 
 /*
  * Badges du personnel (serveur) : le métier et la disponibilité. La table
@@ -24,6 +25,7 @@ const AVAILABILITY_VARIANT: Record<Availability, BadgeVariant> = {
   disponible: "success",
   indisponible: "warning",
   conge: "outline",
+  arret_maladie: "destructive",
 };
 
 /** Le libellé passe à la ligne dans une carte étroite (« Préparateur de commandes »). */
@@ -38,14 +40,23 @@ export function StaffKindBadge({ kind }: { kind: StaffKind }) {
   );
 }
 
+/** Une personne partie : « Parti·e le 28 févr. 2026 » en gris, sa disponibilité ne compte plus. */
 export function AvailabilityBadge({
   availability,
   active,
+  leftAt = null,
 }: {
   availability: Availability;
   active: boolean;
+  leftAt?: string | null;
 }) {
-  if (!active) return <Badge variant="destructive">Parti·e</Badge>;
+  if (!active) {
+    return (
+      <Badge variant="secondary">
+        {leftAt ? `Parti·e le ${formatDateFr(leftAt)}` : "Parti·e"}
+      </Badge>
+    );
+  }
   return (
     <Badge variant={AVAILABILITY_VARIANT[availability]}>
       <span

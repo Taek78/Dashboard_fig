@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { communities } from "@/db/schema";
+import { communities, staff } from "@/db/schema";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { staffFixtures } from "@/domain/staff/fixtures";
 import type { StaffInput } from "@/domain/staff/types";
@@ -28,6 +28,7 @@ const input: StaffInput = {
   startedAt: "2026-09-14",
   notes: null,
   active: true,
+  leftAt: null,
 };
 
 describe("staffDb", () => {
@@ -72,6 +73,63 @@ describe("staffDb", () => {
         email: "personne.inconnue@fig-demo.invalid",
       }),
     ).toBeNull();
+  });
+
+  it("enregistre le créneau 24 h/24, l'arrêt maladie et une date de sortie", async () => {
+    const created = await staffDb.createStaff({
+      ...input,
+      shift: "h24",
+      availability: "arret_maladie",
+    });
+    expect(created).toMatchObject({
+      shift: "h24",
+      availability: "arret_maladie",
+      leftAt: null,
+    });
+    if (created === "email_taken") throw new Error("e-mail déjà pris");
+    expect(
+      await staffDb.updateStaff(created.id, {
+        ...input,
+        active: false,
+        leftAt: "2026-09-30",
+      }),
+    ).toMatchObject({ active: false, leftAt: "2026-09-30" });
+  });
+
+  it("la base refuse une date de sortie pour une personne présente ou avant son entrée", async () => {
+    /**
+     * Nom de la contrainte violée, ou null ; chaque essai dans son point de
+     * sauvegarde, avec son id et son e-mail (un essai accepté reste écrit).
+     */
+    let n = 0;
+    const refusedBy = async (values: Partial<StaffInput>) => {
+      n += 1;
+      try {
+        await testDb().transaction((tx) =>
+          tx.insert(staff).values({
+            ...input,
+            ...values,
+            id: `stf-test-${n}`,
+            email: `essai-${n}@fig-demo.invalid`,
+          }),
+        );
+        return null;
+      } catch (error) {
+        return (
+          (error as { cause?: { constraint_name?: string } }).cause
+            ?.constraint_name ?? "?"
+        );
+      }
+    };
+    expect(await refusedBy({ leftAt: "2026-09-30" })).toBe(
+      "staff_left_at_departed",
+    );
+    expect(await refusedBy({ active: false, leftAt: "2026-09-13" })).toBe(
+      "staff_left_at_after_start",
+    );
+    expect(await refusedBy({ active: false, leftAt: "2026-09-14" })).toBeNull();
+    // Départ antérieur à la migration 0019 : parti, sans date.
+    expect(await refusedBy({ active: false })).toBeNull();
   });
 
   it("deleteStaff supprime et libère ses commandes (SET NULL)", async () => {

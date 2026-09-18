@@ -62,8 +62,8 @@ export function filterStaff(
 export const STAFF_PRESENCES = ["actifs", "partis"] as const;
 export type StaffPresence = (typeof STAFF_PRESENCES)[number];
 export const STAFF_PRESENCE_LABELS: Record<StaffPresence, string> = {
-  actifs: "Dans l'équipe",
-  partis: "Partis de l'équipe",
+  actifs: "Dans l'entreprise",
+  partis: "Partis de l'entreprise",
 };
 
 /** Recherche de la section Personnel (?q=&type=&dispo=&creneau=&jour=&presence=). */
@@ -122,6 +122,24 @@ export function searchStaff(
         matchesStaffQuery(m, search.query),
     ),
   );
+}
+
+/**
+ * La liste coupée en deux (demande du 2026-09-18) : les personnes dans
+ * l'entreprise, puis celles qui en sont parties, les plus récemment sorties
+ * d'abord (un départ sans date, antérieur à la migration 0019, en dernier).
+ * L'ordre de chaque moitié est sinon celui reçu.
+ */
+export function splitByPresence(members: readonly StaffMember[]): {
+  present: StaffMember[];
+  departed: StaffMember[];
+} {
+  return {
+    present: members.filter((m) => m.active),
+    departed: members
+      .filter((m) => !m.active)
+      .toSorted((a, b) => (b.leftAt ?? "").localeCompare(a.leftAt ?? "")),
+  };
 }
 
 /** Vrai si une recherche ou un filtre est actif sur l'équipe. */
@@ -282,14 +300,15 @@ export function staffFilterOptions(
 /** Ce qu'une duplication reprend d'une fiche. */
 export type StaffTemplate = Pick<
   StaffMember,
-  "kind" | "shift" | "availability" | "workDays" | "active"
+  "kind" | "shift" | "availability" | "workDays"
 >;
 
 /**
  * Modèle d'une nouvelle fiche à partir d'une personne : métier, créneau,
- * disponibilité, jours travaillés et présence dans l'équipe sont repris ;
- * identité, coordonnées, date d'entrée et notes restent à saisir (un e-mail
- * est unique, une note est personnelle).
+ * disponibilité et jours travaillés sont repris ; identité, coordonnées, date
+ * d'entrée et notes restent à saisir (un e-mail est unique, une note est
+ * personnelle). La copie arrive TOUJOURS dans l'entreprise, même d'une
+ * personne partie (demande du 2026-09-18) : ni présence ni date de sortie.
  */
 export function staffTemplate(member: StaffMember): StaffTemplate {
   return {
@@ -297,7 +316,6 @@ export function staffTemplate(member: StaffMember): StaffTemplate {
     shift: member.shift,
     availability: member.availability,
     workDays: [...member.workDays],
-    active: member.active,
   };
 }
 

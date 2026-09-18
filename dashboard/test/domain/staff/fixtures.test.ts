@@ -10,6 +10,16 @@ describe("staffFixtures", () => {
     expect(staffFixtures.some((m) => !m.active)).toBe(true);
   });
 
+  it("une date de sortie seulement pour une personne partie, jamais avant son entrée (contraintes de la base)", () => {
+    for (const m of staffFixtures) {
+      if (m.active) expect(m.leftAt).toBeNull();
+      if (m.leftAt !== null) expect(m.leftAt >= m.startedAt).toBe(true);
+    }
+    expect(staffFixtures.some((m) => !m.active && m.leftAt !== null)).toBe(
+      true,
+    );
+  });
+
   it("ids et e-mails uniques, aucune personne réelle, jours valides et ordonnés", () => {
     expect(new Set(staffFixtures.map((m) => m.id)).size).toBe(
       staffFixtures.length,
