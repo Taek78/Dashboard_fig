@@ -20,6 +20,12 @@ paths = [
 ]
 regexes = [
   '''e2e-secret-fig-dashboard-0123456789-abcdef''',
+  # Exemple de clé d'idempotence de docs/api.md : un identifiant d'illustration
+  # choisi par l'application appelante, pas un secret. La règle generic-api-key
+  # le signale parce qu'il suit le mot « Key » et ressemble à de l'aléatoire.
+  # Il reste dans l'historique (commit 0fb0645) : la liste blanche doit donc le
+  # porter, même si la documentation changeait d'exemple.
+  '''8f1c2d9e-4b6a-4f2e-9c1a-7d3e5b2a1c0f''',
 ]
 commits = [
   "3acaeb609cf312466021174af05620d2fed96554",
