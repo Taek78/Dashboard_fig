@@ -49,20 +49,20 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 
 ## Commandes
 
-| Commande                                        | Rôle                                                              |
-| ----------------------------------------------- | ----------------------------------------------------------------- |
-| `npm run dev`                                   | serveur de développement (Turbopack)                              |
-| `npm run check`                                 | typecheck, lint, format, tests (base de test) : avant tout commit |
-| `npm run db:test`                               | démarre la base de test jetable (Docker, port 5434)               |
-| `npm run build` puis `npm run start`            | build et serveur de production                                    |
-| `npm run test:e2e`                              | parcours navigateur Playwright (après un build)                   |
-| `npm run db:generate`                           | génère une migration SQL depuis `src/db/schema.ts`                |
-| `npm run db:migrate`                            | applique les migrations à `DATABASE_URL`                          |
-| `npm run db:seed`                               | vide et remplit la base locale avec les données de démo           |
-| `npm run db:studio`                             | explore les tables dans le navigateur                             |
-| `npm run db:backup` / `db:restore -- <fichier>` | sauvegarde et restauration (`pg_dump`, base locale)               |
-| `npm run rgpd:purge` (`-- --apply`)             | durées de conservation RGPD : aperçu, puis application            |
-| `npm run api:openapi`                           | régénère `docs/api/openapi.json` depuis les schémas de l'API      |
+| Commande                                        | Rôle                                                                   |
+| ----------------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                                   | serveur de développement (Turbopack)                                   |
+| `npm run check`                                 | typecheck, lint, format, tests (base de test) : avant tout commit      |
+| `npm run db:test`                               | démarre la base de test jetable (Docker, port 5434)                    |
+| `npm run build` puis `npm run start`            | build et serveur de production                                         |
+| `npm run test:e2e`                              | parcours navigateur Playwright (après un build)                        |
+| `npm run db:generate`                           | génère une migration SQL depuis `src/db/schema.ts`                     |
+| `npm run db:migrate`                            | applique les migrations à `DATABASE_URL`                               |
+| `npm run db:seed`                               | vide et remplit la base locale avec les données de démo                |
+| `npm run db:studio`                             | explore les tables dans le navigateur                                  |
+| `npm run db:backup` / `db:restore -- <fichier>` | sauvegarde et restauration (`pg_dump`, scripts portables, base locale) |
+| `npm run rgpd:purge` (`-- --apply`)             | durées de conservation RGPD : aperçu, puis application                 |
+| `npm run api:openapi`                           | régénère `docs/api/openapi.json` depuis les schémas de l'API           |
 
 ## Ce que fait le back-office
 

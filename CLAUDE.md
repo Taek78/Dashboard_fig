@@ -55,7 +55,8 @@ npm run db:generate   # schéma → migration SQL dans drizzle/ (à lire et comm
 npm run db:migrate    # applique à DATABASE_URL
 npm run db:seed       # vide et remplit la base locale (fixtures + comptes de .env.local)
 npm run db:studio     # explorer les tables
-npm run db:backup     # pg_dump dans %LOCALAPPDATA%\fig-backups ; db:restore -- <fichier>
+npm run db:backup     # pg_dump (scripts tsx portables) dans FIG_BACKUP_DIR, sinon %LOCALAPPDATA%ig-backups ou ~/fig-backups ; db:restore -- <fichier>
+                      # outils cherchés dans PG_BIN, sinon le PATH, sinon l'installation Windows ; RESTAURER avec des outils de la même version majeure que le serveur
 npm run rgpd:purge    # durées de conservation RGPD : aperçu ; -- --apply pour écrire ; base distante refusée sans RGPD_ALLOW_REMOTE=1
 npm run api:openapi   # régénère docs/api/openapi.json depuis les schémas zod (un test échoue si le fichier commité n'est plus celui du code)
 npx vitest run test/domain/orders     # un dossier ou un fichier
