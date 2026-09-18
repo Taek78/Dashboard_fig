@@ -44,6 +44,28 @@ export const envSchema = z.object({
    * fournir au système de supervision.
    */
   HEALTH_TOKEN: z.string().min(16).optional(),
+  /**
+   * API de l'application FIG (/api/v1) : clé du SERVEUR de l'application
+   * (32 caractères au moins), pour la file des notifications ; sans elle, les
+   * routes de service répondent 503. Facultative : les routes des clients
+   * (code par mail, jetons de session) n'en dépendent pas.
+   */
+  API_SERVICE_KEY: z.string().min(32).optional(),
+  /**
+   * Origines autorisées à appeler l'API depuis un navigateur (CORS), séparées
+   * par des virgules, ex. « https://app.fig.example,http://localhost:5173 ».
+   * Sans elle, aucun en-tête CORS : une application native n'en a pas besoin.
+   */
+  API_CORS_ORIGINS: z
+    .string()
+    .transform((v) =>
+      v
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter((origin) => origin !== ""),
+    )
+    .pipe(z.array(z.url()))
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

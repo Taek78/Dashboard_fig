@@ -93,7 +93,41 @@ export type SecurityEvent =
   // Balayage sans acteur : le compte dont le lien a expiré sans être utilisé.
   | { type: "invitation_expired"; targetId: string }
   | { type: "email_reminder_requested"; ip: string; userId: string | null }
-  | { type: "mail_failed"; kind: string };
+  | { type: "mail_failed"; kind: string }
+  // API de l'application FIG : l'adresse saisie ou l'IP, l'identifiant du
+  // client ; jamais un code, un jeton ni un corps de requête.
+  | {
+      type: "api_code_requested";
+      email: string;
+      ip: string;
+      customerId: string | null;
+    }
+  | {
+      type: "api_code_throttled";
+      email: string;
+      ip: string;
+      retryAfterMs: number;
+    }
+  | { type: "api_code_failed"; email: string; ip: string; attempts: number }
+  | {
+      type: "api_session_opened";
+      customerId: string;
+      ip: string;
+      signup: boolean;
+    }
+  | { type: "api_session_closed"; customerId: string }
+  | { type: "api_profile_updated"; customerId: string; consents: boolean }
+  | {
+      type: "api_community_changed";
+      customerId: string;
+      communityId: string | null;
+    }
+  | { type: "api_order_created"; customerId: string; orderId: string }
+  | { type: "api_order_cancelled"; customerId: string; orderId: string }
+  | { type: "api_message_created"; customerId: string; messageId: string }
+  | { type: "api_notification_sent"; notificationId: string }
+  | { type: "api_service_forbidden"; ip: string }
+  | { type: "api_rate_limited"; subject: string; ip: string };
 
 export function formatSecurityEvent(event: SecurityEvent, now: Date): string {
   return JSON.stringify({ ts: now.toISOString(), kind: "security", ...event });

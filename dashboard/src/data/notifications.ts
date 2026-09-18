@@ -3,10 +3,15 @@ import { notificationsDb } from "@/data/notifications.db";
 import type { NotificationsSource } from "@/domain/notifications/source";
 
 /*
- * FAÇADE de la file de notifications : le seul module que le front importe.
- * Lectures seulement ; le dépôt se fait par updateOrderStatus (data/orders.ts).
+ * FAÇADE de la file de notifications : le seul module que le front et l'API
+ * importent. Le dépôt se fait par updateOrderStatus (data/orders.ts) ; l'API
+ * lit « mes notifications », sert la file au serveur de l'application et
+ * enregistre son accusé d'envoi.
  */
 export const {
   getOrderNotifications,
   getCustomerNotifications,
+  listCustomerNotificationsPage,
+  listPendingNotifications,
+  markNotificationSent,
 }: NotificationsSource = notificationsDb;

@@ -7,5 +7,8 @@ import type { CommunitiesSource } from "@/domain/communities/source";
  * L'implémentation est PostgreSQL (communities.db.ts) ; la façade fixe le contrat
  * CommunitiesSource et `server-only` (un composant client qui l'importerait casse le build).
  */
-export const { listCommunities, getCommunity }: CommunitiesSource =
-  communitiesDb;
+export const {
+  listCommunities,
+  getCommunity,
+  getMemberCounts,
+}: CommunitiesSource = communitiesDb;

@@ -4,17 +4,21 @@ import type {
   MessageImportantChange,
   MessagePinChange,
   MessageStatusChange,
+  NewMessage,
 } from "@/domain/messages/types";
 import type { Page } from "@/domain/orders/rules";
+import type { KeysetPage, KeysetResult } from "@/lib/api/cursor";
 import type { DateRange } from "@/lib/days";
 
 /*
  * CONTRAT de la boîte de réception, implémenté par PostgreSQL
  * (src/data/messages.db.ts). Ce fichier ne contient que des types.
  *
- * Il n'y a AUCUNE fonction de création ni de modification du contenu : les
- * messages sont écrits par l'application FIG. Le dashboard ne touche qu'aux
- * trois marques posées par l'équipe (statut, épingle, important).
+ * Le dashboard ne modifie jamais le CONTENU d'un message : il ne touche qu'aux
+ * trois marques posées par l'équipe (statut, épingle, important). La seule
+ * création est celle de l'API, pour le compte de la personne qui écrit depuis
+ * l'application (createMessage, 2026-09-17) ; listCustomerMessages est
+ * « mes messages », les plus récents d'abord, par curseur (index composite).
  *
  * Lectures (jamais un historique entier) :
  * - getMessagesPage : une page de la liste, épinglés d'abord puis les plus
@@ -31,6 +35,11 @@ import type { DateRange } from "@/lib/days";
  * le message a disparu ou que quelqu'un a agi entre l'affichage et le clic.
  */
 export type MessagesSource = {
+  createMessage(input: NewMessage): Promise<Message>;
+  listCustomerMessages(
+    customerId: string,
+    page: KeysetPage,
+  ): Promise<KeysetResult<Message>>;
   getMessagesPage(
     filters: MessageFilters,
     page: number,

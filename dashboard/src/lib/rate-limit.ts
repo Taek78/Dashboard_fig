@@ -58,6 +58,22 @@ export const RECOVERY_IP_POLICY: RateLimitPolicy = {
   maxLockMs: 60 * MINUTE,
 };
 
+/*
+ * Codes de connexion de l'application FIG (API) : trois demandes par quart
+ * d'heure pour une même adresse, comme la récupération ; par adresse IP, le
+ * plafond est plus large (trente) : derrière un opérateur mobile ou un réseau
+ * d'entreprise, beaucoup de clients partagent la même adresse, et la garde
+ * par adresse e-mail reste la vraie limite.
+ */
+export const API_CODE_SUBJECT_POLICY: RateLimitPolicy = RECOVERY_SUBJECT_POLICY;
+
+export const API_CODE_IP_POLICY: RateLimitPolicy = {
+  windowMs: 15 * MINUTE,
+  maxFailures: 30,
+  baseLockMs: 15 * MINUTE,
+  maxLockMs: 60 * MINUTE,
+};
+
 export type AttemptState = {
   failures: number;
   lastFailureAt: number;

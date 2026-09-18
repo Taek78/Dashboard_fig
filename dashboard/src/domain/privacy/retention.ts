@@ -10,7 +10,11 @@ import { toIso } from "@/lib/days";
  *   recommande 6 mois à 1 an pour les journaux), sauf les preuves des demandes
  *   RGPD traitées, gardées jusqu'à ce que leur durée soit fixée ;
  * - une tentative de connexion échouée est oubliée après 24 heures, sauf
- *   verrou encore actif (choix technique, pas une recommandation).
+ *   verrou encore actif (choix technique, pas une recommandation) ;
+ * - API de l'application (2026-09-17) : un code de connexion est oublié
+ *   24 heures après son expiration, une session 30 jours après son expiration
+ *   ou sa révocation, une clé d'idempotence dès son expiration (choix
+ *   techniques ; la session vit 180 jours, domain/api/session.ts).
  * Appliquées par `npm run rgpd:purge` (scripts/rgpd-purge.ts), jamais en
  * silence : aperçu d'abord, --apply pour écrire.
  */
@@ -18,6 +22,8 @@ export const RETENTION = {
   inactiveCustomerYears: 3,
   securityEventMonths: 12,
   loginAttemptHours: 24,
+  customerLoginCodeHours: 24,
+  customerSessionDays: 30,
 } as const;
 
 export type Retention = { [K in keyof typeof RETENTION]: number };
@@ -29,6 +35,12 @@ export type RetentionCutoffs = {
   securityEventsBefore: Date;
   /** Tentatives de connexion dont le dernier échec est antérieur : supprimées. */
   loginAttemptsBefore: Date;
+  /** Codes de connexion de l'application expirés avant : supprimés. */
+  customerLoginCodesBefore: Date;
+  /** Sessions de l'application expirées ou révoquées avant : supprimées. */
+  customerSessionsBefore: Date;
+  /** Clés d'idempotence expirées avant : supprimées (l'instant même). */
+  idempotencyKeysBefore: Date;
 };
 
 /**
@@ -51,6 +63,13 @@ export function retentionCutoffs(
     loginAttemptsBefore: new Date(
       now.getTime() - retention.loginAttemptHours * 3_600_000,
     ),
+    customerLoginCodesBefore: new Date(
+      now.getTime() - retention.customerLoginCodeHours * 3_600_000,
+    ),
+    customerSessionsBefore: new Date(
+      now.getTime() - retention.customerSessionDays * 86_400_000,
+    ),
+    idempotencyKeysBefore: new Date(now),
   };
 }
 

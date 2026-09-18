@@ -41,6 +41,7 @@ export const orderStatusEnum = pgEnum("order_status", [
 export const cancellationReasonEnum = pgEnum("cancellation_reason", [
   "stock",
   "delivery",
+  "customer",
   "other",
 ]);
 export const productCategoryEnum = pgEnum("product_category", [
@@ -425,6 +426,8 @@ export const orders = pgTable(
     driverId: text("driver_id").references(() => staff.id, {
       onDelete: "set null",
     }),
+    /** Référence du paiement transmise par l'application à la création par l'API (migration 0016). */
+    paymentReference: text("payment_reference"),
     /**
      * Recherche libre, calculée par la base : référence, ville et code postal
      * normalisés. Index trigramme (pg_trgm) : « contient » sans parcourir la table.
@@ -444,6 +447,12 @@ export const orders = pgTable(
     index("orders_delivery_date_idx").on(t.deliveryDate),
     index("orders_status_idx").on(t.status),
     index("orders_customer_idx").on(t.customerId),
+    // « Mes commandes » de l'API : les plus récentes d'une personne, par curseur.
+    index("orders_customer_created_idx").on(
+      t.customerId,
+      t.createdAt.desc(),
+      t.id.desc(),
+    ),
     index("orders_community_idx").on(t.communityId),
     index("orders_preparer_idx").on(t.preparerId),
     index("orders_driver_idx").on(t.driverId),
@@ -549,6 +558,12 @@ export const customerNotifications = pgTable(
   (t) => [
     index("customer_notifications_order_idx").on(t.orderId, t.createdAt),
     index("customer_notifications_customer_idx").on(t.customerId),
+    // Historique d'une personne dans l'application (API), par curseur.
+    index("customer_notifications_customer_created_idx").on(
+      t.customerId,
+      t.createdAt.desc(),
+      t.id.desc(),
+    ),
     // Ce que l'application relit : la file d'attente, dans l'ordre de dépôt.
     index("customer_notifications_pending_idx")
       .on(t.createdAt)
@@ -596,6 +611,12 @@ export const customerMessages = pgTable(
   (t) => [
     index("customer_messages_received_idx").on(t.receivedAt),
     index("customer_messages_customer_idx").on(t.customerId),
+    // « Mes messages » de l'API : les plus récents d'une personne, par curseur.
+    index("customer_messages_customer_received_idx").on(
+      t.customerId,
+      t.receivedAt.desc(),
+      t.id.desc(),
+    ),
     index("customer_messages_status_idx").on(t.status),
     index("customer_messages_order_idx").on(t.orderId),
     check(
@@ -686,6 +707,85 @@ export const loginAttempts = pgTable(
     lockedUntil: timestampTz("locked_until"),
   },
   (t) => [index("login_attempts_last_failure_idx").on(t.lastFailureAt)],
+);
+
+/*
+ * ---------- Accès des clients à l'API (migration 0016) ----------
+ * L'application FIG passe par l'API du dashboard (question 14, décision du
+ * 2026-09-17). Un client se connecte par un CODE reçu par mail, puis par un
+ * JETON DE SESSION ; seuls les HMAC sont en base (src/domain/api/session.ts).
+ * Les codes sont rangés par ADRESSE, sans clé étrangère : l'inscription passe
+ * par le même chemin, avant que le client existe. RGPD : codes purgés un jour
+ * après expiration à chaque émission ; sessions supprimées à l'anonymisation
+ * et purgées trente jours après expiration ou révocation (rgpd:purge).
+ */
+export const customerLoginCodes = pgTable(
+  "customer_login_codes",
+  {
+    id: text("id").primaryKey(),
+    /** Adresse en minuscules. */
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestampTz("expires_at").notNull(),
+    consumedAt: timestampTz("consumed_at"),
+    requestedIp: text("requested_ip"),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("customer_login_codes_email_idx").on(t.email, t.createdAt),
+    index("customer_login_codes_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export const customerSessions = pgTable(
+  "customer_sessions",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    /** HMAC du jeton : ce que l'en-tête Authorization permet de retrouver. */
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+    expiresAt: timestampTz("expires_at").notNull(),
+    /** Réécrit au plus toutes les dix minutes (session.ts). */
+    lastSeenAt: timestampTz("last_seen_at").notNull().defaultNow(),
+    revokedAt: timestampTz("revoked_at"),
+  },
+  (t) => [
+    uniqueIndex("customer_sessions_token_hash_idx").on(t.tokenHash),
+    index("customer_sessions_customer_idx").on(t.customerId),
+    index("customer_sessions_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/*
+ * Clés d'idempotence des créations par l'API (commande, message) : une par
+ * (client, clé choisie par l'application). La ligne est prise avant le
+ * traitement (INSERT … ON CONFLICT DO NOTHING), puis porte la réponse à
+ * rejouer à l'identique ; `request_hash` refuse une même clé pour un autre
+ * corps. Oubliées après vingt-quatre heures (purge). La réponse mémorisée
+ * contient des données de la personne : supprimée à son anonymisation.
+ */
+export const apiIdempotencyKeys = pgTable(
+  "api_idempotency_keys",
+  {
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    /** Statut HTTP et corps de la réponse ; NULL tant que le traitement est en cours. */
+    responseStatus: integer("response_status"),
+    responseBody: jsonb("response_body").$type<unknown>(),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+    expiresAt: timestampTz("expires_at").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.customerId, t.key] }),
+    index("api_idempotency_keys_expires_idx").on(t.expiresAt),
+  ],
 );
 
 /* ---------- Usage de l'application, par mois civil ---------- */

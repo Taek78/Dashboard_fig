@@ -12,10 +12,13 @@ import {
 } from "drizzle-orm";
 import type { DbExecutor } from "@/db/client";
 import {
+  apiIdempotencyKeys,
+  customerLoginCodes,
   customerMessages,
   customerNotes,
   customerNotifications,
   customers,
+  customerSessions,
   loginAttempts,
   orderEvents,
   orders,
@@ -62,8 +65,19 @@ const hasOpenOrder = sql`exists (
  * (ON DELETE CASCADE) ; les fichiers eux-mêmes vivent chez l'application FIG,
  * qui doit les effacer de son côté (question 19). La rue identifie un foyer :
  * seuls ville et code postal restent sur les commandes.
+ * API (2026-09-17) : les sessions de l'application sont supprimées (la
+ * personne ne peut plus se connecter à un compte effacé) avec les réponses
+ * mémorisées des clés d'idempotence (elles contiennent ses données) ; les codes
+ * de connexion de son adresse sont effacés AVANT que l'adresse soit remplacée
+ * (anonymizeCustomerRows).
  */
 async function eraseFreeText(tx: DbExecutor, customerId: string) {
+  await tx
+    .delete(customerSessions)
+    .where(eq(customerSessions.customerId, customerId));
+  await tx
+    .delete(apiIdempotencyKeys)
+    .where(eq(apiIdempotencyKeys.customerId, customerId));
   await tx
     .delete(customerNotes)
     .where(eq(customerNotes.customerId, customerId));
@@ -106,6 +120,14 @@ export async function anonymizeCustomerRows(
   at: Date,
 ): Promise<AnonymizeOutcome> {
   return db.transaction(async (tx) => {
+    // Codes de connexion de l'application rangés par adresse : effacés tant
+    // que l'adresse est encore connue (elle est remplacée juste après).
+    await tx.delete(customerLoginCodes).where(
+      sql`${customerLoginCodes.email} = (
+        select lower(${customers.email}) from ${customers}
+        where ${customers.id} = ${customerId}
+      )`,
+    );
     const [done] = await tx
       .update(customers)
       .set({
@@ -169,6 +191,10 @@ export type PurgeReport = {
   securityEvents: number;
   /** Tentatives de connexion expirées sans verrou actif (supprimées si apply). */
   loginAttempts: number;
+  /** API de l'application : codes de connexion, sessions et clés d'idempotence hors durée (supprimés si apply). */
+  customerLoginCodes: number;
+  customerSessions: number;
+  idempotencyKeys: number;
   /** Clients inactifs (anonymisés si apply). */
   inactiveCustomers: string[];
   /** Clients inactifs non anonymisés par --apply (une commande ouverte entre-temps). */
@@ -204,20 +230,40 @@ export async function purgeExpiredData(
     lt(loginAttempts.lastFailureAt, cutoffs.loginAttemptsBefore),
     or(isNull(loginAttempts.lockedUntil), lt(loginAttempts.lockedUntil, now)),
   );
+  const staleCodes = lt(
+    customerLoginCodes.expiresAt,
+    cutoffs.customerLoginCodesBefore,
+  );
+  // Expirée depuis trente jours, ou révoquée depuis trente jours.
+  const staleSessions = or(
+    lt(customerSessions.expiresAt, cutoffs.customerSessionsBefore),
+    lt(customerSessions.revokedAt, cutoffs.customerSessionsBefore),
+  );
+  const staleKeys = lt(
+    apiIdempotencyKeys.expiresAt,
+    cutoffs.idempotencyKeysBefore,
+  );
   const inactiveCustomers = await findInactiveCustomers(
     db,
     cutoffs.customerActivitySince,
   );
 
   if (!apply) {
-    const [[events], [attempts]] = await Promise.all([
-      db.select({ n: count() }).from(securityEvents).where(oldEvents),
-      db.select({ n: count() }).from(loginAttempts).where(staleAttempts),
-    ]);
+    const [[events], [attempts], [codes], [sessions], [keys]] =
+      await Promise.all([
+        db.select({ n: count() }).from(securityEvents).where(oldEvents),
+        db.select({ n: count() }).from(loginAttempts).where(staleAttempts),
+        db.select({ n: count() }).from(customerLoginCodes).where(staleCodes),
+        db.select({ n: count() }).from(customerSessions).where(staleSessions),
+        db.select({ n: count() }).from(apiIdempotencyKeys).where(staleKeys),
+      ]);
     return {
       cutoffs,
       securityEvents: events?.n ?? 0,
       loginAttempts: attempts?.n ?? 0,
+      customerLoginCodes: codes?.n ?? 0,
+      customerSessions: sessions?.n ?? 0,
+      idempotencyKeys: keys?.n ?? 0,
       inactiveCustomers,
       skippedCustomers: [],
     };
@@ -231,6 +277,18 @@ export async function purgeExpiredData(
     .delete(loginAttempts)
     .where(staleAttempts)
     .returning({ key: loginAttempts.key });
+  const deletedCodes = await db
+    .delete(customerLoginCodes)
+    .where(staleCodes)
+    .returning({ id: customerLoginCodes.id });
+  const deletedSessions = await db
+    .delete(customerSessions)
+    .where(staleSessions)
+    .returning({ id: customerSessions.id });
+  const deletedKeys = await db
+    .delete(apiIdempotencyKeys)
+    .where(staleKeys)
+    .returning({ key: apiIdempotencyKeys.key });
   const skippedCustomers: string[] = [];
   for (const [index, id] of inactiveCustomers.entries()) {
     const outcome = await anonymizeCustomerRows(db, id, now);
@@ -250,6 +308,9 @@ export async function purgeExpiredData(
     cutoffs,
     securityEvents: deletedEvents.length,
     loginAttempts: deletedAttempts.length,
+    customerLoginCodes: deletedCodes.length,
+    customerSessions: deletedSessions.length,
+    idempotencyKeys: deletedKeys.length,
     inactiveCustomers,
     skippedCustomers,
   };

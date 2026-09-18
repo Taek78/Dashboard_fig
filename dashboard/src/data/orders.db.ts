@@ -18,21 +18,34 @@ import {
 import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { ordersAggregatesDb } from "@/data/orders-aggregates.db";
 import { getDb, type DbExecutor } from "@/db/client";
+import { isUniqueViolation } from "@/db/errors";
 import { toOrder, toOrderEvent, type OrderLineRow } from "@/db/mappers";
 import {
   communities,
   customerNotifications,
   customers,
   orderEvents,
+  orderLines,
   orders,
   staff,
 } from "@/db/schema";
 import type { StaffAssignment } from "@/domain/orders/assignment";
+import { orderReference } from "@/domain/orders/quote";
 import { ORDERS_PAGE_SIZE, pageWindow } from "@/domain/orders/rules";
 import { FINISHED_STATUSES, ORDER_STATUSES } from "@/domain/orders/status";
 import type { OrdersSource } from "@/domain/orders/source";
 import type { StatusCounts } from "@/domain/metrics/rules";
-import type { Order, OrderFilters, StatusChange } from "@/domain/orders/types";
+import type {
+  NewOrder,
+  Order,
+  OrderFilters,
+  StatusChange,
+} from "@/domain/orders/types";
+import {
+  keysetSlice,
+  type KeysetPage,
+  type KeysetResult,
+} from "@/lib/api/cursor";
 import {
   containsPattern,
   digitsOnly,
@@ -89,19 +102,24 @@ type LoadOptions = {
   direction?: "asc" | "desc";
   limit?: number;
   offset?: number;
+  /** Par créneau de livraison (écrans), ou par création (« mes commandes » de l'API). */
+  sort?: "slot" | "created";
 };
 
 async function loadOrders(
   db: DbExecutor,
   where: SQL | undefined,
-  { direction = "asc", limit, offset = 0 }: LoadOptions = {},
+  { direction = "asc", limit, offset = 0, sort = "slot" }: LoadOptions = {},
 ): Promise<Order[]> {
   const by = direction === "desc" ? desc : asc;
-  const slotOrder = [
-    by(orders.deliveryDate),
-    by(orders.deliveryStart),
-    by(orders.reference),
-  ];
+  const slotOrder =
+    sort === "created"
+      ? [by(orders.createdAt), by(orders.id)]
+      : [
+          by(orders.deliveryDate),
+          by(orders.deliveryStart),
+          by(orders.reference),
+        ];
   let query = db
     .select({
       order: orders,
@@ -214,7 +232,97 @@ function whereFor(filters: OrderFilters): SQL | undefined {
   return clauses.length === 0 ? undefined : and(...clauses);
 }
 
+const REFERENCE_TRIES = 5;
+
 const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
+  // Création par l'API : la référence est le rang du jour de livraison
+  // (« FIG-AAMMJJ-NNN »). Deux commandes créées au même instant pour le même
+  // jour peuvent tirer le même rang : l'index unique refuse la seconde, qui
+  // recompte et réessaie dans un point de sauvegarde (la transaction survit).
+  createOrder: (input: NewOrder) =>
+    getDb().transaction(async (tx) => {
+      const id = randomUUID();
+      const prefix = orderReference(input.deliverySlot.date, 0).slice(0, -3);
+      for (let attempt = 1; ; attempt += 1) {
+        const [row] = await tx
+          .select({ total: count() })
+          .from(orders)
+          .where(sql`${orders.reference} like ${`${prefix}%`}`);
+        const reference = orderReference(
+          input.deliverySlot.date,
+          (row?.total ?? 0) + 1,
+        );
+        try {
+          await tx.transaction(async (sp) => {
+            await sp.insert(orders).values({
+              id,
+              reference,
+              status: "preparing",
+              customerId: input.customerId,
+              deliveryDate: input.deliverySlot.date,
+              deliveryStart: input.deliverySlot.start,
+              deliveryEnd: input.deliverySlot.end,
+              deliveryAddressLine: input.deliveryAddressLine,
+              deliveryCity: input.deliveryCity,
+              deliveryPostalCode: input.deliveryPostalCode,
+              deliveryFeeCents: input.deliveryFeeCents,
+              totalCents: input.totalCents,
+              communityId: input.communityId,
+              discountKind: input.discount?.kind ?? null,
+              discountPercent: input.discount?.percent ?? null,
+              discountCents: input.discount?.amountCents ?? 0,
+              paymentReference: input.paymentReference,
+            });
+            await sp.insert(orderLines).values(
+              input.lines.map((line, position) => ({
+                orderId: id,
+                position,
+                productId: line.productId,
+                productName: line.productName,
+                quantity: line.quantity,
+                unit: line.unit,
+                lineTotalCents: line.lineTotalCents,
+              })),
+            );
+          });
+          break;
+        } catch (error) {
+          if (
+            isUniqueViolation(error, "orders_reference_idx") &&
+            attempt < REFERENCE_TRIES
+          ) {
+            continue;
+          }
+          throw error;
+        }
+      }
+      const [order] = await loadOrders(tx, eq(orders.id, id));
+      if (!order) throw new Error("Commande insérée introuvable.");
+      return order;
+    }),
+
+  // « Mes commandes » : les plus récentes d'abord ; la page suivante commence
+  // strictement après le dernier couple (création, identifiant) lu, servi par
+  // l'index orders_customer_created_idx. Une ligne de plus que demandé dit
+  // s'il en reste.
+  listCustomerOrders: async (
+    customerId: string,
+    page: KeysetPage,
+  ): Promise<KeysetResult<Order>> => {
+    const after = page.after
+      ? sql`(${orders.createdAt}, ${orders.id}) < (${page.after.at}::timestamptz, ${page.after.id})`
+      : undefined;
+    const rows = await loadOrders(
+      getDb(),
+      and(eq(orders.customerId, customerId), after),
+      { direction: "desc", sort: "created", limit: page.limit + 1 },
+    );
+    return keysetSlice(rows, page.limit, (o) => ({
+      at: o.createdAt,
+      id: o.id,
+    }));
+  },
+
   getOrders: (filters: OrderFilters = {}, options = {}) =>
     loadOrders(getDb(), whereFor(filters), { limit: options.limit }),
 

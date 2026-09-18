@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import {
   and,
   asc,
@@ -31,8 +32,14 @@ import type {
   MessageImportantChange,
   MessagePinChange,
   MessageStatusChange,
+  NewMessage,
 } from "@/domain/messages/types";
 import { pageWindow } from "@/domain/orders/rules";
+import {
+  keysetSlice,
+  type KeysetPage,
+  type KeysetResult,
+} from "@/lib/api/cursor";
 import { containsPattern, normalize } from "@/lib/text";
 
 /*
@@ -75,21 +82,34 @@ const attachmentsJson = sql<MessageAttachmentRow[]>`(
  * le plus récemment épinglé en tête, puis les autres du plus récent au plus
  * ancien, l'identifiant départageant les ex æquo.
  */
-const listOrder = [
+const inboxOrder = [
   sql`${customerMessages.pinnedAt} is null`,
   desc(customerMessages.pinnedAt),
   desc(customerMessages.receivedAt),
   asc(customerMessages.id),
 ];
 
+/** « Mes messages » de l'API : les plus récents d'abord, sans égard aux épingles de l'équipe. */
+const receivedOrder = [
+  desc(customerMessages.receivedAt),
+  desc(customerMessages.id),
+];
+
 const preparer = alias(staff, "preparer");
 const driver = alias(staff, "driver");
+
+type LoadOptions = {
+  limit?: number;
+  offset?: number;
+  sort?: "inbox" | "received";
+};
 
 async function loadMessages(
   db: DbExecutor,
   where: SQL | undefined,
-  { limit, offset = 0 }: { limit?: number; offset?: number } = {},
+  { limit, offset = 0, sort = "inbox" }: LoadOptions = {},
 ): Promise<Message[]> {
+  const listOrder = sort === "received" ? receivedOrder : inboxOrder;
   let query = db
     .select({
       message: customerMessages,
@@ -218,6 +238,57 @@ async function reload(db: DbExecutor, id: string): Promise<Message | null> {
 }
 
 export const messagesDb: MessagesSource = {
+  // Dépôt par l'API pour la personne qui écrit : message puis pièces jointes
+  // dans leur ordre d'envoi, en une transaction ; la base garde les bornes
+  // (dix positions, formats en liste blanche, URL en https).
+  createMessage: (input: NewMessage) =>
+    getDb().transaction(async (tx) => {
+      const id = randomUUID();
+      await tx.insert(customerMessages).values({
+        id,
+        customerId: input.customerId,
+        subject: input.subject,
+        body: input.body,
+        orderId: input.orderId,
+      });
+      if (input.attachments.length > 0) {
+        await tx.insert(messageAttachments).values(
+          input.attachments.map((file, position) => ({
+            id: randomUUID(),
+            messageId: id,
+            position,
+            fileName: file.fileName,
+            contentType: file.contentType,
+            sizeBytes: file.sizeBytes,
+            url: file.url,
+          })),
+        );
+      }
+      const message = await reload(tx, id);
+      if (!message) throw new Error("Message inséré introuvable.");
+      return message;
+    }),
+
+  // « Mes messages » : la page suivante commence strictement après le dernier
+  // couple (réception, identifiant) lu (index customer_messages_customer_received_idx).
+  listCustomerMessages: async (
+    customerId: string,
+    page: KeysetPage,
+  ): Promise<KeysetResult<Message>> => {
+    const after = page.after
+      ? sql`(${customerMessages.receivedAt}, ${customerMessages.id}) < (${page.after.at}::timestamptz, ${page.after.id})`
+      : undefined;
+    const rows = await loadMessages(
+      getDb(),
+      and(eq(customerMessages.customerId, customerId), after),
+      { limit: page.limit + 1, sort: "received" },
+    );
+    return keysetSlice(rows, page.limit, (m) => ({
+      at: m.receivedAt,
+      id: m.id,
+    }));
+  },
+
   getMessagesPage: async (
     filters: MessageFilters,
     page: number,

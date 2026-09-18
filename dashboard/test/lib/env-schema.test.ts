@@ -136,6 +136,41 @@ describe("HEALTH_TOKEN", () => {
   });
 });
 
+describe("API de l'application", () => {
+  const base = {
+    DATABASE_URL: "postgresql://fig:fig@localhost:5432/fig",
+    AUTH_SECRET: "s".repeat(32),
+  };
+
+  it("API_SERVICE_KEY est facultative, 32 caractères au moins, jamais reflétée", () => {
+    expect(parseEnv(base).API_SERVICE_KEY).toBeUndefined();
+    expect(
+      parseEnv({ ...base, API_SERVICE_KEY: "k".repeat(32) }).API_SERVICE_KEY,
+    ).toBe("k".repeat(32));
+    let message = "";
+    try {
+      parseEnv({ ...base, API_SERVICE_KEY: "cle-trop-courte" });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toMatch(/API_SERVICE_KEY/);
+    expect(message).not.toContain("cle-trop-courte");
+  });
+
+  it("API_CORS_ORIGINS est une liste d'origines séparées par des virgules", () => {
+    expect(parseEnv(base).API_CORS_ORIGINS).toBeUndefined();
+    expect(
+      parseEnv({
+        ...base,
+        API_CORS_ORIGINS: " https://app.fig.invalid, http://localhost:5173 ,",
+      }).API_CORS_ORIGINS,
+    ).toEqual(["https://app.fig.invalid", "http://localhost:5173"]);
+    expect(() =>
+      parseEnv({ ...base, API_CORS_ORIGINS: "app.fig.invalid" }),
+    ).toThrow(/API_CORS_ORIGINS/);
+  });
+});
+
 describe("mailTransportOf", () => {
   it("explicite, sinon brevo dès qu'une clé est posée, sinon fichier", () => {
     expect(mailTransportOf(parseEnv(base))).toBe("fichier");

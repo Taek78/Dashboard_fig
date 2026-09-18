@@ -78,6 +78,11 @@ export type Order = {
   preparer: StaffRef | null;
   /** Livreur affecté par l'équipe, sinon null. */
   driver: StaffRef | null;
+  /**
+   * Référence du paiement transmise par l'application à la création par
+   * l'API (migration 0016) ; null pour les commandes qui n'en ont pas.
+   */
+  paymentReference: string | null;
 };
 
 /** Longueur maximale de la recherche libre (?q=) des commandes et des livraisons. */
@@ -113,6 +118,28 @@ export type OrderFilters = {
 
 /** Qui a fait le geste : l'utilisateur de la session, jamais un champ de formulaire. */
 export type OrderActor = { id: string; name: string };
+
+/*
+ * Ce que l'API transmet à la source pour CRÉER une commande (2026-09-17) :
+ * tout a déjà été calculé par le devis (orders/quote.ts) et relu par la route
+ * (client, communauté, adresse) ; la source attribue l'identifiant et la
+ * référence du jour, écrit la commande et ses lignes en une transaction.
+ * Statut « en préparation », sans événement d'historique (la création n'est
+ * pas un changement de statut).
+ */
+export type NewOrder = {
+  customerId: string;
+  deliverySlot: { date: string; start: string; end: string };
+  deliveryAddressLine: string | null;
+  deliveryCity: string;
+  deliveryPostalCode: string;
+  lines: OrderLine[];
+  deliveryFeeCents: number;
+  totalCents: number;
+  communityId: string | null;
+  discount: OrderDiscount | null;
+  paymentReference: string | null;
+};
 
 /*
  * Trace métier durable d'un changement de statut : qui, quand, de

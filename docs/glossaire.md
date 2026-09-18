@@ -74,6 +74,34 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **`after()`** (`next/server`) : exécute une fonction APRÈS l'envoi de la réponse ; les mails partent ainsi sans allonger la réponse, qui ne révèle donc pas si un compte existe.
 
+## API de l'application
+
+**API (`/api/v1`)** : les routes HTTP par lesquelles l'application FIG et son serveur parlent au dashboard, seul propriétaire du schéma (`docs/api.md`). Versionnée par le préfixe : un champ s'ajoute sans changer de version, un retrait ou un renommage donne un `/api/v2`.
+
+**Route handler de l'API** : un `route.ts` sous `src/app/api/v1/` qui exporte `GET`, `POST`… enveloppés par `apiRoute` (cadre commun : adresse IP, horloge, limitation de débit, erreurs en JSON, CORS) et `OPTIONS = preflight(METHODS)`.
+
+**Jeton de session (client)** : chaîne opaque de 32 octets remise une seule fois à l'application après un code de connexion, envoyée en `Authorization: Bearer` ; seul son HMAC est en base (`customer_sessions`), 180 jours, révocable.
+
+**Code de connexion** : six chiffres envoyés par mail à l'adresse demandée, dix minutes, cinq essais, un seul actif par adresse ; prouve que la personne lit sa boîte, sans mot de passe à garder. Sert aussi à l'inscription (`signup_required`, puis le même code avec le profil).
+
+**Clé de service** : secret partagé (`API_SERVICE_KEY`) que le serveur de l'application envoie en `Authorization: Bearer` pour lire la file des notifications et accuser leur envoi ; comparé à temps constant.
+
+**Clé d'idempotence (`Idempotency-Key`)** : identifiant choisi par l'application pour une création ; la même clé avec le même corps rejoue la réponse mémorisée au lieu de créer une seconde fois (table `api_idempotency_keys`, prise atomique par `INSERT … ON CONFLICT DO NOTHING`, libérée après un échec).
+
+**Curseur (pagination)** : au lieu d'un numéro de page, la page suivante se demande « après tel élément » (instant, identifiant) encodé en base64url ; une liste qui bouge entre deux pages ne décale rien et la base sert la page par un index composite (`keysetSlice`).
+
+**ETag / 304** : empreinte d'une réponse publique (catalogue, articles, communautés) ; l'application la renvoie en `If-None-Match` et reçoit `304` sans corps quand rien n'a changé.
+
+**CORS** : autorisation donnée à un navigateur d'appeler l'API depuis une autre origine ; liste blanche `API_CORS_ORIGINS`, inutile pour une application native.
+
+**Devis** (`orders/quote.ts`) : le calcul par le dashboard des lignes (nom et prix instantanés), de la meilleure remise, des frais et du total d'un panier ; l'application le fait payer puis renvoie ce total, refusé s'il diffère (`total_mismatch`).
+
+**Vue (API)** : fonction pure de `domain/api/views.ts` qui transforme un type métier en réponse de l'API, en laissant de côté ce que la personne ne doit pas voir (équipe affectée, notes, coordonnées des référents, marques internes des messages) ; chaque vue est vérifiée contre son schéma zod de `responses.ts`.
+
+**OpenAPI** : description formelle de l'API (chemins, paramètres, corps, réponses, erreurs) ; construite depuis les schémas zod (`domain/api/openapi.ts`), écrite dans `docs/api/openapi.json` par `npm run api:openapi` et servie par `GET /api/v1/openapi.json`.
+
+**Limitation de débit en mémoire** (`SlidingWindowLimiter`) : fenêtre glissante par sujet (adresse IP, session) tenue par chaque instance du serveur ; complète, sans la remplacer, la garde partagée en base des codes de connexion (`login_attempts`).
+
 ## Next.js et interface
 
 **Server Component** : composant React rendu uniquement sur le serveur ; le navigateur reçoit le HTML, jamais son code. C'est le défaut dans `src/app/`. Peut être `async` et appeler la façade directement.

@@ -17,7 +17,8 @@ import { TEST_ACCOUNTS, TEST_DATABASE_URL } from "./test/support/config";
  * coupée : les règles pures suffisent aux parcours, l'appel est testé en unitaire.
  * HEALTH_TOKEN : obligatoire en production, donc posé ici (valeur publique) ;
  * la sonde de démarrage de Playwright reçoit un 401 sans jeton, ce qui vaut
- * « serveur prêt » pour elle.
+ * « serveur prêt » pour elle. API_SERVICE_KEY : la clé du serveur de
+ * l'application pour le parcours de l'API (e2e/api.spec.ts), publique aussi.
  */
 const PORT = 3126;
 const baseURL = `http://localhost:${PORT}`;
@@ -56,6 +57,7 @@ export default defineConfig({
       MAIL_FILE_DIR: E2E_MAIL_DIR,
       PASSWORD_BREACH_CHECK: "0",
       HEALTH_TOKEN: "e2e-jeton-de-sante-fig-dashboard-0123456789",
+      API_SERVICE_KEY: "e2e-cle-de-service-fig-dashboard-0123456789",
     },
   },
 });

@@ -9,6 +9,8 @@ import type { MessagesSource } from "@/domain/messages/source";
  * qui l'importerait casse le build).
  */
 export const {
+  createMessage,
+  listCustomerMessages,
   getMessagesPage,
   countMessages,
   countComplaints,

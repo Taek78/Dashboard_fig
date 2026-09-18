@@ -11,12 +11,14 @@ import type {
 import type { StaffAssignment } from "@/domain/orders/assignment";
 import type { Page } from "@/domain/orders/rules";
 import type {
+  NewOrder,
   Order,
   OrderEvent,
   OrderFilters,
   StatusChange,
 } from "@/domain/orders/types";
 import type { StaffWorkSummary } from "@/domain/staff/rules";
+import type { KeysetPage, KeysetResult } from "@/lib/api/cursor";
 
 /*
  * CONTRAT des commandes, implémenté par PostgreSQL (src/data/orders.db.ts et
@@ -57,8 +59,20 @@ import type { StaffWorkSummary } from "@/domain/staff/rules";
  *   été relue et vérifiée par l'action) ; null (rien d'écrit) si la commande
  *   n'existe pas, si elle est terminée ou si la personne affectée n'est plus
  *   `expectedStaffId`.
+ *
+ * API de l'application (2026-09-17) :
+ * - createOrder écrit une commande déjà calculée (NewOrder) et ses lignes en
+ *   une transaction, attribue l'identifiant et la référence du jour de
+ *   livraison (« FIG-AAMMJJ-NNN », unique : réessai sur collision) ;
+ * - listCustomerOrders : « mes commandes », les plus récentes d'abord
+ *   (création puis identifiant), page par CURSEUR (index composite).
  */
 export type OrdersSource = {
+  createOrder(input: NewOrder): Promise<Order>;
+  listCustomerOrders(
+    customerId: string,
+    page: KeysetPage,
+  ): Promise<KeysetResult<Order>>;
   getOrders(
     filters?: OrderFilters,
     options?: { limit?: number },

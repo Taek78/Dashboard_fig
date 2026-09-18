@@ -97,6 +97,7 @@ function orderRow(o: Order): OrderRow {
     discountCents: o.discount?.amountCents ?? 0,
     preparerId: o.preparer?.id ?? null,
     driverId: o.driver?.id ?? null,
+    paymentReference: o.paymentReference,
   };
 }
 

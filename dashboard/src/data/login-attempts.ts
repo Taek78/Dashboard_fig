@@ -1,6 +1,8 @@
 import "server-only";
 import { loginAttemptsDb } from "@/data/login-attempts.db";
 import {
+  API_CODE_IP_POLICY,
+  API_CODE_SUBJECT_POLICY,
   checkAttempt,
   EMAIL_POLICY,
   IP_POLICY,
@@ -8,6 +10,7 @@ import {
   RECOVERY_SUBJECT_POLICY,
   strictest,
   type LimitDecision,
+  type RateLimitPolicy,
 } from "@/lib/rate-limit";
 
 /*
@@ -62,7 +65,17 @@ export async function clearLoginAttempts(key: LoginKey): Promise<void> {
 
 /* ---------- Quotas des pages publiques de récupération ---------- */
 
-export type QuotaScope = "recovery" | "reminder";
+/** « recovery » et « reminder » : pages publiques du back-office ; « api_code » : codes de connexion de l'application. */
+export type QuotaScope = "recovery" | "reminder" | "api_code";
+
+const QUOTA_POLICIES: Record<
+  QuotaScope,
+  { subject: RateLimitPolicy; ip: RateLimitPolicy }
+> = {
+  recovery: { subject: RECOVERY_SUBJECT_POLICY, ip: RECOVERY_IP_POLICY },
+  reminder: { subject: RECOVERY_SUBJECT_POLICY, ip: RECOVERY_IP_POLICY },
+  api_code: { subject: API_CODE_SUBJECT_POLICY, ip: API_CODE_IP_POLICY },
+};
 
 const quotaKeysOf = (scope: QuotaScope, subject: string, ip: string) => ({
   subject: `${scope}:subject:${subject.trim().toLowerCase()}`,
@@ -90,10 +103,11 @@ export async function recordQuotaUse(
   now: number,
 ): Promise<void> {
   const k = quotaKeysOf(scope, subject, ip);
+  const policies = QUOTA_POLICIES[scope];
   await loginAttemptsDb.recordFailure(
     [
-      { key: k.subject, policy: RECOVERY_SUBJECT_POLICY },
-      { key: k.ip, policy: RECOVERY_IP_POLICY },
+      { key: k.subject, policy: policies.subject },
+      { key: k.ip, policy: policies.ip },
     ],
     now,
   );

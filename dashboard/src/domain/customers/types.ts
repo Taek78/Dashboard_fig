@@ -84,3 +84,22 @@ export type CustomerFilters = {
 
 /** Longueur maximale d'une note interne (formulaire et zod). */
 export const NOTE_MAX_LENGTH = 500;
+
+/*
+ * Modification du profil par la personne elle-même, depuis l'application
+ * (API, 2026-09-17) : chaque champ absent reste tel quel ; les trois
+ * autorisations changent ensemble et sont datées par la source (preuve du
+ * consentement). L'e-mail ne se modifie pas : c'est l'identifiant.
+ */
+export type CustomerProfilePatch = {
+  fullName?: string;
+  phone?: string;
+  addressLine?: string | null;
+  city?: string;
+  postalCode?: string;
+  consents?: Omit<CustomerConsents, "updatedAt">;
+};
+
+/** Adhésion à une communauté par la personne : refusée si le groupe n'est pas public et actif. */
+export type CommunityMembershipOutcome =
+  "updated" | "not_joinable" | "not_found";

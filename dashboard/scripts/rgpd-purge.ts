@@ -71,6 +71,7 @@ async function main(): Promise<void> {
         `[rgpd] durées : clients inactifs ${RETENTION.inactiveCustomerYears} ans, journal de sécurité ${RETENTION.securityEventMonths} mois (preuves RGPD conservées), tentatives de connexion ${RETENTION.loginAttemptHours} h`,
         `[rgpd] journal de sécurité antérieur au ${report.cutoffs.securityEventsBefore.toISOString()} : ${report.securityEvents} ligne(s) ${apply ? "supprimée(s)" : "à supprimer"}`,
         `[rgpd] tentatives de connexion expirées : ${report.loginAttempts} ${apply ? "supprimée(s)" : "à supprimer"}`,
+        `[rgpd] API de l'application : codes de connexion ${report.customerLoginCodes}, sessions ${report.customerSessions}, clés d'idempotence ${report.idempotencyKeys} ${apply ? "supprimé(e)s" : "à supprimer"}`,
         `[rgpd] clients sans activité depuis le ${report.cutoffs.customerActivitySince} : ${ids.length} ${apply ? "traité(s)" : "à anonymiser"}${list(ids)}`,
         ...(report.skippedCustomers.length > 0
           ? [

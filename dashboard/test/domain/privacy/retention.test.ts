@@ -12,11 +12,16 @@ describe("retentionCutoffs", () => {
       inactiveCustomerYears: 3,
       securityEventMonths: 12,
       loginAttemptHours: 24,
+      customerLoginCodeHours: 24,
+      customerSessionDays: 30,
     });
     expect(retentionCutoffs(now)).toEqual({
       customerActivitySince: "2023-09-15",
       securityEventsBefore: new Date("2025-09-15T10:30:00.000Z"),
       loginAttemptsBefore: new Date("2026-09-14T10:30:00.000Z"),
+      customerLoginCodesBefore: new Date("2026-09-14T10:30:00.000Z"),
+      customerSessionsBefore: new Date("2026-08-16T10:30:00.000Z"),
+      idempotencyKeysBefore: now,
     });
   });
 
@@ -26,6 +31,8 @@ describe("retentionCutoffs", () => {
       inactiveCustomerYears: 1,
       securityEventMonths: 1,
       loginAttemptHours: 1,
+      customerLoginCodeHours: 1,
+      customerSessionDays: 1,
     });
     expect(cutoffs.customerActivitySince).toBe("2025-03-31");
     expect(cutoffs.securityEventsBefore.toISOString().slice(0, 10)).toBe(

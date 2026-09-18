@@ -10,6 +10,9 @@ import type { CustomersSource } from "@/domain/customers/source";
 export const {
   getCustomers,
   getCustomer,
+  findCustomerByEmail,
+  updateCustomerProfile,
+  setCustomerCommunity,
   getCustomerReferrals,
   getSignupStats,
   addNote,

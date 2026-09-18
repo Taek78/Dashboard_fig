@@ -10,6 +10,8 @@ import type { OrdersSource } from "@/domain/orders/source";
  * casse le build).
  */
 export const {
+  createOrder,
+  listCustomerOrders,
   getOrders,
   countOrders,
   getOrderStatusCounts,

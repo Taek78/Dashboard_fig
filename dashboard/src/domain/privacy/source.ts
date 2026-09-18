@@ -1,3 +1,4 @@
+import type { CustomerSession } from "@/domain/api/session";
 import type { Customer } from "@/domain/customers/types";
 import type { Message } from "@/domain/messages/types";
 import type { CustomerNotification } from "@/domain/notifications/types";
@@ -9,9 +10,9 @@ import type { AnonymizeOutcome } from "@/domain/privacy/anonymization";
  * (src/data/privacy.db.ts). Types seulement.
  * - getCustomerExportData : tout ce que la base garde sur la personne (fiche,
  *   notes, commandes, historique des statuts, messages « Nous contacter » et
- *   leurs pièces jointes, notifications déposées, nombre de filleuls) ; borné
- *   par la personne, jamais paginé : un export au titre du droit d'accès doit
- *   être complet ;
+ *   leurs pièces jointes, notifications déposées, nombre de filleuls, sessions
+ *   de l'application) ; borné par la personne, jamais paginé : un export au
+ *   titre du droit d'accès doit être complet ;
  * - anonymizeCustomer : écriture conditionnelle (seulement si pas encore
  *   anonymisé), en une transaction ; `at` vient de l'horloge du serveur.
  */
@@ -23,6 +24,8 @@ export type CustomerExportData = {
   notifications: CustomerNotification[];
   /** Nombre de filleuls : les tiers ne sont pas nommés dans l'export. */
   referralCount: number;
+  /** Sessions ouvertes dans l'application (API) : dates seulement, jamais le jeton. */
+  sessions: CustomerSession[];
 };
 
 export type PrivacySource = {

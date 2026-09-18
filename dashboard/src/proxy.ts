@@ -50,7 +50,9 @@ type AuthWrapper = (guard: Guard) => Middleware | Promise<Middleware>;
 
 const withAuth = auth as unknown as AuthWrapper;
 
-const PUBLIC_PREFIXES = ["/api/auth", "/api/health", "/connexion"];
+// /api/v1 : l'API de l'application FIG, qui fait sa propre authentification
+// (jeton de session du client ou clé de service), sans cookie ni redirection.
+const PUBLIC_PREFIXES = ["/api/auth", "/api/health", "/api/v1", "/connexion"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(
@@ -119,5 +121,10 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 export const config = {
   // fond/ : images décoratives publiques (public/fond), sans donnée : servies sans garde,
   // sinon un masque CSS reçoit la redirection vers /connexion au lieu du SVG.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|fond/).*)"],
+  // api/v1/ : l'API de l'application, appelée bien plus souvent que les pages ;
+  // elle authentifie elle-même (jeton de session ou clé de service) et ne rend
+  // aucun HTML, donc ni nonce ni CSP à poser, ni cookie de session à relire.
+  // La laisser hors du proxy lui épargne ce travail à chaque appel ; elle reste
+  // par sécurité dans PUBLIC_PREFIXES, au cas où le matcher changerait.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|fond/|api/v1/).*)"],
 };

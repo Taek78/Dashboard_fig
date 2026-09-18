@@ -1,8 +1,8 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { count, eq, isNotNull } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { toCommunity } from "@/db/mappers";
-import { communities } from "@/db/schema";
+import { communities, customers } from "@/db/schema";
 import { sortCommunities } from "@/domain/communities/rules";
 import type { CommunitiesSource } from "@/domain/communities/source";
 
@@ -20,5 +20,16 @@ export const communitiesDb: CommunitiesSource = {
       .where(eq(communities.id, id))
       .limit(1);
     return row ? toCommunity(row) : null;
+  },
+
+  // Membres par communauté (index customers_community_idx) : ce dont le taux
+  // de remise se déduit ; une communauté sans membre n'a pas de ligne (0).
+  getMemberCounts: async () => {
+    const rows = await getDb()
+      .select({ id: customers.communityId, members: count() })
+      .from(customers)
+      .where(isNotNull(customers.communityId))
+      .groupBy(customers.communityId);
+    return new Map(rows.map((r) => [String(r.id), r.members]));
   },
 };

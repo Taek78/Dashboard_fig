@@ -80,7 +80,7 @@ describe("enums du schéma = constantes du domaine", () => {
 });
 
 describe("tables", () => {
-  it("expose les quinze tables du dashboard", () => {
+  it("expose les dix-neuf tables du dashboard", () => {
     const names = [
       schema.users,
       schema.staff,
@@ -98,6 +98,9 @@ describe("tables", () => {
       schema.articles,
       schema.engagementMonthly,
       schema.securityEvents,
+      schema.customerLoginCodes,
+      schema.customerSessions,
+      schema.apiIdempotencyKeys,
     ].map(getTableName);
     expect(names).toEqual([
       "users",
@@ -116,6 +119,9 @@ describe("tables", () => {
       "articles",
       "engagement_monthly",
       "security_events",
+      "customer_login_codes",
+      "customer_sessions",
+      "api_idempotency_keys",
     ]);
   });
 });

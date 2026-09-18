@@ -9,7 +9,8 @@ import { defineConfig } from "vitest/config";
  * Deux projets :
  * - unit : règles pures, utilitaires, schéma et mappers, façades et route santé
  *   simulées ; aucune base, en parallèle.
- * - db : couche données et Server Actions contre la base de TEST PostgreSQL
+ * - db : couche données, Server Actions et routes de l'API (test/app/api/v1)
+ *   contre la base de TEST PostgreSQL
  *   (`docker compose up -d --wait test-db`), migrée et seedée une fois par
  *   test/support/global-setup.ts ; un fichier à la fois, chaque test dans une
  *   transaction annulée (test/support/test-database.ts).
@@ -29,7 +30,7 @@ export default defineConfig({
             "test/lib/**/*.test.ts",
             "test/db/**/*.test.ts",
             "test/app/facades.test.ts",
-            "test/app/api/**/*.test.ts",
+            "test/app/api/health.test.ts",
           ],
         },
       },
@@ -41,7 +42,7 @@ export default defineConfig({
           exclude: [
             "**/node_modules/**",
             "test/app/facades.test.ts",
-            "test/app/api/**",
+            "test/app/api/health.test.ts",
           ],
           globalSetup: ["test/support/global-setup.ts"],
           fileParallelism: false,

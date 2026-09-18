@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { articleToRow, toArticle } from "@/db/mappers";
 import { articles } from "@/db/schema";
@@ -18,6 +18,21 @@ export const articlesDb: ArticlesSource = {
         desc(articles.updatedAt),
         asc(articles.title),
       );
+    return rows.map(toArticle);
+  },
+
+  // Ce que l'application affiche : visibles et déjà parus (index articles_published_idx).
+  getPublishedArticles: async (today: string, limit: number) => {
+    const rows = await getDb()
+      .select()
+      .from(articles)
+      .where(and(eq(articles.visible, true), lte(articles.publishedAt, today)))
+      .orderBy(
+        desc(articles.publishedAt),
+        desc(articles.updatedAt),
+        asc(articles.title),
+      )
+      .limit(limit);
     return rows.map(toArticle);
   },
 

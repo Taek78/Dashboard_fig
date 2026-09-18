@@ -175,6 +175,7 @@ export function toOrder(
     ),
     preparer: toStaffRef(joins.preparer),
     driver: toStaffRef(joins.driver),
+    paymentReference: row.paymentReference,
   };
 }
 

@@ -103,6 +103,21 @@ export type MessageFilters = {
 export type MessageActor = { id: string; name: string };
 
 /*
+ * Ce que l'API transmet à la source pour DÉPOSER un message écrit par la
+ * personne dans l'application (2026-09-17) : objet, texte, commande jointe
+ * (déjà vérifiée comme la sienne) et métadonnées des pièces jointes (dix au
+ * plus, fichiers hébergés par l'application). La source attribue les
+ * identifiants et l'instant de réception.
+ */
+export type NewMessage = {
+  customerId: string;
+  subject: MessageSubject;
+  body: string;
+  orderId: string | null;
+  attachments: Omit<MessageAttachment, "id">[];
+};
+
+/*
  * Ce que la Server Action transmet à la source. Chaque changement porte l'état
  * RELU (`from`) : la source en fait une précondition d'écriture, et rien n'est
  * écrasé si quelqu'un a agi entre l'affichage et le clic.

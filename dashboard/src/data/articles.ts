@@ -9,6 +9,7 @@ import type { ArticlesSource } from "@/domain/articles/source";
  */
 export const {
   getArticles,
+  getPublishedArticles,
   getArticle,
   createArticle,
   updateArticle,

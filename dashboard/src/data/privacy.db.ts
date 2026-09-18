@@ -1,5 +1,6 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
+import { listCustomerSessions } from "@/data/api-auth";
 import { getCustomer, getCustomerReferrals } from "@/data/customers";
 import { getCustomerMessages } from "@/data/messages";
 import { getCustomerNotifications } from "@/data/notifications";
@@ -21,7 +22,7 @@ export const privacyDb: PrivacySource = {
   getCustomerExportData: async (customerId: string) => {
     const customer = await getCustomer(customerId);
     if (!customer) return null;
-    const [customerOrders, rows, messages, notifications, referrals] =
+    const [customerOrders, rows, messages, notifications, referrals, sessions] =
       await Promise.all([
         getOrders({ customerId }),
         getDb()
@@ -33,6 +34,7 @@ export const privacyDb: PrivacySource = {
         getCustomerMessages(customerId),
         getCustomerNotifications(customerId),
         getCustomerReferrals(customerId),
+        listCustomerSessions(customerId),
       ]);
     return {
       customer,
@@ -41,6 +43,7 @@ export const privacyDb: PrivacySource = {
       messages,
       notifications,
       referralCount: referrals.length,
+      sessions,
     };
   },
 

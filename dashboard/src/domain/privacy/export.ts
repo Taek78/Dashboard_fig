@@ -39,7 +39,7 @@ import { toIso } from "@/lib/days";
  * son travail et non ce qu'elle sait de la personne. Seul l'état « demande
  * traitée » est repris : il la concerne.
  */
-export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/2";
+export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/3";
 
 export type CustomerDataExport = {
   format: typeof CUSTOMER_EXPORT_FORMAT;
@@ -95,6 +95,13 @@ export type CustomerDataExport = {
     body: string;
     createdAt: string;
     sentAt: string | null;
+  }[];
+  /** Sessions de l'application (API, format 3) : dates seulement, jamais le jeton. */
+  appSessions: {
+    createdAt: string;
+    lastSeenAt: string;
+    expiresAt: string;
+    revokedAt: string | null;
   }[];
   orders: {
     reference: string;
@@ -211,6 +218,15 @@ export function buildCustomerExport(
         body: n.body,
         createdAt: n.createdAt,
         sentAt: n.sentAt,
+      })),
+    appSessions: data.sessions
+      .filter((s) => s.customerId === customer.id)
+      .toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((s) => ({
+        createdAt: s.createdAt,
+        lastSeenAt: s.lastSeenAt,
+        expiresAt: s.expiresAt,
+        revokedAt: s.revokedAt,
       })),
     orders: own.map((order) => ({
       reference: order.reference,

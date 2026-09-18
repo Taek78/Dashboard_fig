@@ -370,6 +370,8 @@ describe("purgeExpiredData", () => {
     inactiveCustomerYears: 1,
     securityEventMonths: 12,
     loginAttemptHours: 24,
+    customerLoginCodeHours: 24,
+    customerSessionDays: 30,
   };
 
   async function insertExpiredRows() {

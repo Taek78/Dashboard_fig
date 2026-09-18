@@ -587,6 +587,7 @@ function build(): { customers: Customer[]; orders: Order[] } {
         driver: DRIVEN_STATUSES.includes(status)
           ? pickStaff("livreur", day, random)
           : null,
+        paymentReference: null,
       });
     }
   }

@@ -26,6 +26,7 @@ function dataFor(customer: typeof amel): CustomerExportData {
     referralCount: customersFixtures.filter(
       (c) => c.referredBy?.id === customer.id,
     ).length,
+    sessions: [],
   };
 }
 
@@ -181,6 +182,7 @@ describe("buildCustomerExport", () => {
         messages: [otherMessage],
         notifications: [otherNotification],
         referralCount: 0,
+        sessions: [],
       },
       AT,
     );

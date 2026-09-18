@@ -77,6 +77,9 @@ export async function seedDatabase(
 
   await db.transaction(async (tx) => {
     // Messages et notifications avant les commandes et les clients qu'ils référencent.
+    await tx.delete(schema.apiIdempotencyKeys);
+    await tx.delete(schema.customerSessions);
+    await tx.delete(schema.customerLoginCodes);
     await tx.delete(schema.messageAttachments);
     await tx.delete(schema.customerMessages);
     await tx.delete(schema.customerNotifications);

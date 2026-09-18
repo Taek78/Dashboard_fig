@@ -7,8 +7,13 @@ import {
 } from "@/domain/orders/cancellation";
 
 describe("motifs d'annulation", () => {
-  it("expose trois motifs libellés et une limite de 100 caractères", () => {
-    expect(CANCELLATION_REASONS).toEqual(["stock", "delivery", "other"]);
+  it("expose quatre motifs libellés et une limite de 100 caractères", () => {
+    expect(CANCELLATION_REASONS).toEqual([
+      "stock",
+      "delivery",
+      "customer",
+      "other",
+    ]);
     for (const r of CANCELLATION_REASONS) {
       expect(CANCELLATION_REASON_LABELS[r].length).toBeGreaterThan(0);
     }
