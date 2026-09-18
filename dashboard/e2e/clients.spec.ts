@@ -309,4 +309,52 @@ test.describe("clients", () => {
     const [first, second] = await names.allTextContents();
     expect(first!.localeCompare(second!, "fr")).toBeGreaterThanOrEqual(0);
   });
+
+  test("le tri par ancienneté : les inscriptions les plus récentes d'abord, puis l'inverse", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/clients");
+    const form = page.getByRole("form", { name: "Recherche de clients" });
+    await form.getByLabel("Trier par").selectOption("anciennete");
+    // Sens naturel du critère : décroissant, donc pas de ?sens= dans l'URL.
+    await expect(page).toHaveURL(/tri=anciennete/);
+    await expect(page).not.toHaveURL(/sens=/);
+    const toggle = form.getByRole("button", { name: /Inverser l'ordre/ });
+    await expect(toggle).toHaveAccessibleName(
+      /Ancienneté, du plus récent au plus ancien/,
+    );
+
+    // En position « communautés », l'ordre exact des trois groupes est connu :
+    // créées en janvier, février puis juin 2025. Le tri survit au commutateur.
+    await form
+      .getByRole("radiogroup", { name: "Afficher" })
+      .getByRole("radio", { name: "Communautés" })
+      .check();
+    await expect(page).toHaveURL(/type=communautes/);
+    await expect(page).toHaveURL(/tri=anciennete/);
+    const cards = page.getByRole("article", { name: /^Communauté / });
+    await expect(cards).toHaveCount(3);
+    await expect(cards.nth(0)).toHaveAccessibleName(
+      "Communauté Atelier Bricole & Co",
+    );
+    await expect(cards.nth(2)).toHaveAccessibleName(
+      "Communauté Crèche Les Lucioles",
+    );
+    // La date de création rend le tri lisible sur la carte.
+    await expect(cards.nth(0)).toContainText(/Créée le .*2\s+juin\s+2025/);
+    await expect(cards.nth(2)).toContainText(/Créée le .*10\s+janv\.\s+2025/);
+
+    await toggle.click();
+    await expect(page).toHaveURL(/tri=anciennete&sens=croissant/);
+    await expect(toggle).toHaveAccessibleName(
+      /Ancienneté, du plus ancien au plus récent/,
+    );
+    await expect(cards.nth(0)).toHaveAccessibleName(
+      "Communauté Crèche Les Lucioles",
+    );
+    await expect(cards.nth(2)).toHaveAccessibleName(
+      "Communauté Atelier Bricole & Co",
+    );
+  });
 });

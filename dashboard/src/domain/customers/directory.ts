@@ -56,6 +56,7 @@ export const DIRECTORY_SORTS = [
   "commandes",
   "montant",
   "recent",
+  "anciennete",
   "membres",
 ] as const;
 export type DirectorySort = (typeof DIRECTORY_SORTS)[number];
@@ -64,6 +65,7 @@ export const DIRECTORY_SORT_LABELS: Record<DirectorySort, string> = {
   commandes: "Nombre de commandes",
   montant: "Montant dépensé",
   recent: "Commande la plus récente",
+  anciennete: "Ancienneté",
   membres: "Nombre de membres",
 };
 
@@ -79,6 +81,9 @@ export const DEFAULT_DIRECTORY_ORDER: Record<DirectorySort, DirectoryOrder> = {
   commandes: "decroissant",
   montant: "decroissant",
   recent: "decroissant",
+  // Les inscriptions les plus récentes d'abord : la question courante est
+  // « qui vient d'arriver ? ». Le bouton de sens donne l'autre lecture.
+  anciennete: "decroissant",
   membres: "decroissant",
 };
 
@@ -93,6 +98,7 @@ export const DIRECTORY_SORT_SCALES: Record<DirectorySort, DirectorySortScale> =
     commandes: "numeric",
     montant: "numeric",
     recent: "numeric",
+    anciennete: "numeric",
     membres: "numeric",
   };
 
@@ -134,6 +140,10 @@ export const SORT_ORDER_LABELS: Record<
   recent: {
     decroissant: "Commande la plus récente d'abord",
     croissant: "Commande la plus ancienne d'abord",
+  },
+  anciennete: {
+    decroissant: "Ancienneté, du plus récent au plus ancien",
+    croissant: "Ancienneté, du plus ancien au plus récent",
   },
   membres: {
     decroissant: "Membres, du plus grand groupe",
@@ -416,6 +426,8 @@ const lastDate = (e: DirectoryEntry) =>
   (e.kind === "customer"
     ? e.stats.lastDeliveryDate
     : e.summary.lastDeliveryDate) ?? "";
+const signupDate = (e: DirectoryEntry) =>
+  e.kind === "customer" ? e.customer.createdAt : e.community.createdAt;
 
 /**
  * Copie triée selon le tri et son sens (par défaut, le sens naturel du tri) ;
@@ -439,6 +451,8 @@ export function sortDirectory(
         return amountCents(a) - amountCents(b);
       case "recent":
         return lastDate(a).localeCompare(lastDate(b));
+      case "anciennete":
+        return signupDate(a).localeCompare(signupDate(b));
       case "membres":
         if (a.kind !== b.kind) return 0;
         return a.kind === "community" && b.kind === "community"

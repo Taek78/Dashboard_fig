@@ -219,6 +219,31 @@ describe("sortDirectory", () => {
     expect(directory.map((e) => e.id)).toEqual(before);
   });
 
+  it("par ancienneté : la plus récente inscription d'abord, puis l'inverse", () => {
+    const date = (e: DirectoryEntry) =>
+      e.kind === "customer" ? e.customer.createdAt : e.community.createdAt;
+    // Sens naturel du critère : du plus récent au plus ancien.
+    expect(DEFAULT_DIRECTORY_ORDER.anciennete).toBe("decroissant");
+    const desc = sortDirectory(directory, "anciennete");
+    for (let i = 1; i < desc.length; i += 1) {
+      expect(date(desc[i - 1]!) >= date(desc[i]!)).toBe(true);
+    }
+    const asc = sortDirectory(directory, "anciennete", "croissant");
+    for (let i = 1; i < asc.length; i += 1) {
+      expect(date(asc[i - 1]!) <= date(asc[i]!)).toBe(true);
+    }
+    // L'ordre exact des trois communautés, connues dans les fixtures.
+    const groups = filterDirectory(directory, { type: "communautes" });
+    expect(sortDirectory(groups, "anciennete").map((e) => e.id)).toEqual([
+      "com-0003",
+      "com-0002",
+      "com-0001",
+    ]);
+    expect(
+      sortDirectory(groups, "anciennete", "croissant").map((e) => e.id),
+    ).toEqual(["com-0001", "com-0002", "com-0003"]);
+  });
+
   it("chaque tri s'inverse, les ex æquo restant par nom croissant", () => {
     const desc = sortDirectory(directory, "nom", "decroissant");
     for (let i = 1; i < desc.length; i += 1) {
@@ -268,6 +293,10 @@ describe("parseSortParam / parseOrderParam / sortOptions", () => {
       sort: "montant",
       order: "croissant",
     });
+    expect(parseSortParam("anciennete-croissant")).toEqual({
+      sort: "anciennete",
+      order: "croissant",
+    });
     expect(parseSortParam(undefined)).toBeUndefined();
     expect(parseSortParam("prix")).toBeUndefined();
     expect(parseSortParam("nom-aleatoire")).toBeUndefined();
@@ -287,6 +316,7 @@ describe("parseSortParam / parseOrderParam / sortOptions", () => {
       "commandes",
       "montant",
       "recent",
+      "anciennete",
     ]);
     expect(sortOptions("communautes").map((o) => o.value)).toContain("membres");
     expect(new Set(all.map((o) => o.label)).size).toBe(all.length);
@@ -326,5 +356,19 @@ describe("directorySearchQuery", () => {
     expect(
       directorySearchQuery({ type: "tous", sort: "nom", order: "decroissant" }),
     ).toBe("sens=decroissant");
+    expect(
+      directorySearchQuery({
+        type: "tous",
+        sort: "anciennete",
+        order: "decroissant",
+      }),
+    ).toBe("tri=anciennete");
+    expect(
+      directorySearchQuery({
+        type: "tous",
+        sort: "anciennete",
+        order: "croissant",
+      }),
+    ).toBe("tri=anciennete&sens=croissant");
   });
 });

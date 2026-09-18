@@ -19,10 +19,10 @@ export const customerIdSchema = z.string().trim().min(1).max(64);
  * Recherche de la section Clients (lecture tolérante) : ?q= (partie du nom, de
  * l'e-mail, du téléphone, de la ville, d'une communauté ou d'un code de
  * parrainage), ?type=tous|particuliers|communautes, ?tri=<tri> (nom,
- * commandes, montant, recent, membres ; membres : communautés seulement, sinon
- * retour au nom ; l'ancienne forme <tri>-<sens> reste lue), ?sens=croissant|
- * decroissant (sinon le sens naturel du tri), ?page=n. Une valeur invalide est ignorée : la liste
- * complète s'affiche.
+ * commandes, montant, recent, anciennete, membres ; membres : communautés
+ * seulement, sinon retour au nom ; l'ancienne forme <tri>-<sens> reste lue),
+ * ?sens=croissant|decroissant (sinon le sens naturel du tri), ?page=n. Une
+ * valeur invalide est ignorée : la liste complète s'affiche.
  */
 export type ClientsSearch = DirectorySearch & { page: number };
 

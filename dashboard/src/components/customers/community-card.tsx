@@ -96,6 +96,9 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
             memberCount={memberCount}
             discountPercent={discountPercent}
           />
+          <span className="text-muted-foreground text-xs">
+            Créée le {formatDateFr(community.createdAt)}
+          </span>
         </div>
       </div>
 
