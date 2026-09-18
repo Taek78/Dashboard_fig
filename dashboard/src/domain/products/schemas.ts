@@ -1,3 +1,4 @@
+import { DELETE_CONFIRMED } from "@/lib/confirm-delete";
 import { z } from "zod";
 import {
   CONTAINERS,
@@ -7,7 +8,6 @@ import {
 } from "@/domain/products/category";
 import { eurosToCents } from "@/domain/products/rules";
 import {
-  DELETE_CONFIRM_WORD,
   type ProductFilters,
   type ProductInput,
 } from "@/domain/products/types";
@@ -161,9 +161,8 @@ export const productInputSchema = z
 
 export const updateProductSchema = z.object({ productId: productIdSchema });
 
-export { DELETE_CONFIRM_WORD };
+/** confirm=oui, envoyé par le seul bouton « Confirmer » de la fenêtre : vérifié ici aussi. */
 export const deleteProductSchema = z.object({
   productId: productIdSchema,
-  /** Le mot tapé par l'utilisateur : la confirmation est aussi vérifiée côté serveur. */
-  confirm: z.literal(DELETE_CONFIRM_WORD),
+  confirm: z.literal(DELETE_CONFIRMED),
 });

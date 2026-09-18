@@ -29,18 +29,21 @@ export function PasswordForm({ context }: { context: { name: string } }) {
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      <div className="grid gap-1.5">
-        <Label htmlFor="currentPassword">Mot de passe actuel</Label>
-        <Input
-          id="currentPassword"
-          name="currentPassword"
-          type="password"
-          autoComplete="current-password"
-          required
-          maxLength={PASSWORD_MAX_LENGTH}
-        />
-      </div>
-      <div className="grid gap-4 @2xl/main:grid-cols-2">
+      {/* Les trois champs sur une ligne dès que la place le permet, ALIGNÉS
+          PAR LE HAUT (items-start) : la jauge et le conseil sous le nouveau
+          mot de passe ne repoussent plus les libellés voisins. */}
+      <div className="grid items-start gap-4 @4xl/main:grid-cols-3">
+        <div className="grid gap-1.5">
+          <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+          <Input
+            id="currentPassword"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+            maxLength={PASSWORD_MAX_LENGTH}
+          />
+        </div>
         <PasswordField
           id="newPassword"
           label="Nouveau mot de passe"

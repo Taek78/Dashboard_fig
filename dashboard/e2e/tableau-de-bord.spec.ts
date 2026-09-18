@@ -112,9 +112,12 @@ test.describe("tableau de bord", () => {
     const period = form.getByLabel("Période", { exact: true });
     await expect(period).toHaveValue("aujourdhui");
     await expect(form.getByLabel("Du")).toHaveCount(0);
+    // Pas de bouton pour une période prédéfinie : elle s'applique dès son choix.
+    await expect(form.getByRole("button", { name: "Afficher" })).toHaveCount(0);
 
-    // Le choix ouvre la zone sans envoi ; l'envoi met la plage dans l'URL.
+    // Le choix ouvre la zone et le bouton SANS envoi ; le clic met la plage dans l'URL.
     await period.selectOption("personnalisee");
+    await expect(page).toHaveURL(/\/$/);
     await form.getByLabel("Du").fill("2026-09-05");
     await form.getByLabel("Au").fill("2026-09-09");
     await form.getByRole("button", { name: "Afficher" }).click();
@@ -137,12 +140,48 @@ test.describe("tableau de bord", () => {
     );
     await expect(form.getByLabel("Au")).toHaveValue("2026-09-09");
 
-    // Une période prédéfinie referme la zone : les dates ne partent pas dans l'URL.
+    // Une période prédéfinie s'applique AUSSITÔT, sans clic, et referme la
+    // zone : les dates ne partent pas dans l'URL.
     await period.selectOption("hier");
-    await expect(form.getByLabel("Du")).toHaveCount(0);
-    await form.getByRole("button", { name: "Afficher" }).click();
     await expect(page).toHaveURL(/\/\?tva=ttc&periode=hier$/);
+    await expect(form.getByRole("button", { name: "Afficher" })).toHaveCount(0);
     await expect(form.getByLabel("Du")).toHaveCount(0);
     await expect(page.getByText(/^Hier ·/)).toBeVisible();
+  });
+
+  test("une période prédéfinie s'applique dès son choix, sans bouton", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/");
+    const form = page.getByRole("form", { name: "Choix de la période" });
+    await form.getByLabel("Période", { exact: true }).selectOption("hier");
+    await expect(page).toHaveURL(/\/\?tva=ht&periode=hier$/);
+    await expect(page.getByText(/^Hier ·/)).toBeVisible();
+    await form.getByLabel("Période", { exact: true }).selectOption("ce-mois");
+    await expect(page).toHaveURL(/periode=ce-mois$/);
+  });
+
+  test("la date et l'heure de Paris en haut à droite, l'heure change à la minute", async ({
+    page,
+  }) => {
+    // La date du navigateur est FIGÉE à 10:59:58 (heure de Paris, UTC+2), ses
+    // minuteurs restent réels : une horloge simulée qui remplace aussi les
+    // minuteurs bloquerait l'hydratation de React.
+    await page.clock.setFixedTime(new Date("2026-09-18T08:59:58Z"));
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/");
+    const clock = page.getByTestId("horloge");
+    await expect(
+      page.getByText("Vendredi 18 septembre 2026", { exact: true }),
+    ).toBeVisible();
+    await expect(clock).toHaveText("10:59");
+    // La minute passe : le minuteur calé sur la minute pleine relit l'heure.
+    await page.clock.setFixedTime(new Date("2026-09-18T09:00:00.500Z"));
+    await expect(clock).toHaveText("11:00", { timeout: 5_000 });
+    // Les lecteurs d'écran lisent une phrase, pas quatre chiffres.
+    await expect(page.locator("time").first()).toHaveText(
+      "Vendredi 18 septembre 2026, 11 h 00",
+    );
   });
 });

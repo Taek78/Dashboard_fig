@@ -124,44 +124,35 @@ describe("schémas de commande", () => {
 });
 
 describe("schémas de message et de liste", () => {
-  it("exige un objet connu, un texte borné, des pièces jointes en https et en liste blanche", () => {
+  it("exige un objet connu, un texte borné et dix identifiants de fichiers au plus", () => {
     const message = {
       subject: "delivery_issue",
       body: "Le livreur n'est pas passé.",
-      attachments: [
-        {
-          fileName: "photo.jpg",
-          contentType: "image/jpeg",
-          sizeBytes: 12_000,
-          url: "https://fichiers.fig.invalid/photo.jpg",
-        },
-      ],
+      fileIds: ["b3f1a2c4-0000-4000-8000-000000000001"],
     };
     const parsed = createMessageSchema.parse(message);
     expect(parsed.subject).toBe("delivery_issue");
     expect(parsed.orderId).toBeUndefined();
-    expect(parsed.attachments).toHaveLength(1);
+    expect(parsed.fileIds).toEqual(["b3f1a2c4-0000-4000-8000-000000000001"]);
     expect(
       createMessageSchema.safeParse({ ...message, subject: "spam" }).success,
     ).toBe(false);
     expect(
-      createMessageSchema.safeParse({
-        ...message,
-        attachments: [{ ...message.attachments[0], contentType: "video/mp4" }],
-      }).success,
+      createMessageSchema.safeParse({ ...message, fileIds: [""] }).success,
     ).toBe(false);
     expect(
       createMessageSchema.safeParse({
         ...message,
-        attachments: [{ ...message.attachments[0], url: "http://x.invalid/a" }],
+        fileIds: Array.from({ length: 11 }, (_, i) => `f-${i}`),
       }).success,
     ).toBe(false);
-    expect(
-      createMessageSchema.safeParse({
-        ...message,
-        attachments: Array.from({ length: 11 }, () => message.attachments[0]),
-      }).success,
-    ).toBe(false);
+    // L'ancienne forme (métadonnées et URL) est refusée, pas ignorée : aucune pièce jointe ne se perd en silence.
+    const legacy = createMessageSchema.safeParse({
+      ...message,
+      attachments: [{ url: "https://ailleurs.invalid/a.jpg" }],
+    });
+    expect(legacy.success).toBe(false);
+    expect(legacy.error?.issues[0]?.message).toMatch(/POST \/fichiers/);
   });
 
   it("la liste a une taille par défaut de 20, 50 au plus ; la clé d'idempotence est bornée", () => {

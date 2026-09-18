@@ -146,20 +146,23 @@ describe("saveStaffMember", () => {
 });
 
 describe("removeStaffMember", () => {
-  it("exige SUPPRIMER, supprime puis redirige", async () => {
-    expect(
-      (
-        await run(removeStaffMember, {
-          staffId: "stf-0004",
-          confirm: "oui",
-        })
-      ).result?.status,
-    ).toBe("error");
+  it("exige la confirmation de la fenêtre, supprime puis redirige", async () => {
+    // Ni sans confirmation, ni avec l'ancien mot à taper.
+    for (const confirm of [undefined, "SUPPRIMER"]) {
+      expect(
+        (
+          await run(removeStaffMember, {
+            staffId: "stf-0004",
+            ...(confirm === undefined ? {} : { confirm }),
+          })
+        ).result?.status,
+      ).toBe("error");
+    }
     expect(await getStaff("stf-0004")).not.toBeNull();
 
     const { redirectedTo } = await run(removeStaffMember, {
       staffId: "stf-0004",
-      confirm: "SUPPRIMER",
+      confirm: "oui",
     });
     expect(redirectedTo).toBe("/personnel?supprime=1");
     expect(await getStaff("stf-0004")).toBeNull();

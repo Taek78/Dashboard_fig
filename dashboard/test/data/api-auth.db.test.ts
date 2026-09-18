@@ -284,6 +284,7 @@ describe("RGPD : anonymisation et purge des tables de l'API", () => {
       loginAttemptHours: 24,
       customerLoginCodeHours: 24,
       customerSessionDays: 30,
+      unattachedUploadHours: 24,
     };
     await testDb()
       .insert(customerLoginCodes)

@@ -14,7 +14,10 @@ import { toIso } from "@/lib/days";
  * - API de l'application (2026-09-17) : un code de connexion est oublié
  *   24 heures après son expiration, une session 30 jours après son expiration
  *   ou sa révocation, une clé d'idempotence dès son expiration (choix
- *   techniques ; la session vit 180 jours, domain/api/session.ts).
+ *   techniques ; la session vit 180 jours, domain/api/session.ts) ;
+ * - un fichier téléversé par l'application mais jamais joint à un message
+ *   (envoi abandonné) est supprimé après 24 heures (choix technique) ; un
+ *   fichier joint vit avec son message.
  * Appliquées par `npm run rgpd:purge` (scripts/rgpd-purge.ts), jamais en
  * silence : aperçu d'abord, --apply pour écrire.
  */
@@ -24,6 +27,7 @@ export const RETENTION = {
   loginAttemptHours: 24,
   customerLoginCodeHours: 24,
   customerSessionDays: 30,
+  unattachedUploadHours: 24,
 } as const;
 
 export type Retention = { [K in keyof typeof RETENTION]: number };
@@ -41,6 +45,8 @@ export type RetentionCutoffs = {
   customerSessionsBefore: Date;
   /** Clés d'idempotence expirées avant : supprimées (l'instant même). */
   idempotencyKeysBefore: Date;
+  /** Fichiers jamais joints à un message, téléversés avant : supprimés. */
+  unattachedUploadsBefore: Date;
 };
 
 /**
@@ -70,6 +76,9 @@ export function retentionCutoffs(
       now.getTime() - retention.customerSessionDays * 86_400_000,
     ),
     idempotencyKeysBefore: new Date(now),
+    unattachedUploadsBefore: new Date(
+      now.getTime() - retention.unattachedUploadHours * 3_600_000,
+    ),
   };
 }
 

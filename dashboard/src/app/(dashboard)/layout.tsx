@@ -17,7 +17,9 @@ import { verifySession } from "@/lib/dal";
  *
  * - SidebarProvider : contexte lu par SidebarTrigger, NavMain et Sidebar.
  * - Le lien d'évitement est le premier élément focusable.
- * - SidebarInset est le <main> ; id="contenu" est la cible du lien. Le fond
+ * - SidebarInset est le <main> ; id="contenu" est la cible du lien. Collé en
+ *   haut de la fenêtre, bords droits en haut (le bandeau n'est plus arrondi,
+ *   2026-09-18), arrondi en bas seulement. Le fond
  *   (dégradé et motif) est posé sur toute la fenêtre par globals.css.
  * - min-w-0 sur le conteneur de page : un enfant large (tableau, graphe) défile
  *   dans son propre cadre au lieu d'élargir la page sur mobile.
@@ -41,7 +43,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/">) {
       <SidebarInset
         id="contenu"
         tabIndex={-1}
-        className="min-w-0 md:peer-data-[variant=inset]:rounded-2xl"
+        className="min-w-0 md:peer-data-[variant=inset]:mt-0 md:peer-data-[variant=inset]:rounded-t-none md:peer-data-[variant=inset]:rounded-b-2xl"
       >
         <SiteHeader user={user} />
         {/* Largeur bornée et marges généreuses : la lisibilité avant la densité. */}

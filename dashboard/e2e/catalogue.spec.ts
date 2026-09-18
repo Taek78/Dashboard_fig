@@ -24,9 +24,30 @@ test.describe("catalogue", () => {
     await expect(
       page.getByRole("button", { name: "Dupliquer ce produit" }),
     ).toBeVisible();
+    const remove = page.getByRole("button", { name: "Supprimer ce produit" });
+    await expect(remove).toBeVisible();
+
+    // Suppression : une fenêtre de confirmation, « Annuler » ne fait rien.
+    await remove.click();
+    const dialog = page.getByRole("alertdialog", {
+      name: "Supprimer « Carottes (copie) » ?",
+    });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Annuler" })).toBeFocused();
+    await dialog.getByRole("button", { name: "Annuler" }).click();
+    await expect(dialog).toBeHidden();
     await expect(
-      page.getByRole("button", { name: "Supprimer ce produit" }),
+      page.getByRole("heading", { level: 1, name: "Carottes (copie)" }),
     ).toBeVisible();
+
+    // « Confirmer » supprime la copie et ramène au catalogue.
+    await remove.click();
+    await dialog.getByRole("button", { name: "Confirmer" }).click();
+    await expect(page).toHaveURL(/\/catalogue\?supprime=1$/);
+    await page.goto("/catalogue?q=carottes");
+    await expect(
+      page.getByRole("article", { name: "Produit Carottes (copie)" }),
+    ).toHaveCount(0);
   });
 
   test("le statut est sur l'image ; le paramètre laisse en vente un produit à stock 0", async ({

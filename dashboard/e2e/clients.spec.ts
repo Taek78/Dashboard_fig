@@ -147,7 +147,7 @@ test.describe("clients", () => {
       /^fig-client-cli-g-001-\d{4}-\d{2}-\d{2}\.json$/,
     );
     const exported = JSON.parse(await readFile(await download.path(), "utf8"));
-    expect(exported.format).toBe("fig-donnees-client/3");
+    expect(exported.format).toBe("fig-donnees-client/4");
     expect(exported.customer.fullName).toBe("Noah Okafor");
     expect(exported.customer.referralCode).toBe("Okafor#1000");
     expect(exported.orders.length).toBeGreaterThan(0);

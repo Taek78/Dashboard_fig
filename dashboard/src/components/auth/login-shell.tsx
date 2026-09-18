@@ -29,6 +29,12 @@ const PARTICLES = [
   [90, 72, 3.6, 10],
   [52, 46, 5, 12],
   [12, 48, 2.5, 10],
+  [22, 90, 6, 9],
+  [33, 10, 4.4, 11],
+  [62, 92, 1.8, 10],
+  [78, 40, 5.4, 12],
+  [95, 34, 3.2, 9],
+  [5, 84, 4.8, 11],
 ] as const;
 
 export function LoginShell({
@@ -69,8 +75,8 @@ export function LoginShell({
 
       <ThemeToggle className="absolute top-4 right-4 z-10" />
 
-      {/* Carte en verre assez transparente pour laisser voir la scène (demande du 2026-09-17) : fond à 55 %, 35 % quand le flou d'arrière-plan est disponible, flou moyen pour garder le texte lisible. */}
-      <div className="login-card bg-card/55 supports-backdrop-filter:bg-card/35 ring-foreground/15 relative w-full max-w-md rounded-3xl p-6 shadow-2xl ring-1 backdrop-blur-md md:p-8">
+      {/* Carte en verre qui laisse voir la scène (demandes du 2026-09-17 puis du 2026-09-18, deux fois plus transparente) : fond à 28 %, 12 % quand le flou d’arrière-plan est disponible ; un flou plus fort garde le texte lisible, et les champs gardent un fond presque opaque et une bordure marquée : sans eux, un champ vide se confondrait avec le décor en thème clair. */}
+      <div className="login-card bg-card/28 supports-backdrop-filter:bg-card/12 ring-foreground/15 [&_input]:border-foreground/20 [&_input]:bg-card/85 relative w-full max-w-md rounded-3xl p-6 shadow-2xl ring-1 backdrop-blur-lg md:p-8">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <span
             aria-hidden="true"

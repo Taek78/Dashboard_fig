@@ -8,6 +8,7 @@ import type {
   customers,
   engagementMonthly,
   messageAttachments,
+  messageUploads,
   orderEvents,
   orderLines,
   orders,
@@ -35,6 +36,7 @@ import type {
   Message,
   MessageAttachment,
   MessageOrder,
+  MessageUpload,
 } from "@/domain/messages/types";
 import type { CustomerNotification } from "@/domain/notifications/types";
 import type { StaffRef } from "@/domain/orders/assignment";
@@ -68,6 +70,11 @@ export type MessageRow = Omit<
   "searchText"
 >;
 export type MessageAttachmentRow = typeof messageAttachments.$inferSelect;
+/** Un téléversement lu SANS ses octets (liste, rattachement). */
+export type MessageUploadMetaRow = Omit<
+  typeof messageUploads.$inferSelect,
+  "bytes"
+>;
 export type NotificationRow = typeof customerNotifications.$inferSelect;
 export type ProductRow = typeof products.$inferSelect;
 export type ArticleRow = typeof articles.$inferSelect;
@@ -202,7 +209,21 @@ export function toMessageAttachment(
     fileName: row.fileName,
     contentType: row.contentType,
     sizeBytes: row.sizeBytes,
+    uploadId: row.uploadId,
     url: row.url,
+  };
+}
+
+/** Les métadonnées d'un fichier téléversé, sans ses octets. */
+export function toMessageUpload(row: MessageUploadMetaRow): MessageUpload {
+  return {
+    id: row.id,
+    customerId: row.customerId,
+    fileName: row.fileName,
+    contentType: row.contentType,
+    sizeBytes: row.sizeBytes,
+    createdAt: row.createdAt.toISOString(),
+    attachedAt: row.attachedAt?.toISOString() ?? null,
   };
 }
 

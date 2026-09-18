@@ -90,4 +90,35 @@ test.describe("métriques", () => {
         .getByRole("alert"),
     ).toHaveCount(0);
   });
+
+  test("période et comparaison s'appliquent dès leur choix, « Afficher » seulement en période personnalisée", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/metriques?periode=ce-mois");
+    const form = page.getByRole("form", { name: "Choix de la période" });
+    await expect(form.getByRole("button", { name: "Afficher" })).toHaveCount(0);
+
+    await form.getByLabel("Comparer à").selectOption("precedente");
+    await expect(page).toHaveURL(/comparaison=precedente/);
+    await form
+      .getByLabel("Période", { exact: true })
+      .selectOption("mois-dernier");
+    await expect(page).toHaveURL(/periode=mois-dernier/);
+    await expect(page).toHaveURL(/comparaison=precedente/);
+
+    // Période personnalisée : rien ne part avant le clic sur « Afficher ».
+    await form
+      .getByLabel("Période", { exact: true })
+      .selectOption("personnalisee");
+    await expect(form.getByRole("button", { name: "Afficher" })).toBeVisible();
+    await form.getByLabel("Comparer à").selectOption("n-1");
+    await expect(page).toHaveURL(/periode=mois-dernier/);
+    await form.getByLabel("Du").fill("2026-09-01");
+    await form.getByLabel("Au").fill("2026-09-07");
+    await form.getByRole("button", { name: "Afficher" }).click();
+    await expect(page).toHaveURL(/periode=personnalisee/);
+    await expect(page).toHaveURL(/du=2026-09-01&au=2026-09-07/);
+    await expect(page).toHaveURL(/comparaison=n-1/);
+  });
 });

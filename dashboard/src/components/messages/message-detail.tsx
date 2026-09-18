@@ -69,7 +69,10 @@ export function MessageDetail({
         {message.body}
       </p>
 
-      <MessageAttachments attachments={message.attachments} />
+      <MessageAttachments
+        messageId={message.id}
+        attachments={message.attachments}
+      />
 
       <div className="border-t pt-4">
         {canHandle ? (

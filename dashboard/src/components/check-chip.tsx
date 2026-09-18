@@ -29,7 +29,7 @@ export function CheckChip({
     <label
       htmlFor={id}
       className={cn(
-        "bg-card border-input hover:bg-muted/40 has-focus-visible:ring-ring/50 inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors select-none has-focus-visible:ring-3",
+        "bg-card border-input hover:bg-muted/40 has-focus-visible:ring-ring/50 inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors select-none has-focus-visible:ring-3 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-95",
         accent === "destructive"
           ? "has-checked:border-destructive/40 has-checked:bg-destructive/10 has-checked:text-destructive"
           : "has-checked:border-primary/40 has-checked:bg-primary/10 has-checked:text-primary",

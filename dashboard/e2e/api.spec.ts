@@ -159,6 +159,46 @@ test.describe("API de l'application", () => {
     await expect(page.getByText(product.name).first()).toBeVisible();
   });
 
+  test("téléversement d'une photo par l'application, relue à l'octet près ; un contenu qui ment est refusé", async ({
+    request,
+  }) => {
+    // Une image PNG 1 × 1, écrite à la main.
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+      "base64",
+    );
+    const headers = { authorization: `Bearer ${token}` };
+    const sent = await request.post("/api/v1/fichiers", {
+      headers: { ...headers, "idempotency-key": `e2e-${stamp}-fichier` },
+      multipart: {
+        fichier: { name: "panier.png", mimeType: "image/png", buffer: png },
+      },
+    });
+    expect(sent.status()).toBe(201);
+    const uploaded = (await sent.json()) as { id: string; url: string };
+    expect(uploaded.url).toBe(`/api/v1/fichiers/${uploaded.id}`);
+
+    const read = await request.get(uploaded.url, { headers });
+    expect(read.status()).toBe(200);
+    expect(read.headers()["content-type"]).toBe("image/png");
+    expect(read.headers()["cache-control"]).toBe("private, no-store");
+    expect(Buffer.from(await read.body()).equals(png)).toBe(true);
+    expect((await request.get(uploaded.url)).status()).toBe(401);
+
+    const lying = await request.post("/api/v1/fichiers", {
+      headers: { ...headers, "idempotency-key": `e2e-${stamp}-mensonge` },
+      multipart: {
+        fichier: {
+          name: "photo.png",
+          mimeType: "image/png",
+          buffer: Buffer.from("<script>alert(1)</script>"),
+        },
+      },
+    });
+    expect(lying.status()).toBe(422);
+    expect((await lying.json()).error.code).toBe("content_type_mismatch");
+  });
+
   test("annulation depuis l'application, motif visible par l'équipe ; file de service", async ({
     request,
     page,

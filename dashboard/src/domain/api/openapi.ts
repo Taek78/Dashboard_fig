@@ -15,6 +15,7 @@ import {
   quoteProblemResponse,
   quoteResponse,
   sessionResponse,
+  uploadResponse,
 } from "@/domain/api/responses";
 import {
   articlesQuerySchema,
@@ -242,6 +243,7 @@ export function buildOpenApiDocument(): Record<string, unknown> {
         OrderList: schemaOf(listOf(orderResponse), "output"),
         Message: schemaOf(messageResponse, "output"),
         MessageList: schemaOf(listOf(messageResponse), "output"),
+        Upload: schemaOf(uploadResponse, "output"),
         Notification: schemaOf(notificationResponse, "output"),
         NotificationList: schemaOf(listOf(notificationResponse), "output"),
         PendingNotificationList: schemaOf(
@@ -589,7 +591,7 @@ export function buildOpenApiDocument(): Record<string, unknown> {
           operationId: "createMessage",
           summary: "Déposer une demande « Nous contacter »",
           description:
-            "Objet, texte, commande jointe (la mienne) et pièces jointes hébergées par l'application (métadonnées et URL https, dix au plus, formats PDF et images). Idempotency-Key obligatoire.",
+            "Objet, texte, commande jointe (la mienne) et pièces jointes : `fileIds`, identifiants de fichiers déjà téléversés par POST /fichiers (dix au plus, chacun à moi et joint à rien d'autre). Idempotency-Key obligatoire.",
           security: SESSION,
           parameters: [IDEMPOTENCY_HEADER],
           requestBody: body(createMessageSchema, "La demande."),
@@ -605,7 +607,83 @@ export function buildOpenApiDocument(): Record<string, unknown> {
             "413": VALIDATION_ERRORS["413"],
             "415": VALIDATION_ERRORS["415"],
             "422": errorRef(
-              "Champs invalides (validation_failed), commande jointe inconnue ou d'un autre client (order_not_owned) ou clé réutilisée avec un autre corps (idempotency_key_reused).",
+              "Champs invalides (validation_failed), commande jointe inconnue ou d'un autre client (order_not_owned), fichier introuvable, d'un autre client ou déjà joint (attachment_unavailable, details.fileIds) ou clé réutilisée avec un autre corps (idempotency_key_reused).",
+            ),
+            ...COMMON_ERRORS,
+          },
+        },
+      },
+      "/fichiers": {
+        post: {
+          tags: ["Messages"],
+          operationId: "uploadFile",
+          summary: "Téléverser une pièce jointe",
+          description:
+            "Un fichier par appel, en multipart/form-data, champ « fichier » ; Content-Length obligatoire. PDF ou image (JPEG, PNG, GIF, WebP, AVIF, HEIC, HEIF, TIFF, BMP), 5 Mo au plus ; le format annoncé doit être celui du contenu. Le fichier est ensuite cité dans `fileIds` de POST /messages ; jamais joint, il est supprimé après 24 heures. Vingt fichiers en attente au plus par personne. Idempotency-Key obligatoire.",
+          security: SESSION,
+          parameters: [IDEMPOTENCY_HEADER],
+          requestBody: {
+            required: true,
+            content: {
+              "multipart/form-data": {
+                schema: {
+                  type: "object",
+                  required: ["fichier"],
+                  properties: {
+                    fichier: { type: "string", format: "binary" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "201": okJson(
+              ref("Upload"),
+              "Fichier reçu, à joindre à un message.",
+            ),
+            "400": errorRef(
+              "Corps multipart illisible (bad_request) ou en-tête absent (idempotency_key_required).",
+            ),
+            "409": errorRef(
+              "Même clé en cours de traitement (idempotency_in_progress).",
+            ),
+            ...AUTH_ERRORS,
+            "411": errorRef("Content-Length absent (length_required)."),
+            "413": errorRef("Plus de 5 Mo (payload_too_large)."),
+            "415": errorRef(
+              "Pas en multipart/form-data, ou format refusé (unsupported_media_type).",
+            ),
+            "422": errorRef(
+              "Aucun ou plusieurs fichiers (validation_failed), fichier vide (file_empty), contenu d'un autre format que celui annoncé (content_type_mismatch) ou clé réutilisée (idempotency_key_reused).",
+            ),
+            "429": errorRef(
+              "Trop de requêtes (rate_limited, en-tête Retry-After) ou vingt fichiers déjà en attente (upload_quota_exceeded).",
+            ),
+            "500": COMMON_ERRORS["500"],
+          },
+        },
+      },
+      "/fichiers/{id}": {
+        get: {
+          tags: ["Messages"],
+          operationId: "getMyFile",
+          summary: "Un de mes fichiers",
+          description:
+            "Les octets du fichier, avec son type. Une image s'affiche (inline), un PDF, un HEIC ou un HEIF se télécharge (attachment). Jamais en cache partagé.",
+          security: SESSION,
+          parameters: [idParameter("Identifiant du fichier.")],
+          responses: {
+            "200": {
+              description: "Le fichier.",
+              content: {
+                "application/octet-stream": {
+                  schema: { type: "string", format: "binary" },
+                },
+              },
+            },
+            ...AUTH_ERRORS,
+            "404": errorRef(
+              "Fichier introuvable ou d'un autre client (not_found).",
             ),
             ...COMMON_ERRORS,
           },

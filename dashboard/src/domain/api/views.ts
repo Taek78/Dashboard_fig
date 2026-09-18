@@ -11,9 +11,10 @@ import type {
   ApiProduct,
   ApiQuote,
   ApiSession,
+  ApiUpload,
 } from "@/domain/api/responses";
 import type { CustomerSession } from "@/domain/api/session";
-import { ORDER_BOOKING_HORIZON_DAYS } from "@/domain/api/types";
+import { API_BASE_PATH, ORDER_BOOKING_HORIZON_DAYS } from "@/domain/api/types";
 import { ARTICLE_CATEGORY_LABELS } from "@/domain/articles/category";
 import type { Article } from "@/domain/articles/types";
 import {
@@ -37,7 +38,7 @@ import {
 import type { Customer } from "@/domain/customers/types";
 import { MESSAGE_STATUS_LABELS } from "@/domain/messages/status";
 import { MESSAGE_SUBJECT_LABELS } from "@/domain/messages/subject";
-import type { Message } from "@/domain/messages/types";
+import type { Message, MessageUpload } from "@/domain/messages/types";
 import type { CustomerNotification } from "@/domain/notifications/types";
 import { CANCELLATION_REASON_LABELS } from "@/domain/orders/cancellation";
 import { DELIVERY_FEE_TIERS } from "@/domain/orders/delivery-fee";
@@ -283,6 +284,23 @@ export function orderView(order: Order): ApiOrder {
   };
 }
 
+/** Chemin d'un fichier hébergé sur l'API : relatif, l'application connaît déjà l'hôte. */
+export function uploadPath(id: string): string {
+  return `${API_BASE_PATH}/fichiers/${encodeURIComponent(id)}`;
+}
+
+/** Un fichier téléversé, sans ses octets ni son propriétaire. */
+export function uploadView(upload: MessageUpload): ApiUpload {
+  return {
+    id: upload.id,
+    fileName: upload.fileName,
+    contentType: upload.contentType,
+    sizeBytes: upload.sizeBytes,
+    url: uploadPath(upload.id),
+    createdAt: upload.createdAt,
+  };
+}
+
 /** Sans le nom du traitant ni les marques internes (épingle, important). */
 export function messageView(message: Message): ApiMessage {
   return {
@@ -296,7 +314,15 @@ export function messageView(message: Message): ApiMessage {
     statusLabel: MESSAGE_STATUS_LABELS[message.status],
     receivedAt: message.receivedAt,
     handledAt: message.handledAt,
-    attachments: message.attachments.map((file) => ({ ...file })),
+    attachments: message.attachments.map((file) => ({
+      id: file.id,
+      fileId: file.uploadId,
+      fileName: file.fileName,
+      contentType: file.contentType,
+      sizeBytes: file.sizeBytes,
+      url:
+        file.uploadId !== null ? uploadPath(file.uploadId) : (file.url ?? ""),
+    })),
   };
 }
 

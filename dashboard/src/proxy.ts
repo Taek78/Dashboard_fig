@@ -7,7 +7,7 @@ import type { Session } from "next-auth";
 import { getToken } from "next-auth/jwt";
 import { auth } from "@/auth";
 import { canViewSection, homeFor } from "@/domain/auth/roles";
-import { buildCsp } from "@/lib/csp";
+import { cspFor } from "@/lib/csp";
 import { getEnv } from "@/lib/env";
 import {
   isPrefetch,
@@ -78,7 +78,7 @@ function guard(request: AuthedRequest): Response {
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = buildCsp(nonce, process.env.NODE_ENV === "development");
+  const csp = cspFor(pathname, nonce, process.env.NODE_ENV === "development");
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("content-security-policy", csp);

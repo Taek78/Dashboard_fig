@@ -58,6 +58,13 @@ const dateTimeFr = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "Europe/Paris",
 });
 
+const clockTime = new Intl.DateTimeFormat("fr-FR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Europe/Paris",
+});
+
 const kilos = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 
 /** Centimes entiers → montant en euros formaté. 2490 → "24,90 €" */
@@ -172,4 +179,28 @@ export function formatOrdersCount(count: number): string {
   const label = count > 1 ? "commandes" : "commande";
 
   return `${count}${NBSP}${label}`;
+}
+
+/**
+ * Horloge du tableau de bord, heure de Paris : le jour en toutes lettres
+ * (majuscule initiale, année comprise) et l'heure en chiffres séparés, pour
+ * que chacun puisse défiler seul. "2026-09-18T12:07:00Z" → { day: "Vendredi
+ * 18 septembre 2026", digits: ["1", "4", "0", "7"] }.
+ */
+export function clockParts(iso: string): {
+  day: string;
+  digits: [string, string, string, string];
+} {
+  const date = new Date(iso);
+  const day = dayLongFr.format(date);
+  const [hours = "00", minutes = "00"] = clockTime.format(date).split(":");
+  return {
+    day: day.charAt(0).toUpperCase() + day.slice(1),
+    digits: [hours[0]!, hours[1]!, minutes[0]!, minutes[1]!],
+  };
+}
+
+/** Millisecondes jusqu'à la prochaine minute pleine (au moins 1) : l'horloge change pile à :00. */
+export function msUntilNextMinute(epochMs: number): number {
+  return 60_000 - (epochMs % 60_000) || 60_000;
 }

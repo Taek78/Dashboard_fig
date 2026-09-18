@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clockParts,
   endSentence,
   formatDateFr,
   formatDateTimeFr,
@@ -9,6 +10,7 @@ import {
   formatPeriodFr,
   formatQuantity,
   formatSlot,
+  msUntilNextMinute,
   toTelHref,
 } from "@/lib/format";
 
@@ -146,5 +148,39 @@ describe("formatDayLongFr", () => {
   it("écrit le jour en toutes lettres, sans décalage de fuseau", () => {
     expect(plain(formatDayLongFr("2026-09-07"))).toBe("lundi 7 septembre 2026");
     expect(plain(formatDayLongFr("2026-01-01"))).toBe("jeudi 1 janvier 2026");
+  });
+});
+
+describe("clockParts", () => {
+  it("donne le jour en toutes lettres et l'heure de Paris, chiffre par chiffre", () => {
+    expect(clockParts("2026-09-18T12:07:00.000Z")).toEqual({
+      day: "Vendredi 18 septembre 2026",
+      digits: ["1", "4", "0", "7"],
+    });
+  });
+
+  it("minuit s'écrit 00:00 et appartient au nouveau jour", () => {
+    expect(clockParts("2026-09-18T22:00:30.000Z")).toEqual({
+      day: "Samedi 19 septembre 2026",
+      digits: ["0", "0", "0", "0"],
+    });
+  });
+
+  it("suit l'heure d'hiver de Paris (UTC+1)", () => {
+    expect(clockParts("2026-12-01T08:05:00.000Z").digits).toEqual([
+      "0",
+      "9",
+      "0",
+      "5",
+    ]);
+  });
+});
+
+describe("msUntilNextMinute", () => {
+  it("attend jusqu'à la prochaine minute pleine, une minute entière pile sur :00", () => {
+    const at = (iso: string) => msUntilNextMinute(Date.parse(iso));
+    expect(at("2026-09-18T12:07:58.000Z")).toBe(2_000);
+    expect(at("2026-09-18T12:07:00.250Z")).toBe(59_750);
+    expect(at("2026-09-18T12:07:00.000Z")).toBe(60_000);
   });
 });

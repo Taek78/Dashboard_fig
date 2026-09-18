@@ -178,6 +178,24 @@ test.describe("comptes et profil", () => {
     await expect(page).toHaveURL(/\/(\?.*)?$/);
 
     await page.goto("/profil");
+    // Carte d'identité au-dessus du mot de passe (refonte du 2026-09-18).
+    const identity = page.getByRole("heading", {
+      level: 2,
+      name: "Gestion E2E",
+    });
+    await expect(identity).toBeVisible();
+    await expect(page.getByText("Gestionnaire", { exact: true })).toBeVisible();
+    await expect(page.getByText("e2e-gestion@fig-demo.invalid")).toBeVisible();
+    const password = page.getByRole("heading", {
+      level: 2,
+      name: "Changer mon mot de passe",
+    });
+    expect((await identity.boundingBox())!.y).toBeLessThan(
+      (await password.boundingBox())!.y,
+    );
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Mes accès" }),
+    ).toHaveCount(0);
     await page.getByLabel("Mot de passe actuel").fill("mauvais-mot-de-passe");
     await page.getByLabel("Nouveau mot de passe").fill("Gestion-nouveau-mdp-1");
     await page.getByLabel("Confirmer le nouveau").fill("Gestion-nouveau-mdp-1");

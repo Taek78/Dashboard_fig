@@ -1,3 +1,4 @@
+import { DELETE_CONFIRMED } from "@/lib/confirm-delete";
 import { z } from "zod";
 import {
   ARTICLE_CATEGORIES,
@@ -49,7 +50,7 @@ export const updateArticleSchema = z.object({ articleId: articleIdSchema });
 /** La confirmation est aussi vérifiée côté serveur : pas de suppression par un POST forgé. */
 export const deleteArticleSchema = z.object({
   articleId: articleIdSchema,
-  confirm: z.literal("oui"),
+  confirm: z.literal(DELETE_CONFIRMED),
 });
 
 export const articleVisibilitySchema = z.object({

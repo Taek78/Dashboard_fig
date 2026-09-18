@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 import Form from "next/form";
-import { CalendarRange } from "lucide-react";
 import { DateRangeFields } from "@/components/date-range-fields";
 import { PeriodChooser } from "@/components/metrics/period-chooser";
-import { Button } from "@/components/ui/button";
 import {
   CUSTOM_PERIOD,
   type DateRange,
@@ -20,9 +18,11 @@ import { formatPeriodFr } from "@/lib/format";
  * la page (interrupteur HT / TTC) ; la zone de dates « Du / Au » sur sa propre
  * surface, présente SEULEMENT pour « Période personnalisée » (PeriodChooser la
  * monte dès le choix ; DateRangeFields : une date = ce jour-là, dates
- * inversées = erreur rouge et la période prédéfinie reste affichée) ; enfin le
- * bouton « Afficher » et, en légende, la période effectivement affichée. Tout
- * passe par l'URL (partageable, sans JavaScript) ; `hiddenFields` conserve les
+ * inversées = erreur rouge et la période prédéfinie reste affichée) ; enfin,
+ * en légende, la période effectivement affichée, précédée du bouton
+ * « Afficher » pour la seule période personnalisée (une période prédéfinie
+ * s'applique dès son choix, PeriodChooser, 2026-09-18). Tout passe par l'URL
+ * (partageable, et utilisable sans JavaScript) ; `hiddenFields` conserve les
  * autres paramètres de la page (mode TVA…). La clé sur PeriodChooser le
  * remonte quand l'URL change (choix et valeurs des champs relus).
  */
@@ -68,6 +68,11 @@ export function PeriodForm({
         period={period}
         customPeriod={customPeriod}
         tools={tools}
+        legend={
+          <p className="text-muted-foreground text-xs">
+            Période affichée : {formatPeriodFr(range.from, range.to)}.
+          </p>
+        }
         zone={
           <DateRangeFields
             variant="zone"
@@ -82,15 +87,6 @@ export function PeriodForm({
       >
         {children}
       </PeriodChooser>
-      <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:items-center @xl/main:gap-4">
-        <Button type="submit" className="w-full @xl/main:w-auto">
-          <CalendarRange />
-          Afficher
-        </Button>
-        <p className="text-muted-foreground text-xs">
-          Période affichée : {formatPeriodFr(range.from, range.to)}.
-        </p>
-      </div>
     </Form>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Carrot, LogOut } from "lucide-react";
-import { logout } from "@/app/connexion/actions";
+import { Carrot } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
+import { SocialLinks } from "@/components/social-links";
 import {
   Sidebar,
   SidebarContent,
@@ -12,21 +12,19 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { ROLE_LABELS } from "@/domain/auth/roles";
 import type { CurrentUser } from "@/domain/auth/types";
-import { initials } from "@/lib/text";
 
 /*
- * Colonne de gauche : en-tête (logo + nom), navigation, pied (utilisateur connecté
- * et déconnexion). Composant serveur : il assemble ; Sidebar et NavMain sont
- * clients en interne.
+ * Colonne de gauche : en-tête (logo + nom), navigation, et au pied FIG sur
+ * Facebook et Instagram (SocialLinks, 2026-09-18). L'utilisateur connecté et
+ * « Se déconnecter » sont dans le bandeau, en haut à droite (SiteHeader). Composant
+ * serveur : il assemble ; Sidebar et NavMain sont clients en interne.
  *
  * variant="inset" : le contenu devient une carte flottante. collapsible="icon" :
  * la barre se réduit à ses icônes.
  *
- * L'utilisateur vient de verifySession() via le layout. Le bouton de
- * déconnexion est un formulaire dont l'action est la Server Action logout :
- * fonctionne sans JavaScript, pas de "use client".
+ * L'utilisateur vient de verifySession() via le layout (son rôle choisit les
+ * sections du menu).
  */
 export function AppSidebar({ user }: { user: CurrentUser }) {
   return (
@@ -59,39 +57,8 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
         <NavMain role={user.role} />
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              render={<div />}
-              tooltip={`${user.name} · ${ROLE_LABELS[user.role]}`}
-            >
-              <div className="bg-gradient-brand flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm">
-                {initials(user.name)}
-              </div>
-              <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="text-sidebar-foreground/70 text-xs">
-                  {ROLE_LABELS[user.role]}
-                </span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <form action={logout}>
-              <SidebarMenuButton
-                render={<button type="submit" />}
-                tooltip="Se déconnecter"
-              >
-                <LogOut />
-                <span className="group-data-[collapsible=icon]:hidden">
-                  Se déconnecter
-                </span>
-              </SidebarMenuButton>
-            </form>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="border-sidebar-border border-t">
+        <SocialLinks />
       </SidebarFooter>
 
       <SidebarRail />

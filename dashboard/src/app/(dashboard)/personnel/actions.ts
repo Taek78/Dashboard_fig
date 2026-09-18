@@ -1,5 +1,6 @@
 "use server";
 
+import { DELETE_CONFIRM_MESSAGE } from "@/lib/confirm-delete";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logSecurity } from "@/data/security-log";
@@ -27,7 +28,7 @@ const MESSAGES = {
     "Vérifiez la saisie : prénom, nom, e-mail valide, téléphone, date d'entrée.",
   emailTaken: "Une personne de l'équipe a déjà cet e-mail.",
   notFound: "Cette personne n'est plus dans l'équipe.",
-  confirm: "Tapez SUPPRIMER pour confirmer la suppression.",
+  confirm: DELETE_CONFIRM_MESSAGE,
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
 } as const;
 

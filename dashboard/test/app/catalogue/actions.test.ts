@@ -190,26 +190,25 @@ describe("duplicateProduct", () => {
 });
 
 describe("removeProduct", () => {
-  it("supprime avec le mot de confirmation puis redirige vers le catalogue", async () => {
+  it("supprime avec la confirmation de la fenêtre puis redirige vers le catalogue", async () => {
     const { redirectedTo } = await run(removeProduct, {
       productId: "prd-0003",
-      confirm: "SUPPRIMER",
+      confirm: "oui",
     });
     expect(redirectedTo).toBe("/catalogue?supprime=1");
     expect(await getProduct("prd-0003")).toBeNull();
   });
 
-  it("refuse sans le mot exact, même par POST forgé", async () => {
+  it("refuse sans la confirmation de la fenêtre, même par POST forgé", async () => {
     expect(
       (
         await run(removeProduct, {
           productId: "prd-0003",
-          confirm: "oui",
         })
       ).result,
     ).toEqual({
       status: "error",
-      message: "Tapez SUPPRIMER pour confirmer la suppression.",
+      message: "Confirmez la suppression dans la fenêtre de confirmation.",
     });
     expect((await getProduct("prd-0003"))?.name).toBe("Bananes");
   });
@@ -219,7 +218,7 @@ describe("removeProduct", () => {
       (
         await run(removeProduct, {
           productId: "prd-9999",
-          confirm: "SUPPRIMER",
+          confirm: "oui",
         })
       ).result,
     ).toEqual({ status: "error", message: "Ce produit n'existe plus." });

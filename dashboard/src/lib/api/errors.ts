@@ -35,6 +35,11 @@ export const API_ERROR_CODES = [
   "not_cancellable",
   "order_not_owned",
   "already_sent",
+  "length_required",
+  "file_empty",
+  "content_type_mismatch",
+  "upload_quota_exceeded",
+  "attachment_unavailable",
   "service_unavailable",
   "internal_error",
 ] as const;

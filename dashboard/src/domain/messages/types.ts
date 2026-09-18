@@ -20,9 +20,45 @@ export type MessageAttachment = {
   fileName: string;
   contentType: AttachmentContentType;
   sizeBytes: number;
-  /** URL de téléchargement posée par l'application FIG (question 22). */
-  url: string;
+  /**
+   * Fichier hébergé par le dashboard (2026-09-18) : l'identifiant de son
+   * téléversement, servi par /messages/fichiers/[id]. Null seulement pour une
+   * pièce jointe antérieure, qui porte alors une `url` externe.
+   */
+  uploadId: string | null;
+  /** URL externe d'une pièce jointe antérieure au stockage, sinon null. */
+  url: string | null;
 };
+
+/*
+ * Fichier téléversé par l'application, avant et après son rattachement à un
+ * message : ses métadonnées, jamais ses octets (lus seulement au service).
+ */
+export type MessageUpload = {
+  id: string;
+  customerId: string;
+  fileName: string;
+  contentType: AttachmentContentType;
+  sizeBytes: number;
+  /** ISO 8601. */
+  createdAt: string;
+  /** ISO 8601 du rattachement à un message, sinon null. */
+  attachedAt: string | null;
+};
+
+/** Ce que la source reçoit pour stocker un fichier (déjà vérifié par checkAttachmentFile). */
+export type NewMessageUpload = {
+  customerId: string;
+  fileName: string;
+  contentType: AttachmentContentType;
+  bytes: Uint8Array;
+};
+
+/** Un fichier servi : ses métadonnées et ses octets. */
+export type MessageUploadFile = Pick<
+  MessageUpload,
+  "id" | "customerId" | "fileName" | "contentType" | "sizeBytes"
+> & { bytes: Uint8Array };
 
 /*
  * Ce que le message montre de la commande que le client a jointe : quand elle
@@ -105,16 +141,18 @@ export type MessageActor = { id: string; name: string };
 /*
  * Ce que l'API transmet à la source pour DÉPOSER un message écrit par la
  * personne dans l'application (2026-09-17) : objet, texte, commande jointe
- * (déjà vérifiée comme la sienne) et métadonnées des pièces jointes (dix au
- * plus, fichiers hébergés par l'application). La source attribue les
- * identifiants et l'instant de réception.
+ * (déjà vérifiée comme la sienne) et les identifiants des fichiers téléversés
+ * (dix au plus, dans l'ordre voulu). La source vérifie, dans la même
+ * transaction, que chacun est à cette personne et n'est encore rattaché à
+ * rien (sinon AttachmentUnavailableError), recopie leurs métadonnées et les
+ * marque rattachés. Elle attribue les identifiants et l'instant de réception.
  */
 export type NewMessage = {
   customerId: string;
   subject: MessageSubject;
   body: string;
   orderId: string | null;
-  attachments: Omit<MessageAttachment, "id">[];
+  uploadIds: string[];
 };
 
 /*

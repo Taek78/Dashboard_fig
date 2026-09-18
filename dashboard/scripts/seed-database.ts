@@ -5,7 +5,11 @@ import { articlesFixtures } from "@/domain/articles/fixtures";
 import { communitiesFixtures } from "@/domain/communities/fixtures";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import { engagementFixtures } from "@/domain/engagement/fixtures";
-import { messagesFixtures } from "@/domain/messages/fixtures";
+import {
+  messagesFixtures,
+  messageUploadsFixtures,
+  uploadFixtureBytes,
+} from "@/domain/messages/fixtures";
 import { notificationsFixtures } from "@/domain/notifications/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { productsFixtures } from "@/domain/products/fixtures";
@@ -81,6 +85,7 @@ export async function seedDatabase(
     await tx.delete(schema.customerSessions);
     await tx.delete(schema.customerLoginCodes);
     await tx.delete(schema.messageAttachments);
+    await tx.delete(schema.messageUploads);
     await tx.delete(schema.customerMessages);
     await tx.delete(schema.customerNotifications);
     await tx.delete(schema.orderEvents);
@@ -299,9 +304,32 @@ export async function seedDatabase(
         fileName: a.fileName,
         contentType: a.contentType,
         sizeBytes: a.sizeBytes,
+        uploadId: a.uploadId,
         url: a.url,
       })),
     );
+    // Les fichiers avant les pièces jointes qui les citent ; rattachés à la réception du message.
+    const attachedAt = new Map(
+      messagesFixtures.flatMap((m) =>
+        m.attachments.map((a) => [a.uploadId, new Date(m.receivedAt)] as const),
+      ),
+    );
+    if (messageUploadsFixtures.length > 0) {
+      await tx.insert(schema.messageUploads).values(
+        messageUploadsFixtures.map((u) => {
+          const bytes = Buffer.from(uploadFixtureBytes(u));
+          return {
+            id: u.id,
+            customerId: u.customerId,
+            fileName: u.fileName,
+            contentType: u.contentType,
+            sizeBytes: bytes.length,
+            bytes,
+            attachedAt: attachedAt.get(u.id) ?? null,
+          };
+        }),
+      );
+    }
     if (attachments.length > 0) {
       await tx.insert(schema.messageAttachments).values(attachments);
     }

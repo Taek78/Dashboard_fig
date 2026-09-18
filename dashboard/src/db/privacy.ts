@@ -20,6 +20,7 @@ import {
   customers,
   customerSessions,
   loginAttempts,
+  messageUploads,
   orderEvents,
   orders,
   securityEvents,
@@ -62,8 +63,9 @@ const hasOpenOrder = sql`exists (
  * précisions libres des annulations. Un message est du texte écrit par la
  * personne, souvent nominatif (« mon code d'entrée est… ») : le garder
  * viderait l'anonymisation de son sens. Ses pièces jointes partent avec lui
- * (ON DELETE CASCADE) ; les fichiers eux-mêmes vivent chez l'application FIG,
- * qui doit les effacer de son côté (question 19). La rue identifie un foyer :
+ * (ON DELETE CASCADE), et les FICHIERS qu'elle a téléversés (photos, PDF,
+ * hébergés ici depuis le 2026-09-18) sont supprimés avec leurs octets, joints
+ * ou non à un message. La rue identifie un foyer :
  * seuls ville et code postal restent sur les commandes.
  * API (2026-09-17) : les sessions de l'application sont supprimées (la
  * personne ne peut plus se connecter à un compte effacé) avec les réponses
@@ -84,6 +86,9 @@ async function eraseFreeText(tx: DbExecutor, customerId: string) {
   await tx
     .delete(customerMessages)
     .where(eq(customerMessages.customerId, customerId));
+  await tx
+    .delete(messageUploads)
+    .where(eq(messageUploads.customerId, customerId));
   await tx
     .delete(customerNotifications)
     .where(eq(customerNotifications.customerId, customerId));
@@ -195,6 +200,8 @@ export type PurgeReport = {
   customerLoginCodes: number;
   customerSessions: number;
   idempotencyKeys: number;
+  /** Fichiers téléversés jamais joints à un message, hors durée (supprimés si apply). */
+  unattachedUploads: number;
   /** Clients inactifs (anonymisés si apply). */
   inactiveCustomers: string[];
   /** Clients inactifs non anonymisés par --apply (une commande ouverte entre-temps). */
@@ -243,19 +250,24 @@ export async function purgeExpiredData(
     apiIdempotencyKeys.expiresAt,
     cutoffs.idempotencyKeysBefore,
   );
+  const staleUploads = and(
+    isNull(messageUploads.attachedAt),
+    lt(messageUploads.createdAt, cutoffs.unattachedUploadsBefore),
+  );
   const inactiveCustomers = await findInactiveCustomers(
     db,
     cutoffs.customerActivitySince,
   );
 
   if (!apply) {
-    const [[events], [attempts], [codes], [sessions], [keys]] =
+    const [[events], [attempts], [codes], [sessions], [keys], [uploads]] =
       await Promise.all([
         db.select({ n: count() }).from(securityEvents).where(oldEvents),
         db.select({ n: count() }).from(loginAttempts).where(staleAttempts),
         db.select({ n: count() }).from(customerLoginCodes).where(staleCodes),
         db.select({ n: count() }).from(customerSessions).where(staleSessions),
         db.select({ n: count() }).from(apiIdempotencyKeys).where(staleKeys),
+        db.select({ n: count() }).from(messageUploads).where(staleUploads),
       ]);
     return {
       cutoffs,
@@ -264,6 +276,7 @@ export async function purgeExpiredData(
       customerLoginCodes: codes?.n ?? 0,
       customerSessions: sessions?.n ?? 0,
       idempotencyKeys: keys?.n ?? 0,
+      unattachedUploads: uploads?.n ?? 0,
       inactiveCustomers,
       skippedCustomers: [],
     };
@@ -289,6 +302,10 @@ export async function purgeExpiredData(
     .delete(apiIdempotencyKeys)
     .where(staleKeys)
     .returning({ key: apiIdempotencyKeys.key });
+  const deletedUploads = await db
+    .delete(messageUploads)
+    .where(staleUploads)
+    .returning({ id: messageUploads.id });
   const skippedCustomers: string[] = [];
   for (const [index, id] of inactiveCustomers.entries()) {
     const outcome = await anonymizeCustomerRows(db, id, now);
@@ -311,6 +328,7 @@ export async function purgeExpiredData(
     customerLoginCodes: deletedCodes.length,
     customerSessions: deletedSessions.length,
     idempotencyKeys: deletedKeys.length,
+    unattachedUploads: deletedUploads.length,
     inactiveCustomers,
     skippedCustomers,
   };

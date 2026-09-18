@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
 import { login } from "./helpers";
@@ -149,9 +150,27 @@ test.describe("messages", () => {
     await expect(
       message.getByRole("heading", { name: /2 pièces jointes/ }),
     ).toBeVisible();
-    await expect(
-      message.getByRole("link", { name: /fraises-abimees\.jpg/ }),
-    ).toBeVisible();
+    // La tuile (son nom commence par celui du fichier), pas son icône « Télécharger … ».
+    const photo = message.getByRole("link", { name: /^fraises-abimees\.png/ });
+    await expect(photo).toBeVisible();
+    // L'image hébergée est VRAIMENT chargée (route du back-office, session du
+    // gestionnaire), pas un cadre vide.
+    await expect
+      .poll(() =>
+        photo
+          .locator("img")
+          .evaluate(
+            (img: HTMLImageElement) => img.complete && img.naturalWidth,
+          ),
+      )
+      .toBe(64);
+    const href = await photo.getAttribute("href");
+    expect(href).toMatch(/^\/messages\/fichiers\/upl-0001$/);
+    const file = await page.request.get(href!);
+    expect(file.status()).toBe(200);
+    expect(file.headers()["content-type"]).toBe("image/png");
+    expect(file.headers()["x-content-type-options"]).toBe("nosniff");
+    expect(file.headers()["content-security-policy"]).toContain("sandbox");
     // La commande jointe, en détail : dates, adresse, préparateur et livreur.
     const order = message.getByRole("region", {
       name: /Commande jointe par le client/,
@@ -219,6 +238,77 @@ test.describe("messages", () => {
       .getByRole("button", { name: "Marquer comme non traité" })
       .click();
     await expect(message).toContainText("Non traité");
+  });
+
+  test("la pastille des pièces jointes ouvre un menu qui télécharge l'archive", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/messages");
+    const card = page
+      .getByRole("article", { name: "Message de Amel Benali" })
+      .first();
+    const trigger = card.getByRole("button", {
+      name: "2 pièces jointes : télécharger",
+    });
+    await trigger.click();
+    const menu = page.getByRole("menu");
+    // Une seule option depuis le 2026-09-18 : « Visualiser » a été retirée.
+    await expect(menu.getByRole("menuitem")).toHaveText([
+      "Télécharger les pièces jointes",
+    ]);
+
+    // L'archive ZIP : nommée d'après le client et le jour, et c'est un vrai ZIP.
+    const archive = page.waitForEvent("download");
+    await menu
+      .getByRole("menuitem", { name: "Télécharger les pièces jointes" })
+      .click();
+    const zip = await archive;
+    expect(zip.suggestedFilename()).toBe(
+      "pieces-jointes-amel-benali-2026-09-08.zip",
+    );
+    const bytes = await readFile((await zip.path())!);
+    expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+    expect(bytes.includes(Buffer.from("fraises-abimees.png"))).toBe(true);
+
+    // Échap referme le menu et rend le focus à la pastille.
+    await trigger.click();
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toBeHidden();
+    await expect(trigger).toBeFocused();
+
+    // La page « Visualiser » n'existe plus.
+    const gone = await page.request.get("/messages/msg-0001/pieces-jointes");
+    expect(gone.status()).toBe(404);
+  });
+
+  test("chaque tuile porte une icône qui télécharge la pièce, image comprise", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/messages/msg-0001");
+    const message = page.getByRole("article", {
+      name: "Message de Amel Benali",
+    });
+    const icon = message.getByRole("link", {
+      name: "Télécharger fraises-abimees.png",
+    });
+    await expect(icon).toBeVisible();
+    const download = page.waitForEvent("download");
+    await icon.click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe("fraises-abimees.png");
+    const bytes = await readFile((await file.path())!);
+    expect([...bytes.subarray(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    // La page n'a pas changé : on télécharge, on ne quitte pas le message.
+    await expect(page).toHaveURL(/\/messages\/msg-0001$/);
+
+    // Un PDF a aussi son icône, qui vise la route du fichier en téléchargement.
+    await page.goto("/messages/msg-0003");
+    await expect(
+      page.getByRole("link", { name: "Télécharger bon-de-livraison.pdf" }),
+    ).toHaveAttribute("href", "/messages/fichiers/upl-0003?telecharger=1");
   });
 
   test("la section figure dans le menu des rôles qui y ont accès", async ({

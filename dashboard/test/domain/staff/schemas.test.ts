@@ -74,15 +74,18 @@ describe("parseStaffKind / deleteStaffSchema", () => {
     expect(parseStaffKind({})).toBeUndefined();
   });
 
-  it("la suppression exige le mot SUPPRIMER", () => {
-    expect(
-      deleteStaffSchema.safeParse({ staffId: "stf-0001", confirm: "SUPPRIMER" })
-        .success,
-    ).toBe(true);
+  it("la suppression exige la confirmation de la fenêtre (confirm=oui)", () => {
     expect(
       deleteStaffSchema.safeParse({ staffId: "stf-0001", confirm: "oui" })
         .success,
+    ).toBe(true);
+    expect(
+      deleteStaffSchema.safeParse({ staffId: "stf-0001", confirm: "SUPPRIMER" })
+        .success,
     ).toBe(false);
+    expect(deleteStaffSchema.safeParse({ staffId: "stf-0001" }).success).toBe(
+      false,
+    );
   });
 });
 

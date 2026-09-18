@@ -192,6 +192,7 @@ describe("toMessage", () => {
           fileName: a.fileName,
           contentType: a.contentType,
           sizeBytes: a.sizeBytes,
+          uploadId: a.uploadId,
           url: a.url,
         }))
         .toReversed();

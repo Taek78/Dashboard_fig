@@ -43,6 +43,46 @@ export function apiRequest(
   return new Request(`http://localhost:3126${path}`, { method, headers, body });
 }
 
+/** Un fichier à téléverser : nom, type annoncé, octets. */
+export type UploadFile = { name: string; type: string; bytes: Uint8Array };
+
+/**
+ * Requête multipart/form-data comme l'enverrait l'application (champ
+ * « fichier » par défaut), avec son Content-Length : le corps est sérialisé
+ * d'abord, puisque la route refuse un téléversement sans longueur annoncée.
+ */
+export async function uploadRequest(
+  path: string,
+  options: {
+    token?: string;
+    files?: UploadFile[];
+    field?: string;
+    headers?: Record<string, string>;
+  } = {},
+): Promise<Request> {
+  const form = new FormData();
+  for (const file of options.files ?? []) {
+    form.append(
+      options.field ?? "fichier",
+      new File([new Uint8Array(file.bytes)], file.name, { type: file.type }),
+    );
+  }
+  const encoded = new Response(form);
+  const body = new Uint8Array(await encoded.arrayBuffer());
+  const headers: Record<string, string> = {
+    "x-forwarded-for": API_IP,
+    "content-type": encoded.headers.get("content-type") ?? "",
+    "content-length": String(body.length),
+    ...options.headers,
+  };
+  if (options.token) headers.authorization = `Bearer ${options.token}`;
+  return new Request(`http://localhost:3126${path}`, {
+    method: "POST",
+    headers,
+    body,
+  });
+}
+
 export async function readJson<T = Record<string, unknown>>(
   response: Response,
 ): Promise<T> {

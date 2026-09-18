@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DELETE_CONFIRM_WORD,
   deleteProductSchema,
   parseProductFilters,
   productInputSchema,
@@ -173,17 +172,18 @@ describe("productInputSchema", () => {
 });
 
 describe("deleteProductSchema", () => {
-  it("exige l'id et le mot de confirmation exact", () => {
+  it("exige l'id et la confirmation de la fenêtre (confirm=oui)", () => {
     expect(
       deleteProductSchema.safeParse({
         productId: "prd-0001",
-        confirm: DELETE_CONFIRM_WORD,
+        confirm: "oui",
       }).success,
     ).toBe(true);
+    // L'ancien mot à taper ne vaut plus confirmation.
     expect(
       deleteProductSchema.safeParse({
         productId: "prd-0001",
-        confirm: "supprimer",
+        confirm: "SUPPRIMER",
       }).success,
     ).toBe(false);
     expect(

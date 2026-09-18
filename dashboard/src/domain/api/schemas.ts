@@ -4,9 +4,6 @@ import {
   ARTICLES_LIMIT_DEFAULT,
   ARTICLES_LIMIT_MAX,
   CITY_MAX_LENGTH,
-  ATTACHMENT_FILE_NAME_MAX_LENGTH,
-  ATTACHMENT_MAX_BYTES,
-  ATTACHMENT_URL_MAX_LENGTH,
   FULL_NAME_MAX_LENGTH,
   FULL_NAME_MIN_LENGTH,
   IDEMPOTENCY_KEY_MAX_LENGTH,
@@ -27,10 +24,7 @@ import {
   POSTAL_CODE_PATTERN,
   REFERRAL_CODE_MAX_LENGTH,
 } from "@/domain/api/types";
-import {
-  ATTACHMENT_CONTENT_TYPES,
-  MAX_ATTACHMENTS,
-} from "@/domain/messages/attachment";
+import { MAX_ATTACHMENTS } from "@/domain/messages/attachment";
 import { MESSAGE_SUBJECTS } from "@/domain/messages/subject";
 import { CANCELLATION_DETAIL_MAX_LENGTH } from "@/domain/orders/cancellation";
 import { slotEndFor } from "@/domain/orders/slot";
@@ -161,19 +155,26 @@ export const cancelOrderSchema = z.object({
 
 /* ---------- Messages ---------- */
 
-export const attachmentInputSchema = z.object({
-  fileName: z.string().trim().min(1).max(ATTACHMENT_FILE_NAME_MAX_LENGTH),
-  contentType: z.enum(ATTACHMENT_CONTENT_TYPES),
-  sizeBytes: z.number().int().min(1).max(ATTACHMENT_MAX_BYTES),
-  /** Fichier hébergé par l'application, en https (question 22). */
-  url: z.url({ protocol: /^https$/ }).max(ATTACHMENT_URL_MAX_LENGTH),
-});
-
 export const createMessageSchema = z.object({
   subject: z.enum(MESSAGE_SUBJECTS),
   body: z.string().trim().min(1).max(MESSAGE_BODY_MAX_LENGTH),
   orderId: apiIdSchema.nullable().optional(),
-  attachments: z.array(attachmentInputSchema).max(MAX_ATTACHMENTS).optional(),
+  /**
+   * Fichiers déjà téléversés par POST /fichiers (2026-09-18), dans l'ordre
+   * d'affichage ; chacun doit être à la personne et n'être joint à rien.
+   */
+  fileIds: z.array(apiIdSchema).max(MAX_ATTACHMENTS).optional(),
+  /*
+   * Ancienne forme (métadonnées et URL chez l'application), REFUSÉE et non
+   * ignorée : un client pas encore à jour verrait sinon son message créé sans
+   * ses pièces jointes, en croyant les avoir envoyées.
+   */
+  attachments: z
+    .never({
+      error:
+        "Les pièces jointes se téléversent d'abord par POST /fichiers, puis se citent dans fileIds.",
+    })
+    .optional(),
 });
 
 /* ---------- Listes et en-têtes ---------- */

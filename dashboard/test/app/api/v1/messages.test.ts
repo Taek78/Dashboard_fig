@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { messagesFixtures } from "@/domain/messages/fixtures";
+import {
+  messagesFixtures,
+  messageUploadsFixtures,
+  uploadFixtureBytes,
+} from "@/domain/messages/fixtures";
 import { ordersFixtures } from "@/domain/orders/fixtures";
 import {
   apiRequest,
@@ -7,13 +11,15 @@ import {
   readJson,
   sessionTokenFor,
   TEST_AUTH_SECRET,
+  uploadRequest,
 } from "../../../support/api";
 
 /*
  * Routes des messages « Nous contacter » de l'API sur la base de test :
  * « mes messages » par curseur (parité avec les fixtures), dépôt idempotent
- * avec pièces jointes, commande jointe qui doit être la mienne, et lecture
- * du dépôt par la boîte de réception du dashboard.
+ * avec des fichiers téléversés d'abord par POST /fichiers, commande jointe et
+ * fichiers qui doivent être les miens (et libres), et lecture du dépôt par la
+ * boîte de réception du dashboard.
  */
 const hoisted = vi.hoisted(() => ({ logged: [] as Record<string, unknown>[] }));
 vi.mock("server-only", () => ({}));
@@ -36,10 +42,47 @@ const { isolateEachTest } = await import("../../../support/test-database");
 isolateEachTest();
 
 const messages = await import("@/app/api/v1/messages/route");
+const fichiers = await import("@/app/api/v1/fichiers/route");
 const { getMessage, getMessagesPage } = await import("@/data/messages");
 
 const AMEL = "cli-0001";
 const key = () => `cle-${crypto.randomUUID()}`;
+
+const PNG = uploadFixtureBytes(messageUploadsFixtures[0]!);
+const PDF = uploadFixtureBytes(
+  messageUploadsFixtures.find((u) => u.contentType === "application/pdf")!,
+);
+
+/** Téléverse un fichier pour la session et renvoie son identifiant. */
+async function upload(
+  token: string,
+  name: string,
+  type: string,
+  bytes: Uint8Array,
+): Promise<string> {
+  const res = await fichiers.POST(
+    await uploadRequest("/api/v1/fichiers", {
+      token,
+      files: [{ name, type, bytes }],
+      headers: { "idempotency-key": key() },
+    }),
+    params({}),
+  );
+  expect(res.status).toBe(201);
+  return (await readJson<{ id: string }>(res)).id;
+}
+
+/** Dépose un message qui cite ces fichiers ; renvoie la réponse. */
+function postMessage(token: string, fileIds: string[]) {
+  return messages.POST(
+    apiRequest("POST", "/api/v1/messages", {
+      token,
+      body: { subject: "other", body: "Bonjour", fileIds },
+      headers: { "idempotency-key": key() },
+    }),
+    params({}),
+  );
+}
 
 type MessageBody = {
   id: string;
@@ -48,7 +91,13 @@ type MessageBody = {
   orderId: string | null;
   orderReference: string | null;
   status: string;
-  attachments: { fileName: string; contentType: string; url: string }[];
+  attachments: {
+    fileId: string | null;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    url: string;
+  }[];
 };
 
 describe("GET /api/v1/messages", () => {
@@ -78,27 +127,17 @@ describe("GET /api/v1/messages", () => {
 });
 
 describe("POST /api/v1/messages", () => {
-  it("dépose une demande avec ses pièces jointes, visible dans la boîte de réception, et la rejoue à l'identique", async () => {
+  it("dépose une demande avec ses fichiers téléversés, visible dans la boîte de réception, et la rejoue à l'identique", async () => {
     const token = await sessionTokenFor(AMEL, TEST_AUTH_SECRET);
     const mine = ordersFixtures.find((o) => o.customer.id === AMEL)!;
+    const photo = await upload(token, "panier.png", "image/png", PNG);
+    const ticket = await upload(token, "ticket.pdf", "application/pdf", PDF);
     const message = {
       subject: "missing_or_damaged",
       body: "Il manquait les fraises dans mon panier.\nMerci d'avance.",
       orderId: mine.id,
-      attachments: [
-        {
-          fileName: "panier.jpg",
-          contentType: "image/jpeg",
-          sizeBytes: 240_000,
-          url: "https://fichiers.fig.invalid/messages/panier.jpg",
-        },
-        {
-          fileName: "ticket.pdf",
-          contentType: "application/pdf",
-          sizeBytes: 12_000,
-          url: "https://fichiers.fig.invalid/messages/ticket.pdf",
-        },
-      ],
+      // Dans l'ordre voulu, qui n'est pas celui du téléversement.
+      fileIds: [ticket, photo],
     };
     const k = key();
     const created = await messages.POST(
@@ -118,9 +157,21 @@ describe("POST /api/v1/messages", () => {
       orderReference: mine.reference,
       status: "untreated",
     });
-    expect(body.attachments.map((a) => a.fileName)).toEqual([
-      "panier.jpg",
-      "ticket.pdf",
+    expect(body.attachments).toEqual([
+      expect.objectContaining({
+        fileId: ticket,
+        fileName: "ticket.pdf",
+        contentType: "application/pdf",
+        sizeBytes: PDF.length,
+        url: `/api/v1/fichiers/${ticket}`,
+      }),
+      expect.objectContaining({
+        fileId: photo,
+        fileName: "panier.png",
+        contentType: "image/png",
+        sizeBytes: PNG.length,
+        url: `/api/v1/fichiers/${photo}`,
+      }),
     ]);
     expect(hoisted.logged.at(-1)).toMatchObject({
       type: "api_message_created",
@@ -129,7 +180,7 @@ describe("POST /api/v1/messages", () => {
 
     const stored = await getMessage(body.id);
     expect(stored?.customer.id).toBe(AMEL);
-    expect(stored?.attachments).toHaveLength(2);
+    expect(stored?.attachments.map((a) => a.uploadId)).toEqual([ticket, photo]);
     expect(stored?.order?.id).toBe(mine.id);
     const inbox = await getMessagesPage({ status: "untreated" }, 1);
     expect(inbox.items.some((m) => m.id === body.id)).toBe(true);
@@ -147,7 +198,7 @@ describe("POST /api/v1/messages", () => {
     expect((await readJson<MessageBody>(replay)).id).toBe(body.id);
   });
 
-  it("refuse la commande d'un autre client, un format de fichier hors liste, et l'absence de clé", async () => {
+  it("refuse la commande d'un autre client, l'ancienne forme des pièces jointes, et l'absence de clé", async () => {
     const token = await sessionTokenFor(AMEL, TEST_AUTH_SECRET);
     const other = ordersFixtures.find((o) => o.customer.id !== AMEL)!;
     const foreign = await messages.POST(
@@ -163,7 +214,8 @@ describe("POST /api/v1/messages", () => {
       code: "order_not_owned",
     });
 
-    const video = await messages.POST(
+    // Métadonnées et URL chez l'application : refusé, jamais ignoré en silence.
+    const legacy = await messages.POST(
       apiRequest("POST", "/api/v1/messages", {
         token,
         body: {
@@ -171,10 +223,10 @@ describe("POST /api/v1/messages", () => {
           body: "Bonjour",
           attachments: [
             {
-              fileName: "v.mp4",
-              contentType: "video/mp4",
+              fileName: "v.jpg",
+              contentType: "image/jpeg",
               sizeBytes: 10,
-              url: "https://x.invalid/v.mp4",
+              url: "https://x.invalid/v.jpg",
             },
           ],
         },
@@ -182,8 +234,8 @@ describe("POST /api/v1/messages", () => {
       }),
       params({}),
     );
-    expect(video.status).toBe(422);
-    expect((await readJson(video)).error).toMatchObject({
+    expect(legacy.status).toBe(422);
+    expect((await readJson(legacy)).error).toMatchObject({
       code: "validation_failed",
     });
 
@@ -195,5 +247,31 @@ describe("POST /api/v1/messages", () => {
       params({}),
     );
     expect(noKey.status).toBe(400);
+  });
+
+  it("refuse un fichier d'une autre personne, déjà joint, inconnu ou cité deux fois, sans rien créer", async () => {
+    const token = await sessionTokenFor(AMEL, TEST_AUTH_SECRET);
+    const free = await upload(token, "libre.png", "image/png", PNG);
+    const foreign = messageUploadsFixtures.find((u) => u.customerId !== AMEL)!;
+    const attached = messageUploadsFixtures.find((u) => u.customerId === AMEL)!;
+    const before = (await getMessagesPage({}, 1)).total;
+
+    for (const fileIds of [
+      [free, foreign.id],
+      [attached.id],
+      ["upl-inconnu"],
+      [free, free],
+    ]) {
+      const res = await postMessage(token, fileIds);
+      expect(res.status).toBe(422);
+      expect((await readJson(res)).error).toMatchObject({
+        code: "attachment_unavailable",
+      });
+    }
+    expect((await getMessagesPage({}, 1)).total).toBe(before);
+
+    // Le fichier libre l'est resté : un envoi correct le joint, une seule fois.
+    expect((await postMessage(token, [free])).status).toBe(201);
+    expect((await postMessage(token, [free])).status).toBe(422);
   });
 });

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  customType,
   date,
   index,
   integer,
@@ -149,6 +150,11 @@ export const notificationKindEnum = pgEnum("notification_kind", [
 
 const timestampTz = (name: string) =>
   timestamp(name, { withTimezone: true, mode: "date" });
+
+/** Octets bruts (bytea) : postgres.js les rend en Buffer. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 /* ---------- Comptes du back-office ---------- */
 export const users = pgTable(
@@ -648,9 +654,53 @@ export const customerMessages = pgTable(
 );
 
 /*
- * Pièces jointes : seulement des MÉTADONNÉES. Le fichier lui-même est stocké
- * par l'application FIG, qui écrit ici son URL (question 22) ; le dashboard ne
- * téléverse rien et n'héberge rien.
+ * Fichiers téléversés par l'application FIG pour un message (2026-09-18,
+ * question 22 tranchée : le dashboard héberge, dans la base). Un fichier est
+ * envoyé AVANT le message (POST /api/v1/fichiers), puis rattaché à la
+ * création du message (`attached_at` posé, une seule fois). Un fichier jamais
+ * rattaché est supprimé par la purge (RETENTION.unattachedUploadHours).
+ *
+ * Les octets sont dans cette table seule : la liste et la fiche d'un message
+ * ne lisent que les métadonnées recopiées dans message_attachments, et
+ * `bytes` n'est lu qu'au service du fichier. La base garantit que la taille
+ * annoncée est celle des octets, et la borne de 5 Mo (ATTACHMENT_MAX_BYTES,
+ * src/domain/messages/upload.ts).
+ */
+export const messageUploads = pgTable(
+  "message_uploads",
+  {
+    id: text("id").primaryKey(),
+    customerId: text("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "cascade" }),
+    fileName: text("file_name").notNull(),
+    contentType: attachmentContentTypeEnum("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    bytes: bytea("bytes").notNull(),
+    createdAt: timestampTz("created_at").notNull().defaultNow(),
+    attachedAt: timestampTz("attached_at"),
+  },
+  (t) => [
+    index("message_uploads_customer_idx").on(t.customerId),
+    index("message_uploads_unattached_idx")
+      .on(t.createdAt)
+      .where(sql`${t.attachedAt} IS NULL`),
+    check(
+      "message_uploads_size_range",
+      sql`${t.sizeBytes} > 0 AND ${t.sizeBytes} <= 5000000`,
+    ),
+    check(
+      "message_uploads_size_matches",
+      sql`octet_length(${t.bytes}) = ${t.sizeBytes}`,
+    ),
+  ],
+);
+
+/*
+ * Pièces jointes d'un message : les MÉTADONNÉES (nom, format, taille) et la
+ * source du fichier. Depuis la migration 0018, le fichier est hébergé ici
+ * (`upload_id` → message_uploads) ; `url` ne reste que pour une ligne
+ * antérieure qui pointerait chez l'application. Exactement l'une des deux.
  *
  * La limite de dix documents par message est tenue par la base, et non par un
  * écran : `position` bornée à 0..9 et unique par message. Elle doit rester
@@ -667,16 +717,27 @@ export const messageAttachments = pgTable(
     fileName: text("file_name").notNull(),
     contentType: attachmentContentTypeEnum("content_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
-    url: text("url").notNull(),
+    uploadId: text("upload_id").references(() => messageUploads.id, {
+      onDelete: "cascade",
+    }),
+    url: text("url"),
   },
   (t) => [
     uniqueIndex("message_attachments_position_idx").on(t.messageId, t.position),
+    uniqueIndex("message_attachments_upload_idx").on(t.uploadId),
     check(
       "message_attachments_position_range",
       sql`${t.position} >= 0 AND ${t.position} < 10`,
     ),
     check("message_attachments_size_positive", sql`${t.sizeBytes} > 0`),
-    check("message_attachments_url_https", sql`${t.url} ~ '^https://'`),
+    check(
+      "message_attachments_url_https",
+      sql`${t.url} IS NULL OR ${t.url} ~ '^https://'`,
+    ),
+    check(
+      "message_attachments_one_source",
+      sql`(${t.uploadId} IS NULL) <> (${t.url} IS NULL)`,
+    ),
   ],
 );
 

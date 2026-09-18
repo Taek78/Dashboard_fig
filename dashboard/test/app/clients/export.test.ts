@@ -44,7 +44,7 @@ describe("GET /clients/[id]/export", () => {
       /^attachment; filename="fig-client-cli-0001-\d{4}-\d{2}-\d{2}\.json"$/,
     );
     const body = await response.json();
-    expect(body.format).toBe("fig-donnees-client/3");
+    expect(body.format).toBe("fig-donnees-client/4");
     expect(body.customer.id).toBe("cli-0001");
     expect(body.customer.referralCode).toBe("Benali#0001");
     expect(body.customer.referralCount).toBe(2);

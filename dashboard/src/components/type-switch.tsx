@@ -63,7 +63,7 @@ export function TypeSwitch({
               key={option.value}
               title={option.title}
               className={cn(
-                "text-muted-foreground has-focus-visible:ring-ring relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium transition-colors select-none has-checked:font-semibold has-checked:shadow-xs has-checked:ring-1 has-focus-visible:ring-2",
+                "text-muted-foreground has-focus-visible:ring-ring relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium transition-colors select-none has-checked:font-semibold has-checked:shadow-xs has-checked:ring-1 has-focus-visible:ring-2 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-95",
                 TONES[option.tone],
               )}
             >

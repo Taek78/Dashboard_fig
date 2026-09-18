@@ -27,6 +27,7 @@ const ADMIN_PAGES = [
   "/articles",
   "/clients",
   "/messages",
+  "/messages/msg-0001",
   "/personnel",
   "/metriques",
   "/comptes",

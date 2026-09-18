@@ -319,6 +319,16 @@ export const SECURITY_EVENT_META: Record<
     label: "Message déposé par un client",
     tone: "normal",
   },
+  api_file_uploaded: {
+    family: "application",
+    label: "Fichier téléversé par un client",
+    tone: "normal",
+  },
+  api_file_rejected: {
+    family: "application",
+    label: "Fichier refusé",
+    tone: "alerte",
+  },
   api_notification_sent: {
     family: "application",
     label: "Notification marquée envoyée",
@@ -481,6 +491,10 @@ export function describeSecurityEvent(
       return `client ${or(text(d.customerId))}, commande ${or(text(d.orderId))}`;
     case "api_message_created":
       return `client ${or(text(d.customerId))}, message ${or(text(d.messageId))}`;
+    case "api_file_uploaded":
+      return `client ${or(text(d.customerId))}, fichier ${or(text(d.uploadId))}`;
+    case "api_file_rejected":
+      return `client ${or(text(d.customerId))}, motif ${or(text(d.reason))}`;
     case "api_notification_sent":
       return `notification ${or(text(d.notificationId))}`;
     case "api_service_forbidden":

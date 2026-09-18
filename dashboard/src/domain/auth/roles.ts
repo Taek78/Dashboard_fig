@@ -89,6 +89,15 @@ export function canHandleMessages(role: Role): boolean {
   return WRITERS.includes(role);
 }
 
+/**
+ * Ouvrir une pièce jointe hébergée (photo, PDF) : quiconque lit la boîte de
+ * réception (admin, gestionnaire, lecture), jamais le livreur. Même règle que
+ * la section, redite ici parce que la route du fichier la vérifie seule.
+ */
+export function canReadMessageFiles(role: Role): boolean {
+  return SECTION_ACCESS[role].includes("/messages");
+}
+
 /* ---------- Lecture : quelles sections chaque rôle peut ouvrir ---------- */
 
 /** Les sections du back-office, par préfixe d'URL (la racine n'est que "/"). */

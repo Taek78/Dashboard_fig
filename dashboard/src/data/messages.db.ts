@@ -20,6 +20,7 @@ import {
   customerMessages,
   customers,
   messageAttachments,
+  messageUploads,
   orders,
   staff,
 } from "@/db/schema";
@@ -40,6 +41,7 @@ import {
   type KeysetPage,
   type KeysetResult,
 } from "@/lib/api/cursor";
+import { AttachmentUnavailableError } from "@/lib/attachment-error";
 import { containsPattern, normalize } from "@/lib/text";
 
 /*
@@ -65,12 +67,69 @@ import { containsPattern, normalize } from "@/lib/text";
  *   d'écraser le geste d'un collègue.
  */
 
+/*
+ * Rattache des fichiers téléversés à un message neuf, dans la transaction de
+ * sa création. Les fichiers sont VERROUILLÉS (FOR UPDATE) puis relus : ils
+ * doivent tous être à cette personne et libres. Deux créations simultanées
+ * qui citent le même fichier ne le rattachent donc qu'une fois : la seconde
+ * attend le verrou, relit attached_at posé et échoue. Un doublon dans la
+ * liste compte comme indisponible (un fichier = une pièce jointe).
+ */
+async function attachUploads(
+  tx: DbExecutor,
+  messageId: string,
+  customerId: string,
+  uploadIds: readonly string[],
+): Promise<void> {
+  const rows = await tx
+    .select({
+      id: messageUploads.id,
+      fileName: messageUploads.fileName,
+      contentType: messageUploads.contentType,
+      sizeBytes: messageUploads.sizeBytes,
+    })
+    .from(messageUploads)
+    .where(
+      and(
+        inArray(messageUploads.id, [...uploadIds]),
+        eq(messageUploads.customerId, customerId),
+        isNull(messageUploads.attachedAt),
+      ),
+    )
+    .for("update");
+  const found = new Map(rows.map((row) => [row.id, row]));
+  const missing = uploadIds.filter(
+    (uploadId, i) => !found.has(uploadId) || uploadIds.indexOf(uploadId) !== i,
+  );
+  if (missing.length > 0) throw new AttachmentUnavailableError(missing);
+
+  await tx.insert(messageAttachments).values(
+    uploadIds.map((uploadId, position) => {
+      const upload = found.get(uploadId);
+      if (!upload) throw new AttachmentUnavailableError([uploadId]);
+      return {
+        id: randomUUID(),
+        messageId,
+        position,
+        fileName: upload.fileName,
+        contentType: upload.contentType,
+        sizeBytes: upload.sizeBytes,
+        uploadId,
+      };
+    }),
+  );
+  await tx
+    .update(messageUploads)
+    .set({ attachedAt: sql`now()` })
+    .where(inArray(messageUploads.id, [...uploadIds]));
+}
+
 /** Pièces jointes du message courant, dans l'ordre, au format MessageAttachmentRow. */
 const attachmentsJson = sql<MessageAttachmentRow[]>`(
   select coalesce(json_agg(json_build_object(
     'id', a.id, 'messageId', a.message_id, 'position', a.position,
     'fileName', a.file_name, 'contentType', a.content_type,
-    'sizeBytes', a.size_bytes, 'url', a.url
+    'sizeBytes', a.size_bytes, 'uploadId', a.upload_id, 'url', a.url
   ) order by a.position), '[]'::json)
   from ${messageAttachments} a
   where a.message_id = ${customerMessages.id}
@@ -251,18 +310,8 @@ export const messagesDb: MessagesSource = {
         body: input.body,
         orderId: input.orderId,
       });
-      if (input.attachments.length > 0) {
-        await tx.insert(messageAttachments).values(
-          input.attachments.map((file, position) => ({
-            id: randomUUID(),
-            messageId: id,
-            position,
-            fileName: file.fileName,
-            contentType: file.contentType,
-            sizeBytes: file.sizeBytes,
-            url: file.url,
-          })),
-        );
+      if (input.uploadIds.length > 0) {
+        await attachUploads(tx, id, input.customerId, input.uploadIds);
       }
       const message = await reload(tx, id);
       if (!message) throw new Error("Message inséré introuvable.");

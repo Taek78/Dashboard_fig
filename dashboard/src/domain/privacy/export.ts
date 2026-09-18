@@ -39,7 +39,8 @@ import { toIso } from "@/lib/days";
  * son travail et non ce qu'elle sait de la personne. Seul l'état « demande
  * traitée » est repris : il la concerne.
  */
-export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/3";
+/** Version 4 (2026-09-18) : pièce jointe hébergée désignée par `fileId`, `url` devenue facultative. */
+export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/4";
 
 export type CustomerDataExport = {
   format: typeof CUSTOMER_EXPORT_FORMAT;
@@ -81,11 +82,18 @@ export type CustomerDataExport = {
     orderReference: string | null;
     /** Demande traitée par l'équipe. */
     handled: boolean;
+    /**
+     * Métadonnées des pièces jointes. Un fichier hébergé par le dashboard est
+     * désigné par `fileId` (ses octets ne sont pas dans ce JSON : ils se
+     * remettent à part, depuis la fiche du message) ; `url` ne sert qu'à une
+     * pièce jointe antérieure hébergée ailleurs.
+     */
     attachments: {
       fileName: string;
       contentType: string;
       sizeBytes: number;
-      url: string;
+      fileId: string | null;
+      url: string | null;
     }[];
   }[];
   notifications: {
@@ -205,6 +213,7 @@ export function buildCustomerExport(
           fileName: file.fileName,
           contentType: file.contentType,
           sizeBytes: file.sizeBytes,
+          fileId: file.uploadId,
           url: file.url,
         })),
       })),

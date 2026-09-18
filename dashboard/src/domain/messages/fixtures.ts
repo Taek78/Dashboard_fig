@@ -10,10 +10,11 @@ import { scenarioOrders } from "@/domain/orders/scenario";
  * RELUS dans les fixtures voisines, et une incohérence lève au chargement
  * plutôt que de produire un seed silencieusement faux.
  *
- * Les pièces jointes pointent vers des URL `https://fichiers.fig.invalid/…` :
- * un domaine réservé aux exemples, qui ne résout nulle part. Le stockage réel
- * est une question ouverte (question 22) ; ces fixtures n'en préjugent pas et
- * ne téléchargent rien.
+ * Les pièces jointes sont de VRAIS petits fichiers hébergés comme en
+ * production (2026-09-18) : deux images PNG unies et un PDF d'une page vide,
+ * écrits ici en base64. Leur taille est celle de leurs octets (la base le
+ * vérifie) et leur format est celui de leur signature : le seed passe par les
+ * mêmes gardes qu'un téléversement réel.
  */
 function customerOf(id: string): Message["customer"] {
   const customer = scenarioCustomers.find((c) => c.id === id);
@@ -46,17 +47,65 @@ function firstOrderOf(customerId: string): Message["order"] {
   };
 }
 
-function photo(
-  n: number,
-  fileName: string,
-  sizeBytes: number,
-): MessageAttachment {
+/* Deux images PNG 64 × 48 unies (rouge fraise, brun carton) et un PDF d'une page vide. */
+const RED_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAARElEQVR42u3PQQkAAAgEsItjCOMbzAp+hcEKLFP9WgQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEroEFOy7gxNbYcboAAAAASUVORK5CYII=";
+const BROWN_PNG =
+  "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAARElEQVR42u3PQQkAAAgEsMtkHJMY3wp+hcEKLNP1WgQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEroEF2NwwtcDDpIUAAAAASUVORK5CYII=";
+const BLANK_PDF =
+  "JVBERi0xLjQKMSAwIG9iajw8L1R5cGUvQ2F0YWxvZy9QYWdlcyAyIDAgUj4+ZW5kb2JqCjIgMCBvYmo8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZS9QYWdlL1BhcmVudCAyIDAgUi9NZWRpYUJveFswIDAgMjAwIDEwMF0+PmVuZG9iagp0cmFpbGVyPDwvUm9vdCAxIDAgUj4+CiUlRU9GCg==";
+
+/** Un fichier téléversé du seed : ses métadonnées et ses octets en base64. */
+export type MessageUploadFixture = {
+  id: string;
+  customerId: string;
+  fileName: string;
+  contentType: MessageAttachment["contentType"];
+  base64: string;
+};
+
+export const messageUploadsFixtures: readonly MessageUploadFixture[] = [
+  {
+    id: "upl-0001",
+    customerId: "cli-0001",
+    fileName: "fraises-abimees.png",
+    contentType: "image/png",
+    base64: RED_PNG,
+  },
+  {
+    id: "upl-0002",
+    customerId: "cli-0001",
+    fileName: "sac-livraison.png",
+    contentType: "image/png",
+    base64: BROWN_PNG,
+  },
+  {
+    id: "upl-0003",
+    customerId: "cli-0002",
+    fileName: "bon-de-livraison.pdf",
+    contentType: "application/pdf",
+    base64: BLANK_PDF,
+  },
+];
+
+/** Octets décodés d'un fichier du seed. */
+export function uploadFixtureBytes(upload: MessageUploadFixture): Uint8Array {
+  return Uint8Array.from(atob(upload.base64), (c) => c.charCodeAt(0));
+}
+
+/** La pièce jointe `n` (att-000n), faite du fichier upl-000n. */
+function attached(n: number): MessageAttachment {
+  const uploadId = `upl-${String(n).padStart(4, "0")}`;
+  const upload = messageUploadsFixtures.find((u) => u.id === uploadId);
+  if (!upload)
+    throw new Error(`Fixture message : fichier ${uploadId} introuvable`);
   return {
     id: `att-${String(n).padStart(4, "0")}`,
-    fileName,
-    contentType: "image/jpeg",
-    sizeBytes,
-    url: `https://fichiers.fig.invalid/messages/${fileName}`,
+    fileName: upload.fileName,
+    contentType: upload.contentType,
+    sizeBytes: uploadFixtureBytes(upload).length,
+    uploadId,
+    url: null,
   };
 }
 
@@ -67,10 +116,7 @@ export const messagesFixtures: readonly Message[] = [
     subject: "missing_or_damaged",
     body: "Bonjour,\n\nLa barquette de fraises de ma commande de mardi était écrasée, le jus avait coulé dans le sac.\nJe vous mets deux photos. Le reste du panier était parfait.\n\nMerci d'avance,\nAmel",
     order: firstOrderOf("cli-0001"),
-    attachments: [
-      photo(1, "fraises-abimees.jpg", 842_310),
-      photo(2, "sac-livraison.jpg", 651_204),
-    ],
+    attachments: [attached(1), attached(2)],
     status: "untreated",
     receivedAt: "2026-09-08T07:42:00.000Z",
     pinnedAt: "2026-09-08T08:10:00.000Z",
@@ -98,15 +144,7 @@ export const messagesFixtures: readonly Message[] = [
     subject: "order_error",
     body: "Bonjour, j'ai reçu des courgettes à la place des aubergines.\nCe n'est pas grave mais je préfère vous le signaler pour la prochaine fois.",
     order: firstOrderOf("cli-0002"),
-    attachments: [
-      {
-        id: "att-0003",
-        fileName: "bon-de-livraison.pdf",
-        contentType: "application/pdf",
-        sizeBytes: 128_940,
-        url: "https://fichiers.fig.invalid/messages/bon-de-livraison.pdf",
-      },
-    ],
+    attachments: [attached(3)],
     status: "treated",
     receivedAt: "2026-09-07T10:18:00.000Z",
     pinnedAt: null,

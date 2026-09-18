@@ -9,13 +9,15 @@ import { messageView, pageView } from "@/domain/api/views";
 import { decodeCursor } from "@/lib/api/cursor";
 import { ApiError } from "@/lib/api/errors";
 import { parseJson, readJsonText, readQuery } from "@/lib/api/request";
+import { AttachmentUnavailableError } from "@/lib/attachment-error";
 
 /*
  * GET /api/v1/messages?limit=&cursor= : mes demandes « Nous contacter », les
  * plus récentes d'abord, avec leur état de traitement.
  * POST /api/v1/messages (Idempotency-Key obligatoire) : dépose une demande
- * (objet, texte, commande jointe qui doit être la mienne, pièces jointes
- * hébergées par l'application : métadonnées et URL https, dix au plus).
+ * (objet, texte, commande jointe qui doit être la mienne, pièces jointes :
+ * identifiants de fichiers déjà téléversés par POST /fichiers, dix au plus,
+ * chacun à moi et joint à rien d'autre).
  */
 export const dynamic = "force-dynamic";
 const METHODS = ["GET", "POST"] as const;
@@ -52,7 +54,17 @@ export const POST = apiRoute(METHODS, async (call) => {
       subject: input.subject,
       body: input.body,
       orderId,
-      attachments: input.attachments ?? [],
+      uploadIds: input.fileIds ?? [],
+    }).catch((error: unknown) => {
+      if (error instanceof AttachmentUnavailableError) {
+        throw new ApiError(
+          422,
+          "attachment_unavailable",
+          "Un fichier joint est introuvable, n'est pas le vôtre ou est déjà joint à un autre message.",
+          { details: { fileIds: error.uploadIds } },
+        );
+      }
+      throw error;
     });
     logSecurity({
       type: "api_message_created",

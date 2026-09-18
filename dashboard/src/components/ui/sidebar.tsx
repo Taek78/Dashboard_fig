@@ -10,6 +10,7 @@ import { cn } from "cn";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PanelToggleIcon } from "@/components/ui/panel-toggle-icon";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -17,7 +18,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { MenuIcon, PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 
 // Panneau mobile chargé seulement quand l'écran est étroit (sidebar-mobile.tsx).
 const SidebarMobileSheet = dynamic(
@@ -68,6 +68,23 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+
+  /*
+   * Coulissement fluide (2026-09-18) : sur un écran étroit, le code du
+   * panneau mobile est chargé à l'avance, au premier moment libre, et non au
+   * premier toucher du bouton (ce téléchargement faisait la latence de la
+   * première ouverture). Sur ordinateur, il n'est jamais chargé.
+   */
+  React.useEffect(() => {
+    if (!isMobile) return;
+    const preload = () => void import("@/components/ui/sidebar-mobile");
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(preload, { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = setTimeout(preload, 300);
+    return () => clearTimeout(id);
+  }, [isMobile]);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -205,7 +222,7 @@ function Sidebar({
       <div
         data-slot="sidebar-gap"
         className={cn(
-          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+          "relative w-(--sidebar-width) bg-transparent transition-[width] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           variant === "floating" || variant === "inset"
@@ -217,7 +234,7 @@ function Sidebar({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[left,width] data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:-right-(--sidebar-width) motion-reduce:transition-none md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
@@ -243,23 +260,22 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, state, isMobile } = useSidebar();
+  const { toggleSidebar, state, isMobile, openMobile } = useSidebar();
 
   /*
-   * L'icône dit ce que fera le clic : sur mobile un hamburger ouvre le panneau ;
-   * sur grand écran un panneau avec flèche vers la gauche replie la barre, vers
-   * la droite la déplie. Le libellé (lecteurs d'écran et infobulle) suit.
+   * L'icône MONTRE ce que commande le bouton (PanelToggleIcon, 2026-09-18) :
+   * le panneau du menu dans sa fenêtre, large quand il est ouvert, réduit à
+   * un liseré sinon, et un chevron tourné vers le sens du prochain clic ; tout
+   * s'anime à chaque clic, le bouton s'enfonce à l'appui. Même icône sur
+   * mobile (panneau fermé, chevron vers la droite : « ouvrir »). Le libellé
+   * (lecteurs d'écran et infobulle) dit l'action.
    */
   const label = isMobile
     ? "Ouvrir le menu"
     : state === "expanded"
       ? "Replier le menu"
       : "Déplier le menu";
-  const Icon = isMobile
-    ? MenuIcon
-    : state === "expanded"
-      ? PanelLeftCloseIcon
-      : PanelLeftOpenIcon;
+  const open = isMobile ? openMobile : state === "expanded";
 
   return (
     <Button
@@ -269,14 +285,18 @@ function SidebarTrigger({
       size="icon-sm"
       title={label}
       aria-label={label}
-      className={cn(className)}
+      aria-expanded={open}
+      className={cn(
+        "group/trigger motion-safe:transition-transform motion-safe:active:scale-90",
+        className,
+      )}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
       }}
       {...props}
     >
-      <Icon />
+      <PanelToggleIcon open={open} />
     </Button>
   );
 }
@@ -311,7 +331,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "bg-background relative flex w-full flex-1 flex-col md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+        "bg-background relative flex w-full flex-1 flex-col transition-[margin] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className,
       )}
       {...props}

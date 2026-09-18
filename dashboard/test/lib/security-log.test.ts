@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatSecurityEvent } from "@/lib/security-log";
-import { buildCsp } from "@/lib/csp";
+import { buildCsp, cspFor, FILE_CSP } from "@/lib/csp";
 
 describe("formatSecurityEvent", () => {
   it("produit une ligne JSON horodatée avec le type et les champs de l'événement", () => {
@@ -30,5 +30,15 @@ describe("buildCsp", () => {
     expect(csp.split("script-src")[1]?.split(";")[0]).not.toContain(
       "unsafe-inline",
     );
+  });
+});
+
+describe("cspFor", () => {
+  it("un fichier envoyé par un client n'exécute rien et s'ouvre en origine opaque ; les pages gardent la leur", () => {
+    expect(cspFor("/messages/fichiers/upl-0001", "n", false)).toBe(FILE_CSP);
+    expect(FILE_CSP).toContain("default-src 'none'");
+    expect(FILE_CSP).toContain("sandbox");
+    expect(cspFor("/messages/msg-0001", "n", false)).toBe(buildCsp("n", false));
+    expect(cspFor("/messages/fichiers", "n", false)).toBe(buildCsp("n", false));
   });
 });

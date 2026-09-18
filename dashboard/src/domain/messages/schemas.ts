@@ -20,6 +20,9 @@ import { parsePeriodInput } from "@/domain/orders/schemas";
  */
 export const messageIdSchema = z.string().trim().min(1).max(64);
 
+/** Identifiant d'un fichier téléversé, lu dans l'URL de la route qui le sert. */
+export const uploadIdSchema = z.string().trim().min(1).max(64);
+
 /*
  * Recherche et filtres de la liste. Clés d'URL en français
  * (?q=…&statut=…&objet=…&du=…&au=…&important=oui), clés de code en anglais :

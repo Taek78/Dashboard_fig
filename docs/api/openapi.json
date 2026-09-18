@@ -3,7 +3,7 @@
   "info": {
     "title": "API FIG",
     "version": "1.0.0",
-    "description": "API HTTP du back-office FIG pour l'application (clients) et son serveur (notifications). Toutes les réponses sont en JSON UTF-8 ; les montants en centimes d'euro, les quantités en grammes (unit « g ») ou en pièces (unit « piece »), les instants en ISO 8601 UTC, les jours AAAA-MM-JJ et les heures HH:mm (Europe/Paris). Chaque clé de vocabulaire (statut, objet, catégorie…) est accompagnée de son libellé français.\n\nAccès des clients : POST /auth/code envoie un code à six chiffres par mail (valable 10 minutes, 5 essais) ; POST /auth/session l'échange contre un jeton de session (180 jours), à envoyer en « Authorization: Bearer <jeton> » ; une adresse inconnue s'inscrit dans le même appel (champ signup). Le serveur de l'application utilise la clé de service (API_SERVICE_KEY) sur les routes /service.\n\nErreurs : { \"error\": { \"code\", \"message\", \"details\"? } }, code stable parmi bad_request, unauthenticated, forbidden, not_found, method_not_allowed, conflict, payload_too_large, unsupported_media_type, validation_failed, rate_limited, idempotency_key_required, idempotency_key_reused, idempotency_in_progress, code_invalid, code_locked, signup_required, email_taken, referral_code_unknown, community_not_joinable, account_closed, quote_invalid, slot_unavailable, address_required, total_mismatch, not_cancellable, order_not_owned, already_sent, service_unavailable, internal_error ; message en français, affichable tel quel.\n\nListes : ?limit= (20 par défaut, 50 au plus) et ?cursor= (valeur nextCursor de la page précédente ; null à la fin). Lectures publiques (catalogue, articles, communautés) : Cache-Control public d'une minute et ETag (If-None-Match → 304). Réponses authentifiées : Cache-Control: private, no-store.",
+    "description": "API HTTP du back-office FIG pour l'application (clients) et son serveur (notifications). Toutes les réponses sont en JSON UTF-8 ; les montants en centimes d'euro, les quantités en grammes (unit « g ») ou en pièces (unit « piece »), les instants en ISO 8601 UTC, les jours AAAA-MM-JJ et les heures HH:mm (Europe/Paris). Chaque clé de vocabulaire (statut, objet, catégorie…) est accompagnée de son libellé français.\n\nAccès des clients : POST /auth/code envoie un code à six chiffres par mail (valable 10 minutes, 5 essais) ; POST /auth/session l'échange contre un jeton de session (180 jours), à envoyer en « Authorization: Bearer <jeton> » ; une adresse inconnue s'inscrit dans le même appel (champ signup). Le serveur de l'application utilise la clé de service (API_SERVICE_KEY) sur les routes /service.\n\nErreurs : { \"error\": { \"code\", \"message\", \"details\"? } }, code stable parmi bad_request, unauthenticated, forbidden, not_found, method_not_allowed, conflict, payload_too_large, unsupported_media_type, validation_failed, rate_limited, idempotency_key_required, idempotency_key_reused, idempotency_in_progress, code_invalid, code_locked, signup_required, email_taken, referral_code_unknown, community_not_joinable, account_closed, quote_invalid, slot_unavailable, address_required, total_mismatch, not_cancellable, order_not_owned, already_sent, length_required, file_empty, content_type_mismatch, upload_quota_exceeded, attachment_unavailable, service_unavailable, internal_error ; message en français, affichable tel quel.\n\nListes : ?limit= (20 par défaut, 50 au plus) et ?cursor= (valeur nextCursor de la page précédente ; null à la fin). Lectures publiques (catalogue, articles, communautés) : Cache-Control public d'une minute et ETag (If-None-Match → 304). Réponses authentifiées : Cache-Control: private, no-store.",
     "contact": {
       "name": "Équipe FIG"
     }
@@ -1721,6 +1721,9 @@
                 "id": {
                   "type": "string"
                 },
+                "fileId": {
+                  "type": ["string", "null"]
+                },
                 "fileName": {
                   "type": "string"
                 },
@@ -1745,10 +1748,18 @@
                   "maximum": 9007199254740991
                 },
                 "url": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Chemin du fichier sur cette API (/api/v1/fichiers/{id}, jeton de session exigé), ou URL externe d'une pièce jointe antérieure."
                 }
               },
-              "required": ["id", "fileName", "contentType", "sizeBytes", "url"],
+              "required": [
+                "id",
+                "fileId",
+                "fileName",
+                "contentType",
+                "sizeBytes",
+                "url"
+              ],
               "additionalProperties": false
             }
           }
@@ -1836,6 +1847,9 @@
                       "id": {
                         "type": "string"
                       },
+                      "fileId": {
+                        "type": ["string", "null"]
+                      },
                       "fileName": {
                         "type": "string"
                       },
@@ -1860,11 +1874,13 @@
                         "maximum": 9007199254740991
                       },
                       "url": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Chemin du fichier sur cette API (/api/v1/fichiers/{id}, jeton de session exigé), ou URL externe d'une pièce jointe antérieure."
                       }
                     },
                     "required": [
                       "id",
+                      "fileId",
                       "fileName",
                       "contentType",
                       "sizeBytes",
@@ -1896,6 +1912,55 @@
           }
         },
         "required": ["items", "nextCursor"],
+        "additionalProperties": false
+      },
+      "Upload": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+              "image/gif",
+              "image/webp",
+              "image/avif",
+              "image/heic",
+              "image/heif",
+              "image/tiff",
+              "image/bmp"
+            ]
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "url": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "description": "Instant ISO 8601 (UTC)."
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "contentType",
+          "sizeBytes",
+          "url",
+          "createdAt"
+        ],
         "additionalProperties": false
       },
       "Notification": {
@@ -3973,7 +4038,7 @@
         "tags": ["Messages"],
         "operationId": "createMessage",
         "summary": "Déposer une demande « Nous contacter »",
-        "description": "Objet, texte, commande jointe (la mienne) et pièces jointes hébergées par l'application (métadonnées et URL https, dix au plus, formats PDF et images). Idempotency-Key obligatoire.",
+        "description": "Objet, texte, commande jointe (la mienne) et pièces jointes : `fileIds`, identifiants de fichiers déjà téléversés par POST /fichiers (dix au plus, chacun à moi et joint à rien d'autre). Idempotency-Key obligatoire.",
         "security": [
           {
             "sessionToken": []
@@ -4029,50 +4094,17 @@
                       }
                     ]
                   },
-                  "attachments": {
+                  "fileIds": {
                     "maxItems": 10,
                     "type": "array",
                     "items": {
-                      "type": "object",
-                      "properties": {
-                        "fileName": {
-                          "type": "string",
-                          "minLength": 1,
-                          "maxLength": 200
-                        },
-                        "contentType": {
-                          "type": "string",
-                          "enum": [
-                            "application/pdf",
-                            "image/jpeg",
-                            "image/png",
-                            "image/gif",
-                            "image/webp",
-                            "image/avif",
-                            "image/heic",
-                            "image/heif",
-                            "image/tiff",
-                            "image/bmp"
-                          ]
-                        },
-                        "sizeBytes": {
-                          "type": "integer",
-                          "minimum": 1,
-                          "maximum": 50000000
-                        },
-                        "url": {
-                          "type": "string",
-                          "maxLength": 2000,
-                          "format": "uri"
-                        }
-                      },
-                      "required": [
-                        "fileName",
-                        "contentType",
-                        "sizeBytes",
-                        "url"
-                      ]
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
                     }
+                  },
+                  "attachments": {
+                    "not": {}
                   }
                 },
                 "required": ["subject", "body"]
@@ -4152,7 +4184,252 @@
             }
           },
           "422": {
-            "description": "Champs invalides (validation_failed), commande jointe inconnue ou d'un autre client (order_not_owned) ou clé réutilisée avec un autre corps (idempotency_key_reused).",
+            "description": "Champs invalides (validation_failed), commande jointe inconnue ou d'un autre client (order_not_owned), fichier introuvable, d'un autre client ou déjà joint (attachment_unavailable, details.fileIds) ou clé réutilisée avec un autre corps (idempotency_key_reused).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Trop de requêtes (rate_limited) : 600 par minute et par adresse IP, 120 par minute et par session ; en-tête Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne (internal_error), sans détail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fichiers": {
+      "post": {
+        "tags": ["Messages"],
+        "operationId": "uploadFile",
+        "summary": "Téléverser une pièce jointe",
+        "description": "Un fichier par appel, en multipart/form-data, champ « fichier » ; Content-Length obligatoire. PDF ou image (JPEG, PNG, GIF, WebP, AVIF, HEIC, HEIF, TIFF, BMP), 5 Mo au plus ; le format annoncé doit être celui du contenu. Le fichier est ensuite cité dans `fileIds` de POST /messages ; jamais joint, il est supprimé après 24 heures. Vingt fichiers en attente au plus par personne. Idempotency-Key obligatoire.",
+        "security": [
+          {
+            "sessionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Clé choisie par l'application pour cette création (8 à 128 caractères, ^[A-Za-z0-9_-]+$) : la même clé avec le même corps rejoue la réponse mémorisée pendant 24 heures (en-tête Idempotent-Replayed: true) ; avec un autre corps, 422 idempotency_key_reused ; en cours de traitement, 409 idempotency_in_progress.",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["fichier"],
+                "properties": {
+                  "fichier": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Fichier reçu, à joindre à un message.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Upload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Corps multipart illisible (bad_request) ou en-tête absent (idempotency_key_required).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent, invalide, expiré ou révoqué (unauthenticated).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Compte clôturé, données effacées (account_closed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Même clé en cours de traitement (idempotency_in_progress).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "411": {
+            "description": "Content-Length absent (length_required).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Plus de 5 Mo (payload_too_large).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Pas en multipart/form-data, ou format refusé (unsupported_media_type).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Aucun ou plusieurs fichiers (validation_failed), fichier vide (file_empty), contenu d'un autre format que celui annoncé (content_type_mismatch) ou clé réutilisée (idempotency_key_reused).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Trop de requêtes (rate_limited, en-tête Retry-After) ou vingt fichiers déjà en attente (upload_quota_exceeded).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne (internal_error), sans détail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fichiers/{id}": {
+      "get": {
+        "tags": ["Messages"],
+        "operationId": "getMyFile",
+        "summary": "Un de mes fichiers",
+        "description": "Les octets du fichier, avec son type. Une image s'affiche (inline), un PDF, un HEIC ou un HEIF se télécharge (attachment). Jamais en cache partagé.",
+        "security": [
+          {
+            "sessionToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identifiant du fichier.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Le fichier.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Jeton absent, invalide, expiré ou révoqué (unauthenticated).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Compte clôturé, données effacées (account_closed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Fichier introuvable ou d'un autre client (not_found).",
             "content": {
               "application/json": {
                 "schema": {

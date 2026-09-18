@@ -25,3 +25,26 @@ export function buildCsp(nonce: string, isDev: boolean): string {
     "object-src 'none'",
   ].join("; ");
 }
+
+/*
+ * Politique d'un FICHIER envoyé par un client et servi par notre domaine
+ * (pièce jointe d'un message) : rien ne se charge, rien ne s'exécute, et
+ * `sandbox` lui donne une origine opaque s'il est ouvert seul dans un onglet.
+ * Le proxy pose la CSP de chaque réponse et écraserait celle de la route :
+ * c'est donc lui qui choisit celle-ci pour ces chemins (cspFor).
+ */
+export const FILE_CSP = "default-src 'none'; frame-ancestors 'none'; sandbox";
+
+/** Chemins qui servent un fichier envoyé par un client. */
+export const FILE_PATH_PREFIXES = ["/messages/fichiers/"] as const;
+
+/** La CSP d'un chemin : celle d'un fichier, sinon celle des pages (buildCsp). */
+export function cspFor(
+  pathname: string,
+  nonce: string,
+  isDev: boolean,
+): string {
+  return FILE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ? FILE_CSP
+    : buildCsp(nonce, isDev);
+}

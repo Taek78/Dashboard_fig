@@ -212,7 +212,9 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Docker Compose** : `compose.yaml` décrit les services locaux : `db` (PostgreSQL de développement, port 5433) et `test-db` (base de test en mémoire, port 5434). `docker compose up -d --wait test-db` lance la seconde et attend qu'elle réponde (`npm run db:test`) ; `down` arrête, `down -v` efface les données.
 
-**Fil d'Ariane (breadcrumb)** (coquille) : la ligne « Commandes › Détail » du bandeau qui situe la page dans la navigation. Calculé par `breadcrumbFor(pathname)` (pur, testé) et rendu par `site-breadcrumb.tsx` ; le dernier maillon porte `aria-current="page"`.
+**Fil d'Ariane (breadcrumb)** (coquille) : la ligne « Commandes › Détail » qui situe la page dans la navigation. Retiré du bandeau le 2026-09-18 (aucun texte à côté du bouton du menu) ; la règle pure `breadcrumbFor(pathname)` reste, testée, si on veut le remettre ailleurs.
+
+**Bouton du menu** (coquille) : en haut à gauche du bandeau, il déplie, replie ou ouvre le menu. Son icône montre le panneau du menu (large = ouvert, liseré = replié) et un chevron vers le sens du prochain clic, et s'anime à chaque clic.
 
 **Point de rupture (breakpoint)** (responsive) : largeur à partir de laquelle une classe préfixée s'applique (`sm:` 640 px, `md:` 768 px, `lg:` 1024 px, `xl:` 1280 px). Mobile d'abord : la classe sans préfixe vaut pour le petit écran, le préfixe ajoute le comportement grand écran.
 
@@ -382,7 +384,25 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Aperçu d'un message** (messages) : les deux premières lignes NON VIDES du corps, calculées par la règle pure `messagePreview` (le CSS ne fait que borner la hauteur). Sauter une ligne après « Bonjour, » ne gaspille donc pas l'aperçu.
 
-**Métadonnées de pièce jointe** (messages) : le dashboard ne stocke pas les fichiers, seulement leur nom, format, taille et URL ; le fichier vit chez l'application FIG. Conséquence : effacer un message ici n'efface pas le fichier là-bas (question 22).
+**Métadonnées de pièce jointe** (messages) : nom, format et taille d'un fichier joint, recopiés dans `message_attachments` pour que la liste et la fiche d'un message s'affichent sans lire les octets. Le fichier lui-même est dans `message_uploads` depuis le 2026-09-18.
+
+**Téléversement** (messages, API) : l'envoi d'un fichier par l'application au dashboard (`POST /api/v1/fichiers`), AVANT le message qui le cite. Un fichier téléversé est « en attente » tant qu'aucun message ne l'a joint ; il ne peut être joint qu'une fois, et seulement par la personne qui l'a envoyé ; jamais joint, il est effacé après 24 heures.
+
+**Signature d'un fichier** (sécurité) : ses premiers octets, qui disent son vrai format quel que soit son nom ou le type annoncé (`%PDF-` pour un PDF, `89 50 4E 47` pour un PNG). Le dashboard compare le type annoncé à la signature (`detectAttachmentType`) : un script renommé en `.png` est refusé, parce qu'il serait ensuite servi par notre propre domaine.
+
+**`nosniff`** (sécurité, HTTP) : l'en-tête `X-Content-Type-Options: nosniff` interdit au navigateur de deviner un autre type que celui annoncé par le serveur. Posé sur chaque fichier servi, avec le type vérifié au téléversement.
+
+**Archive ZIP « stockée »** (messages) : un fichier ZIP qui range les pièces jointes d'un message SANS les recompresser (méthode 0) : photos et PDF sont déjà compressés. Écrite par `src/lib/zip.ts` (en-tête local, octets, répertoire central), relue par les tests et vérifiée avec le module `zipfile` de Python.
+
+**Bouton marche / arrêt** (coquille) : le rond au symbole universel (le 1 dans le 0), en haut à droite du bandeau, qui sert à se déconnecter ; il demande toujours confirmation (« Voulez-vous vraiment vous déconnecter ? »).
+
+**Fenêtre de confirmation** (écrans) : la boîte qui interrompt une action définitive par une question et deux réponses (« Confirmer / Annuler » pour supprimer un produit, une personne ou un article ; « Oui / Non » pour se déconnecter). Le focus va d'abord sur la réponse sans risque ; un clic à côté ne la ferme pas.
+
+**Néon** (design) : un halo lumineux léger de la couleur d'un élément, obtenu par une ombre floue (`box-shadow`, `drop-shadow`) ; au survol des icônes Facebook et Instagram du pied du menu.
+
+**Horloge du tableau de bord** (tableau de bord, métriques) : en haut à droite, le jour en toutes lettres et l'heure de Paris dessous ; seuls les chiffres qui changent défilent à chaque minute (`DashboardClock`).
+
+**inline / attachment** (HTTP) : les deux valeurs de `Content-Disposition`. `inline` affiche le fichier dans l'onglet (les images), `attachment` le télécharge (PDF, HEIC, HEIF) : rien de ce qu'un client a envoyé ne s'ouvre comme une page de notre domaine.
 
 **Garde tenue par la base** (base) : une règle écrite comme contrainte SQL plutôt que dans un écran, parce que l'écran n'est pas le seul à écrire. Les dix pièces jointes au plus (`position` bornée à 0..9 et unique par message) et la liste blanche de formats (enum `attachment_content_type`) tiennent même si l'application FIG écrit en SQL direct.
 
@@ -398,7 +418,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Type de commande** (commandes) : une commande est de type **particulier** (livrée chez la personne) ou **communauté** (commande GROUPÉE portée par une communauté). Déduit, jamais stocké (`orderKindOf` : une communauté portée = communauté). Pour une commande de communauté, le client affiché est la communauté, et dessous l'**interlocuteur** : la personne qui a commandé, garante, à qui tout est livré. Code couleur des tokens `--individual` et `--community` sur la bande de la carte, le badge et la pastille des tableaux. Filtre `?type=particulier|communaute` dans les commandes (commutateur coloré, `TypeSwitch`, partagé avec les Clients). Décision du client, 2026-09-17.
 
-**Période personnalisée** (tableau de bord, métriques) : le dernier choix de la liste « Période » (`CUSTOM_PERIOD`, `?periode=personnalisee`). Lui seul fait apparaître la zone de dates « du / au » : `PeriodChooser` (composant client) la monte dès le choix et la démonte pour toute période prédéfinie, si bien que des dates tapées puis abandonnées ne partent pas dans l'URL. Sans plage effective (rien saisi, ou dates inversées), la période prédéfinie de l'URL ou le défaut reste affichée, et la légende « Période affichée » sous le bouton « Afficher » le dit. Des dates dans l'URL ouvrent aussi la zone (anciens liens) ; `periodParams` rejoue le choix dans les liens HT / TTC. Décision du client, 2026-09-17.
+**Période personnalisée** (tableau de bord, métriques) : le dernier choix de la liste « Période » (`CUSTOM_PERIOD`, `?periode=personnalisee`). Lui seul fait apparaître la zone de dates « du / au » : `PeriodChooser` (composant client) la monte dès le choix et la démonte pour toute période prédéfinie, si bien que des dates tapées puis abandonnées ne partent pas dans l'URL. Sans plage effective (rien saisi, ou dates inversées), la période prédéfinie de l'URL ou le défaut reste affichée, et la légende « Période affichée » le dit. Seul ce choix demande de cliquer sur « Afficher » (une période prédéfinie s'applique dès qu'on la choisit, 2026-09-18). Des dates dans l'URL ouvrent aussi la zone (anciens liens) ; `periodParams` rejoue le choix dans les liens HT / TTC. Décision du client, 2026-09-17.
 
 **Changement de statut libre** (commandes) : depuis le 2026-09-17, plus de règle d'étape entre les statuts. La liste déroulante du statut (`OrderStatusSelect`, sur les cartes et la fiche) propose toujours les quatre statuts et écrit dès le choix : livrée directement, retour en préparation, reprise d'une annulée. `canTransition` n'exclut que le statut courant, `allowedTransitions` renvoie les trois autres ; l'annulation exige toujours son motif, demandé avant « Confirmer l'annulation ». À côté de la liste, l'icône du statut choisi dans sa couleur (ambre en préparation, bleu expédiée, vert livrée, rouge annulée), la liste prenant la même couleur ; le libellé reste écrit. Chaque changement dépose la notification d'état pour le client qui l'a autorisée, retour en préparation compris, sauf si la case « Notifier le client » (cochée par défaut) a été décochée : rien n'est déposé, même avec l'autorisation. Sous la confirmation du changement, une seconde ligne dit « Client notifié » (badge de validation vert) ou « Client non notifié » (gris). La case se décoche d'elle-même dès que la commande est passée une fois par « livrée » (`wasDelivered`, relu dans l'historique avec la commande), et elle est désactivée avec le libellé « Notifications non autorisées par le client » quand le client n'a pas donné l'autorisation (`customer.notifyOrderStatus`, porté par la commande).
 

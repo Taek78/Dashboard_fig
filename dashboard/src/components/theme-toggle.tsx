@@ -69,13 +69,19 @@ export function ThemeToggle({ className }: { className?: string }) {
             title={THEME_LABELS[option]}
             onClick={() => applyTheme(option)}
             className={cn(
-              "focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-3",
+              "focus-visible:ring-ring/50 group/theme inline-flex size-7 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-90",
               active
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className="size-3.5" aria-hidden="true" />
+            <Icon
+              className={cn(
+                "size-3.5 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover/theme:rotate-12",
+                active && "motion-safe:scale-110",
+              )}
+              aria-hidden="true"
+            />
             <span className="sr-only">{THEME_LABELS[option]}</span>
           </button>
         );

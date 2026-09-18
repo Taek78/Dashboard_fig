@@ -275,10 +275,25 @@ export const orderResponse = z.object({
 
 export const messageAttachmentResponse = z.object({
   id: z.string(),
+  /** Le fichier hébergé par le dashboard, sinon null (pièce jointe antérieure). */
+  fileId: z.string().nullable(),
+  fileName: z.string(),
+  contentType: z.enum(ATTACHMENT_CONTENT_TYPES),
+  sizeBytes: z.number().int(),
+  url: z.string().meta({
+    description:
+      "Chemin du fichier sur cette API (/api/v1/fichiers/{id}, jeton de session exigé), ou URL externe d'une pièce jointe antérieure.",
+  }),
+});
+
+/** Réponse au téléversement d'un fichier (POST /fichiers). */
+export const uploadResponse = z.object({
+  id: z.string(),
   fileName: z.string(),
   contentType: z.enum(ATTACHMENT_CONTENT_TYPES),
   sizeBytes: z.number().int(),
   url: z.string(),
+  createdAt: iso,
 });
 
 export const messageResponse = z.object({
@@ -320,6 +335,7 @@ export type ApiQuote = z.infer<typeof quoteResponse>;
 export type ApiQuoteProblem = z.infer<typeof quoteProblemResponse>;
 export type ApiOrder = z.infer<typeof orderResponse>;
 export type ApiMessage = z.infer<typeof messageResponse>;
+export type ApiUpload = z.infer<typeof uploadResponse>;
 export type ApiNotification = z.infer<typeof notificationResponse>;
 export type ApiPendingNotification = z.infer<
   typeof pendingNotificationResponse

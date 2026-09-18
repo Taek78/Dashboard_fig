@@ -60,9 +60,6 @@ export const PAYMENT_REFERENCE_MAX_LENGTH = 100;
 
 /** Message « Nous contacter ». */
 export const MESSAGE_BODY_MAX_LENGTH = 4000;
-export const ATTACHMENT_FILE_NAME_MAX_LENGTH = 200;
-export const ATTACHMENT_MAX_BYTES = 50_000_000;
-export const ATTACHMENT_URL_MAX_LENGTH = 2000;
 
 /** Limitation de débit en mémoire (par instance) : requêtes par minute. */
 export const RATE_LIMIT_WINDOW_MS = 60_000;

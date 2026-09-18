@@ -8,6 +8,7 @@ import {
   Truck,
   Wallet,
 } from "lucide-react";
+import { DashboardClock } from "@/components/dashboard-clock";
 import { TourProgress } from "@/components/deliveries/tour-progress";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { PeriodForm } from "@/components/metrics/period-form";
@@ -74,7 +75,8 @@ export default async function TableauDeBordPage({
   searchParams,
 }: PageProps<"/">) {
   const query = parsePeriodQuery(await searchParams);
-  const today = todayInParis(new Date());
+  const now = new Date();
+  const today = todayInParis(now);
   const range = query.customRange ?? periodRange(query.period, today);
   const title = query.customRange
     ? `Du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`
@@ -99,6 +101,7 @@ export default async function TableauDeBordPage({
       <PageHeader
         title="Tableau de bord"
         description={`${title} · montants ${taxLabel}.`}
+        actions={<DashboardClock initial={now.toISOString()} />}
       />
 
       <StaffShortageAlert roles={unavailableRoles(staff)} />

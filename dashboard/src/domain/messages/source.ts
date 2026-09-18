@@ -4,7 +4,10 @@ import type {
   MessageImportantChange,
   MessagePinChange,
   MessageStatusChange,
+  MessageUpload,
+  MessageUploadFile,
   NewMessage,
+  NewMessageUpload,
 } from "@/domain/messages/types";
 import type { Page } from "@/domain/orders/rules";
 import type { KeysetPage, KeysetResult } from "@/lib/api/cursor";
@@ -66,4 +69,21 @@ export type MessagesSource = {
     id: string,
     change: MessageImportantChange,
   ): Promise<Message | null>;
+};
+
+/*
+ * CONTRAT des fichiers téléversés (2026-09-18), implémenté par
+ * src/data/message-uploads.db.ts. Les octets ne sortent que par
+ * getUploadFile, au service d'un fichier ; tout le reste ne voit que des
+ * métadonnées. Le rattachement à un message est fait par createMessage (même
+ * transaction que le message).
+ */
+export type MessageUploadsSource = {
+  storeUpload(input: NewMessageUpload): Promise<MessageUpload>;
+  /** Fichiers de la personne qui ne sont encore joints à aucun message (quota MAX_PENDING_UPLOADS). */
+  countPendingUploads(customerId: string): Promise<number>;
+  /** Le fichier et ses octets, sinon null ; l'appelant vérifie qui a le droit de le lire. */
+  getUploadFile(id: string): Promise<MessageUploadFile | null>;
+  /** Plusieurs fichiers et leurs octets en une requête, dans l'ordre demandé ; les inconnus sont omis. */
+  getUploadFiles(ids: readonly string[]): Promise<MessageUploadFile[]>;
 };

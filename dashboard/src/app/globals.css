@@ -61,6 +61,8 @@
   --color-community: var(--community);
   --color-loyal: var(--loyal);
   --color-attachment: var(--attachment);
+  --color-facebook: var(--facebook);
+  --color-instagram: var(--instagram);
   --color-brand-from: var(--brand-from);
   --color-brand-to: var(--brand-to);
   --color-fruit: var(--fruit);
@@ -92,6 +94,9 @@
   --animate-page-in: page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-float: float 7s ease-in-out infinite;
   --animate-nav-in: nav-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-clock-in: clock-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-clock-out: clock-out 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-clock-colon: clock-colon 2s ease-in-out infinite;
 
   @keyframes shimmer {
     from {
@@ -119,6 +124,38 @@
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+  /* Horloge du tableau de bord : le chiffre qui change monte de sous la ligne, l'ancien part vers le haut. */
+  @keyframes clock-in {
+    from {
+      opacity: 0;
+      transform: translateY(70%);
+      filter: blur(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+  @keyframes clock-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-70%);
+    }
+  }
+  @keyframes clock-colon {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
     }
   }
   @keyframes float {
@@ -178,10 +215,13 @@
   /* Catégorie fidèle : or chaud, lisible en texte sur fond clair. */
   --loyal: oklch(0.6 0.13 85);
   --attachment: oklch(0.52 0.18 300);
+  /* Réseaux sociaux (pied du menu, survol) : bleu Facebook, magenta Instagram. */
+  --facebook: oklch(0.55 0.2 260);
+  --instagram: oklch(0.58 0.24 355);
   --halo-1: color-mix(in oklch, var(--primary) 12%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 10%, transparent);
   --halo-3: color-mix(in oklch, var(--individual) 7%, transparent);
-  --decor-art-opacity: 0.2;
+  --decor-art-opacity: 0.42;
   /* Catalogue : fond de carte par catégorie (orange = fruit, vert = légume). */
   --fruit: oklch(0.95 0.06 65);
   --fruit-foreground: oklch(0.45 0.14 55);
@@ -232,10 +272,12 @@
   --community: oklch(0.76 0.15 355);
   --loyal: oklch(0.85 0.13 90);
   --attachment: oklch(0.8 0.14 300);
+  --facebook: oklch(0.68 0.18 258);
+  --instagram: oklch(0.7 0.22 355);
   --halo-1: color-mix(in oklch, var(--primary) 16%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 12%, transparent);
   --halo-3: color-mix(in oklch, var(--individual) 8%, transparent);
-  --decor-art-opacity: 0.23;
+  --decor-art-opacity: 0.46;
   --fruit: oklch(0.32 0.07 60);
   --fruit-foreground: oklch(0.88 0.1 70);
   --vegetable: oklch(0.3 0.06 145);
@@ -292,10 +334,12 @@
   --community: oklch(0.82 0.1 50);
   --loyal: oklch(0.87 0.11 88);
   --attachment: oklch(0.82 0.12 305);
+  --facebook: oklch(0.7 0.17 258);
+  --instagram: oklch(0.72 0.2 355);
   --halo-1: color-mix(in oklch, var(--brand-from) 20%, transparent);
   --halo-2: color-mix(in oklch, var(--brand-to) 15%, transparent);
   --halo-3: color-mix(in oklch, var(--individual) 10%, transparent);
-  --decor-art-opacity: 0.26;
+  --decor-art-opacity: 0.5;
   --fruit: oklch(0.34 0.06 45);
   --fruit-foreground: oklch(0.9 0.09 60);
   --vegetable: oklch(0.32 0.05 170);
@@ -502,7 +546,7 @@
   backdrop-filter: blur(14px);
 }
 [data-slot="sidebar-inset"] {
-  background-color: color-mix(in oklch, var(--background) 50%, transparent);
+  background-color: color-mix(in oklch, var(--background) 30%, transparent);
 }
 
 /*
@@ -524,6 +568,28 @@
 @utility page-in {
   @media (prefers-reduced-motion: no-preference) {
     animation: var(--animate-page-in);
+  }
+}
+
+/* Horloge du tableau de bord (DashboardClock) : immobile sous prefers-reduced-motion. */
+@utility clock-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-clock-in);
+  }
+}
+
+@utility clock-out {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-clock-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    display: none;
+  }
+}
+
+@utility clock-colon {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: var(--animate-clock-colon);
   }
 }
 
@@ -576,7 +642,7 @@
 .login-verger {
   position: absolute;
   inset: -6%;
-  opacity: calc(var(--decor-art-opacity) * 1.6);
+  opacity: calc(var(--decor-art-opacity) * 1.3);
   background-image: linear-gradient(
     135deg,
     var(--brand-from),
@@ -645,7 +711,7 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.06em;
-  opacity: 0.07;
+  opacity: 0.12;
   user-select: none;
 }
 .login-particle {
@@ -659,19 +725,22 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .login-sweep {
-    animation: login-sweep 80s linear infinite;
+    animation: login-sweep 50s linear infinite;
   }
   .login-verger {
-    animation: login-breathe 26s ease-in-out infinite alternate;
+    animation: login-breathe 16s ease-in-out infinite alternate;
   }
   .login-orb-1 {
-    animation: login-orb-a 28s ease-in-out infinite alternate;
+    animation: login-orb-a 18s ease-in-out infinite alternate;
   }
   .login-orb-2 {
-    animation: login-orb-b 34s ease-in-out infinite alternate;
+    animation: login-orb-b 22s ease-in-out infinite alternate;
   }
   .login-orb-3 {
-    animation: login-orb-c 22s ease-in-out infinite alternate;
+    animation: login-orb-c 15s ease-in-out infinite alternate;
+  }
+  .login-wordmark {
+    animation: login-wordmark 12s ease-in-out infinite alternate;
   }
   .login-particle {
     opacity: 0;
@@ -704,10 +773,21 @@
 }
 @keyframes login-breathe {
   from {
-    transform: scale(1);
+    transform: scale(1) rotate(0deg);
   }
   to {
-    transform: scale(1.07);
+    transform: scale(1.08) rotate(1.5deg);
+  }
+}
+/* Le filigrane « FIG » respire : il grossit un peu et s'éclaire, sans quitter le centre. */
+@keyframes login-wordmark {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.05);
+    opacity: 0.16;
   }
 }
 @keyframes login-orb-a {

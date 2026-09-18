@@ -138,8 +138,8 @@ describe("messagesDb.getMessage / getCustomerMessages", () => {
     const fixture = messagesFixtures.find((m) => m.id === "msg-0001")!;
     expect(message).toEqual(fixture);
     expect(message!.attachments.map((a) => a.fileName)).toEqual([
-      "fraises-abimees.jpg",
-      "sac-livraison.jpg",
+      "fraises-abimees.png",
+      "sac-livraison.png",
     ]);
     expect(message!.order?.reference).toBe(fixture.order!.reference);
   });

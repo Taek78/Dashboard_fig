@@ -1,5 +1,6 @@
 "use server";
 
+import { DELETE_CONFIRM_MESSAGE } from "@/lib/confirm-delete";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -32,7 +33,7 @@ const MESSAGES = {
   invalid:
     "Vérifiez la saisie : nom, prix en euros (ex. 3,50), nombres entiers, calibre min ≤ max.",
   notFound: "Ce produit n'existe plus.",
-  confirm: "Tapez SUPPRIMER pour confirmer la suppression.",
+  confirm: DELETE_CONFIRM_MESSAGE,
   failure: "Impossible d'enregistrer. Réessayez dans un instant.",
 } as const;
 

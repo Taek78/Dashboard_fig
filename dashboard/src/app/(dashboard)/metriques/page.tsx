@@ -21,6 +21,7 @@ import { Section } from "@/components/section";
 import { RatioPie } from "@/components/metrics/ratio-pie";
 import { StatusChart } from "@/components/metrics/status-chart";
 import { TrendBadge } from "@/components/metrics/trend-badge";
+import { DashboardClock } from "@/components/dashboard-clock";
 import { PageHeader } from "@/components/page-header";
 import { PeriodEmptyNotice } from "@/components/period-empty-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +92,8 @@ export default async function MetriquesPage({
   searchParams,
 }: PageProps<"/metriques">) {
   const query = parseMetricsQuery(await searchParams);
-  const today = todayInParis(new Date());
+  const now = new Date();
+  const today = todayInParis(now);
   const range = query.customRange ?? periodRange(query.period, today);
   const reference = referenceRange(range, query.comparison);
   const referenceLabel = COMPARISON_LABELS[query.comparison];
@@ -173,6 +175,7 @@ export default async function MetriquesPage({
       <PageHeader
         title="Métriques"
         description={`${title} · montants ${taxLabel} · variations vs ${referenceLabel.toLowerCase()}.`}
+        actions={<DashboardClock initial={now.toISOString()} />}
       />
 
       <MetricsControls query={query} range={range} />

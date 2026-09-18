@@ -134,6 +134,8 @@ export type SecurityEvent =
   | { type: "api_order_created"; customerId: string; orderId: string }
   | { type: "api_order_cancelled"; customerId: string; orderId: string }
   | { type: "api_message_created"; customerId: string; messageId: string }
+  | { type: "api_file_uploaded"; customerId: string; uploadId: string }
+  | { type: "api_file_rejected"; customerId: string; reason: string }
   | { type: "api_notification_sent"; notificationId: string }
   | { type: "api_service_forbidden"; ip: string }
   | { type: "api_rate_limited"; subject: string; ip: string };

@@ -108,9 +108,13 @@ describe("buildCustomerExport", () => {
       ownMessages.map((m) => m.body),
     );
     const withFiles = data.messages.find((m) => m.attachments.length > 0)!;
-    expect(withFiles.attachments[0]).toMatchObject({
-      fileName: "fraises-abimees.jpg",
-      contentType: "image/jpeg",
+    // Un fichier hébergé est désigné par son identifiant, sans URL externe.
+    expect(withFiles.attachments[0]).toEqual({
+      fileName: "fraises-abimees.png",
+      contentType: "image/png",
+      sizeBytes: expect.any(Number),
+      fileId: "upl-0001",
+      url: null,
     });
     // L'objet est lisible sans connaître le code interne.
     expect(data.messages.map((m) => m.subjectLabel)).toContain(

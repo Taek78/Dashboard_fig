@@ -1,3 +1,4 @@
+import { DELETE_CONFIRMED } from "@/lib/confirm-delete";
 import { z } from "zod";
 import { parseOrderFilters } from "@/domain/orders/schemas";
 import {
@@ -14,7 +15,6 @@ import {
   type StaffSearch,
 } from "@/domain/staff/rules";
 import {
-  STAFF_DELETE_CONFIRM_WORD,
   STAFF_NAME_MAX_LENGTH,
   STAFF_NOTES_MAX_LENGTH,
   STAFF_SEARCH_MAX_LENGTH,
@@ -109,10 +109,10 @@ export const staffInputSchema = z
 
 export const updateStaffSchema = z.object({ staffId: staffIdSchema });
 
-export { STAFF_DELETE_CONFIRM_WORD };
+/** confirm=oui, envoyé par le seul bouton « Confirmer » de la fenêtre : vérifié ici aussi. */
 export const deleteStaffSchema = z.object({
   staffId: staffIdSchema,
-  confirm: z.literal(STAFF_DELETE_CONFIRM_WORD),
+  confirm: z.literal(DELETE_CONFIRMED),
 });
 
 /**

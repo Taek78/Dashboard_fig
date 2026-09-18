@@ -7,6 +7,7 @@ import {
   buildCustomerExport,
   customerExportFileName,
 } from "@/domain/privacy/export";
+import { isCrossSiteRequest } from "@/lib/fetch-site";
 
 /*
  * GET /clients/[id]/export : téléchargement des données d'un client (RGPD,
@@ -23,20 +24,14 @@ const NO_STORE = { "Cache-Control": "no-store" } as const;
 /*
  * Une navigation lancée depuis un autre site (lien piégé ouvert par un
  * administrateur connecté) ne déclenche pas d'export : elle ne lirait rien,
- * mais fausserait le journal. Les navigateurs posent Sec-Fetch-Site ; sans
- * l'en-tête (outil en ligne de commande), session et rôle décident seuls.
+ * mais fausserait le journal (isCrossSiteRequest).
  */
-function isCrossSite(request: Request): boolean {
-  const site = request.headers.get("sec-fetch-site");
-  return site !== null && site !== "same-origin" && site !== "none";
-}
-
 export async function GET(
   request: Request,
   ctx: RouteContext<"/clients/[id]/export">,
 ) {
   const user = await getCurrentUser();
-  const crossSite = isCrossSite(request);
+  const crossSite = isCrossSiteRequest(request.headers);
   if (!canHandlePrivacyRequest(user.role) || crossSite) {
     logSecurity({
       type: "forbidden",

@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { MessageActions } from "@/components/messages/message-actions";
-import { AttachmentBadge } from "@/components/messages/message-attachments";
+import { AttachmentPill } from "@/components/messages/message-attachments";
 import {
   ImportantBadge,
   MESSAGE_STATUS_ACCENT,
@@ -26,8 +26,9 @@ import { cn } from "@/lib/utils";
  * La bordure gauche porte le statut (ambre = non traité, vert = traité) et un
  * message signalé important prend un fond en dégradé rouge : deux signaux
  * différents, jamais la même couleur pour deux choses. Une pièce jointe se
- * signale en violet (AttachmentBadge, token --attachment) : sa présence ne
- * doit pas se rater.
+ * signale en violet (AttachmentPill, token --attachment) : sa présence ne
+ * doit pas se rater, et la pastille ouvre un menu pour télécharger les
+ * pièces sans passer par la fiche.
  *
  * Le nom mène à la FICHE DU CLIENT (comme tout nom de client dans le
  * dashboard) ; « Lire le message » mène au message. Pas de carte entièrement
@@ -67,7 +68,10 @@ export function MessageCard({
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
             <MessageSubjectBadge subject={message.subject} />
-            <AttachmentBadge count={message.attachments.length} />
+            <AttachmentPill
+              messageId={message.id}
+              attachments={message.attachments}
+            />
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 @2xl/main:justify-end">

@@ -45,5 +45,3 @@ export const STAFF_NAME_MAX_LENGTH = 60;
 export const STAFF_NOTES_MAX_LENGTH = 300;
 /** Longueur maximale de la recherche dans l'équipe (?q=). */
 export const STAFF_SEARCH_MAX_LENGTH = 64;
-/** Mot à taper pour confirmer une suppression (formulaire et zod). */
-export const STAFF_DELETE_CONFIRM_WORD = "SUPPRIMER";

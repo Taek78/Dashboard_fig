@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
  * partir des commandes (préparées, livrées, en cours), lien vers la fiche.
  * Pour un rôle qui gère le personnel (admin, gestionnaire) : modifier (la
  * fiche, formulaire en haut), dupliquer (nouvelle fiche préremplie) et
- * supprimer (confirmation SUPPRIMER) directement depuis la carte. Les actions
+ * supprimer (fenêtre de confirmation) directement depuis la carte. Les actions
  * revérifient le rôle côté serveur.
  */
 export function StaffCard({

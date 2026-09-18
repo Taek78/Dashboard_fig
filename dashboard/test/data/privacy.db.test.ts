@@ -6,12 +6,17 @@ import {
   customerNotifications,
   loginAttempts,
   messageAttachments,
+  messageUploads,
   orderEvents,
   orders,
   securityEvents,
 } from "@/db/schema";
 import { customersFixtures } from "@/domain/customers/fixtures";
-import { messagesFixtures } from "@/domain/messages/fixtures";
+import {
+  messagesFixtures,
+  messageUploadsFixtures,
+  uploadFixtureBytes,
+} from "@/domain/messages/fixtures";
 import { notificationsFixtures } from "@/domain/notifications/fixtures";
 import { orderEventsFixtures, ordersFixtures } from "@/domain/orders/fixtures";
 import { filterOrders, sortOrdersBySlot } from "@/domain/orders/rules";
@@ -33,6 +38,7 @@ isolateEachTest();
 const { privacyDb } = await import("@/data/privacy.db");
 const { customersDb } = await import("@/data/customers.db");
 const { ordersDb } = await import("@/data/orders.db");
+const { messageUploadsDb } = await import("@/data/message-uploads.db");
 const { findInactiveCustomers, purgeExpiredData } =
   await import("@/db/privacy");
 
@@ -154,7 +160,7 @@ describe("privacyDb.anonymizeCustomer", () => {
     }
   });
 
-  it("supprime ses messages « Nous contacter » et leurs pièces jointes", async () => {
+  it("supprime ses messages « Nous contacter », leurs pièces jointes et tous ses fichiers, joints ou non", async () => {
     await testDb()
       .insert(customerMessages)
       .values({
@@ -166,15 +172,43 @@ describe("privacyDb.anonymizeCustomer", () => {
         status: "untreated",
         receivedAt: new Date("2026-09-09T09:00:00.000Z"),
       });
-    await testDb().insert(messageAttachments).values({
-      id: "att-anonymise",
-      messageId: "msg-anonymise",
-      position: 0,
-      fileName: "photo.jpg",
-      contentType: "image/jpeg",
-      sizeBytes: 1024,
-      url: "https://fichiers.fig.invalid/messages/photo.jpg",
-    });
+    const bytes = uploadFixtureBytes(messageUploadsFixtures[0]!);
+    const [joint, pending] = await Promise.all([
+      messageUploadsDb.storeUpload({
+        customerId: id,
+        fileName: "porte.png",
+        contentType: "image/png",
+        bytes,
+      }),
+      messageUploadsDb.storeUpload({
+        customerId: id,
+        fileName: "jamais-envoye.png",
+        contentType: "image/png",
+        bytes,
+      }),
+    ]);
+    await testDb()
+      .insert(messageAttachments)
+      .values([
+        {
+          id: "att-anonymise",
+          messageId: "msg-anonymise",
+          position: 0,
+          fileName: "porte.png",
+          contentType: "image/png",
+          sizeBytes: bytes.length,
+          uploadId: joint.id,
+        },
+        {
+          id: "att-anonymise-ancienne",
+          messageId: "msg-anonymise",
+          position: 1,
+          fileName: "photo.jpg",
+          contentType: "image/jpeg",
+          sizeBytes: 1024,
+          url: "https://fichiers.fig.invalid/messages/photo.jpg",
+        },
+      ]);
 
     expect(await privacyDb.anonymizeCustomer(id, new Date())).toBe(
       "anonymized",
@@ -186,12 +220,21 @@ describe("privacyDb.anonymizeCustomer", () => {
         .from(customerMessages)
         .where(eq(customerMessages.customerId, id)),
     ).toEqual([]);
-    // La pièce jointe part avec son message (ON DELETE CASCADE).
+    // Les pièces jointes partent avec leur message (ON DELETE CASCADE).
     expect(
       await testDb()
         .select()
         .from(messageAttachments)
-        .where(eq(messageAttachments.id, "att-anonymise")),
+        .where(eq(messageAttachments.messageId, "msg-anonymise")),
+    ).toEqual([]);
+    // Les octets aussi, y compris un fichier jamais joint.
+    expect(await messageUploadsDb.getUploadFile(joint.id)).toBeNull();
+    expect(await messageUploadsDb.getUploadFile(pending.id)).toBeNull();
+    expect(
+      await testDb()
+        .select({ id: messageUploads.id })
+        .from(messageUploads)
+        .where(eq(messageUploads.customerId, id)),
     ).toEqual([]);
   });
 
@@ -372,6 +415,7 @@ describe("purgeExpiredData", () => {
     loginAttemptHours: 24,
     customerLoginCodeHours: 24,
     customerSessionDays: 30,
+    unattachedUploadHours: 24,
   };
 
   async function insertExpiredRows() {
@@ -420,6 +464,25 @@ describe("purgeExpiredData", () => {
           lockedUntil: null,
         },
       ]);
+    // Fichiers téléversés : seul celui jamais joint ET vieux de plus de 24 h part.
+    const bytes = Buffer.from(uploadFixtureBytes(messageUploadsFixtures[0]!));
+    const upload = (id: string, createdAt: string, attached: boolean) => ({
+      id,
+      customerId: "cli-0003",
+      fileName: `${id}.png`,
+      contentType: "image/png" as const,
+      sizeBytes: bytes.length,
+      bytes,
+      createdAt: new Date(createdAt),
+      attachedAt: attached ? new Date(createdAt) : null,
+    });
+    await testDb()
+      .insert(messageUploads)
+      .values([
+        upload("purge-upl-abandonne", "2027-09-09T10:00:00.000Z", false),
+        upload("purge-upl-en-cours", "2027-09-10T11:00:00.000Z", false),
+        upload("purge-upl-joint", "2027-09-01T10:00:00.000Z", true),
+      ]);
   }
 
   it("l'aperçu compte sans rien écrire", async () => {
@@ -435,6 +498,7 @@ describe("purgeExpiredData", () => {
 
     expect(preview.securityEvents).toBe(empty.securityEvents + 1);
     expect(preview.loginAttempts).toBe(empty.loginAttempts + 1);
+    expect(preview.unattachedUploads).toBe(empty.unattachedUploads + 1);
     expect(preview.cutoffs.customerActivitySince).toBe("2026-09-10");
     expect(preview.inactiveCustomers).toEqual(
       await findInactiveCustomers(testDb(), "2026-09-10"),
@@ -477,6 +541,12 @@ describe("purgeExpiredData", () => {
         ),
     );
     expect(sorted(eventIds)).toEqual(["purge-preuve", "purge-recent"]);
+    expect(
+      await testDb()
+        .select({ id: messageUploads.id })
+        .from(messageUploads)
+        .where(eq(messageUploads.id, "purge-upl-abandonne")),
+    ).toEqual([]);
     const journaled = await testDb()
       .select({ details: securityEvents.details })
       .from(securityEvents)

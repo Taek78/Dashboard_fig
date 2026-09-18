@@ -2,12 +2,13 @@
  * Pièces jointes d'un message : photos et documents que le client ajoute à sa
  * demande dans l'application FIG.
  *
- * Le dashboard ne téléverse RIEN : l'application FIG stocke le fichier et écrit
- * ici son nom, son format, sa taille et son URL (question 22 : quel stockage,
- * quelles URL, quelle durée de vie). Le back-office ne fait que les lister et
- * les ouvrir.
+ * Depuis le 2026-09-18 (question 22 tranchée), le dashboard HÉBERGE les
+ * fichiers dans la base : l'application les téléverse par l'API (règles de
+ * réception dans upload.ts), le back-office les liste et les ouvre. Le
+ * dashboard n'en crée ni n'en modifie jamais : un fichier vient toujours de
+ * la personne qui écrit.
  *
- * La liste blanche des formats est donc une garde de la BASE, pas d'un
+ * La liste blanche des formats est une garde de la BASE, pas d'un
  * formulaire : c'est l'application qui écrit, et l'enum Postgres
  * attachment_content_type refuse tout le reste — en particulier la vidéo et
  * l'audio, exclues par le client. Une liste blanche (et non une liste noire de
@@ -61,4 +62,65 @@ export function isPreviewableImage(
     contentType !== "image/heic" &&
     contentType !== "image/heif"
   );
+}
+
+/**
+ * Adresse d'une pièce jointe dans le back-office : la route qui sert le
+ * fichier hébergé (session et rôle vérifiés), sinon l'URL externe d'une pièce
+ * jointe antérieure au stockage ; null si elle n'a ni l'un ni l'autre (la
+ * base l'interdit, message_attachments_one_source).
+ */
+export function attachmentHref(file: {
+  uploadId: string | null;
+  url: string | null;
+}): string | null {
+  if (file.uploadId !== null) {
+    return `/messages/fichiers/${encodeURIComponent(file.uploadId)}`;
+  }
+  return file.url;
+}
+
+/** Paramètre d'URL qui force le téléchargement d'un fichier servi (?telecharger=1). */
+export const DOWNLOAD_PARAM = "telecharger";
+
+/**
+ * Adresse qui TÉLÉCHARGE une pièce jointe au lieu de l'ouvrir : même route,
+ * avec ?telecharger=1 pour un fichier hébergé. Une pièce antérieure garde
+ * son URL externe (le navigateur décide, l'attribut download ne vaut pas
+ * pour un autre domaine).
+ */
+export function attachmentDownloadHref(file: {
+  uploadId: string | null;
+  url: string | null;
+}): string | null {
+  const href = attachmentHref(file);
+  return file.uploadId !== null && href !== null
+    ? `${href}?${DOWNLOAD_PARAM}=1`
+    : href;
+}
+
+/** Archive ZIP des pièces jointes hébergées d'un message (« Télécharger les pièces jointes »). */
+export function attachmentsArchiveHref(messageId: string): string {
+  return `/messages/${encodeURIComponent(messageId)}/pieces-jointes/archive`;
+}
+
+/** Nom du fichier ZIP : le client et le jour de réception, sans caractère à échapper. */
+export function attachmentsArchiveName(message: {
+  customer: { fullName: string };
+  receivedAt: string;
+}): string {
+  const who = message.customer.fullName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `pieces-jointes-${who || "client"}-${message.receivedAt.slice(0, 10)}.zip`;
+}
+
+/** Vrai si au moins une pièce jointe est hébergée : l'archive ZIP a de quoi se remplir. */
+export function hasHostedAttachment(
+  attachments: readonly { uploadId: string | null }[],
+): boolean {
+  return attachments.some((file) => file.uploadId !== null);
 }

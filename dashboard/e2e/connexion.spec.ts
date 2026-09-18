@@ -43,14 +43,35 @@ test.describe("connexion et accès", () => {
     ]) {
       await expect(nav.getByRole("link", { name: section })).toBeVisible();
     }
-    await expect(page.locator("header")).toContainText("Administrateur");
+    // Pied du menu : Facebook et Instagram, inactifs tant que leurs adresses
+    // ne sont pas renseignées (src/lib/social.ts).
+    const social = page.getByRole("list", {
+      name: "FIG sur les réseaux sociaux",
+    });
+    await expect(
+      social.getByRole("img", { name: "Facebook : bientôt disponible" }),
+    ).toBeVisible();
+    await expect(
+      social.getByRole("img", { name: "Instagram : bientôt disponible" }),
+    ).toBeVisible();
+    await expect(social.getByRole("link")).toHaveCount(0);
+    // Le badge du bandeau porte le rôle dans son nom (plus en texte visible).
+    await expect(
+      page.getByRole("link", {
+        name: "Admin E2E, Administrateur : mon profil",
+      }),
+    ).toBeVisible();
   });
 
   test("le gestionnaire se connecte et ouvre le catalogue", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
-    await expect(page.locator("header")).toContainText("Gestionnaire");
+    await expect(
+      page.getByRole("link", {
+        name: "Gestion E2E, Gestionnaire : mon profil",
+      }),
+    ).toBeVisible();
     await page.goto("/catalogue");
     await expect(
       page.getByRole("heading", { level: 1, name: "Catalogue" }),
@@ -78,9 +99,34 @@ test.describe("connexion et accès", () => {
     ).toBe(0);
   });
 
-  test("la déconnexion ramène à la page de connexion", async ({ page }) => {
+  test("la déconnexion demande confirmation, puis ramène à la page de connexion", async ({
+    page,
+  }) => {
     await login(page, E2E_ACCOUNTS.admin);
-    await page.getByRole("button", { name: "Se déconnecter" }).click();
+    const power = page.getByRole("button", { name: "Se déconnecter" });
+
+    // « Non » referme la boîte : la session reste ouverte, le focus revient.
+    await power.click();
+    const dialog = page.getByRole("alertdialog", {
+      name: "Voulez-vous vraiment vous déconnecter ?",
+    });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "Non, rester connecté" }),
+    ).toBeFocused();
+    await dialog.getByRole("button", { name: "Non, rester connecté" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(power).toBeFocused();
+    await expect(page).not.toHaveURL(/\/connexion/);
+
+    // Échap aussi.
+    await power.click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    // « Oui » déconnecte.
+    await power.click();
+    await dialog.getByRole("button", { name: "Oui, me déconnecter" }).click();
     await expect(page).toHaveURL(/\/connexion/);
     await page.goto("/");
     await expect(page).toHaveURL(/\/connexion/);
