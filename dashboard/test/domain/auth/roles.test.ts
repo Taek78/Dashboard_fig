@@ -87,7 +87,7 @@ describe("lecture des sections", () => {
     expect(canManageUsers("gestionnaire")).toBe(false);
   });
 
-  it("le livreur ne voit que les commandes (sa tournée) et son profil ; les autres tout sauf /comptes", () => {
+  it("le livreur ne voit que les commandes (sa tournée) et son profil ; les autres tout sauf /comptes et /journal", () => {
     expect(canViewSection("livreur", "/commandes?du=2026-09-07")).toBe(true);
     expect(canViewSection("livreur", "/commandes/cmd-0001")).toBe(true);
     // Ancienne section : plus une section connue, laissée à la redirection.
@@ -101,9 +101,15 @@ describe("lecture des sections", () => {
     expect(canViewSection("lecture", "/messages/msg-0001")).toBe(true);
     expect(canViewSection("lecture", "/personnel/stf-0001")).toBe(true);
     expect(canViewSection("livreur", "/inconnu")).toBe(true);
+    // Le journal porte les adresses e-mail, les IP et la trace de toute
+    // l'équipe : administrateur seul, comme la gestion des comptes.
+    expect(canViewSection("gestionnaire", "/journal")).toBe(false);
+    expect(canViewSection("lecture", "/journal")).toBe(false);
+    expect(canViewSection("livreur", "/journal")).toBe(false);
+    expect(canViewSection("admin", "/journal")).toBe(true);
     for (const section of SECTIONS) {
       expect(canViewSection("admin", section)).toBe(true);
-      if (section !== "/comptes") {
+      if (section !== "/comptes" && section !== "/journal") {
         expect(canViewSection("gestionnaire", section)).toBe(true);
         expect(canViewSection("lecture", section)).toBe(true);
       }

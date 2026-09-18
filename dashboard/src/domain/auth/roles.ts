@@ -46,6 +46,16 @@ export function canManageUsers(role: Role): boolean {
 }
 
 /**
+ * Lire le journal de sécurité. Administrateur seul : il porte les adresses
+ * e-mail et les adresses IP saisies sur les pages publiques, et la trace de ce
+ * que chaque membre de l'équipe a fait. Personne ne peut l'écrire ni l'effacer
+ * depuis un écran.
+ */
+export function canReadSecurityLog(role: Role): boolean {
+  return role === "admin";
+}
+
+/**
  * Traiter une demande RGPD d'un client : exporter toutes ses données (droit
  * d'accès et portabilité) ou les anonymiser (droit à l'effacement).
  * Administrateur seul : une anonymisation est irréversible et un export fait
@@ -92,17 +102,22 @@ export const SECTIONS = [
   "/personnel",
   "/metriques",
   "/comptes",
+  "/journal",
   "/profil",
 ] as const;
 export type Section = (typeof SECTIONS)[number];
 
+/** Ce que voit l'équipe : tout sauf ce qui est réservé à l'administrateur. */
+const ADMIN_ONLY: readonly Section[] = ["/comptes", "/journal"];
 const TEAM_SECTIONS: readonly Section[] = SECTIONS.filter(
-  (s) => s !== "/comptes",
+  (s) => !ADMIN_ONLY.includes(s),
 );
 
 /**
  * Matrice de lecture : la première section est la page d'accueil du rôle.
- * /comptes (gestion des comptes) est réservé à l'administrateur ; /profil
+ * /comptes (gestion des comptes) et /journal (journal de sécurité : adresses
+ * e-mail, adresses IP, traces de toute l'équipe) sont réservés à
+ * l'administrateur ; /profil
  * (son propre mot de passe) est ouvert à tous. Le livreur suit ses tournées
  * depuis Commandes (raccourcis des derniers jours).
  */

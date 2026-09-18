@@ -5,6 +5,7 @@ import {
   Inbox,
   LayoutDashboard,
   Newspaper,
+  ScrollText,
   ShoppingBasket,
   UserCog,
   Users,
@@ -59,6 +60,12 @@ export const NAV_ITEMS = [
     group: "pilotage",
   },
   { title: "Comptes", href: "/comptes", icon: UserCog, group: "pilotage" },
+  {
+    title: "Journal",
+    href: "/journal",
+    icon: ScrollText,
+    group: "pilotage",
+  },
 ] as const;
 
 /**
