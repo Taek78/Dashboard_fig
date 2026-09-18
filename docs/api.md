@@ -13,6 +13,7 @@ Décision du 2026-09-17 (question 14 du backlog) : l'application ne touche jamai
   - le **serveur** de l'application, identifié par la clé de service (`Authorization: Bearer <API_SERVICE_KEY>`), pour la file des notifications.
 - **Erreurs** : toujours `{ "error": { "code", "message", "details"? } }`. `code` est stable (à tester dans le code de l'application), `message` est en français et peut être affiché tel quel.
 - **Créations** (`POST /commandes`, `POST /messages`) : en-tête `Idempotency-Key` obligatoire. Rejouer la même requête ne crée jamais deux fois.
+- **Langue** : l'API est en français, et seulement en français. `Accept-Language` n'est pas lu, aucune négociation de langue n'est prévue (le service livre en France, son équipe et ses clients sont francophones). Conséquence pour l'application : les `code` d'erreur et les clés de vocabulaire (`status: "delivering"`, `subject: "delivery_issue"`, `kind: "voisinage"`…) sont des **identifiants stables**, à tester tels quels et à ne JAMAIS traduire ni afficher ; ce qui s'affiche, ce sont les champs `*Label` fournis à côté, et le `message` d'une erreur. Si l'application devient multilingue un jour, elle traduit à partir des `code` et des clés, sans rien attendre de l'API.
 
 ## 2. Parcours d'accès d'un client
 
