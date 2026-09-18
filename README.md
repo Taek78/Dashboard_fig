@@ -88,3 +88,7 @@ Authentification par e-mail et mot de passe (scrypt), session JWT de 8 heures fe
 ## Vérification
 
 Chaque tâche se termine par `npm run check` (règles pures, puis couche données et Server Actions sur la base de test) et, pour ce qui touche aux écrans, `npm run build && npm run test:e2e`. La CI GitHub Actions rejoue les deux contre un PostgreSQL de service.
+
+## Licence et signalement
+
+Code sous copyright, tous droits réservés ([LICENSE](LICENSE)) : le dépôt est lisible, rien n'est concédé. Une faille se signale en privé, jamais par une issue publique ([SECURITY.md](SECURITY.md)).
