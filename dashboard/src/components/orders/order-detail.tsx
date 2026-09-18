@@ -292,7 +292,9 @@ export function OrderDetail({
                       Déposée le {formatDateTimeFr(notification.createdAt)} ·{" "}
                       {notification.sentAt
                         ? `envoyée le ${formatDateTimeFr(notification.sentAt)}`
-                        : "en attente d'envoi par l'application"}
+                        : notification.failedAt
+                          ? `échec d'envoi le ${formatDateTimeFr(notification.failedAt)}${notification.failureReason ? ` (${notification.failureReason})` : ""}`
+                          : "en attente d'envoi par l'application"}
                     </span>
                   </li>
                 ))}

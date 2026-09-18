@@ -7,6 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { ORDER_STATUS_LABELS, type OrderStatus } from "@/domain/orders/status";
 
 /*
@@ -26,7 +27,7 @@ type BadgeVariant = ComponentProps<typeof Badge>["variant"];
 
 const VARIANT_BY_STATUS: Record<OrderStatus, BadgeVariant> = {
   preparing: "warning", // à l'atelier : le travail qui reste à faire
-  delivering: "default", // expédiée : en route, couleur pleine
+  delivering: "default", // expédiée : en route, couleur pleine (token --delivering-strong, propre au thème fig)
   delivered: "success", // terminée
   cancelled: "destructive", // à ne pas livrer
 };
@@ -34,7 +35,7 @@ const VARIANT_BY_STATUS: Record<OrderStatus, BadgeVariant> = {
 /** Couleur d'accent d'une carte (bordure gauche) selon le statut ; tokens seulement. */
 export const STATUS_ACCENT: Record<OrderStatus, string> = {
   preparing: "border-l-warning",
-  delivering: "border-l-info",
+  delivering: "border-l-delivering",
   delivered: "border-l-success",
   cancelled: "border-l-destructive",
 };
@@ -50,7 +51,7 @@ export const STATUS_ICONS: Record<OrderStatus, LucideIcon> = {
 /** Pastille de l'icône à côté de la liste du statut : fond teinté, icône de la couleur. */
 export const STATUS_ICON_TONE: Record<OrderStatus, string> = {
   preparing: "bg-warning/15 text-warning dark:bg-warning/20",
-  delivering: "bg-info/12 text-info dark:bg-info/20",
+  delivering: "bg-delivering/12 text-delivering dark:bg-delivering/20",
   delivered: "bg-success/12 text-success dark:bg-success/20",
   cancelled: "bg-destructive/10 text-destructive dark:bg-destructive/20",
 };
@@ -63,7 +64,8 @@ export const STATUS_ICON_TONE: Record<OrderStatus, string> = {
 export const STATUS_SELECT_TONE: Record<OrderStatus, string> = {
   preparing:
     "text-warning [&>select]:border-warning/50 [&>select]:bg-warning/8",
-  delivering: "text-info [&>select]:border-info/50 [&>select]:bg-info/8",
+  delivering:
+    "text-delivering [&>select]:border-delivering/50 [&>select]:bg-delivering/8",
   delivered:
     "text-success [&>select]:border-success/50 [&>select]:bg-success/8",
   cancelled:
@@ -79,7 +81,11 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
     <Badge
       variant={VARIANT_BY_STATUS[status]}
-      className="h-7 gap-1.5 px-3 text-sm font-semibold ring-1 ring-current/25"
+      className={cn(
+        "h-7 gap-1.5 px-3 text-sm font-semibold ring-1 ring-current/25",
+        status === "delivering" &&
+          "bg-delivering-strong text-delivering-strong-foreground",
+      )}
     >
       <span
         aria-hidden="true"

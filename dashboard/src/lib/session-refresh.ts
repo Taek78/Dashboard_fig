@@ -36,9 +36,14 @@ export function isPrefetch(headers: Headers): boolean {
  * oublié ouvert la prolongerait sans fin, sans personne devant l'écran.
  */
 export const BACKGROUND_POLL_PATHS = ["/alertes"] as const;
+/** Préfixes relevés de la même façon : l'état d'envoi d'une notification (3 s). */
+export const BACKGROUND_POLL_PREFIXES = ["/notifications/"] as const;
 
 export function isBackgroundPoll(pathname: string): boolean {
-  return (BACKGROUND_POLL_PATHS as readonly string[]).includes(pathname);
+  return (
+    (BACKGROUND_POLL_PATHS as readonly string[]).includes(pathname) ||
+    BACKGROUND_POLL_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  );
 }
 
 /**

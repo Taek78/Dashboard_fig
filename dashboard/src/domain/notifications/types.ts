@@ -28,4 +28,32 @@ export type CustomerNotification = {
   createdAt: string;
   /** ISO 8601 : envoi par l'application, sinon null (en attente). */
   sentAt: string | null;
+  /** ISO 8601 : échec déclaré par l'application, sinon null (migration 0022). */
+  failedAt: string | null;
+  /** Cause de l'échec donnée par l'application, ou null. */
+  failureReason: string | null;
 };
+
+/**
+ * Où en est l'envoi d'une notification, lu par l'écran qui vient de la
+ * déposer : en attente (dans la file), envoyée (accusé de l'application), en
+ * échec (déclaré par l'application, ou délai d'accusé dépassé à l'écran).
+ */
+export const DELIVERY_STATES = ["pending", "sent", "failed"] as const;
+export type DeliveryState = (typeof DELIVERY_STATES)[number];
+export type NotificationDelivery = {
+  id: string;
+  orderId: string;
+  state: DeliveryState;
+  failureReason: string | null;
+};
+
+/** Longueur maximale de la cause d'un échec (colonne et API). */
+export const FAILURE_REASON_MAX_LENGTH = 200;
+/**
+ * Sans accusé de l'application dans ce délai, l'écran annonce l'échec et
+ * propose « Réessayer » (réseau coupé, serveur de l'application arrêté…).
+ */
+export const DELIVERY_TIMEOUT_MS = 90_000;
+/** L'écran relit l'état de l'envoi toutes les 3 s tant qu'il attend. */
+export const DELIVERY_POLL_MS = 3_000;

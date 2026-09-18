@@ -30,6 +30,7 @@ import {
   type OrderStatus,
 } from "@/domain/orders/status";
 import { idleActionResult } from "@/lib/action-result";
+import { NotificationDeliveryBadge } from "@/components/orders/notification-delivery-badge";
 import { cn } from "@/lib/utils";
 
 /*
@@ -69,7 +70,9 @@ import { cn } from "@/lib/utils";
  * Après une écriture, deux lignes courtes, jamais une phrase qui s'allonge :
  * la confirmation (vert), puis « Client notifié » avec un badge de validation
  * (vert, d'après `notified` renvoyé par l'action) ou « Client non notifié »
- * (gris). Icônes calées sur la première ligne du texte : dans la bande
+ * (gris). Depuis le 2026-09-18, « Client notifié » suit l'envoi réel
+ * (NotificationDeliveryBadge) : spinner jusqu'à l'accusé de l'application,
+ * « Échec d'envoi de la notification » et « Réessayer » s'il ne vient pas. Icônes calées sur la première ligne du texte : dans la bande
  * étroite des cartes, un message peut se replier sur deux lignes.
  */
 export function OrderStatusSelect({
@@ -218,10 +221,18 @@ export function OrderStatusSelect({
         )}
         {result.status === "success" && result.notified !== undefined ? (
           result.notified ? (
-            <p className="text-success flex items-center gap-1.5">
-              <BadgeCheck className="size-4 shrink-0" aria-hidden="true" />
-              Client notifié
-            </p>
+            result.notificationId ? (
+              // La clé relance le suivi pour chaque nouvelle notification déposée.
+              <NotificationDeliveryBadge
+                key={result.notificationId}
+                notificationId={result.notificationId}
+              />
+            ) : (
+              <p className="text-success flex items-center gap-1.5">
+                <BadgeCheck className="size-4 shrink-0" aria-hidden="true" />
+                Client notifié
+              </p>
+            )
           ) : (
             <p className="text-muted-foreground flex items-center gap-1.5">
               <BellOff className="size-4 shrink-0" aria-hidden="true" />

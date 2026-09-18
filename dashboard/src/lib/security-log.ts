@@ -137,6 +137,13 @@ export type SecurityEvent =
   | { type: "api_file_uploaded"; customerId: string; uploadId: string }
   | { type: "api_file_rejected"; customerId: string; reason: string }
   | { type: "api_notification_sent"; notificationId: string }
+  | { type: "api_notification_failed"; notificationId: string }
+  | {
+      type: "notification_requeued";
+      userId: string;
+      notificationId: string;
+      orderId: string;
+    }
   | { type: "api_service_forbidden"; ip: string }
   | { type: "api_rate_limited"; subject: string; ip: string };
 

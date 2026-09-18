@@ -40,6 +40,8 @@ isolateEachTest();
 const pending = await import("@/app/api/v1/service/notifications/route");
 const sent =
   await import("@/app/api/v1/service/notifications/[id]/envoi/route");
+const failed =
+  await import("@/app/api/v1/service/notifications/[id]/echec/route");
 const { getOrderNotifications } = await import("@/data/notifications");
 
 const KEY = hoisted.serviceKey!;
@@ -153,5 +155,74 @@ describe("POST /api/v1/service/notifications/{id}/envoi", () => {
       ),
     );
     expect(emptied.items.some((n) => n.id === target.id)).toBe(false);
+  });
+});
+
+describe("POST /api/v1/service/notifications/{id}/echec", () => {
+  const call = (id: string, body?: unknown, token: string | null = KEY) =>
+    failed.POST(
+      apiRequest("POST", `/api/v1/service/notifications/${id}/echec`, {
+        token: token ?? undefined,
+        body,
+      }),
+      params({ id }),
+    );
+
+  it("pose l'échec avec sa cause une seule fois (409 ensuite), la sort de la file ; un envoi ultérieur l'efface", async () => {
+    const target = expectedPending[0]!;
+    expect((await call(target.id, undefined, null)).status).toBe(401);
+    const ok = await call(target.id, { raison: "Jeton du téléphone expiré" });
+    expect(ok.status).toBe(200);
+    expect(hoisted.logged.at(-1)).toMatchObject({
+      type: "api_notification_failed",
+      notificationId: target.id,
+    });
+    const stored = (await getOrderNotifications(target.order.id)).find(
+      (n) => n.id === target.id,
+    );
+    expect(stored).toMatchObject({
+      sentAt: null,
+      failureReason: "Jeton du téléphone expiré",
+    });
+    expect(stored?.failedAt).not.toBeNull();
+
+    const again = await call(target.id);
+    expect(again.status).toBe(409);
+    expect((await readJson(again)).error).toMatchObject({
+      code: "already_failed",
+    });
+    const queue = await readJson<{ items: { id: string }[] }>(
+      await pending.GET(
+        apiRequest("GET", "/api/v1/service/notifications", { token: KEY }),
+        params({}),
+      ),
+    );
+    expect(queue.items.some((n) => n.id === target.id)).toBe(false);
+
+    // L'application réussit plus tard : l'accusé d'envoi efface l'échec.
+    const late = await sent.POST(
+      apiRequest("POST", `/api/v1/service/notifications/${target.id}/envoi`, {
+        token: KEY,
+      }),
+      params({ id: target.id }),
+    );
+    expect(late.status).toBe(200);
+    const after = (await getOrderNotifications(target.order.id)).find(
+      (n) => n.id === target.id,
+    );
+    expect(after).toMatchObject({ failedAt: null, failureReason: null });
+    expect((await readJson(await call(target.id))).error).toMatchObject({
+      code: "already_sent",
+    });
+  });
+
+  it("sans corps accepté ; cause trop longue refusée (422) ; inconnue 404", async () => {
+    // Chaque test dans sa transaction annulée : la même notification repart en attente.
+    const target = expectedPending[0]!;
+    expect((await call(target.id, { raison: "x".repeat(201) })).status).toBe(
+      422,
+    );
+    expect((await call(target.id)).status).toBe(200);
+    expect((await call("ntf-9999")).status).toBe(404);
   });
 });

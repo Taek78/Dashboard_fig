@@ -43,6 +43,8 @@ export const notificationsFixtures: readonly CustomerNotification[] =
               event.at < SENT_BEFORE
                 ? new Date(Date.parse(event.at) + SEND_DELAY_MS).toISOString()
                 : null,
+            failedAt: null,
+            failureReason: null,
           };
         }),
     );

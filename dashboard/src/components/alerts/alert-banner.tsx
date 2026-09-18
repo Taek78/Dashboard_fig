@@ -89,9 +89,17 @@ export function AlertBanner({
 }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
+  // Onglet caché : le décompte attend le retour, pour que la notification soit vue.
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    const onChange = () => setHidden(document.visibilityState !== "visible");
+    onChange();
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
   const [leaving, setLeaving] = useState(false);
   const remaining = useRef(ALERT_DISPLAY_MS);
-  const paused = hovered || focused;
+  const paused = hovered || focused || hidden;
   const tone = TONES[notice.kind];
 
   // Des nouveautés s'ajoutent : les 4 s repartent, même pendant la sortie.

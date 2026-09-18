@@ -2,10 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { assignStaff, getOrder, updateOrderStatus } from "@/data/orders";
+import {
+  getNotificationDelivery,
+  requeueNotification,
+} from "@/data/notifications";
 import { getCurrentUser } from "@/data/session";
 import { getStaff } from "@/data/staff";
 import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
 import { orderStatusNotification } from "@/domain/notifications/rules";
+import { requeueNotificationSchema } from "@/domain/notifications/schemas";
 import { ASSIGNMENT_ROLE_LABELS } from "@/domain/orders/assignment";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { assignStaffSchema, changeStatusSchema } from "@/domain/orders/schemas";
@@ -22,7 +27,11 @@ import type { ActionResult } from "@/lib/action-result";
  * notifié (case cochée ET autorisation relue sur la commande) ; absent quand
  * rien n'a été écrit (refus, statut déjà en place).
  */
-export type StatusChangeResult = ActionResult & { notified?: boolean };
+export type StatusChangeResult = ActionResult & {
+  notified?: boolean;
+  /** La notification déposée, dont l'écran suit l'envoi ; absente sinon. */
+  notificationId?: string;
+};
 import { logSecurity } from "@/data/security-log";
 
 /*
@@ -105,9 +114,6 @@ export async function changeOrderStatus(
     //    notification pour le client est composée ici (texte figé) et déposée
     //    par la source dans la même transaction, seulement s'il l'a autorisée
     //    et si la case « Notifier le client » est restée cochée (notify).
-    // Le client sera notifié si la case est cochée ET s'il l'a autorisé : la
-    // même colonne que la source relit au moment d'écrire.
-    const notified = notify && order.customer.notifyOrderStatus;
     const updated = await updateOrderStatus(order.id, {
       from: order.status,
       to: nextStatus,
@@ -121,6 +127,9 @@ export async function changeOrderStatus(
       revalidatePath("/", "layout");
       return { status: "error", message: MESSAGES.conflict };
     }
+    // Notifié = une notification a réellement été déposée (case cochée ET
+    // autorisation relue par la base dans la transaction du statut).
+    const notified = updated.notificationId !== null;
 
     logSecurity({
       type: "order_status_changed",
@@ -140,6 +149,9 @@ export async function changeOrderStatus(
         ? `Commande annulée. Motif ${notified ? "communiqué au client" : "enregistré"} : ${formatCancellation(cancellation)}.`
         : `Statut mis à jour : ${ORDER_STATUS_LABELS[nextStatus]}.`,
       notified,
+      ...(updated.notificationId
+        ? { notificationId: updated.notificationId }
+        : {}),
     };
   } catch (error) {
     // Côté serveur seulement, sans nom ni e-mail ; le client reçoit un message générique.
@@ -251,5 +263,64 @@ export async function assignOrderStaff(
   } catch (error) {
     console.error("[assignOrderStaff]", { userId: user.id, orderId }, error);
     return { status: "error", message: ASSIGN_MESSAGES.failure };
+  }
+}
+
+/*
+ * « Réessayer » l'envoi d'une notification en échec (demande du 2026-09-18) :
+ * session → rôle (qui change un statut, c'est lui qui l'a déposée) → zod →
+ * écriture conditionnelle (requeueNotification : l'échec est effacé, la
+ * notification revient dans la file de l'application ; rien si elle est déjà
+ * partie) → journal. L'écran relance alors son attente de l'accusé.
+ */
+export type RequeueResult =
+  | { status: "queued" }
+  | { status: "sent" }
+  | { status: "error"; message: string };
+
+export async function requeueCustomerNotification(
+  notificationId: string,
+): Promise<RequeueResult> {
+  const user = await getCurrentUser();
+  if (!canChangeOrderStatus(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "requeueCustomerNotification",
+    });
+    return { status: "error", message: MESSAGES.forbidden };
+  }
+  const parsed = requeueNotificationSchema.safeParse({ notificationId });
+  if (!parsed.success) {
+    return { status: "error", message: "Notification introuvable." };
+  }
+  try {
+    const delivery = await getNotificationDelivery(parsed.data.notificationId);
+    if (!delivery) {
+      return { status: "error", message: "Notification introuvable." };
+    }
+    const outcome = await requeueNotification(delivery.id);
+    if (outcome === "not_found") {
+      return { status: "error", message: "Notification introuvable." };
+    }
+    if (outcome === "already_sent") return { status: "sent" };
+    logSecurity({
+      type: "notification_requeued",
+      userId: user.id,
+      notificationId: delivery.id,
+      orderId: delivery.orderId,
+    });
+    return { status: "queued" };
+  } catch (error) {
+    console.error(
+      "[requeueCustomerNotification]",
+      { userId: user.id, notificationId },
+      error,
+    );
+    return {
+      status: "error",
+      message:
+        "Impossible de renvoyer la notification. Réessayez dans un instant.",
+    };
   }
 }

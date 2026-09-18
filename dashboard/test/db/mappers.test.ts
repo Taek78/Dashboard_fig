@@ -235,6 +235,8 @@ describe("toCustomerNotification", () => {
         body: n.body,
         createdAt: new Date(n.createdAt),
         sentAt: n.sentAt === null ? null : new Date(n.sentAt),
+        failedAt: n.failedAt === null ? null : new Date(n.failedAt),
+        failureReason: n.failureReason,
       };
       expect(toCustomerNotification(row, n.order)).toEqual(n);
     }

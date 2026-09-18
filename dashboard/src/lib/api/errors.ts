@@ -35,6 +35,7 @@ export const API_ERROR_CODES = [
   "not_cancellable",
   "order_not_owned",
   "already_sent",
+  "already_failed",
   "length_required",
   "file_empty",
   "content_type_mismatch",

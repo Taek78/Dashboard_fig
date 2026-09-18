@@ -596,6 +596,13 @@ export const customerNotifications = pgTable(
     createdAt: timestampTz("created_at").notNull().defaultNow(),
     /** Posé par l'application quand la notification est partie ; NULL = en attente. */
     sentAt: timestampTz("sent_at"),
+    /**
+     * Posé par l'application quand l'envoi a échoué (migration 0022) : la
+     * notification sort de la file jusqu'à « Réessayer » dans le back-office.
+     */
+    failedAt: timestampTz("failed_at"),
+    /** Cause courte donnée par l'application, 200 caractères au plus. */
+    failureReason: text("failure_reason"),
   },
   (t) => [
     index("customer_notifications_order_idx").on(t.orderId, t.createdAt),
@@ -609,7 +616,16 @@ export const customerNotifications = pgTable(
     // Ce que l'application relit : la file d'attente, dans l'ordre de dépôt.
     index("customer_notifications_pending_idx")
       .on(t.createdAt)
-      .where(sql`${t.sentAt} is null`),
+      .where(sql`${t.sentAt} is null and ${t.failedAt} is null`),
+    // Envoyée OU en échec, jamais les deux ; une cause seulement avec l'échec.
+    check(
+      "customer_notifications_sent_or_failed",
+      sql`${t.sentAt} is null or ${t.failedAt} is null`,
+    ),
+    check(
+      "customer_notifications_failure_reason",
+      sql`(${t.failedAt} is not null or ${t.failureReason} is null) and char_length(coalesce(${t.failureReason}, '')) <= 200`,
+    ),
   ],
 );
 

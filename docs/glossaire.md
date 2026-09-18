@@ -406,6 +406,12 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 
 **Néon** (design) : un halo lumineux léger de la couleur d'un élément, obtenu par une ombre floue (`box-shadow`, `drop-shadow`) ; au survol des icônes Facebook et Instagram du pied du menu.
 
+**Accusé d'envoi** (notifications, 2026-09-18) : la confirmation, par le serveur de l'application, qu'une notification est bien partie vers le téléphone du client (`POST /service/notifications/{id}/envoi`, `sent_at`). Tant qu'il n'est pas arrivé, un spinner tourne à côté de « Client notifié » ; s'il ne vient pas en 90 s, ou si l'application déclare un **échec d'envoi** (`…/echec`, `failed_at`), le badge devient rouge avec un bouton « Réessayer » qui remet la notification dans la file.
+
+**Section illuminée** (menu, 2026-09-18) : l'entrée Commandes ou Messages du menu entourée d'un halo lumineux qui respire, avec le nombre de nouveautés, dès qu'une commande ou un message arrive, jusqu'à ce qu'on l'ouvre (`nav-lit`). Sur téléphone, un point lumineux sur le bouton du menu.
+
+**Notification système** (navigateur) : la bulle du système d'exploitation (centre de notifications de Windows), envoyée par la page avec la permission de la personne (Notification API). Le back-office s'en sert, sur ordinateur, quand il n'est pas au premier plan, avec le compte dans le titre de l'onglet et le **badge de l'application** (pastille chiffrée sur l'icône d'une application installée, Badging API).
+
 **Préparateur-livreur** (personnel, 2026-09-18) : le métier d'une personne qui prépare ET livre ; elle est proposée dans les deux listes d'affectation d'une commande et peut tenir les deux rôles de la même commande (`KINDS_FOR_ROLE`). Présente, elle lève à elle seule l'alerte « aucun préparateur » et « aucun livreur ».
 
 **Notification groupée** (alertes en direct) : une seule notification s'affiche à la fois ; ce qui arrive pendant qu'elle est visible s'y ajoute et relance ses 4 s (« 3 nouvelles commandes », « 2 commandes · 1 message »), au lieu d'empiler des cartes (`summarizeNotices`).

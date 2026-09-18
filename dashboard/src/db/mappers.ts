@@ -366,6 +366,8 @@ export function toCustomerNotification(
     body: row.body,
     createdAt: row.createdAt.toISOString(),
     sentAt: row.sentAt?.toISOString() ?? null,
+    failedAt: row.failedAt?.toISOString() ?? null,
+    failureReason: row.failureReason,
   };
 }
 

@@ -29,8 +29,10 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 const { isolateEachTest } = await import("../../support/test-database");
 isolateEachTest();
 
-const { assignOrderStaff, changeOrderStatus } =
+const { assignOrderStaff, changeOrderStatus, requeueCustomerNotification } =
   await import("@/app/(dashboard)/commandes/[id]/actions");
+const { markNotificationFailed, getNotificationDelivery } =
+  await import("@/data/notifications");
 const { getOrder, getOrderEvents } = await import("@/data/orders");
 const { getOrderNotifications } = await import("@/data/notifications");
 const { idleActionResult } = await import("@/lib/action-result");
@@ -74,6 +76,7 @@ describe("changeOrderStatus", () => {
       status: "success",
       message: "Statut mis à jour : Expédiée.",
       notified: true,
+      notificationId: expect.any(String),
     });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
     expect(await getOrderEvents("cmd-0001")).toMatchObject([
@@ -127,6 +130,7 @@ describe("changeOrderStatus", () => {
         status: "success",
         message: "Statut mis à jour : Livrée.",
         notified: true,
+        notificationId: expect.any(String),
       },
     );
     expect(await run({ orderId: "cmd-0001", nextStatus: "preparing" })).toEqual(
@@ -134,6 +138,7 @@ describe("changeOrderStatus", () => {
         status: "success",
         message: "Statut mis à jour : En préparation.",
         notified: true,
+        notificationId: expect.any(String),
       },
     );
     expect(
@@ -151,6 +156,7 @@ describe("changeOrderStatus", () => {
       status: "success",
       message: "Statut mis à jour : Expédiée.",
       notified: true,
+      notificationId: expect.any(String),
     });
     const order = await getOrder("cmd-0001");
     expect(order?.status).toBe("delivering");
@@ -238,6 +244,7 @@ describe("changeOrderStatus", () => {
       message:
         "Commande annulée. Motif communiqué au client : Stock insuffisant.",
       notified: true,
+      notificationId: expect.any(String),
     });
     expect((await getOrder("cmd-0001"))?.status).toBe("cancelled");
   });
@@ -258,6 +265,7 @@ describe("changeOrderStatus", () => {
       message:
         "Commande annulée. Motif communiqué au client : Stock insuffisant.",
       notified: true,
+      notificationId: expect.any(String),
     });
   });
 
@@ -304,6 +312,7 @@ describe("changeOrderStatus", () => {
       message:
         "Commande annulée. Motif communiqué au client : Autre : Client absent.",
       notified: true,
+      notificationId: expect.any(String),
     });
     expect((await getOrder("cmd-0001"))?.cancellation).toEqual({
       reason: "other",
@@ -335,6 +344,7 @@ describe("changeOrderStatus", () => {
       message:
         "Commande annulée. Motif communiqué au client : Stock insuffisant.",
       notified: true,
+      notificationId: expect.any(String),
     });
     expect(
       await run({
@@ -345,6 +355,7 @@ describe("changeOrderStatus", () => {
       status: "success",
       message: "Statut mis à jour : Livrée.",
       notified: true,
+      notificationId: expect.any(String),
     });
     expect((await getOrder("cmd-0002"))?.status).toBe("delivered");
   });
@@ -391,6 +402,7 @@ describe("changeOrderStatus", () => {
       status: "success",
       message: "Statut mis à jour : En préparation.",
       notified: true,
+      notificationId: expect.any(String),
     });
     expect(
       (await getOrderNotifications("cmd-0001")).map((n) => n.orderStatus),
@@ -406,6 +418,45 @@ describe("changeOrderStatus", () => {
     ).toEqual({
       status: "error",
       message: "Le statut choisi n'est pas valide.",
+    });
+  });
+});
+
+describe("suivi de l'envoi de la notification", () => {
+  it("renvoie l'id de la notification déposée, celui que l'écran suit", async () => {
+    const result = await run({ orderId: "cmd-0001", nextStatus: "delivering" });
+    const [latest] = await getOrderNotifications("cmd-0001");
+    expect(result).toMatchObject({ notified: true });
+    expect(result.notificationId).toBe(latest?.id);
+    // Case décochée : ni notification, ni id.
+    const silent = await changeOrderStatus(
+      idleActionResult,
+      form({ orderId: "cmd-0001", nextStatus: "delivered", notify: "0" }),
+    );
+    expect(silent).toMatchObject({ notified: false });
+    expect(silent.notificationId).toBeUndefined();
+  });
+
+  it("« Réessayer » remet en file une notification en échec, pour qui change un statut", async () => {
+    const { notificationId } = await run({
+      orderId: "cmd-0001",
+      nextStatus: "delivering",
+    });
+    await markNotificationFailed(notificationId!, new Date(), "Réseau");
+    session.role = "lecture";
+    expect(await requeueCustomerNotification(notificationId!)).toMatchObject({
+      status: "error",
+    });
+    session.role = "livreur";
+    expect(await requeueCustomerNotification(notificationId!)).toEqual({
+      status: "queued",
+    });
+    expect(await getNotificationDelivery(notificationId!)).toMatchObject({
+      state: "pending",
+      failureReason: null,
+    });
+    expect(await requeueCustomerNotification("ntf-9999")).toMatchObject({
+      status: "error",
     });
   });
 });

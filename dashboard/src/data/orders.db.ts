@@ -345,23 +345,28 @@ const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
         cancellationDetail: change.cancellation?.detail ?? null,
       });
 
+      let notificationId: string | null = null;
       if (change.notification) {
         // Déposée seulement si le client a autorisé les notifications d'état :
-        // la condition est lue par la base dans la même transaction.
-        await tx.execute(sql`
+        // la condition est lue par la base dans la même transaction. L'id est
+        // renvoyé seulement si la ligne a été écrite (l'écran suit l'envoi).
+        const candidate = randomUUID();
+        const inserted = await tx.execute<{ id: string }>(sql`
           insert into ${customerNotifications}
             (id, customer_id, order_id, kind, order_status, title, body)
-          select ${randomUUID()}, o.customer_id, o.id, 'order_status',
+          select ${candidate}, o.customer_id, o.id, 'order_status',
             ${change.to}::order_status,
             ${change.notification.title}, ${change.notification.body}
           from ${orders} o
           join ${customers} c on c.id = o.customer_id
           where o.id = ${id} and c.notify_order_status
+          returning id
         `);
+        notificationId = inserted.length > 0 ? candidate : null;
       }
 
       const [order] = await loadOrders(tx, eq(orders.id, id));
-      return order ?? null;
+      return order ? { ...order, notificationId } : null;
     }),
 
   getOrderEvents: async (orderId: string) => {

@@ -5,14 +5,16 @@ import { toCustomerNotification } from "@/db/mappers";
 import { customerNotifications, orders } from "@/db/schema";
 import type { NotificationsSource } from "@/domain/notifications/source";
 import type { CustomerNotification } from "@/domain/notifications/types";
+import { deliveryState } from "@/domain/notifications/delivery";
 import { keysetSlice } from "@/lib/api/cursor";
 
 /*
  * Implémentation Drizzle du contrat NotificationsSource : lectures de la file
  * customer_notifications, la référence de la commande jointe. L'écriture du
  * dépôt est dans orders.db.ts (updateOrderStatus), dans la transaction du
- * statut ; seul l'accusé d'envoi (markNotificationSent) s'écrit ici,
- * conditionnellement (`WHERE sent_at IS NULL`).
+ * statut ; seuls l'accusé d'envoi (markNotificationSent), l'échec déclaré
+ * (markNotificationFailed) et la remise en file (requeueNotification)
+ * s'écrivent ici, conditionnellement (`WHERE sent_at IS NULL`).
  */
 const selection = {
   notification: customerNotifications,
@@ -77,7 +79,12 @@ export const notificationsDb: NotificationsSource = {
       .select(selection)
       .from(customerNotifications)
       .innerJoin(orders, eq(customerNotifications.orderId, orders.id))
-      .where(isNull(customerNotifications.sentAt))
+      .where(
+        and(
+          isNull(customerNotifications.sentAt),
+          isNull(customerNotifications.failedAt),
+        ),
+      )
       .orderBy(
         asc(customerNotifications.createdAt),
         asc(customerNotifications.id),
@@ -90,7 +97,7 @@ export const notificationsDb: NotificationsSource = {
     const db = getDb();
     const updated = await db
       .update(customerNotifications)
-      .set({ sentAt: at })
+      .set({ sentAt: at, failedAt: null, failureReason: null })
       .where(
         and(
           eq(customerNotifications.id, id),
@@ -99,6 +106,78 @@ export const notificationsDb: NotificationsSource = {
       )
       .returning({ id: customerNotifications.id });
     if (updated.length > 0) return "sent";
+    const [row] = await db
+      .select({ id: customerNotifications.id })
+      .from(customerNotifications)
+      .where(eq(customerNotifications.id, id))
+      .limit(1);
+    return row ? "already_sent" : "not_found";
+  },
+
+  getNotificationDelivery: async (id) => {
+    const [row] = await getDb()
+      .select({
+        id: customerNotifications.id,
+        orderId: customerNotifications.orderId,
+        sentAt: customerNotifications.sentAt,
+        failedAt: customerNotifications.failedAt,
+        failureReason: customerNotifications.failureReason,
+      })
+      .from(customerNotifications)
+      .where(eq(customerNotifications.id, id))
+      .limit(1);
+    if (!row) return null;
+    return {
+      id: row.id,
+      orderId: row.orderId,
+      state: deliveryState({
+        sentAt: row.sentAt?.toISOString() ?? null,
+        failedAt: row.failedAt?.toISOString() ?? null,
+      }),
+      failureReason: row.failureReason,
+    };
+  },
+
+  // Échec déclaré par l'application : seulement pour une notification ni
+  // envoyée ni déjà en échec (écriture conditionnelle), puis relecture pour
+  // dire pourquoi rien n'a été écrit.
+  markNotificationFailed: async (id, at, reason) => {
+    const db = getDb();
+    const updated = await db
+      .update(customerNotifications)
+      .set({ failedAt: at, failureReason: reason })
+      .where(
+        and(
+          eq(customerNotifications.id, id),
+          isNull(customerNotifications.sentAt),
+          isNull(customerNotifications.failedAt),
+        ),
+      )
+      .returning({ id: customerNotifications.id });
+    if (updated.length > 0) return "failed";
+    const [row] = await db
+      .select({ sentAt: customerNotifications.sentAt })
+      .from(customerNotifications)
+      .where(eq(customerNotifications.id, id))
+      .limit(1);
+    if (!row) return "not_found";
+    return row.sentAt ? "already_sent" : "already_failed";
+  },
+
+  // « Réessayer » : l'échec est effacé, la notification revient dans la file.
+  requeueNotification: async (id) => {
+    const db = getDb();
+    const updated = await db
+      .update(customerNotifications)
+      .set({ failedAt: null, failureReason: null })
+      .where(
+        and(
+          eq(customerNotifications.id, id),
+          isNull(customerNotifications.sentAt),
+        ),
+      )
+      .returning({ id: customerNotifications.id });
+    if (updated.length > 0) return "queued";
     const [row] = await db
       .select({ id: customerNotifications.id })
       .from(customerNotifications)

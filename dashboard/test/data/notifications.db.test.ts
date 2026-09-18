@@ -49,3 +49,62 @@ describe("notificationsDb", () => {
     );
   });
 });
+
+describe("notificationsDb : suivi de l'envoi (échec, remise en file)", () => {
+  const target = () => notificationsFixtures.find((n) => n.sentAt === null)!;
+  const at = new Date("2026-09-18T10:00:00.000Z");
+
+  it("en attente → échec (sort de la file) → remise en file → envoyée", async () => {
+    const id = target().id;
+    expect(await notificationsDb.getNotificationDelivery(id)).toMatchObject({
+      id,
+      orderId: target().order.id,
+      state: "pending",
+      failureReason: null,
+    });
+    expect(await notificationsDb.markNotificationFailed(id, at, "Réseau")).toBe(
+      "failed",
+    );
+    expect(await notificationsDb.markNotificationFailed(id, at, null)).toBe(
+      "already_failed",
+    );
+    expect(await notificationsDb.getNotificationDelivery(id)).toMatchObject({
+      state: "failed",
+      failureReason: "Réseau",
+    });
+    const queue = await notificationsDb.listPendingNotifications(500);
+    expect(queue.some((n) => n.id === id)).toBe(false);
+
+    expect(await notificationsDb.requeueNotification(id)).toBe("queued");
+    expect(await notificationsDb.getNotificationDelivery(id)).toMatchObject({
+      state: "pending",
+      failureReason: null,
+    });
+    expect(
+      (await notificationsDb.listPendingNotifications(500)).some(
+        (n) => n.id === id,
+      ),
+    ).toBe(true);
+
+    expect(await notificationsDb.markNotificationSent(id, at)).toBe("sent");
+    expect(await notificationsDb.requeueNotification(id)).toBe("already_sent");
+    expect(await notificationsDb.markNotificationFailed(id, at, null)).toBe(
+      "already_sent",
+    );
+    expect((await notificationsDb.getNotificationDelivery(id))?.state).toBe(
+      "sent",
+    );
+  });
+
+  it("inconnue : null et not_found", async () => {
+    expect(
+      await notificationsDb.getNotificationDelivery("ntf-9999"),
+    ).toBeNull();
+    expect(await notificationsDb.requeueNotification("ntf-9999")).toBe(
+      "not_found",
+    );
+    expect(
+      await notificationsDb.markNotificationFailed("ntf-9999", at, null),
+    ).toBe("not_found");
+  });
+});

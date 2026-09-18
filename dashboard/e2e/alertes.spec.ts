@@ -98,3 +98,33 @@ test("plusieurs nouveautés à la fois : UNE seule notification qui les compte",
     await sql.end();
   }
 });
+
+test("nouveau message : la section Messages s'illumine avec le compte, puis s'éteint à l'ouverture", async ({
+  page,
+}) => {
+  const sql = postgres(TEST_DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    await login(page, E2E_ACCOUNTS.admin);
+    const firstFeed = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/alertes" && r.ok(),
+    );
+    await page.goto("/commandes");
+    await firstFeed;
+    await sql`insert into customer_messages (id, customer_id, subject, body)
+      values ('msg-e2e-lumiere', 'cli-0001', 'other', 'Bonjour, une question.')`;
+    const messages = page
+      .locator('[data-slot="sidebar-inner"]')
+      .getByRole("link", { name: /^Messages/ });
+    await expect(messages).toHaveClass(/nav-lit/, { timeout: 15_000 });
+    await expect(messages).toContainText("1");
+    await expect(
+      page.getByRole("region", { name: "Notifications" }),
+    ).toContainText("Nouveau message client");
+    await messages.click();
+    await expect(page).toHaveURL(/\/messages$/);
+    await expect(messages).not.toHaveClass(/nav-lit/);
+  } finally {
+    await sql`delete from customer_messages where id = 'msg-e2e-lumiere'`;
+    await sql.end();
+  }
+});

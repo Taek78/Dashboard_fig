@@ -87,8 +87,14 @@ export type AlertWatch = {
   stock: ReadonlyMap<string, Exclude<StockLevel, "ok">>;
 } | null;
 
-/** Relevé toutes les 5 s, onglet visible seulement. */
+/** Relevé toutes les 5 s quand l'onglet est visible. */
 export const ALERT_POLL_MS = 5_000;
+/**
+ * Onglet caché ou fenêtre réduite : toutes les 15 s (le navigateur peut
+ * espacer davantage), pour que la barre des tâches signale quand même une
+ * nouveauté (demande du 2026-09-18).
+ */
+export const ALERT_HIDDEN_POLL_MS = 15_000;
 /** Durée d'affichage d'une notification (demande : 4 s). */
 export const ALERT_DISPLAY_MS = 4_000;
 /**

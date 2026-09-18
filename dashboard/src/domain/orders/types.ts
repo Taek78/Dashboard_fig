@@ -141,6 +141,13 @@ export type NewOrder = {
   paymentReference: string | null;
 };
 
+/**
+ * Ce que renvoie un changement de statut réussi : la commande relue et,
+ * si une notification a été déposée pour le client, son identifiant (l'écran
+ * suit son envoi) ; null sinon.
+ */
+export type UpdatedOrder = Order & { notificationId: string | null };
+
 /*
  * Trace métier durable d'un changement de statut : qui, quand, de
  * quel statut à quel statut. Écrite par la source en même temps que le statut

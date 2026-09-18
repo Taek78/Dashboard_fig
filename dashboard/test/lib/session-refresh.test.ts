@@ -23,6 +23,9 @@ describe("isBackgroundPoll", () => {
   it("le relevé des alertes ne renouvelle jamais la session, les pages si", () => {
     expect(isBackgroundPoll("/alertes")).toBe(true);
     expect(isBackgroundPoll("/alertes/x")).toBe(false);
+    // Suivi de l'envoi d'une notification, relu toutes les 3 s.
+    expect(isBackgroundPoll("/notifications/ntf-1")).toBe(true);
+    expect(isBackgroundPoll("/notifications")).toBe(false);
     expect(isBackgroundPoll("/commandes")).toBe(false);
     expect(isBackgroundPoll("/")).toBe(false);
   });

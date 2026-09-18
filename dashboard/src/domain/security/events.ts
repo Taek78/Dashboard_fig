@@ -204,6 +204,11 @@ export const SECURITY_EVENT_META: Record<
     label: "Statut de commande changé",
     tone: "normal",
   },
+  notification_requeued: {
+    family: "commandes",
+    label: "Notification client renvoyée",
+    tone: "normal",
+  },
   order_staff_assigned: {
     family: "commandes",
     label: "Équipe affectée",
@@ -334,6 +339,11 @@ export const SECURITY_EVENT_META: Record<
     label: "Notification marquée envoyée",
     tone: "normal",
   },
+  api_notification_failed: {
+    family: "application",
+    label: "Échec d'envoi d'une notification",
+    tone: "sensible",
+  },
   api_service_forbidden: {
     family: "application",
     label: "Clé de service refusée",
@@ -436,6 +446,8 @@ export function describeSecurityEvent(
       return `compte ${or(text(d.targetId))}`;
     case "order_status_changed":
       return `commande ${or(text(d.orderId))} : ${or(text(d.from))} → ${or(text(d.to))}, par ${or(text(d.userId))}`;
+    case "notification_requeued":
+      return `notification ${or(text(d.notificationId))}, commande ${or(text(d.orderId))}, par ${or(text(d.userId))}`;
     case "order_staff_assigned":
       return `commande ${or(text(d.orderId))} : ${or(text(d.role))} ${
         text(d.staffId) === null ? "retiré" : `→ ${text(d.staffId)}`
@@ -496,6 +508,7 @@ export function describeSecurityEvent(
     case "api_file_rejected":
       return `client ${or(text(d.customerId))}, motif ${or(text(d.reason))}`;
     case "api_notification_sent":
+    case "api_notification_failed":
       return `notification ${or(text(d.notificationId))}`;
     case "api_service_forbidden":
       return `depuis ${or(text(d.ip))}`;

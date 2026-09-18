@@ -3,7 +3,7 @@
   "info": {
     "title": "API FIG",
     "version": "1.0.0",
-    "description": "API HTTP du back-office FIG pour l'application (clients) et son serveur (notifications). Toutes les réponses sont en JSON UTF-8 ; les montants en centimes d'euro, les quantités en grammes (unit « g ») ou en pièces (unit « piece »), les instants en ISO 8601 UTC, les jours AAAA-MM-JJ et les heures HH:mm (Europe/Paris). Chaque clé de vocabulaire (statut, objet, catégorie…) est accompagnée de son libellé français.\n\nAccès des clients : POST /auth/code envoie un code à six chiffres par mail (valable 10 minutes, 5 essais) ; POST /auth/session l'échange contre un jeton de session (180 jours), à envoyer en « Authorization: Bearer <jeton> » ; une adresse inconnue s'inscrit dans le même appel (champ signup). Le serveur de l'application utilise la clé de service (API_SERVICE_KEY) sur les routes /service.\n\nErreurs : { \"error\": { \"code\", \"message\", \"details\"? } }, code stable parmi bad_request, unauthenticated, forbidden, not_found, method_not_allowed, conflict, payload_too_large, unsupported_media_type, validation_failed, rate_limited, idempotency_key_required, idempotency_key_reused, idempotency_in_progress, code_invalid, code_locked, signup_required, email_taken, referral_code_unknown, community_not_joinable, account_closed, quote_invalid, slot_unavailable, address_required, total_mismatch, not_cancellable, order_not_owned, already_sent, length_required, file_empty, content_type_mismatch, upload_quota_exceeded, attachment_unavailable, service_unavailable, internal_error ; message en français, affichable tel quel.\n\nListes : ?limit= (20 par défaut, 50 au plus) et ?cursor= (valeur nextCursor de la page précédente ; null à la fin). Lectures publiques (catalogue, articles, communautés) : Cache-Control public d'une minute et ETag (If-None-Match → 304). Réponses authentifiées : Cache-Control: private, no-store.",
+    "description": "API HTTP du back-office FIG pour l'application (clients) et son serveur (notifications). Toutes les réponses sont en JSON UTF-8 ; les montants en centimes d'euro, les quantités en grammes (unit « g ») ou en pièces (unit « piece »), les instants en ISO 8601 UTC, les jours AAAA-MM-JJ et les heures HH:mm (Europe/Paris). Chaque clé de vocabulaire (statut, objet, catégorie…) est accompagnée de son libellé français.\n\nAccès des clients : POST /auth/code envoie un code à six chiffres par mail (valable 10 minutes, 5 essais) ; POST /auth/session l'échange contre un jeton de session (180 jours), à envoyer en « Authorization: Bearer <jeton> » ; une adresse inconnue s'inscrit dans le même appel (champ signup). Le serveur de l'application utilise la clé de service (API_SERVICE_KEY) sur les routes /service.\n\nErreurs : { \"error\": { \"code\", \"message\", \"details\"? } }, code stable parmi bad_request, unauthenticated, forbidden, not_found, method_not_allowed, conflict, payload_too_large, unsupported_media_type, validation_failed, rate_limited, idempotency_key_required, idempotency_key_reused, idempotency_in_progress, code_invalid, code_locked, signup_required, email_taken, referral_code_unknown, community_not_joinable, account_closed, quote_invalid, slot_unavailable, address_required, total_mismatch, not_cancellable, order_not_owned, already_sent, already_failed, length_required, file_empty, content_type_mismatch, upload_quota_exceeded, attachment_unavailable, service_unavailable, internal_error ; message en français, affichable tel quel.\n\nListes : ?limit= (20 par défaut, 50 au plus) et ?cursor= (valeur nextCursor de la page précédente ; null à la fin). Lectures publiques (catalogue, articles, communautés) : Cache-Control public d'une minute et ETag (If-None-Match → 304). Réponses authentifiées : Cache-Control: private, no-store.",
     "contact": {
       "name": "Équipe FIG"
     }
@@ -70,11 +70,16 @@
               },
               "details": {}
             },
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "additionalProperties": false
           }
         },
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "additionalProperties": false
       },
       "Ok": {
@@ -85,7 +90,9 @@
             "const": true
           }
         },
-        "required": ["ok"],
+        "required": [
+          "ok"
+        ],
         "additionalProperties": false
       },
       "CodeSent": {
@@ -102,7 +109,10 @@
             "description": "Fin de validité du code envoyé."
           }
         },
-        "required": ["ok", "expiresAt"],
+        "required": [
+          "ok",
+          "expiresAt"
+        ],
         "additionalProperties": false
       },
       "Session": {
@@ -138,7 +148,10 @@
                 "type": "string"
               },
               "addressLine": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "city": {
                 "type": "string"
@@ -169,7 +182,11 @@
                         "maximum": 9007199254740991
                       }
                     },
-                    "required": ["id", "name", "discountPercent"],
+                    "required": [
+                      "id",
+                      "name",
+                      "discountPercent"
+                    ],
                     "additionalProperties": false
                   },
                   {
@@ -203,11 +220,19 @@
                     ]
                   }
                 },
-                "required": ["offers", "orderStatus", "marketing", "updatedAt"],
+                "required": [
+                  "offers",
+                  "orderStatus",
+                  "marketing",
+                  "updatedAt"
+                ],
                 "additionalProperties": false
               },
               "referralCode": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "referredBy": {
                 "anyOf": [
@@ -218,7 +243,9 @@
                         "type": "string"
                       }
                     },
-                    "required": ["fullName"],
+                    "required": [
+                      "fullName"
+                    ],
                     "additionalProperties": false
                   },
                   {
@@ -272,7 +299,10 @@
                 "properties": {
                   "tier": {
                     "type": "string",
-                    "enum": ["basic", "loyal"]
+                    "enum": [
+                      "basic",
+                      "loyal"
+                    ]
                   },
                   "label": {
                     "type": "string"
@@ -304,7 +334,12 @@
                     ]
                   }
                 },
-                "required": ["tier", "label", "since", "until"],
+                "required": [
+                  "tier",
+                  "label",
+                  "since",
+                  "until"
+                ],
                 "additionalProperties": false
               },
               "nextDiscount": {
@@ -314,7 +349,10 @@
                     "properties": {
                       "kind": {
                         "type": "string",
-                        "enum": ["community", "loyalty"]
+                        "enum": [
+                          "community",
+                          "loyalty"
+                        ]
                       },
                       "label": {
                         "type": "string"
@@ -325,7 +363,11 @@
                         "maximum": 9007199254740991
                       }
                     },
-                    "required": ["kind", "label", "percent"],
+                    "required": [
+                      "kind",
+                      "label",
+                      "percent"
+                    ],
                     "additionalProperties": false
                   },
                   {
@@ -355,7 +397,12 @@
             "additionalProperties": false
           }
         },
-        "required": ["token", "expiresAt", "created", "customer"],
+        "required": [
+          "token",
+          "expiresAt",
+          "created",
+          "customer"
+        ],
         "additionalProperties": false
       },
       "Customer": {
@@ -374,7 +421,10 @@
             "type": "string"
           },
           "addressLine": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "city": {
             "type": "string"
@@ -405,7 +455,11 @@
                     "maximum": 9007199254740991
                   }
                 },
-                "required": ["id", "name", "discountPercent"],
+                "required": [
+                  "id",
+                  "name",
+                  "discountPercent"
+                ],
                 "additionalProperties": false
               },
               {
@@ -439,11 +493,19 @@
                 ]
               }
             },
-            "required": ["offers", "orderStatus", "marketing", "updatedAt"],
+            "required": [
+              "offers",
+              "orderStatus",
+              "marketing",
+              "updatedAt"
+            ],
             "additionalProperties": false
           },
           "referralCode": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "referredBy": {
             "anyOf": [
@@ -454,7 +516,9 @@
                     "type": "string"
                   }
                 },
-                "required": ["fullName"],
+                "required": [
+                  "fullName"
+                ],
                 "additionalProperties": false
               },
               {
@@ -508,7 +572,10 @@
             "properties": {
               "tier": {
                 "type": "string",
-                "enum": ["basic", "loyal"]
+                "enum": [
+                  "basic",
+                  "loyal"
+                ]
               },
               "label": {
                 "type": "string"
@@ -540,7 +607,12 @@
                 ]
               }
             },
-            "required": ["tier", "label", "since", "until"],
+            "required": [
+              "tier",
+              "label",
+              "since",
+              "until"
+            ],
             "additionalProperties": false
           },
           "nextDiscount": {
@@ -550,7 +622,10 @@
                 "properties": {
                   "kind": {
                     "type": "string",
-                    "enum": ["community", "loyalty"]
+                    "enum": [
+                      "community",
+                      "loyalty"
+                    ]
                   },
                   "label": {
                     "type": "string"
@@ -561,7 +636,11 @@
                     "maximum": 9007199254740991
                   }
                 },
-                "required": ["kind", "label", "percent"],
+                "required": [
+                  "kind",
+                  "label",
+                  "percent"
+                ],
                 "additionalProperties": false
               },
               {
@@ -606,7 +685,9 @@
                 "type": "boolean"
               }
             },
-            "required": ["sellWhenOutOfStock"],
+            "required": [
+              "sellWhenOutOfStock"
+            ],
             "additionalProperties": false
           },
           "deliveryFeeTiers": {
@@ -627,7 +708,10 @@
                   "description": "Centimes d'euro."
                 }
               },
-              "required": ["minSubtotalCents", "feeCents"],
+              "required": [
+                "minSubtotalCents",
+                "feeCents"
+              ],
               "additionalProperties": false
             }
           },
@@ -656,7 +740,10 @@
                 "maximum": 9007199254740991
               }
             },
-            "required": ["threshold", "discountPercent"],
+            "required": [
+              "threshold",
+              "discountPercent"
+            ],
             "additionalProperties": false
           },
           "communityDiscountTiers": {
@@ -675,7 +762,10 @@
                   "maximum": 9007199254740991
                 }
               },
-              "required": ["minMembers", "percent"],
+              "required": [
+                "minMembers",
+                "percent"
+              ],
               "additionalProperties": false
             }
           },
@@ -691,18 +781,27 @@
                   "type": "string"
                 },
                 "variety": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "category": {
                   "type": "string",
-                  "enum": ["fruit", "vegetable"]
+                  "enum": [
+                    "fruit",
+                    "vegetable"
+                  ]
                 },
                 "categoryLabel": {
                   "type": "string"
                 },
                 "unit": {
                   "type": "string",
-                  "enum": ["piece", "g"]
+                  "enum": [
+                    "piece",
+                    "g"
+                  ]
                 },
                 "priceCents": {
                   "type": "integer",
@@ -724,13 +823,22 @@
                 },
                 "container": {
                   "type": "string",
-                  "enum": ["none", "tray", "parcel", "crate", "bag"]
+                  "enum": [
+                    "none",
+                    "tray",
+                    "parcel",
+                    "crate",
+                    "bag"
+                  ]
                 },
                 "originCountry": {
                   "type": "string"
                 },
                 "originRegion": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "caliber": {
                   "anyOf": [
@@ -748,7 +856,10 @@
                           "maximum": 9007199254740991
                         }
                       },
-                      "required": ["minMm", "maxMm"],
+                      "required": [
+                        "minMm",
+                        "maxMm"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -764,7 +875,12 @@
                 },
                 "saleStatus": {
                   "type": "string",
-                  "enum": ["en_vente", "rupture", "indisponible", "masque"]
+                  "enum": [
+                    "en_vente",
+                    "rupture",
+                    "indisponible",
+                    "masque"
+                  ]
                 },
                 "saleStatusLabel": {
                   "type": "string"
@@ -778,7 +894,10 @@
                   "type": "string"
                 },
                 "imageUrl": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "updatedAt": {
                   "type": "string",
@@ -839,7 +958,12 @@
           },
           "category": {
             "type": "string",
-            "enum": ["nutrition", "recipe", "science", "news"]
+            "enum": [
+              "nutrition",
+              "recipe",
+              "science",
+              "news"
+            ]
           },
           "categoryLabel": {
             "type": "string"
@@ -848,7 +972,10 @@
             "type": "string"
           },
           "imageUrl": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "publishedAt": {
             "type": "string",
@@ -895,7 +1022,12 @@
                 },
                 "category": {
                   "type": "string",
-                  "enum": ["nutrition", "recipe", "science", "news"]
+                  "enum": [
+                    "nutrition",
+                    "recipe",
+                    "science",
+                    "news"
+                  ]
                 },
                 "categoryLabel": {
                   "type": "string"
@@ -904,7 +1036,10 @@
                   "type": "string"
                 },
                 "imageUrl": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "publishedAt": {
                   "type": "string",
@@ -935,10 +1070,16 @@
           },
           "nextCursor": {
             "description": "À passer en ?cursor= pour la page suivante ; null à la fin.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "nextCursor"],
+        "required": [
+          "items",
+          "nextCursor"
+        ],
         "additionalProperties": false
       },
       "Community": {
@@ -952,14 +1093,21 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["voisinage", "entreprise", "point_relais"]
+            "enum": [
+              "voisinage",
+              "entreprise",
+              "point_relais"
+            ]
           },
           "kindLabel": {
             "type": "string"
           },
           "visibility": {
             "type": "string",
-            "enum": ["public", "private"]
+            "enum": [
+              "public",
+              "private"
+            ]
           },
           "visibilityLabel": {
             "type": "string"
@@ -1015,14 +1163,21 @@
                 },
                 "kind": {
                   "type": "string",
-                  "enum": ["voisinage", "entreprise", "point_relais"]
+                  "enum": [
+                    "voisinage",
+                    "entreprise",
+                    "point_relais"
+                  ]
                 },
                 "kindLabel": {
                   "type": "string"
                 },
                 "visibility": {
                   "type": "string",
-                  "enum": ["public", "private"]
+                  "enum": [
+                    "public",
+                    "private"
+                  ]
                 },
                 "visibilityLabel": {
                   "type": "string"
@@ -1065,10 +1220,16 @@
           },
           "nextCursor": {
             "description": "À passer en ?cursor= pour la page suivante ; null à la fin.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "nextCursor"],
+        "required": [
+          "items",
+          "nextCursor"
+        ],
         "additionalProperties": false
       },
       "Quote": {
@@ -1087,7 +1248,10 @@
                 },
                 "unit": {
                   "type": "string",
-                  "enum": ["piece", "g"]
+                  "enum": [
+                    "piece",
+                    "g"
+                  ]
                 },
                 "quantity": {
                   "type": "integer",
@@ -1131,7 +1295,10 @@
                 "properties": {
                   "kind": {
                     "type": "string",
-                    "enum": ["community", "loyalty"]
+                    "enum": [
+                      "community",
+                      "loyalty"
+                    ]
                   },
                   "label": {
                     "type": "string"
@@ -1148,7 +1315,12 @@
                     "description": "Centimes d'euro."
                   }
                 },
-                "required": ["kind", "label", "percent", "amountCents"],
+                "required": [
+                  "kind",
+                  "label",
+                  "percent",
+                  "amountCents"
+                ],
                 "additionalProperties": false
               },
               {
@@ -1180,7 +1352,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["id", "name"],
+                "required": [
+                  "id",
+                  "name"
+                ],
                 "additionalProperties": false
               },
               {
@@ -1219,7 +1394,11 @@
             "type": "string"
           }
         },
-        "required": ["productId", "code", "message"],
+        "required": [
+          "productId",
+          "code",
+          "message"
+        ],
         "additionalProperties": false
       },
       "Order": {
@@ -1239,7 +1418,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["preparing", "delivering", "delivered", "cancelled"]
+            "enum": [
+              "preparing",
+              "delivering",
+              "delivered",
+              "cancelled"
+            ]
           },
           "statusLabel": {
             "type": "string"
@@ -1260,11 +1444,18 @@
                 "type": "string"
               }
             },
-            "required": ["date", "start", "end"],
+            "required": [
+              "date",
+              "start",
+              "end"
+            ],
             "additionalProperties": false
           },
           "deliveryAddressLine": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "deliveryCity": {
             "type": "string"
@@ -1285,7 +1476,10 @@
                 },
                 "unit": {
                   "type": "string",
-                  "enum": ["piece", "g"]
+                  "enum": [
+                    "piece",
+                    "g"
+                  ]
                 },
                 "quantity": {
                   "type": "integer",
@@ -1322,7 +1516,10 @@
                 "properties": {
                   "kind": {
                     "type": "string",
-                    "enum": ["community", "loyalty"]
+                    "enum": [
+                      "community",
+                      "loyalty"
+                    ]
                   },
                   "label": {
                     "type": "string"
@@ -1339,7 +1536,12 @@
                     "description": "Centimes d'euro."
                   }
                 },
-                "required": ["kind", "label", "percent", "amountCents"],
+                "required": [
+                  "kind",
+                  "label",
+                  "percent",
+                  "amountCents"
+                ],
                 "additionalProperties": false
               },
               {
@@ -1366,16 +1568,28 @@
                 "properties": {
                   "reason": {
                     "type": "string",
-                    "enum": ["stock", "delivery", "customer", "other"]
+                    "enum": [
+                      "stock",
+                      "delivery",
+                      "customer",
+                      "other"
+                    ]
                   },
                   "label": {
                     "type": "string"
                   },
                   "detail": {
-                    "type": ["string", "null"]
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
-                "required": ["reason", "label", "detail"],
+                "required": [
+                  "reason",
+                  "label",
+                  "detail"
+                ],
                 "additionalProperties": false
               },
               {
@@ -1395,7 +1609,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["id", "name"],
+                "required": [
+                  "id",
+                  "name"
+                ],
                 "additionalProperties": false
               },
               {
@@ -1404,7 +1621,10 @@
             ]
           },
           "paymentReference": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "cancellable": {
             "type": "boolean",
@@ -1455,7 +1675,12 @@
                 },
                 "status": {
                   "type": "string",
-                  "enum": ["preparing", "delivering", "delivered", "cancelled"]
+                  "enum": [
+                    "preparing",
+                    "delivering",
+                    "delivered",
+                    "cancelled"
+                  ]
                 },
                 "statusLabel": {
                   "type": "string"
@@ -1476,11 +1701,18 @@
                       "type": "string"
                     }
                   },
-                  "required": ["date", "start", "end"],
+                  "required": [
+                    "date",
+                    "start",
+                    "end"
+                  ],
                   "additionalProperties": false
                 },
                 "deliveryAddressLine": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "deliveryCity": {
                   "type": "string"
@@ -1501,7 +1733,10 @@
                       },
                       "unit": {
                         "type": "string",
-                        "enum": ["piece", "g"]
+                        "enum": [
+                          "piece",
+                          "g"
+                        ]
                       },
                       "quantity": {
                         "type": "integer",
@@ -1538,7 +1773,10 @@
                       "properties": {
                         "kind": {
                           "type": "string",
-                          "enum": ["community", "loyalty"]
+                          "enum": [
+                            "community",
+                            "loyalty"
+                          ]
                         },
                         "label": {
                           "type": "string"
@@ -1555,7 +1793,12 @@
                           "description": "Centimes d'euro."
                         }
                       },
-                      "required": ["kind", "label", "percent", "amountCents"],
+                      "required": [
+                        "kind",
+                        "label",
+                        "percent",
+                        "amountCents"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -1582,16 +1825,28 @@
                       "properties": {
                         "reason": {
                           "type": "string",
-                          "enum": ["stock", "delivery", "customer", "other"]
+                          "enum": [
+                            "stock",
+                            "delivery",
+                            "customer",
+                            "other"
+                          ]
                         },
                         "label": {
                           "type": "string"
                         },
                         "detail": {
-                          "type": ["string", "null"]
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         }
                       },
-                      "required": ["reason", "label", "detail"],
+                      "required": [
+                        "reason",
+                        "label",
+                        "detail"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -1611,7 +1866,10 @@
                           "type": "string"
                         }
                       },
-                      "required": ["id", "name"],
+                      "required": [
+                        "id",
+                        "name"
+                      ],
                       "additionalProperties": false
                     },
                     {
@@ -1620,7 +1878,10 @@
                   ]
                 },
                 "paymentReference": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "cancellable": {
                   "type": "boolean",
@@ -1652,10 +1913,16 @@
           },
           "nextCursor": {
             "description": "À passer en ?cursor= pour la page suivante ; null à la fin.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "nextCursor"],
+        "required": [
+          "items",
+          "nextCursor"
+        ],
         "additionalProperties": false
       },
       "Message": {
@@ -1682,14 +1949,23 @@
             "type": "string"
           },
           "orderId": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "orderReference": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "type": "string",
-            "enum": ["untreated", "treated"]
+            "enum": [
+              "untreated",
+              "treated"
+            ]
           },
           "statusLabel": {
             "type": "string"
@@ -1722,7 +1998,10 @@
                   "type": "string"
                 },
                 "fileId": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "fileName": {
                   "type": "string"
@@ -1808,14 +2087,23 @@
                   "type": "string"
                 },
                 "orderId": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "orderReference": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "status": {
                   "type": "string",
-                  "enum": ["untreated", "treated"]
+                  "enum": [
+                    "untreated",
+                    "treated"
+                  ]
                 },
                 "statusLabel": {
                   "type": "string"
@@ -1848,7 +2136,10 @@
                         "type": "string"
                       },
                       "fileId": {
-                        "type": ["string", "null"]
+                        "type": [
+                          "string",
+                          "null"
+                        ]
                       },
                       "fileName": {
                         "type": "string"
@@ -1908,10 +2199,16 @@
           },
           "nextCursor": {
             "description": "À passer en ?cursor= pour la page suivante ; null à la fin.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "nextCursor"],
+        "required": [
+          "items",
+          "nextCursor"
+        ],
         "additionalProperties": false
       },
       "Upload": {
@@ -1977,7 +2274,12 @@
           },
           "orderStatus": {
             "type": "string",
-            "enum": ["preparing", "delivering", "delivered", "cancelled"]
+            "enum": [
+              "preparing",
+              "delivering",
+              "delivered",
+              "cancelled"
+            ]
           },
           "title": {
             "type": "string"
@@ -2036,7 +2338,12 @@
                 },
                 "orderStatus": {
                   "type": "string",
-                  "enum": ["preparing", "delivering", "delivered", "cancelled"]
+                  "enum": [
+                    "preparing",
+                    "delivering",
+                    "delivered",
+                    "cancelled"
+                  ]
                 },
                 "title": {
                   "type": "string"
@@ -2079,10 +2386,16 @@
           },
           "nextCursor": {
             "description": "À passer en ?cursor= pour la page suivante ; null à la fin.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "nextCursor"],
+        "required": [
+          "items",
+          "nextCursor"
+        ],
         "additionalProperties": false
       },
       "PendingNotificationList": {
@@ -2104,7 +2417,12 @@
                 },
                 "orderStatus": {
                   "type": "string",
-                  "enum": ["preparing", "delivering", "delivered", "cancelled"]
+                  "enum": [
+                    "preparing",
+                    "delivering",
+                    "delivered",
+                    "cancelled"
+                  ]
                 },
                 "title": {
                   "type": "string"
@@ -2151,10 +2469,16 @@
           },
           "nextCursor": {
             "description": "À passer en ?cursor= pour la page suivante ; null à la fin.",
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "nextCursor"],
+        "required": [
+          "items",
+          "nextCursor"
+        ],
         "additionalProperties": false
       }
     }
@@ -2162,7 +2486,9 @@
   "paths": {
     "/auth/code": {
       "post": {
-        "tags": ["Accès"],
+        "tags": [
+          "Accès"
+        ],
         "operationId": "requestLoginCode",
         "summary": "Envoyer un code de connexion par mail",
         "description": "Adresse connue ou non (c'est aussi le chemin de l'inscription) : la réponse est la même. Quotas : 3 demandes par quart d'heure et par adresse, 30 par adresse IP.",
@@ -2181,7 +2507,9 @@
                     "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   }
                 },
-                "required": ["email"]
+                "required": [
+                  "email"
+                ]
               }
             }
           }
@@ -2262,7 +2590,9 @@
     },
     "/auth/session": {
       "post": {
-        "tags": ["Accès"],
+        "tags": [
+          "Accès"
+        ],
         "operationId": "openSession",
         "summary": "Échanger le code contre un jeton de session (et s'inscrire)",
         "description": "Adresse connue : ouvre une session (200). Adresse inconnue sans `signup` : 404 signup_required ; avec `signup` : crée le compte et la session (201). Le jeton n'est remis qu'une fois.",
@@ -2332,7 +2662,11 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["offers", "orderStatus", "marketing"]
+                        "required": [
+                          "offers",
+                          "orderStatus",
+                          "marketing"
+                        ]
                       },
                       "referralCode": {
                         "type": "string",
@@ -2354,7 +2688,10 @@
                     ]
                   }
                 },
-                "required": ["email", "code"]
+                "required": [
+                  "email",
+                  "code"
+                ]
               }
             }
           }
@@ -2483,7 +2820,9 @@
         }
       },
       "delete": {
-        "tags": ["Accès"],
+        "tags": [
+          "Accès"
+        ],
         "operationId": "closeSession",
         "summary": "Se déconnecter (révoquer le jeton)",
         "security": [
@@ -2540,7 +2879,9 @@
     },
     "/catalogue": {
       "get": {
-        "tags": ["Catalogue"],
+        "tags": [
+          "Catalogue"
+        ],
         "operationId": "getCatalog",
         "summary": "Le catalogue : produits visibles, barèmes, créneaux",
         "description": "Produits visibles avec leur statut de vente (en_vente, rupture, indisponible), le paramètre « vente à stock 0 », le barème des frais de livraison, les paliers de remise, les créneaux réservables. Public, cache d'une minute, ETag.",
@@ -2594,7 +2935,9 @@
     },
     "/articles": {
       "get": {
-        "tags": ["Catalogue"],
+        "tags": [
+          "Catalogue"
+        ],
         "operationId": "listArticles",
         "summary": "Les articles « à lire » parus",
         "parameters": [
@@ -2656,7 +2999,9 @@
     },
     "/articles/{id}": {
       "get": {
-        "tags": ["Catalogue"],
+        "tags": [
+          "Catalogue"
+        ],
         "operationId": "getArticle",
         "summary": "Un article paru",
         "parameters": [
@@ -2718,7 +3063,9 @@
     },
     "/communautes": {
       "get": {
-        "tags": ["Catalogue"],
+        "tags": [
+          "Catalogue"
+        ],
         "operationId": "listCommunities",
         "summary": "Les communautés publiques ouvertes à l'adhésion",
         "description": "Sans les coordonnées des référents. Une communauté privée n'est jamais listée.",
@@ -2758,7 +3105,9 @@
     },
     "/me": {
       "get": {
-        "tags": ["Profil"],
+        "tags": [
+          "Profil"
+        ],
         "operationId": "getMe",
         "summary": "Ma fiche : coordonnées, autorisations, fidélité, communauté",
         "security": [
@@ -2820,7 +3169,9 @@
         }
       },
       "patch": {
-        "tags": ["Profil"],
+        "tags": [
+          "Profil"
+        ],
         "operationId": "updateMe",
         "summary": "Modifier mon profil ou mes autorisations",
         "description": "Modification partielle ; `consents` remplace les trois autorisations et date le choix. L'e-mail ne se modifie pas.",
@@ -2882,7 +3233,11 @@
                         "type": "boolean"
                       }
                     },
-                    "required": ["offers", "orderStatus", "marketing"]
+                    "required": [
+                      "offers",
+                      "orderStatus",
+                      "marketing"
+                    ]
                   }
                 }
               }
@@ -2985,7 +3340,9 @@
     },
     "/me/communaute": {
       "put": {
-        "tags": ["Profil"],
+        "tags": [
+          "Profil"
+        ],
         "operationId": "joinCommunity",
         "summary": "Rejoindre une communauté publique",
         "security": [
@@ -3007,7 +3364,9 @@
                     "maxLength": 64
                   }
                 },
-                "required": ["communityId"]
+                "required": [
+                  "communityId"
+                ]
               }
             }
           }
@@ -3106,7 +3465,9 @@
         }
       },
       "delete": {
-        "tags": ["Profil"],
+        "tags": [
+          "Profil"
+        ],
         "operationId": "leaveCommunity",
         "summary": "Quitter ma communauté",
         "security": [
@@ -3170,7 +3531,9 @@
     },
     "/me/notifications": {
       "get": {
-        "tags": ["Profil"],
+        "tags": [
+          "Profil"
+        ],
         "operationId": "listMyNotifications",
         "summary": "Les notifications d'état déposées pour moi",
         "security": [
@@ -3267,7 +3630,9 @@
     },
     "/commandes/devis": {
       "post": {
-        "tags": ["Commandes"],
+        "tags": [
+          "Commandes"
+        ],
         "operationId": "quoteOrder",
         "summary": "Le prix d'un panier (devis)",
         "description": "Lignes instantanées, meilleure remise (fidélité ou communauté), frais au barème (offerts à une communauté), total. À afficher avant le paiement ; le total est celui que POST /commandes attend.",
@@ -3302,11 +3667,16 @@
                           "maximum": 100000
                         }
                       },
-                      "required": ["productId", "quantity"]
+                      "required": [
+                        "productId",
+                        "quantity"
+                      ]
                     }
                   }
                 },
-                "required": ["lines"]
+                "required": [
+                  "lines"
+                ]
               }
             }
           }
@@ -3407,7 +3777,9 @@
     },
     "/commandes": {
       "get": {
-        "tags": ["Commandes"],
+        "tags": [
+          "Commandes"
+        ],
         "operationId": "listMyOrders",
         "summary": "Mes commandes",
         "security": [
@@ -3502,7 +3874,9 @@
         }
       },
       "post": {
-        "tags": ["Commandes"],
+        "tags": [
+          "Commandes"
+        ],
         "operationId": "createOrder",
         "summary": "Créer une commande payée",
         "description": "Le dashboard recalcule le devis et refuse un total différent de `expectedTotalCents` (409 total_mismatch, avec le devis à jour). Créneau d'une heure pile entre 10:00 et 20:00, d'aujourd'hui (deux heures de délai) à trente jours. Adresse : le lieu de retrait pour un membre de communauté, sinon la rue du profil (obligatoire). Idempotency-Key obligatoire.",
@@ -3551,7 +3925,10 @@
                           "maximum": 100000
                         }
                       },
-                      "required": ["productId", "quantity"]
+                      "required": [
+                        "productId",
+                        "quantity"
+                      ]
                     }
                   },
                   "deliverySlot": {
@@ -3567,7 +3944,10 @@
                         "pattern": "^([01]\\d|2[0-3]):00$"
                       }
                     },
-                    "required": ["date", "start"]
+                    "required": [
+                      "date",
+                      "start"
+                    ]
                   },
                   "expectedTotalCents": {
                     "type": "integer",
@@ -3587,7 +3967,11 @@
                     ]
                   }
                 },
-                "required": ["lines", "deliverySlot", "expectedTotalCents"]
+                "required": [
+                  "lines",
+                  "deliverySlot",
+                  "expectedTotalCents"
+                ]
               }
             }
           }
@@ -3698,7 +4082,9 @@
     },
     "/commandes/{id}": {
       "get": {
-        "tags": ["Commandes"],
+        "tags": [
+          "Commandes"
+        ],
         "operationId": "getMyOrder",
         "summary": "Une de mes commandes",
         "security": [
@@ -3785,7 +4171,9 @@
     },
     "/commandes/{id}/annulation": {
       "post": {
-        "tags": ["Commandes"],
+        "tags": [
+          "Commandes"
+        ],
         "operationId": "cancelMyOrder",
         "summary": "Annuler ma commande en préparation",
         "description": "Possible tant que la commande est en préparation ; motif « Annulée par le client », précision facultative. Idempotent : rejouer l'annulation renvoie 200.",
@@ -3940,7 +4328,9 @@
     },
     "/messages": {
       "get": {
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "operationId": "listMyMessages",
         "summary": "Mes demandes « Nous contacter »",
         "security": [
@@ -4035,7 +4425,9 @@
         }
       },
       "post": {
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "operationId": "createMessage",
         "summary": "Déposer une demande « Nous contacter »",
         "description": "Objet, texte, commande jointe (la mienne) et pièces jointes : `fileIds`, identifiants de fichiers déjà téléversés par POST /fichiers (dix au plus, chacun à moi et joint à rien d'autre). Idempotency-Key obligatoire.",
@@ -4107,7 +4499,10 @@
                     "not": {}
                   }
                 },
-                "required": ["subject", "body"]
+                "required": [
+                  "subject",
+                  "body"
+                ]
               }
             }
           }
@@ -4218,7 +4613,9 @@
     },
     "/fichiers": {
       "post": {
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "operationId": "uploadFile",
         "summary": "Téléverser une pièce jointe",
         "description": "Un fichier par appel, en multipart/form-data, champ « fichier » ; Content-Length obligatoire. PDF ou image (JPEG, PNG, GIF, WebP, AVIF, HEIC, HEIF, TIFF, BMP), 5 Mo au plus ; le format annoncé doit être celui du contenu. Le fichier est ensuite cité dans `fileIds` de POST /messages ; jamais joint, il est supprimé après 24 heures. Vingt fichiers en attente au plus par personne. Idempotency-Key obligatoire.",
@@ -4247,7 +4644,9 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["fichier"],
+                "required": [
+                  "fichier"
+                ],
                 "properties": {
                   "fichier": {
                     "type": "string",
@@ -4374,7 +4773,9 @@
     },
     "/fichiers/{id}": {
       "get": {
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "operationId": "getMyFile",
         "summary": "Un de mes fichiers",
         "description": "Les octets du fichier, avec son type. Une image s'affiche (inline), un PDF, un HEIC ou un HEIF se télécharge (attachment). Jamais en cache partagé.",
@@ -4463,10 +4864,12 @@
     },
     "/service/notifications": {
       "get": {
-        "tags": ["Service"],
+        "tags": [
+          "Service"
+        ],
         "operationId": "listPendingNotifications",
         "summary": "La file des notifications à envoyer",
-        "description": "Dans l'ordre de dépôt. Après envoi par son canal, le serveur appelle POST /service/notifications/{id}/envoi.",
+        "description": "Dans l'ordre de dépôt, sans celles en échec. Après envoi par son canal, le serveur appelle POST /service/notifications/{id}/envoi ; si l'envoi échoue, POST /service/notifications/{id}/echec.",
         "security": [
           {
             "serviceKey": []
@@ -4551,7 +4954,9 @@
     },
     "/service/notifications/{id}/envoi": {
       "post": {
-        "tags": ["Service"],
+        "tags": [
+          "Service"
+        ],
         "operationId": "markNotificationSent",
         "summary": "Accuser l'envoi d'une notification",
         "security": [
@@ -4605,6 +5010,164 @@
           },
           "409": {
             "description": "Déjà marquée envoyée (already_sent).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Trop de requêtes (rate_limited) : 600 par minute et par adresse IP, 120 par minute et par session ; en-tête Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erreur interne (internal_error), sans détail.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Clé de service non configurée sur le serveur (service_unavailable).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service/notifications/{id}/echec": {
+      "post": {
+        "tags": [
+          "Service"
+        ],
+        "operationId": "markNotificationFailed",
+        "summary": "Déclarer l'échec de l'envoi d'une notification",
+        "description": "La notification sort de la file ; le back-office affiche « Échec d'envoi de la notification » et propose de réessayer, ce qui la remet dans la file. Un accusé d'envoi ultérieur efface l'échec.",
+        "security": [
+          {
+            "serviceKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Identifiant de la notification.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "Cause courte, facultative (200 caractères).",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "raison": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Échec enregistré (failed_at posé).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON illisible (bad_request).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Clé de service absente ou fausse (unauthenticated).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Notification introuvable (not_found).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Déjà envoyée (already_sent) ou déjà en échec (already_failed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Corps de plus de 65536 octets (payload_too_large).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Content-Type autre que application/json (unsupported_media_type).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Champs invalides (validation_failed) : details.issues liste chaque champ (path) et son message.",
             "content": {
               "application/json": {
                 "schema": {

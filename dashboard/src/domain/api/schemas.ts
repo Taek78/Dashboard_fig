@@ -1,3 +1,4 @@
+import { FAILURE_REASON_MAX_LENGTH } from "@/domain/notifications/types";
 import { z } from "zod";
 import {
   ADDRESS_LINE_MAX_LENGTH,
@@ -151,6 +152,11 @@ export const createOrderSchema = quoteSchema.extend({
 
 export const cancelOrderSchema = z.object({
   detail: z.string().trim().max(CANCELLATION_DETAIL_MAX_LENGTH).optional(),
+});
+
+/** Échec d'envoi d'une notification, déclaré par le serveur de l'application. */
+export const notificationFailureSchema = z.object({
+  raison: z.string().trim().min(1).max(FAILURE_REASON_MAX_LENGTH).optional(),
 });
 
 /* ---------- Messages ---------- */

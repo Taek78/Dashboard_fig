@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 const SEGMENT_COLOR: Record<OrderStatus, string> = {
   delivered: "bg-success",
   cancelled: "bg-destructive/60",
-  delivering: "bg-info",
+  delivering: "bg-delivering",
   preparing: "bg-warning",
 };
 

@@ -20,6 +20,7 @@ import {
 import {
   articlesQuerySchema,
   cancelOrderSchema,
+  notificationFailureSchema,
   createMessageSchema,
   createOrderSchema,
   joinCommunitySchema,
@@ -695,7 +696,7 @@ export function buildOpenApiDocument(): Record<string, unknown> {
           operationId: "listPendingNotifications",
           summary: "La file des notifications à envoyer",
           description:
-            "Dans l'ordre de dépôt. Après envoi par son canal, le serveur appelle POST /service/notifications/{id}/envoi.",
+            "Dans l'ordre de dépôt, sans celles en échec. Après envoi par son canal, le serveur appelle POST /service/notifications/{id}/envoi ; si l'envoi échoue, POST /service/notifications/{id}/echec.",
           security: SERVICE,
           parameters: queryParameters(pendingNotificationsQuerySchema),
           responses: {
@@ -728,6 +729,37 @@ export function buildOpenApiDocument(): Record<string, unknown> {
             ),
             "404": errorRef("Notification introuvable (not_found)."),
             "409": errorRef("Déjà marquée envoyée (already_sent)."),
+            "503": errorRef(
+              "Clé de service non configurée sur le serveur (service_unavailable).",
+            ),
+            ...COMMON_ERRORS,
+          },
+        },
+      },
+      "/service/notifications/{id}/echec": {
+        post: {
+          tags: ["Service"],
+          operationId: "markNotificationFailed",
+          summary: "Déclarer l'échec de l'envoi d'une notification",
+          description:
+            "La notification sort de la file ; le back-office affiche « Échec d'envoi de la notification » et propose de réessayer, ce qui la remet dans la file. Un accusé d'envoi ultérieur efface l'échec.",
+          security: SERVICE,
+          parameters: [idParameter("Identifiant de la notification.")],
+          requestBody: {
+            required: false,
+            description: "Cause courte, facultative (200 caractères).",
+            content: jsonContent(schemaOf(notificationFailureSchema, "input")),
+          },
+          responses: {
+            "200": okJson(ref("Ok"), "Échec enregistré (failed_at posé)."),
+            "401": errorRef(
+              "Clé de service absente ou fausse (unauthenticated).",
+            ),
+            "404": errorRef("Notification introuvable (not_found)."),
+            "409": errorRef(
+              "Déjà envoyée (already_sent) ou déjà en échec (already_failed).",
+            ),
+            ...VALIDATION_ERRORS,
             "503": errorRef(
               "Clé de service non configurée sur le serveur (service_unavailable).",
             ),

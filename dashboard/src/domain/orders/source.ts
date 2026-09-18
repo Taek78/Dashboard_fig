@@ -14,6 +14,7 @@ import type {
   NewOrder,
   Order,
   OrderEvent,
+  UpdatedOrder,
   OrderFilters,
   StatusChange,
 } from "@/domain/orders/types";
@@ -85,7 +86,10 @@ export type OrdersSource = {
     size?: number,
   ): Promise<Page<Order>>;
   getOrder(id: string): Promise<Order | null>;
-  updateOrderStatus(id: string, change: StatusChange): Promise<Order | null>;
+  updateOrderStatus(
+    id: string,
+    change: StatusChange,
+  ): Promise<UpdatedOrder | null>;
   getOrderEvents(orderId: string): Promise<OrderEvent[]>;
   assignStaff(id: string, assignment: StaffAssignment): Promise<Order | null>;
   getOrderStats(range: DateRange): Promise<OrderStats>;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Carrot } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NewItemsDot } from "@/components/alerts/new-items-dot";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ROLE_LABELS } from "@/domain/auth/roles";
 import type { CurrentUser } from "@/domain/auth/types";
@@ -43,10 +44,14 @@ export function SiteHeader({ user }: { user: CurrentUser }) {
   return (
     <header className="bg-card/70 supports-backdrop-filter:bg-card/55 border-border/70 sticky top-0 z-10 border-b backdrop-blur-md">
       <div className="flex h-14 items-center gap-2 px-3 md:h-16 md:gap-3 md:px-6">
-        <SidebarTrigger
-          size="icon"
-          className="bg-card/70 text-foreground border-foreground/15 hover:bg-muted hover:border-primary/50 size-10 shrink-0 rounded-xl border shadow-sm"
-        />
+        <span className="relative shrink-0">
+          <SidebarTrigger
+            size="icon"
+            className="bg-card/70 text-foreground border-foreground/15 hover:bg-muted hover:border-primary/50 size-10 shrink-0 rounded-xl border shadow-sm"
+          />
+          {/* Téléphone : nouvelle commande ou nouveau message, menu replié. */}
+          <NewItemsDot />
+        </span>
 
         <Link
           href="/"
