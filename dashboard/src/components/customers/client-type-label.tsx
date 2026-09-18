@@ -64,7 +64,7 @@ export function CommunityMemberBadge({
   return (
     <span className={cn(BADGE, "bg-community/15 text-community", className)}>
       <Users aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-      <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
+      <span className="min-w-0 wrap-anywhere whitespace-normal">
         <span className="sr-only">Membre : </span>
         <span className="font-semibold">{COMMUNITY_MEMBER_LABEL}</span>
         {showName ? ` · ${community.name}` : null}

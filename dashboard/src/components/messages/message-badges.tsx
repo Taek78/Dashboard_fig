@@ -76,7 +76,7 @@ export function MessageSubjectBadge({
       )}
     >
       <Icon aria-hidden="true" className="mt-px size-3.5 shrink-0" />
-      <span className="min-w-0 [overflow-wrap:anywhere] whitespace-normal">
+      <span className="min-w-0 wrap-anywhere whitespace-normal">
         {MESSAGE_SUBJECT_LABELS[subject]}
       </span>
     </span>

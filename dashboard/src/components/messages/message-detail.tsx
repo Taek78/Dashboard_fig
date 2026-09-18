@@ -65,7 +65,7 @@ export function MessageDetail({
 
       {message.order ? <MessageOrderDetails order={message.order} /> : null}
 
-      <p className="text-base [overflow-wrap:anywhere] whitespace-pre-wrap">
+      <p className="text-base wrap-anywhere whitespace-pre-wrap">
         {message.body}
       </p>
 

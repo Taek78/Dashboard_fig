@@ -57,7 +57,7 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
+            <h3 className="text-lg leading-tight font-semibold wrap-anywhere">
               <HoverPrefetchLink
                 href={`/clients/${customer.id}`}
                 className="underline-offset-4 hover:underline focus-visible:underline"
@@ -113,7 +113,7 @@ export function CustomerCard({ entry }: { entry: CustomerEntry }) {
             <MapPin className="size-4" aria-hidden="true" />
             <span className="sr-only">Adresse de livraison</span>
           </dt>
-          <dd className="[overflow-wrap:anywhere]">
+          <dd className="wrap-anywhere">
             {customer.addressLine ? `${customer.addressLine}, ` : ""}
             {customer.postalCode} {customer.city}
             {customer.community ? (

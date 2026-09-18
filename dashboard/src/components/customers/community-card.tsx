@@ -83,7 +83,7 @@ export function CommunityCard({ entry }: { entry: CommunityEntry }) {
           <Users className="size-6" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
+          <h3 className="text-lg leading-tight font-semibold wrap-anywhere">
             {community.name}
           </h3>
           <div className="flex flex-wrap gap-1.5">

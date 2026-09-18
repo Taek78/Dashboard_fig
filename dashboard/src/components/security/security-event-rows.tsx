@@ -84,7 +84,7 @@ export function SecurityEventRows({
                   <Icon className="size-4 shrink-0" aria-hidden="true" />
                   {view.label}
                 </p>
-                <p className="text-muted-foreground text-sm [overflow-wrap:anywhere]">
+                <p className="text-muted-foreground text-sm wrap-anywhere">
                   {view.description}
                 </p>
               </div>

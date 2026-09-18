@@ -54,7 +54,7 @@ export function MessageCard({
     >
       <div className="flex flex-col gap-2 @2xl/main:flex-row @2xl/main:items-start @2xl/main:justify-between">
         <div className="flex min-w-0 flex-col gap-1.5">
-          <h3 className="text-lg leading-tight font-semibold [overflow-wrap:anywhere]">
+          <h3 className="text-lg leading-tight font-semibold wrap-anywhere">
             <HoverPrefetchLink
               href={`/clients/${message.customer.id}`}
               className="underline-offset-4 hover:underline focus-visible:underline"
@@ -84,7 +84,7 @@ export function MessageCard({
       ) : null}
 
       {/* Les deux premières lignes : l'aperçu est une règle pure, le CSS ne fait que borner la hauteur. */}
-      <p className="line-clamp-2 text-sm [overflow-wrap:anywhere]">{preview}</p>
+      <p className="line-clamp-2 text-sm wrap-anywhere">{preview}</p>
 
       <p className="text-muted-foreground text-xs">
         <span className="sr-only">Reçu le </span>

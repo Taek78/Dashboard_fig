@@ -96,9 +96,7 @@ export function MessageOrderDetails({ order }: { order: MessageOrder }) {
           <MapPin className="size-4" aria-hidden="true" />
           <span>{order.community ? "Point de retrait" : "Adresse"}</span>
         </dt>
-        <dd className="font-medium [overflow-wrap:anywhere]">
-          {addressText(order)}
-        </dd>
+        <dd className="font-medium wrap-anywhere">{addressText(order)}</dd>
         <dt className="text-muted-foreground contents">
           <PackageCheck className="size-4" aria-hidden="true" />
           <span>Préparateur</span>
