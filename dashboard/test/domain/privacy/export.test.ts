@@ -121,6 +121,60 @@ describe("buildCustomerExport", () => {
     );
   });
 
+  it("contient ses sessions de l'application, dates seulement et jamais le jeton", () => {
+    // Deux sessions de la personne (l'une révoquée) et celle d'un tiers.
+    const session = (
+      id: string,
+      customerId: string,
+      createdAt: string,
+      revokedAt: string | null = null,
+    ) => ({
+      id,
+      customerId,
+      tokenHash: `hmac-secret-de-${id}`,
+      createdAt,
+      expiresAt: "2027-03-16T12:00:00.000Z",
+      lastSeenAt: "2026-09-14T08:00:00.000Z",
+      revokedAt,
+    });
+    const exported = buildCustomerExport(
+      {
+        ...dataFor(amel),
+        sessions: [
+          session("s2", amel.id, "2026-09-10T09:00:00.000Z"),
+          session(
+            "s1",
+            amel.id,
+            "2026-03-12T10:00:00.000Z",
+            "2026-06-01T07:00:00.000Z",
+          ),
+          session("s-tiers", "cli-0002", "2026-09-11T09:00:00.000Z"),
+        ],
+      },
+      AT,
+    );
+
+    // Les siennes seulement, de la plus ancienne à la plus récente.
+    expect(exported.appSessions).toEqual([
+      {
+        createdAt: "2026-03-12T10:00:00.000Z",
+        lastSeenAt: "2026-09-14T08:00:00.000Z",
+        expiresAt: "2027-03-16T12:00:00.000Z",
+        revokedAt: "2026-06-01T07:00:00.000Z",
+      },
+      {
+        createdAt: "2026-09-10T09:00:00.000Z",
+        lastSeenAt: "2026-09-14T08:00:00.000Z",
+        expiresAt: "2027-03-16T12:00:00.000Z",
+        revokedAt: null,
+      },
+    ]);
+    // Ni le jeton, ni son HMAC, ni l'identifiant technique de la session.
+    const json = JSON.stringify(exported);
+    expect(json).not.toContain("hmac-secret-de-");
+    expect(json).not.toContain("s-tiers");
+  });
+
   it("contient les notifications déposées pour la personne, de la plus ancienne à la plus récente", () => {
     // Amel n'a que des commandes en préparation : rien n'a encore été déposé.
     expect(data.notifications).toEqual([]);
