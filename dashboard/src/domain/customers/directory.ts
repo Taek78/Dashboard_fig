@@ -64,7 +64,7 @@ export const DIRECTORY_SORT_LABELS: Record<DirectorySort, string> = {
   nom: "Nom",
   commandes: "Nombre de commandes",
   montant: "Montant dépensé",
-  recent: "Commande la plus récente",
+  recent: "Date de commande",
   anciennete: "Ancienneté",
   membres: "Nombre de membres",
 };
@@ -138,8 +138,8 @@ export const SORT_ORDER_LABELS: Record<
     croissant: "Montant dépensé, du plus faible",
   },
   recent: {
-    decroissant: "Commande la plus récente d'abord",
-    croissant: "Commande la plus ancienne d'abord",
+    decroissant: "Date de commande, du plus récent au plus ancien",
+    croissant: "Date de commande, du plus ancien au plus récent",
   },
   anciennete: {
     decroissant: "Ancienneté, du plus récent au plus ancien",
