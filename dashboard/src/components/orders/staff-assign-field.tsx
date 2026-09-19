@@ -1,7 +1,12 @@
 "use client";
 
-import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
-import { useActionState, useId, useRef } from "react";
+import {
+  CircleAlert,
+  CircleCheck,
+  LoaderCircle,
+  TriangleAlert,
+} from "lucide-react";
+import { startTransition, useActionState, useId, useState } from "react";
 import { assignOrderStaff } from "@/app/(dashboard)/commandes/[id]/actions";
 import {
   NativeSelect,
@@ -19,8 +24,8 @@ import { cn } from "@/lib/utils";
 
 /*
  * Liste déroulante d'affectation d'une personne à une commande (client :
- * useActionState). Choisir une option envoie aussitôt le formulaire (pas de
- * bouton « Enregistrer » : un geste, une écriture) ; l'option vide retire
+ * useActionState). Choisir une option écrit aussitôt (pas de bouton
+ * « Enregistrer » : un geste, une écriture) ; l'option vide retire
  * l'affectation. Les options viennent de la page (règle pure côté serveur :
  * bon métier, actives) et l'action les revérifie de toute façon.
  *
@@ -29,8 +34,15 @@ import { cn } from "@/lib/utils";
  * déroulante native n'accepte ni icône ni couleur CSS dans ses options,
  * surtout sur téléphone : la gommette est donc un caractère, lisible partout,
  * gardé dans la valeur choisie (le <select> fermé l'affiche aussi).
- * Après un succès, la page se re-rend avec la nouvelle valeur : la key posée
- * par le parent remet le <select> en phase.
+ *
+ * Liste CONTRÔLÉE et FormData composé (2026-09-19) : React réinitialise un
+ * formulaire après une Server Action, ce qui ramenait la liste sur l'option
+ * vide (« Retirer l'affectation ») au lieu du nom choisi. La valeur suit le
+ * choix, puis la personne relue par la page ; un refus la remet sur
+ * l'affectation réelle.
+ * Personne affectée INDISPONIBLE (demande du 2026-09-19) : icône
+ * d'avertissement rouge animée (warn-wiggle) à côté de la liste, bordure
+ * rouge, et la raison pour les lecteurs d'écran.
  */
 export const PRESENCE_DOTS = { present: "🟢", absent: "🔴" } as const;
 
@@ -66,21 +78,47 @@ export function StaffAssignField({
     assignOrderStaff,
     idleActionResult,
   );
-  const formRef = useRef<HTMLFormElement>(null);
   const id = useId();
+  const currentId = current?.id ?? "";
   const known = current === null || options.some((o) => o.id === current.id);
+
+  // Valeur affichée : le choix, puis l'affectation relue (ajustée au rendu).
+  const [value, setValue] = useState(currentId);
+  const [seenCurrent, setSeenCurrent] = useState(currentId);
+  if (seenCurrent !== currentId) {
+    setSeenCurrent(currentId);
+    setValue(currentId);
+  }
+  const [seenResult, setSeenResult] = useState(result);
+  if (seenResult !== result) {
+    setSeenResult(result);
+    if (result.status === "error") setValue(currentId);
+  }
+
+  function assign(staffId: string) {
+    setValue(staffId);
+    const data = new FormData();
+    data.set("orderId", orderId);
+    data.set("role", role);
+    // Précondition : si quelqu'un a changé l'affectation depuis l'affichage, rien n'est écrasé.
+    data.set("expectedStaffId", currentId);
+    data.set("staffId", staffId);
+    startTransition(() => formAction(data));
+  }
+
+  const chosen = options.find((o) => o.id === value);
+  const unavailable =
+    chosen !== undefined && chosen.availability !== "disponible";
+  const reason = chosen
+    ? AVAILABILITY_LABELS[chosen.availability].toLowerCase()
+    : "";
 
   return (
     <form
-      ref={formRef}
-      action={formAction}
       aria-label={`Affectation : ${ASSIGNMENT_ROLE_LABELS[role]}`}
+      onSubmit={(event) => event.preventDefault()}
       className="flex flex-col gap-1"
     >
-      <input type="hidden" name="orderId" value={orderId} />
-      <input type="hidden" name="role" value={role} />
-      {/* Précondition : si quelqu'un a changé l'affectation depuis l'affichage, rien n'est écrasé. */}
-      <input type="hidden" name="expectedStaffId" value={current?.id ?? ""} />
       <label
         htmlFor={id}
         className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium"
@@ -95,13 +133,18 @@ export function StaffAssignField({
           id={id}
           name="staffId"
           size="sm"
-          defaultValue={current?.id ?? ""}
+          value={value}
           disabled={pending}
-          onChange={() => formRef.current?.requestSubmit()}
-          className={cn("w-full", current && "font-medium")}
+          onChange={(event) => assign(event.target.value)}
+          aria-describedby={unavailable ? `${id}-alerte` : undefined}
+          className={cn(
+            "w-full",
+            value && "font-medium",
+            unavailable && "border-destructive/60",
+          )}
         >
           <NativeSelectOption value="">
-            {current ? "Retirer l'affectation" : "Non affecté"}
+            {value ? "— Retirer l'affectation" : "Non affecté"}
           </NativeSelectOption>
           {!known && current ? (
             <NativeSelectOption value={current.id}>
@@ -114,6 +157,19 @@ export function StaffAssignField({
             </NativeSelectOption>
           ))}
         </NativeSelect>
+        {unavailable ? (
+          <span
+            id={`${id}-alerte`}
+            data-slot="unavailable-warning"
+            title={`Indisponible : ${reason}`}
+            className="text-destructive flex shrink-0 items-center"
+          >
+            <TriangleAlert aria-hidden="true" className="warn-wiggle size-5" />
+            <span className="sr-only">
+              Attention : {chosen.name} est indisponible ({reason}).
+            </span>
+          </span>
+        ) : null}
         <span
           role="status"
           className={cn(

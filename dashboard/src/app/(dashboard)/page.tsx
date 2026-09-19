@@ -154,6 +154,7 @@ export default async function TableauDeBordPage({
         )}
       >
         <KpiCard
+          metric
           label="Commandes"
           value={String(kpis.orderCount)}
           hint={`${kpis.cancelledCount} annulée${plural(kpis.cancelledCount)}`}
@@ -162,6 +163,7 @@ export default async function TableauDeBordPage({
         {revenue ? (
           <>
             <KpiCard
+              metric
               label={`CA ${taxLabel}`}
               value={money(kpis.revenueCents)}
               hint="hors annulées"
@@ -169,6 +171,7 @@ export default async function TableauDeBordPage({
               tone="brand"
             />
             <KpiCard
+              metric
               label={`Panier moyen ${taxLabel}`}
               value={money(kpis.averageBasketCents)}
               icon={<Wallet />}
@@ -176,6 +179,7 @@ export default async function TableauDeBordPage({
           </>
         ) : null}
         <KpiCard
+          metric
           label="Expédiées"
           value={String(delivering)}
           hint="en cours de livraison"

@@ -1,4 +1,4 @@
-import { ChefHat, Truck } from "lucide-react";
+import { ChefHat, TriangleAlert, Truck } from "lucide-react";
 import { StaffAssignField } from "@/components/orders/staff-assign-field";
 import {
   ASSIGNMENT_ROLE_LABELS,
@@ -91,6 +91,13 @@ export function OrderTeam({
                   <span className="sr-only">
                     {dot === "present" ? " (présent)" : " (absent)"}
                   </span>
+                ) : null}
+                {dot === "absent" ? (
+                  <TriangleAlert
+                    aria-hidden="true"
+                    data-slot="unavailable-warning"
+                    className="text-destructive warn-wiggle size-4 shrink-0"
+                  />
                 ) : null}
               </dd>
             </div>

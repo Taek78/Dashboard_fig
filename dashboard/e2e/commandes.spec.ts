@@ -175,6 +175,41 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     await expect(notify).not.toBeChecked();
   });
 
+  test("affecter garde le NOM choisi dans la liste ; une personne indisponible fait apparaître l'avertissement", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes?du=2026-09-08&au=2026-09-08");
+    const card = page.getByRole("article", {
+      name: /^Commande FIG-260907-005,/,
+    });
+    const field = card.getByRole("form", { name: "Affectation : Livreur" });
+    const select = field.getByLabel("Livreur");
+    const before = await select.inputValue();
+    const warning = field.locator('[data-slot="unavailable-warning"]');
+
+    await select.selectOption({ label: "🔴 Ousmane Diagne · en congé" });
+    await expect(field.getByRole("status")).toContainText(
+      "Livreur : Ousmane Diagne.",
+    );
+    // Plus de retour sur l'option vide après l'écriture.
+    await expect(select.locator("option:checked")).toHaveText(
+      "🔴 Ousmane Diagne · en congé",
+    );
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText("Ousmane Diagne est indisponible");
+
+    await select.selectOption({ label: "🟢 Malik Dembélé" });
+    await expect(select.locator("option:checked")).toHaveText(
+      "🟢 Malik Dembélé",
+    );
+    await expect(warning).toHaveCount(0);
+
+    // Remise dans l'état du scénario.
+    await select.selectOption(before);
+    await expect(select).toHaveValue(before);
+  });
+
   test("les gommettes disent qui est présent dans la liste d'affectation", async ({
     page,
   }) => {

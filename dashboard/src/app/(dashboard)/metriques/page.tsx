@@ -194,6 +194,7 @@ export default async function MetriquesPage({
       <Section id="ventes" title="Ventes">
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
           <KpiCard
+            metric
             label="Commandes"
             value={String(kpis.orderCount)}
             hint={`${kpis.preparingCount} en préparation`}
@@ -201,6 +202,7 @@ export default async function MetriquesPage({
             trend={trend(kpis.orderCount, kpisRef.orderCount)}
           />
           <KpiCard
+            metric
             label={`CA ${taxLabel}`}
             value={money(kpis.revenueCents)}
             hint="hors annulées"
@@ -209,12 +211,14 @@ export default async function MetriquesPage({
             tone="brand"
           />
           <KpiCard
+            metric
             label={`Panier moyen ${taxLabel}`}
             value={money(kpis.averageBasketCents)}
             icon={<Wallet />}
             trend={trend(kpis.averageBasketCents, kpisRef.averageBasketCents)}
           />
           <KpiCard
+            metric
             label="Acheteurs distincts"
             value={String(buyersInRange)}
             icon={<Contact />}
@@ -244,6 +248,7 @@ export default async function MetriquesPage({
       <Section id="commandes" title="Commandes">
         <div className="grid gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
           <KpiCard
+            metric
             label="Annulées"
             value={String(kpis.cancelledCount)}
             icon={<Ban />}
@@ -267,6 +272,7 @@ export default async function MetriquesPage({
             }
           />
           <KpiCard
+            metric
             label="Commandes communauté"
             value={String(share.community)}
             hint={
@@ -295,6 +301,7 @@ export default async function MetriquesPage({
             }
           />
           <KpiCard
+            metric
             label="Réclamations"
             value={String(complaints)}
             hint={`message${plural(complaints)} reçu${plural(complaints)}`}
@@ -338,6 +345,7 @@ export default async function MetriquesPage({
             const previous = statsRef.refunds[kind];
             return (
               <KpiCard
+                metric
                 key={kind}
                 label={label}
                 value={pct(current.percent)}
@@ -370,12 +378,14 @@ export default async function MetriquesPage({
       <Section id="clients" title="Clients">
         <div className="grid gap-4 @xl/main:grid-cols-2">
           <KpiCard
+            metric
             label="Nouveaux clients"
             value={String(signups.signups)}
             icon={<UserPlus />}
             trend={trend(signups.signups, signupsRef.signups)}
           />
           <KpiCard
+            metric
             label="Parrainages"
             value={String(signups.referred)}
             hint={
@@ -464,12 +474,14 @@ export default async function MetriquesPage({
       >
         <div className="grid gap-4 @xl/main:grid-cols-2">
           <KpiCard
+            metric
             label="Téléchargements"
             value={usage.downloads.toLocaleString("fr-FR")}
             icon={<Download />}
             trend={trend(usage.downloads, usageRef.downloads, false, yearLabel)}
           />
           <KpiCard
+            metric
             label="Inscrits / téléchargements"
             value={pct(signupRate)}
             hint={`${usage.signups.toLocaleString("fr-FR")} inscriptions`}
@@ -490,6 +502,7 @@ export default async function MetriquesPage({
             trend={trend(signupRate, signupRateRef, false, yearLabel)}
           />
           <KpiCard
+            metric
             label="Inscrits ayant commandé"
             value={pct(buyerRate)}
             hint={`${buyers} acheteur${plural(buyers)} distinct${plural(buyers)}`}
@@ -514,6 +527,7 @@ export default async function MetriquesPage({
             trend={trend(buyerRate, buyerRateRef, false, yearLabel)}
           />
           <KpiCard
+            metric
             label="Note de l'appli"
             value={
               usage.rating === null

@@ -702,6 +702,41 @@
  * Cloche qui vibre (« Désactiver le son » décochée, profil) : petites
  * oscillations, puis une pause ; immobile sous prefers-reduced-motion.
  */
+/*
+ * Avertissement « personne affectée indisponible » (2026-09-19) : l'icône
+ * rouge oscille et grossit un instant, puis se repose, en boucle ; immobile
+ * sous prefers-reduced-motion.
+ */
+@utility warn-wiggle {
+  transform-origin: 50% 90%;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: warn-wiggle 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes warn-wiggle {
+  0%,
+  50%,
+  100% {
+    rotate: 0deg;
+    scale: 1;
+  }
+  8%,
+  24% {
+    rotate: -12deg;
+    scale: 1.15;
+  }
+  16%,
+  32% {
+    rotate: 12deg;
+    scale: 1.15;
+  }
+  40% {
+    rotate: 0deg;
+    scale: 1.05;
+  }
+}
+
 @utility bell-ring {
   transform-origin: 50% 10%;
   @media (prefers-reduced-motion: no-preference) {
