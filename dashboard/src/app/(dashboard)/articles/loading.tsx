@@ -26,7 +26,7 @@ export default function ArticlesLoading() {
           {ROWS.map((row) => (
             <li
               key={row}
-              className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-2xl ring-1 @xl/main:flex-row"
+              className="bg-card ring-foreground/10 flex flex-col overflow-hidden rounded-none ring-1 @xl/main:flex-row"
             >
               <Skeleton className="h-36 rounded-none @xl/main:h-auto @xl/main:w-44" />
               <div className="flex flex-1 flex-col gap-2 p-4 @2xl/main:p-5">

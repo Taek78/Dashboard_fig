@@ -100,7 +100,7 @@ const plural = (n: number) => (n > 1 ? "s" : "");
  * redeviennent les deux colonnes de la liste (et l'icône est masquée).
  */
 const TILE =
-  "contents @4xl/main:flex @4xl/main:min-w-0 @4xl/main:flex-col @4xl/main:gap-1 @4xl/main:rounded-xl @4xl/main:border @4xl/main:bg-muted/30 @4xl/main:p-3";
+  "contents @4xl/main:flex @4xl/main:min-w-0 @4xl/main:flex-col @4xl/main:gap-1 @4xl/main:rounded-none @4xl/main:border @4xl/main:bg-muted/30 @4xl/main:p-3";
 const TILE_LABEL =
   "text-muted-foreground @4xl/main:flex @4xl/main:items-center @4xl/main:gap-1.5 @4xl/main:text-xs @4xl/main:font-medium";
 const TILE_ICON = "hidden size-3.5 @4xl/main:inline";
@@ -354,7 +354,7 @@ export default async function ClientPage({
                     <li
                       key={key}
                       className={cn(
-                        "flex flex-col gap-1 rounded-xl border p-3",
+                        "flex flex-col gap-1 rounded-none border p-3",
                         granted
                           ? "border-success/40 bg-success/5"
                           : "border-border bg-muted/30",

@@ -53,7 +53,7 @@ export function DeleteAccountButton({
     <form
       action={formAction}
       role="alert"
-      className="border-destructive/40 bg-destructive/5 flex w-full flex-col gap-3 rounded-xl border p-4"
+      className="border-destructive/40 bg-destructive/5 flex w-full flex-col gap-3 rounded-none border p-4"
     >
       <input type="hidden" name="userId" value={account.id} />
       <p className="flex items-start gap-2 text-sm">

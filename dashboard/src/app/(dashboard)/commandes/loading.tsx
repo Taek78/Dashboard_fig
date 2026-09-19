@@ -21,7 +21,7 @@ export default function CommandesLoading() {
         {/* Silhouette de la recherche et des filtres : loading.tsx ne connaît pas l'URL. */}
         <OrdersFiltersSkeleton />
         <Skeleton className="h-4 w-28" />
-        <div className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-xl p-4 ring-1">
+        <div className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-none p-4 ring-1">
           <Skeleton className="h-4 w-56" />
           <div className="flex items-end justify-between gap-4">
             <Skeleton className="h-4 w-44" />
@@ -34,7 +34,7 @@ export default function CommandesLoading() {
           {ROWS.map((row) => (
             <li
               key={row}
-              className="bg-card ring-foreground/10 grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]"
+              className="bg-card ring-foreground/10 grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-none ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]"
             >
               <div className="bg-muted/40 flex flex-col gap-2 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:border-r @4xl/main:border-b-0">
                 <Skeleton className="h-4 w-24" />

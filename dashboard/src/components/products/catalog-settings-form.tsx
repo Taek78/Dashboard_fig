@@ -29,7 +29,7 @@ export function CatalogSettingsForm({
       ref={formRef}
       action={formAction}
       aria-label="Paramètres du catalogue"
-      className="bg-card ring-foreground/10 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 shadow-sm ring-1"
+      className="bg-card ring-foreground/10 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-none px-4 py-3 shadow-sm ring-1"
     >
       <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium has-disabled:cursor-not-allowed has-disabled:opacity-70">
         <input

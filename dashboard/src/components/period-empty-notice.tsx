@@ -24,7 +24,7 @@ export function PeriodEmptyNotice({
     <p
       role="status"
       className={cn(
-        "bg-info/10 text-info ring-info/30 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 text-sm font-medium ring-1",
+        "bg-info/10 text-info ring-info/30 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-none px-4 py-3 text-sm font-medium ring-1",
         className,
       )}
     >

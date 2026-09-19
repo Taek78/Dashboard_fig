@@ -19,7 +19,7 @@ export default function ProduitLoading() {
       <div className="grid gap-6 @4xl/main:grid-cols-[minmax(16rem,20rem)_1fr]">
         <div className="flex flex-col gap-3">
           <Skeleton className="h-4 w-40" />
-          <div className="bg-card ring-foreground/10 overflow-hidden rounded-2xl ring-1">
+          <div className="bg-card ring-foreground/10 overflow-hidden rounded-none ring-1">
             <Skeleton className="h-36 rounded-none" />
             <div className="flex flex-col gap-2 p-4">
               <Skeleton className="h-4 w-32" />

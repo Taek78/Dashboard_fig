@@ -85,7 +85,7 @@ export default async function ComptesPage() {
                   aria-label={`Compte ${account.name}`}
                   data-invitation={invitation}
                   className={cn(
-                    "text-card-foreground flex flex-col gap-4 rounded-2xl p-4 shadow-sm @2xl/main:p-5",
+                    "text-card-foreground flex flex-col gap-4 rounded-none p-4 shadow-sm @2xl/main:p-5",
                     invitation === "none" &&
                       "bg-card ring-foreground/10 ring-1",
                     invitation === "pending" &&

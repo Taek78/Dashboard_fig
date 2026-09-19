@@ -56,7 +56,7 @@ export default async function CataloguePage({
         </p>
       ) : null}
       <ProductsFilters filters={filters} />
-      <Suspense fallback={<Skeleton className="h-12 rounded-xl" />}>
+      <Suspense fallback={<Skeleton className="h-12 rounded-none" />}>
         <CatalogSettingsPanel />
       </Suspense>
       <Suspense key={key} fallback={<ProductsResultsSkeleton />}>

@@ -63,7 +63,7 @@ export function MessageOrderDetails({ order }: { order: MessageOrder }) {
   return (
     <section
       aria-labelledby="commande-jointe"
-      className="bg-muted/40 flex flex-col gap-3 rounded-xl px-4 py-3 text-sm"
+      className="bg-muted/40 flex flex-col gap-3 rounded-none px-4 py-3 text-sm"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3

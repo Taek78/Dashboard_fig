@@ -42,7 +42,7 @@ export default function ClientLoading() {
         </Card>
         <div className="flex flex-col gap-2 @4xl/main:col-span-2">
           <Skeleton className="h-5 w-52" />
-          <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-48 w-full rounded-none" />
         </div>
       </div>
     </div>

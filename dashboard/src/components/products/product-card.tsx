@@ -61,7 +61,7 @@ export function ProductCard({
     <article
       aria-label={`Produit ${product.name}`}
       className={cn(
-        "group bg-card text-card-foreground ring-foreground/10 card-highlight flex h-full flex-col overflow-hidden rounded-2xl shadow-sm ring-1",
+        "group bg-card text-card-foreground ring-foreground/10 card-highlight flex h-full flex-col overflow-hidden rounded-none shadow-sm ring-1",
         dimmed && "opacity-75",
       )}
     >

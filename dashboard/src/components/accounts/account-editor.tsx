@@ -236,7 +236,7 @@ export function AccountEditor({
       {resetOpen ? (
         <form
           action={resetAction}
-          className="bg-muted/40 flex flex-col gap-3 rounded-xl border p-3"
+          className="bg-muted/40 flex flex-col gap-3 rounded-none border p-3"
         >
           <input type="hidden" name="userId" value={account.id} />
           <p className="text-muted-foreground text-xs">

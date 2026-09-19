@@ -96,7 +96,7 @@ export function StaffHistory({
         ].map(([label, value]) => (
           <div
             key={label}
-            className="bg-muted/40 flex flex-col gap-1 rounded-xl border p-3"
+            className="bg-muted/40 flex flex-col gap-1 rounded-none border p-3"
           >
             <dt className="text-muted-foreground text-xs">{label}</dt>
             <dd className="text-xl font-bold tabular-nums">{value}</dd>

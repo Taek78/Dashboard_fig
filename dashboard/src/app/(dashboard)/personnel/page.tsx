@@ -102,7 +102,7 @@ export default async function PersonnelPage({
       <div className="flex flex-col gap-4">
         <StaffSearch search={search} canReset={filtered} />
         {search.kind === "gestionnaire" ? (
-          <p className="bg-muted/40 text-muted-foreground flex items-start gap-2 rounded-xl border p-3 text-sm">
+          <p className="bg-muted/40 text-muted-foreground flex items-start gap-2 rounded-none border p-3 text-sm">
             <UserCog className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             <span>
               Accès au back-office :{" "}
@@ -150,7 +150,7 @@ export default async function PersonnelPage({
             )}
           </div>
         ) : filtered ? (
-          <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">
+          <Empty className="bg-card/60 min-h-[40vh] rounded-none border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon" className={emptyMedia}>
                 <SearchX />
@@ -171,7 +171,7 @@ export default async function PersonnelPage({
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">
+          <Empty className="bg-card/60 min-h-[40vh] rounded-none border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon" className={emptyMedia}>
                 <Users />

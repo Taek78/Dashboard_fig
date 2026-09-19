@@ -177,7 +177,7 @@ export function OrderStatusSelect({
         <div
           role="group"
           aria-label="Annulation de la commande"
-          className="border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-xl border p-3"
+          className="border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-none border p-3"
         >
           <CancellationFields autoFocus />
           <div className="flex flex-wrap gap-2">

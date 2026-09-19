@@ -105,7 +105,7 @@ export default async function MessagesPage({
             resetHref={withoutDates ? `/messages?${withoutDates}` : "/messages"}
           />
         ) : isFiltered ? (
-          <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
+          <Empty className="bg-card/60 min-h-[50vh] rounded-none border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon" className={emptyMedia}>
                 <SearchX />
@@ -123,7 +123,7 @@ export default async function MessagesPage({
             </EmptyContent>
           </Empty>
         ) : (
-          <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
+          <Empty className="bg-card/60 min-h-[50vh] rounded-none border border-dashed">
             <EmptyHeader>
               <EmptyMedia variant="icon" className={emptyMedia}>
                 <Inbox />

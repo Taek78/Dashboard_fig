@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
  */
 const VARIANTS = {
   row: "border-t pt-3",
-  zone: "surface-tray rounded-xl p-3",
+  zone: "surface-tray rounded-none p-3",
   plain: "",
 } as const;
 

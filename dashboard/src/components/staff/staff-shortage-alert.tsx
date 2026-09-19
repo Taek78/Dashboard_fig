@@ -41,7 +41,7 @@ export function StaffShortageAlert({
     <div
       role="alert"
       className={cn(
-        "bg-destructive/10 text-destructive ring-destructive/40 flex flex-col gap-3 rounded-2xl px-4 py-3 ring-1 @2xl/main:flex-row @2xl/main:items-center @2xl/main:justify-between",
+        "bg-destructive/10 text-destructive ring-destructive/40 flex flex-col gap-3 rounded-none px-4 py-3 ring-1 @2xl/main:flex-row @2xl/main:items-center @2xl/main:justify-between",
         className,
       )}
     >

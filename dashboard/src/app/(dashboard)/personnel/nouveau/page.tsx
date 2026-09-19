@@ -55,7 +55,7 @@ export default async function NouvellePersonnePage({
       {source ? (
         <p
           role="status"
-          className="bg-muted/40 flex items-start gap-2 rounded-xl border p-3 text-sm"
+          className="bg-muted/40 flex items-start gap-2 rounded-none border p-3 text-sm"
         >
           <Copy className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>

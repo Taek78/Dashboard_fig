@@ -78,7 +78,7 @@ export default async function CommunautePage({
       />
       <CommunityBanner
         community={community}
-        className="ring-community/25 rounded-xl ring-1"
+        className="ring-community/25 rounded-none ring-1"
       />
       <div className="flex flex-wrap items-center gap-1.5">
         <ClientTypeLabel type="communaute" />

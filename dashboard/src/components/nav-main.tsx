@@ -83,7 +83,7 @@ export function NavMain({ role }: { role: Role }) {
                       isActive={active}
                       tooltip={item.title}
                       className={cn(
-                        "h-11 gap-3 rounded-xl text-[0.95rem] transition-colors md:h-9 md:text-sm",
+                        "h-11 gap-3 rounded-none text-[0.95rem] transition-colors md:h-9 md:text-sm",
                         active
                           ? "bg-gradient-brand! shadow-primary/25 font-semibold text-white! shadow-md hover:brightness-105"
                           : "text-sidebar-foreground/85",

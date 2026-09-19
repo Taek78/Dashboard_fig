@@ -12,7 +12,7 @@ import {
 
 export default function ClientNotFound() {
   return (
-    <Empty className="bg-card/60 min-h-[50vh] rounded-xl border border-dashed">
+    <Empty className="bg-card/60 min-h-[50vh] rounded-none border border-dashed">
       <EmptyHeader>
         <EmptyMedia
           variant="icon"

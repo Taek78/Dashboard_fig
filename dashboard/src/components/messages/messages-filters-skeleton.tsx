@@ -17,7 +17,7 @@ export function MessagesFiltersSkeleton() {
       <CardContent className="flex flex-col gap-4">
         <Skeleton className="h-5 w-48" />
         <Skeleton className="h-11 w-full" />
-        <div className="surface-tray grid gap-3 rounded-xl p-3">
+        <div className="surface-tray grid gap-3 rounded-none p-3">
           <Skeleton className="h-5 w-20" />
           <div className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <div className="grid gap-1.5">

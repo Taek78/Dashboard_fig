@@ -11,7 +11,7 @@ export default function MessageLoading() {
       <PageHeader title="Message client" />
       <div aria-busy="true" className="flex flex-col gap-4">
         <p className="sr-only">Chargement du message…</p>
-        <div className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 @2xl/main:p-5">
+        <div className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-none p-4 ring-1 @2xl/main:p-5">
           <div className="flex items-start gap-3">
             <Skeleton className="size-12 rounded-full" />
             <div className="flex flex-1 flex-col gap-2">
@@ -19,9 +19,9 @@ export default function MessageLoading() {
               <Skeleton className="h-6 w-32 rounded-lg" />
             </div>
           </div>
-          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-20 w-full rounded-none" />
         </div>
-        <div className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-2xl p-4 ring-1 @2xl/main:p-5">
+        <div className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-none p-4 ring-1 @2xl/main:p-5">
           <Skeleton className="h-6 w-44" />
           <Skeleton className="h-6 w-56 rounded-lg" />
           <Skeleton className="h-4 w-full" />

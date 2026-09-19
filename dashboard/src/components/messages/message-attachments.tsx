@@ -116,7 +116,7 @@ export function MessageAttachments({
   if (attachments.length === 0) return null;
 
   return (
-    <section className="border-attachment/40 bg-attachment/5 flex flex-col gap-3 rounded-xl border p-3">
+    <section className="border-attachment/40 bg-attachment/5 flex flex-col gap-3 rounded-none border p-3">
       <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
         <AttachmentPill messageId={messageId} attachments={attachments} />
         <span className="text-muted-foreground font-normal">
@@ -134,7 +134,7 @@ export function MessageAttachments({
                 target="_blank"
                 rel="noopener noreferrer"
                 title={`${file.fileName} (${file.contentType})`}
-                className="bg-card ring-attachment/40 hover:bg-attachment/10 focus-visible:ring-ring flex h-full flex-col overflow-hidden rounded-xl ring-1 transition-colors focus-visible:ring-3"
+                className="bg-card ring-attachment/40 hover:bg-attachment/10 focus-visible:ring-ring flex h-full flex-col overflow-hidden rounded-none ring-1 transition-colors focus-visible:ring-3"
               >
                 <span className="bg-attachment/10 relative flex h-24 items-center justify-center">
                   {isPreviewableImage(file.contentType) ? (

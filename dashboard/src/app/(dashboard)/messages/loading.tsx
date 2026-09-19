@@ -23,7 +23,7 @@ export default function MessagesLoading() {
           {ROWS.map((row) => (
             <li
               key={row}
-              className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-2xl p-4 ring-1 @2xl/main:p-5"
+              className="bg-card ring-foreground/10 flex flex-col gap-3 rounded-none p-4 ring-1 @2xl/main:p-5"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col gap-2">

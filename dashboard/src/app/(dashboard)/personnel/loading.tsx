@@ -16,7 +16,7 @@ export default function PersonnelLoading() {
           <CardContent className="flex flex-col gap-4">
             <Skeleton className="h-5 w-48" />
             <Skeleton className="h-11 w-full" />
-            <div className="surface-tray grid gap-3 rounded-xl p-3">
+            <div className="surface-tray grid gap-3 rounded-none p-3">
               <Skeleton className="h-5 w-20" />
               <div className="grid grid-cols-2 gap-3 @3xl/main:grid-cols-3 @5xl/main:grid-cols-5">
                 {FILTERS.map((field) => (
@@ -41,7 +41,7 @@ export default function PersonnelLoading() {
           {CARDS.map((i) => (
             <li
               key={i}
-              className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 @2xl/main:p-5"
+              className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-none p-4 ring-1 @2xl/main:p-5"
             >
               <div className="flex items-center gap-3">
                 <Skeleton className="size-11 rounded-full" />
@@ -52,7 +52,7 @@ export default function PersonnelLoading() {
               </div>
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-none" />
             </li>
           ))}
         </ul>

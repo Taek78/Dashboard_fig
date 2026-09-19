@@ -90,7 +90,7 @@ export default async function ArticlesPage({
             ))}
           </ul>
         ) : (
-          <Empty className="bg-card/60 min-h-[30vh] rounded-2xl border border-dashed">
+          <Empty className="bg-card/60 min-h-[30vh] rounded-none border border-dashed">
             <EmptyHeader>
               <EmptyMedia
                 variant="icon"

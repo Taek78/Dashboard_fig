@@ -37,7 +37,7 @@ export async function ProductsResults({
 
   if (count === 0) {
     return (
-      <Empty className="bg-card/60 min-h-[40vh] rounded-2xl border border-dashed">
+      <Empty className="bg-card/60 min-h-[40vh] rounded-none border border-dashed">
         <EmptyHeader>
           <EmptyMedia
             variant="icon"
@@ -85,11 +85,11 @@ export function ProductsResultsSkeleton() {
         Recherche en cours…
       </p>
       <div className={gridClass}>
-        <Skeleton className="min-h-20 rounded-2xl @xl/main:min-h-72" />
+        <Skeleton className="min-h-20 rounded-none @xl/main:min-h-72" />
         {CARDS.map((i) => (
           <div
             key={i}
-            className="bg-card ring-foreground/10 overflow-hidden rounded-2xl ring-1"
+            className="bg-card ring-foreground/10 overflow-hidden rounded-none ring-1"
           >
             <Skeleton className="h-36 rounded-none" />
             <div className="flex flex-col gap-2 p-4">

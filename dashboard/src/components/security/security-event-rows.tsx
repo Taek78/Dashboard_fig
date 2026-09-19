@@ -63,7 +63,7 @@ export function SecurityEventRows({
               aria-label={`${view.label}, ${formatDateTimeFr(view.at)}`}
               data-tone={view.tone}
               className={cn(
-                "bg-card cv-auto flex flex-col gap-1.5 rounded-xl border border-l-4 p-3 shadow-sm @2xl/main:flex-row @2xl/main:items-baseline @2xl/main:gap-4",
+                "bg-card cv-auto flex flex-col gap-1.5 rounded-none border border-l-4 p-3 shadow-sm @2xl/main:flex-row @2xl/main:items-baseline @2xl/main:gap-4",
                 TONE_RING[view.tone],
               )}
             >

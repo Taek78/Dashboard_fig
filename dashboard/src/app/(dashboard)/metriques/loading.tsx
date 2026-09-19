@@ -15,7 +15,7 @@ export default function MetriquesLoading() {
               <Skeleton className="h-9 w-full rounded-lg @2xl/main:w-52" />
               <Skeleton className="h-9 w-full rounded-lg @2xl/main:ml-auto @2xl/main:w-64" />
             </div>
-            <div className="surface-tray grid gap-2.5 rounded-xl p-3">
+            <div className="surface-tray grid gap-2.5 rounded-none p-3">
               <Skeleton className="h-4 w-24" />
               <div className="grid gap-2 @xl/main:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
                 <Skeleton className="h-9 w-full rounded-lg" />

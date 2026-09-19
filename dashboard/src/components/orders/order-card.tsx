@@ -86,7 +86,7 @@ export function OrderCard({
           : order.customer.fullName
       }`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-highlight cv-auto edge-bar grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]",
+        "bg-card text-card-foreground ring-foreground/10 card-highlight cv-auto edge-bar grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-none shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]",
         order.refund
           ? REFUND_ACCENT[order.refund.kind]
           : STATUS_ACCENT[order.status],

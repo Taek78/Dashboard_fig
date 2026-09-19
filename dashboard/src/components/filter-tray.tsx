@@ -37,7 +37,7 @@ export function FilterTray({
       aria-label={label}
       data-slot="filter-tray"
       className={cn(
-        "surface-tray grid min-w-0 gap-3 rounded-xl p-3",
+        "surface-tray grid min-w-0 gap-3 rounded-none p-3",
         className,
       )}
     >

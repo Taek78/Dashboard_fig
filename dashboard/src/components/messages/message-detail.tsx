@@ -33,7 +33,7 @@ export function MessageDetail({
     <article
       aria-label={`Message de ${message.customer.fullName}`}
       className={cn(
-        "bg-card text-card-foreground edge-bar flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
+        "bg-card text-card-foreground edge-bar flex flex-col gap-4 rounded-none p-4 shadow-sm ring-1 @2xl/main:p-5",
         MESSAGE_STATUS_ACCENT[message.status],
         messageSurfaceClass(message.important),
       )}

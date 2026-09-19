@@ -63,7 +63,7 @@ export function StaffCard({
     <article
       aria-label={`Personne ${name}`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-highlight cv-auto flex flex-col gap-4 rounded-2xl p-4 shadow-sm ring-1 @2xl/main:p-5",
+        "bg-card text-card-foreground ring-foreground/10 card-highlight cv-auto flex flex-col gap-4 rounded-none p-4 shadow-sm ring-1 @2xl/main:p-5",
         !member.active && "opacity-70",
       )}
     >
@@ -157,7 +157,7 @@ export function StaffCard({
 
       <dl
         className={cn(
-          "bg-muted/40 grid gap-2 rounded-xl p-3 text-center",
+          "bg-muted/40 grid gap-2 rounded-none p-3 text-center",
           counters.length > 2
             ? "grid-cols-2 @xl/main:grid-cols-4"
             : "grid-cols-3",

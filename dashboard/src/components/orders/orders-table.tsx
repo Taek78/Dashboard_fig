@@ -44,11 +44,11 @@ export const hideUntilLg = "hidden @4xl/main:table-cell";
 const numeric = "text-right tabular-nums";
 
 export const tableFrame =
-  "overflow-x-auto rounded-2xl border bg-card shadow-sm [&_td]:py-3 [&_th]:py-3 [&_thead]:bg-muted/40 [&_tbody_tr]:transition-colors [&_tbody_tr:nth-child(even)]:bg-muted/20 [&_tbody_tr:hover]:bg-accent/40";
+  "overflow-x-auto rounded-none border bg-card shadow-sm [&_td]:py-3 [&_th]:py-3 [&_thead]:bg-muted/40 [&_tbody_tr]:transition-colors [&_tbody_tr:nth-child(even)]:bg-muted/20 [&_tbody_tr:hover]:bg-accent/40";
 
 /** Cadre d'une carte de la pile mobile (partagé avec les squelettes). */
 export const mobileCardFrame =
-  "bg-card text-card-foreground ring-foreground/10 flex flex-col gap-2 rounded-2xl p-4 shadow-sm ring-1";
+  "bg-card text-card-foreground ring-foreground/10 flex flex-col gap-2 rounded-none p-4 shadow-sm ring-1";
 
 const link = "underline-offset-4 hover:underline focus-visible:underline";
 

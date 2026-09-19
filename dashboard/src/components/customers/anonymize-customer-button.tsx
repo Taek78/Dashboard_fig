@@ -49,7 +49,7 @@ export function AnonymizeCustomerButton({
     <form
       action={formAction}
       role="alert"
-      className="border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-xl border p-4"
+      className="border-destructive/40 bg-destructive/5 flex flex-col gap-3 rounded-none border p-4"
     >
       <input type="hidden" name="customerId" value={customerId} />
       <div className="flex items-start gap-2 text-sm">

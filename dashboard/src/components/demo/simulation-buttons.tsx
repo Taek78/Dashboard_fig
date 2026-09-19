@@ -36,7 +36,7 @@ export function SimulationButtons() {
   return (
     <section
       aria-label="Outils de démonstration"
-      className="border-warning/60 bg-warning/5 flex flex-col gap-3 rounded-xl border border-dashed p-3 @xl/main:flex-row @xl/main:items-center"
+      className="border-warning/60 bg-warning/5 flex flex-col gap-3 rounded-none border border-dashed p-3 @xl/main:flex-row @xl/main:items-center"
     >
       <p className="text-warning flex items-center gap-2 text-sm font-semibold">
         <FlaskConical className="size-4" aria-hidden="true" />

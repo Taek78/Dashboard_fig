@@ -62,7 +62,7 @@ export async function CustomersResults({
 
   if (entries.length === 0) {
     return (
-      <Empty className="bg-card/60 min-h-[30vh] rounded-2xl border border-dashed">
+      <Empty className="bg-card/60 min-h-[30vh] rounded-none border border-dashed">
         <EmptyHeader>
           <EmptyMedia
             variant="icon"
@@ -133,7 +133,7 @@ export function CustomersResultsSkeleton() {
         {CARDS.map((card) => (
           <li
             key={card}
-            className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-2xl p-4 ring-1 @2xl/main:p-5"
+            className="bg-card ring-foreground/10 flex flex-col gap-4 rounded-none p-4 ring-1 @2xl/main:p-5"
           >
             <div className="flex items-center gap-3">
               <Skeleton className="size-12 rounded-full" />
@@ -144,7 +144,7 @@ export function CustomersResultsSkeleton() {
             </div>
             <Skeleton className="h-4 w-48" />
             <Skeleton className="h-4 w-36" />
-            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-none" />
             <Skeleton className="h-9 w-full" />
           </li>
         ))}

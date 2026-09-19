@@ -55,7 +55,7 @@ export function FreshMark({
   return (
     <div
       data-fresh={fresh ? "" : undefined}
-      className={cn("relative rounded-2xl", fresh && "fresh-card")}
+      className={cn("relative rounded-none", fresh && "fresh-card")}
     >
       {fresh ? (
         <span className="fresh-twinkle bg-primary text-primary-foreground absolute -top-2.5 left-4 z-10 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold shadow-md">

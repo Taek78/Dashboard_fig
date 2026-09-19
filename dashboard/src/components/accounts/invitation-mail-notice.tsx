@@ -38,7 +38,7 @@ export function InvitationMailNotice({
   return (
     <div
       role="alert"
-      className="border-destructive/40 bg-destructive/5 -mt-2 flex items-start gap-2 rounded-xl border p-3 text-sm"
+      className="border-destructive/40 bg-destructive/5 -mt-2 flex items-start gap-2 rounded-none border p-3 text-sm"
     >
       <MailWarning
         className="text-destructive mt-0.5 size-4 shrink-0"
