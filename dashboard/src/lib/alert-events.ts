@@ -1,39 +1,60 @@
+import type { UnreadCounts } from "@/domain/alerts/types";
+
 /*
- * Message entre composants clients, dans l'onglet : le relevé des alertes
- * (AlertCenter) annonce combien de nouvelles commandes et de nouveaux
- * messages viennent d'arriver ; le menu (NavMain) illumine la section
- * concernée jusqu'à ce qu'on l'ouvre, et le bouton du menu porte un point
- * sur téléphone (NewItemsDot). Un CustomEvent sur window : aucun état
- * partagé à monter, aucune dépendance. Navigateur seulement.
+ * Messages entre composants clients, dans l'onglet, par CustomEvent sur
+ * window (aucun état partagé à monter, aucune dépendance) :
+ * - UNREAD : le relevé des alertes (AlertCenter) publie à chaque relevé les
+ *   compteurs non lus calculés par le serveur ; le menu (NavMain) les affiche
+ *   à côté de Commandes, Messages et Catalogue, le bouton du menu porte un
+ *   point sur téléphone (NewItemsDot) ;
+ * - SEEN : le menu vient d'enregistrer la visite d'une section ; le relevé
+ *   repart aussitôt, pour que les compteurs suivent sans attendre 5 s.
+ * `polledAt` est l'instant (horloge du navigateur) où le relevé est PARTI :
+ * un relevé parti avant une visite enregistrée ne rallume pas son compteur.
+ * Navigateur seulement.
  */
-export const NEW_ITEMS_EVENT = "fig:nouveautes";
+export const UNREAD_EVENT = "fig:non-lus";
+export const SEEN_EVENT = "fig:vu";
 
-/** Les sections qu'une nouveauté illumine. */
-export const LIT_SECTIONS = ["/commandes", "/messages"] as const;
-export type LitSection = (typeof LIT_SECTIONS)[number];
-export type NewItems = Partial<Record<LitSection, number>>;
+export type UnreadUpdate = { counts: UnreadCounts; polledAt: number };
 
-export function announceNewItems(items: NewItems): void {
-  if (Object.values(items).every((n) => !n)) return;
+export function announceUnread(update: UnreadUpdate): void {
   window.dispatchEvent(
-    new CustomEvent<NewItems>(NEW_ITEMS_EVENT, { detail: items }),
+    new CustomEvent<UnreadUpdate>(UNREAD_EVENT, { detail: update }),
   );
 }
 
 /** Abonnement ; renvoie la fonction de désabonnement (pour un effet). */
-export function onNewItems(handler: (items: NewItems) => void): () => void {
+export function onUnread(handler: (update: UnreadUpdate) => void): () => void {
   const listener = (event: Event) =>
-    handler((event as CustomEvent<NewItems>).detail);
-  window.addEventListener(NEW_ITEMS_EVENT, listener);
-  return () => window.removeEventListener(NEW_ITEMS_EVENT, listener);
+    handler((event as CustomEvent<UnreadUpdate>).detail);
+  window.addEventListener(UNREAD_EVENT, listener);
+  return () => window.removeEventListener(UNREAD_EVENT, listener);
 }
 
-/** Ajoute des nouveautés à un compte courant, section par section. */
-export function addNewItems(current: NewItems, items: NewItems): NewItems {
-  const next: NewItems = { ...current };
-  for (const section of LIT_SECTIONS) {
-    const n = items[section] ?? 0;
-    if (n > 0) next[section] = (next[section] ?? 0) + n;
-  }
-  return next;
+export function announceSeen(): void {
+  window.dispatchEvent(new Event(SEEN_EVENT));
+}
+
+export function onSeen(handler: () => void): () => void {
+  window.addEventListener(SEEN_EVENT, handler);
+  return () => window.removeEventListener(SEEN_EVENT, handler);
+}
+
+/**
+ * Les compteurs à afficher : ceux du relevé, sauf pour un fil dont la visite
+ * a été enregistrée APRÈS le départ de ce relevé (il était déjà en route avec
+ * l'ancien compte) : celui-là reste à 0 jusqu'au relevé suivant.
+ */
+export function visibleUnread(
+  update: UnreadUpdate,
+  seenAt: Partial<Record<keyof UnreadCounts, number>>,
+): UnreadCounts {
+  const keep = (kind: keyof UnreadCounts) =>
+    (seenAt[kind] ?? 0) > update.polledAt ? 0 : update.counts[kind];
+  return {
+    orders: keep("orders"),
+    messages: keep("messages"),
+    stock: keep("stock"),
+  };
 }

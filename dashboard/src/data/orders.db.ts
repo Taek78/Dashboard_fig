@@ -37,6 +37,7 @@ import type {
   NewOrder,
   Order,
   OrderFilters,
+  RefundChange,
   StatusChange,
 } from "@/domain/orders/types";
 import {
@@ -330,7 +331,15 @@ const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
               ? (change.cancellation?.detail ?? null)
               : null,
         })
-        .where(and(eq(orders.id, id), eq(orders.status, change.from)))
+        // Une commande remboursée reste annulée (contrainte orders_refund_cancelled) :
+        // la condition l'écarte au lieu de faire lever la base.
+        .where(
+          and(
+            eq(orders.id, id),
+            eq(orders.status, change.from),
+            change.to === "cancelled" ? undefined : isNull(orders.refundKind),
+          ),
+        )
         .returning({ id: orders.id });
       if (updated.length === 0) return null;
 
@@ -391,6 +400,38 @@ const records: Omit<OrdersSource, keyof typeof ordersAggregatesDb> = {
           notInArray(orders.status, [...FINISHED_STATUSES]),
           staffClause(orders[key], assignment.expectedStaffId),
         ),
+      )
+      .returning({ id: orders.id });
+    if (updated.length === 0) return null;
+    const [order] = await loadOrders(db, eq(orders.id, id));
+    return order ?? null;
+  },
+
+  // Écriture CONDITIONNELLE : enregistré seulement sur une commande annulée
+  // dont le total couvre le montant (relus par la base, pas par l'écran) ;
+  // retiré seulement s'il y en avait un.
+  setOrderRefund: async (id: string, change: RefundChange) => {
+    const db = getDb();
+    const refund = change.refund;
+    const updated = await db
+      .update(orders)
+      .set(
+        refund
+          ? {
+              refundKind: refund.kind,
+              refundCents: refund.amountCents,
+              refundedAt: change.at,
+            }
+          : { refundKind: null, refundCents: null, refundedAt: null },
+      )
+      .where(
+        refund
+          ? and(
+              eq(orders.id, id),
+              eq(orders.status, "cancelled"),
+              gte(orders.totalCents, refund.amountCents),
+            )
+          : and(eq(orders.id, id), isNotNull(orders.refundKind)),
       )
       .returning({ id: orders.id });
     if (updated.length === 0) return null;

@@ -182,7 +182,11 @@ export const ordersAggregatesDb: Pick<
         count(*) filter (where o.status = 'cancelled') as cancelled,
         coalesce(sum(o.total_cents) filter (where o.status <> 'cancelled'), 0) as revenue,
         count(*) filter (where o.community_id is not null) as community,
-        count(distinct o.customer_id) filter (where o.status <> 'cancelled') as buyers
+        count(distinct o.customer_id) filter (where o.status <> 'cancelled') as buyers,
+        count(*) filter (where o.refund_kind = 'refund') as refund_count,
+        coalesce(sum(o.refund_cents) filter (where o.refund_kind = 'refund'), 0) as refund_cents,
+        count(*) filter (where o.refund_kind = 'credit') as credit_count,
+        coalesce(sum(o.refund_cents) filter (where o.refund_kind = 'credit'), 0) as credit_cents
       from orders o
       where ${inRange(range)}
     `);
@@ -196,6 +200,16 @@ export const ordersAggregatesDb: Pick<
       revenueCents: num(row.revenue),
       communityCount: num(row.community),
       buyers: num(row.buyers),
+      refunds: {
+        refund: {
+          count: num(row.refund_count),
+          amountCents: num(row.refund_cents),
+        },
+        credit: {
+          count: num(row.credit_count),
+          amountCents: num(row.credit_cents),
+        },
+      },
     });
   },
 

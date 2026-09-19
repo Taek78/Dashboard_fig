@@ -24,6 +24,7 @@ import {
 } from "@/domain/products/category";
 import { centsToEurosInput } from "@/domain/products/rules";
 import type { Product, ProductUnit } from "@/domain/products/types";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { idleActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,8 @@ export function ProductForm({ product }: ProductFormProps) {
     product ? saveProduct : addProduct,
     idleActionResult,
   );
+  // Quitter la page avec des modifications non enregistrées demande confirmation.
+  const { formRef, dialog } = useUnsavedChanges(result);
   const [category, setCategory] = useState<ProductCategory>(
     product?.category ?? "vegetable",
   );
@@ -56,7 +59,8 @@ export function ProductForm({ product }: ProductFormProps) {
   const isFruit = category === "fruit";
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-6">
+      {dialog}
       {product ? (
         <input type="hidden" name="productId" value={product.id} />
       ) : null}

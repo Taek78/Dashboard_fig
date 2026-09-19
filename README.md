@@ -62,6 +62,7 @@ Connexion avec le compte d'amorçage de `.env.local` (`AUTH_BOOTSTRAP_EMAIL` / `
 | `npm run db:studio`                             | explore les tables dans le navigateur                                  |
 | `npm run db:backup` / `db:restore -- <fichier>` | sauvegarde et restauration (`pg_dump`, scripts portables, base locale) |
 | `npm run rgpd:purge` (`-- --apply`)             | durées de conservation RGPD : aperçu, puis application                 |
+| `npm run db:demo-accounts`                      | comptes de démonstration livreur et lecture seule (variables `AUTH_DEMO_*` de `.env.local`, base locale) |
 | `npm run demo:commandes` (`-- 5 3`)             | démonstration des alertes : 3 commandes, une toutes les 10 s (base locale) |
 | `npm run api:openapi`                           | régénère `docs/api/openapi.json` depuis les schémas de l'API           |
 

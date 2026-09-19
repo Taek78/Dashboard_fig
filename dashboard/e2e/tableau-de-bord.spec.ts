@@ -19,6 +19,18 @@ async function setAvailability(page: Page, staffId: string, value: string) {
 }
 
 test.describe("tableau de bord", () => {
+  test("serveur construit : aucun bouton de simulation (outil de développement)", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.admin);
+    await expect(
+      page.getByRole("button", { name: "Simuler une commande" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Simuler un message" }),
+    ).toHaveCount(0);
+  });
+
   test("aucun préparateur présent : l'alerte passe en tête, puis disparaît quand quelqu'un revient", async ({
     page,
   }) => {

@@ -1,19 +1,37 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { assignStaff, getOrder, updateOrderStatus } from "@/data/orders";
+import {
+  assignStaff,
+  getOrder,
+  setOrderRefund,
+  updateOrderStatus,
+} from "@/data/orders";
 import {
   getNotificationDelivery,
   requeueNotification,
 } from "@/data/notifications";
 import { getCurrentUser } from "@/data/session";
 import { getStaff } from "@/data/staff";
-import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
+import {
+  canAssignStaff,
+  canChangeOrderStatus,
+  canRecordRefund,
+} from "@/domain/auth/roles";
 import { orderStatusNotification } from "@/domain/notifications/rules";
 import { requeueNotificationSchema } from "@/domain/notifications/schemas";
 import { ASSIGNMENT_ROLE_LABELS } from "@/domain/orders/assignment";
 import { formatCancellation } from "@/domain/orders/cancellation";
-import { assignStaffSchema, changeStatusSchema } from "@/domain/orders/schemas";
+import {
+  acceptsRefund,
+  isRefundAmountValid,
+  REFUND_KIND_LABELS,
+} from "@/domain/orders/refund";
+import {
+  assignStaffSchema,
+  changeStatusSchema,
+  refundInputSchema,
+} from "@/domain/orders/schemas";
 import {
   canTransition,
   isFinished,
@@ -21,6 +39,7 @@ import {
 } from "@/domain/orders/status";
 import { canBeAssigned, staffFullName } from "@/domain/staff/rules";
 import type { ActionResult } from "@/lib/action-result";
+import { formatEuros } from "@/lib/format";
 
 /**
  * Résultat du changement de statut : la confirmation, et si le client a été
@@ -52,6 +71,8 @@ const MESSAGES = {
     "Indiquez le motif d'annulation (et une précision de 100 caractères au plus pour « Autre »).",
   notFound: "Cette commande n'existe plus.",
   alreadySet: "La commande est déjà à ce statut.",
+  refunded:
+    "Cette commande a été remboursée ou a reçu un avoir : elle reste annulée. Retirez d'abord le remboursement.",
   conflict: "Cette commande a changé entre-temps, la page a été actualisée.",
   failure: "Impossible d'enregistrer le changement. Réessayez dans un instant.",
 } as const;
@@ -96,6 +117,9 @@ export async function changeOrderStatus(
     // 5. Idempotence : rejouer la même demande ne fait rien.
     if (order.status === nextStatus) {
       return { status: "success", message: MESSAGES.alreadySet };
+    }
+    if (order.refund) {
+      return { status: "error", message: MESSAGES.refunded };
     }
 
     // 6. Règle métier, une seule fois, ici (depuis le 2026-09-17, tout statut
@@ -322,5 +346,99 @@ export async function requeueCustomerNotification(
       message:
         "Impossible de renvoyer la notification. Réessayez dans un instant.",
     };
+  }
+}
+
+/*
+ * Remboursement ou AVOIR d'une commande annulée (demande du 2026-09-19) :
+ * session → rôle (admin, gestionnaire) → zod → relecture de la commande →
+ * règle (annulée, montant > 0 et ≤ total RELU) → écriture conditionnelle
+ * (setOrderRefund : la base revérifie statut et total) → journal →
+ * revalidation. « Retirer » efface le remboursement (erreur de saisie) et
+ * libère le statut.
+ */
+const REFUND_MESSAGES = {
+  forbidden:
+    "Vous n'avez pas les droits pour enregistrer un remboursement ou un avoir.",
+  kind: "Choisissez « Remboursement » ou « Avoir ».",
+  amount: "Indiquez un montant en euros, par exemple 12,50.",
+  notFound: "Cette commande n'existe plus.",
+  notCancelled:
+    "Seule une commande annulée peut être remboursée ou recevoir un avoir.",
+  tooMuch: "Le montant dépasse le total de la commande.",
+  nothing: "Aucun remboursement à retirer.",
+  conflict: "Cette commande a changé entre-temps, la page a été actualisée.",
+  failure: "Impossible d'enregistrer. Réessayez dans un instant.",
+} as const;
+
+export async function recordOrderRefund(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!canRecordRefund(user.role)) {
+    logSecurity({
+      type: "forbidden",
+      userId: user.id,
+      action: "recordOrderRefund",
+    });
+    return { status: "error", message: REFUND_MESSAGES.forbidden };
+  }
+  const parsed = refundInputSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) {
+    const onKind = parsed.error.issues.some((i) => i.path[0] === "kind");
+    return {
+      status: "error",
+      message: onKind ? REFUND_MESSAGES.kind : REFUND_MESSAGES.amount,
+    };
+  }
+  const { orderId, refund } = parsed.data;
+
+  try {
+    const order = await getOrder(orderId);
+    if (!order) return { status: "error", message: REFUND_MESSAGES.notFound };
+    if (refund === null) {
+      if (!order.refund) {
+        return { status: "error", message: REFUND_MESSAGES.nothing };
+      }
+    } else {
+      if (!acceptsRefund(order)) {
+        return { status: "error", message: REFUND_MESSAGES.notCancelled };
+      }
+      if (!isRefundAmountValid(refund.amountCents, order.totalCents)) {
+        return { status: "error", message: REFUND_MESSAGES.tooMuch };
+      }
+    }
+
+    const updated = await setOrderRefund(order.id, {
+      refund,
+      at: new Date(),
+    });
+    if (!updated) {
+      revalidatePath("/", "layout");
+      return { status: "error", message: REFUND_MESSAGES.conflict };
+    }
+
+    logSecurity(
+      refund
+        ? {
+            type: "order_refund_recorded",
+            userId: user.id,
+            orderId: order.id,
+            kind: refund.kind,
+            amountCents: refund.amountCents,
+          }
+        : { type: "order_refund_removed", userId: user.id, orderId: order.id },
+    );
+    revalidatePath("/", "layout");
+    return {
+      status: "success",
+      message: refund
+        ? `${REFUND_KIND_LABELS[refund.kind]} enregistré : ${formatEuros(refund.amountCents)}.`
+        : "Remboursement retiré.",
+    };
+  } catch (error) {
+    console.error("[recordOrderRefund]", { userId: user.id, orderId }, error);
+    return { status: "error", message: REFUND_MESSAGES.failure };
   }
 }

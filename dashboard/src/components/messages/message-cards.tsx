@@ -1,4 +1,5 @@
 import { Inbox, Pin } from "lucide-react";
+import { FreshMark } from "@/components/alerts/fresh-mark";
 import { MessageCard } from "@/components/messages/message-card";
 import type { Message } from "@/domain/messages/types";
 
@@ -35,7 +36,9 @@ function Group({
       <ul className="flex flex-col gap-4">
         {messages.map((message) => (
           <li key={message.id}>
-            <MessageCard message={message} canHandle={canHandle} />
+            <FreshMark kind="messages" id={message.id}>
+              <MessageCard message={message} canHandle={canHandle} />
+            </FreshMark>
           </li>
         ))}
       </ul>
@@ -58,7 +61,9 @@ export function MessageCards({
       <ul className="flex flex-col gap-4">
         {others.map((message) => (
           <li key={message.id}>
-            <MessageCard message={message} canHandle={canHandle} />
+            <FreshMark kind="messages" id={message.id}>
+              <MessageCard message={message} canHandle={canHandle} />
+            </FreshMark>
           </li>
         ))}
       </ul>

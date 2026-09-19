@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
-import { login } from "./helpers";
+import { login, openFilters } from "./helpers";
 
 /*
  * Journal de sécurité : l'écran qui rend lisible ce que la table
@@ -19,6 +19,7 @@ test.describe("journal de sécurité", () => {
     const stamp = Date.now();
     const unknown = `intrus-${stamp}@fig-demo.invalid`;
     await page.goto("/connexion");
+    await openFilters(page);
     await page.getByLabel("E-mail").fill(unknown);
     await page
       .getByLabel("Mot de passe", { exact: true })
@@ -31,6 +32,7 @@ test.describe("journal de sécurité", () => {
     // 2. Le lire en tant qu'administrateur.
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/journal");
+    await openFilters(page);
     await expect(
       page.getByRole("heading", { level: 1, name: "Journal de sécurité" }),
     ).toBeVisible();
@@ -92,6 +94,7 @@ test.describe("journal de sécurité", () => {
     const stamp = Date.now();
     const lastName = `Vert ${stamp % 10_000}`;
     await page.goto("/comptes");
+    await openFilters(page);
     await page.getByLabel("Prénom").first().fill("Nour");
     await page.getByLabel("Nom", { exact: true }).first().fill(lastName);
     await page
@@ -104,6 +107,7 @@ test.describe("journal de sécurité", () => {
 
     // 2. Il est en tête du journal, filtré sur la famille Comptes, et VERT.
     await page.goto("/journal?famille=comptes");
+    await openFilters(page);
     const first = page.getByRole("article", { name: /Compte créé/ }).first();
     await expect(first).toBeVisible();
     await expect(first).toHaveAttribute("data-tone", "creation");
@@ -121,6 +125,7 @@ test.describe("journal de sécurité", () => {
     ).toHaveCount(0);
     // …et l'URL saisie à la main ne l'ouvre pas non plus.
     await page.goto("/journal");
+    await openFilters(page);
     await expect(page).not.toHaveURL(/\/journal/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Journal de sécurité" }),

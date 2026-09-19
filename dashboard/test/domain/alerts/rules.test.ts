@@ -6,6 +6,10 @@ import {
   readAlertFeed,
   stockLevel,
   stockNotice,
+  listShows,
+  noticesForPrefs,
+  noticeTarget,
+  readKindOfSection,
   summarizeNotices,
 } from "@/domain/alerts/rules";
 import type {
@@ -17,9 +21,11 @@ import { formatEuros } from "@/lib/format";
 
 const order = (id: string, createdAt: string): OrderAlertItem => ({
   id,
-  reference: `FIG-260919-${id}`,
-  customerName: "Camille Martin",
+  customerName: `Client ${id}`,
   totalCents: 2490,
+  addressLine: "12 rue des Lilas",
+  postalCode: "75011",
+  city: "Paris",
   createdAt,
 });
 const message = (id: string, receivedAt: string): MessageAlertItem => ({
@@ -47,12 +53,17 @@ describe("stockLevel", () => {
 });
 
 describe("textes des notifications", () => {
-  it("commande : référence, client, total ; lien vers la commande", () => {
+  it("commande : client, total et adresse, sans la référence ; lien vers la commande", () => {
     expect(orderNotice(order("001", "2026-09-18T10:00:00Z"))).toEqual({
       key: "order:001",
       kind: "order",
       title: "Nouvelle commande",
-      body: `FIG-260919-001 · Camille Martin · ${formatEuros(2490)}`,
+      body: `Client 001 · ${formatEuros(2490)} · 12 rue des Lilas, 75011 Paris`,
+      order: {
+        customerName: "Client 001",
+        total: formatEuros(2490),
+        address: "12 rue des Lilas, 75011 Paris",
+      },
       href: "/commandes/001",
     });
   });
@@ -170,16 +181,18 @@ describe("summarizeNotices (une seule notification)", () => {
     expect(summarizeNotices([o("001")])).toEqual(o("001"));
   });
 
-  it("plusieurs commandes : comptées, références listées (trois au plus), lien vers la liste", () => {
-    expect(summarizeNotices([o("001"), o("002")])).toMatchObject({
+  it("plusieurs commandes : comptées, clients listés (trois au plus), lien vers la liste", () => {
+    const two = summarizeNotices([o("001"), o("002")]);
+    expect(two).toMatchObject({
       kind: "order",
       title: "2 nouvelles commandes",
-      body: "FIG-260919-001, FIG-260919-002",
+      body: "Client 001, Client 002",
       href: "/commandes",
     });
+    expect(two?.order).toBeUndefined();
     expect(
       summarizeNotices(["001", "002", "003", "004", "005"].map(o))?.body,
-    ).toBe("FIG-260919-001, FIG-260919-002, FIG-260919-003 et 2 autres");
+    ).toBe("Client 001, Client 002, Client 003 et 2 autres");
   });
 
   it("plusieurs messages ou alertes de stock : même principe", () => {
@@ -218,5 +231,53 @@ describe("summarizeNotices (une seule notification)", () => {
     expect(
       summarizeNotices([m("a"), stockNotice(product("p1", 0), "out")]),
     ).toMatchObject({ kind: "stock_out", href: "/messages" });
+  });
+});
+
+describe("noticesForPrefs / readKindOfSection", () => {
+  it("une case décochée coupe la notification de son fil ; le stock reste", () => {
+    const notices = [
+      orderNotice(order("001", "2026-09-18T10:00:00Z")),
+      messageNotice(message("m", "2026-09-18T10:00:00Z")),
+      stockNotice(product("p", 0), "out"),
+    ];
+    expect(
+      noticesForPrefs(notices, { orders: false, messages: true }).map(
+        (n) => n.kind,
+      ),
+    ).toEqual(["message", "stock_out"]);
+    expect(
+      noticesForPrefs(notices, { orders: true, messages: false }).map(
+        (n) => n.kind,
+      ),
+    ).toEqual(["order", "stock_out"]);
+  });
+
+  it("Commandes, Messages et Catalogue portent un compteur, pas les autres sections", () => {
+    expect(readKindOfSection("/commandes")).toBe("orders");
+    expect(readKindOfSection("/messages")).toBe("messages");
+    expect(readKindOfSection("/catalogue")).toBe("stock");
+    expect(readKindOfSection("/clients")).toBeNull();
+    expect(readKindOfSection("/")).toBeNull();
+  });
+});
+
+describe("noticeTarget / listShows (badge « Nouveau »)", () => {
+  it("désigne la commande ou le message, rien pour le stock", () => {
+    expect(
+      noticeTarget(orderNotice(order("abc", "2026-09-18T10:00:00Z"))),
+    ).toEqual({ kind: "orders", id: "abc" });
+    expect(
+      noticeTarget(messageNotice(message("m-1", "2026-09-18T10:00:00Z"))),
+    ).toEqual({ kind: "messages", id: "m-1" });
+    expect(noticeTarget(stockNotice(product("p", 0), "out"))).toBeNull();
+  });
+
+  it("rafraîchit les listes seulement, jamais une fiche", () => {
+    expect(listShows("/commandes", "orders")).toBe(true);
+    expect(listShows("/", "orders")).toBe(true);
+    expect(listShows("/commandes/cmd-1", "orders")).toBe(false);
+    expect(listShows("/messages", "messages")).toBe(true);
+    expect(listShows("/messages", "orders")).toBe(false);
   });
 });

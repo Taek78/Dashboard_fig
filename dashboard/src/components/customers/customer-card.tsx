@@ -48,7 +48,7 @@ export function CustomerCard({
       className={cn(
         // Fond nuancé de la couleur « particulier » du thème (token --individual) :
         // une carte client se distingue d'une carte communauté d'un coup d'œil.
-        "bg-card from-individual/12 to-individual/4 text-card-foreground card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl bg-linear-to-b p-4 shadow-sm ring-1 @2xl/main:p-5",
+        "bg-card from-individual/12 to-individual/4 text-card-foreground card-highlight cv-auto flex h-full flex-col gap-4 rounded-2xl bg-linear-to-b p-4 shadow-sm ring-1 @2xl/main:p-5",
         tier.tier === "loyal" ? "ring-loyal/40" : "ring-foreground/10",
       )}
     >

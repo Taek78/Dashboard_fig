@@ -20,6 +20,14 @@ export type SecurityEvent =
       from: string;
       to: string;
     }
+  | {
+      type: "order_refund_recorded";
+      userId: string;
+      orderId: string;
+      kind: string;
+      amountCents: number;
+    }
+  | { type: "order_refund_removed"; userId: string; orderId: string }
   | { type: "product_deleted"; userId: string; productId: string }
   | {
       type: "catalog_settings_changed";

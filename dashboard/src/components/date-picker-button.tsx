@@ -67,6 +67,15 @@ function readInput(id: string | undefined): HTMLInputElement | null {
   return element instanceof HTMLInputElement ? element : null;
 }
 
+/*
+ * Calendrier SANS EFFETS (demande du 2026-09-18) : ni zoom ni fondu à
+ * l'ouverture, ni soulèvement, enfoncement ou grossissement d'icône sur ses
+ * boutons (animations communes de ui/button.tsx neutralisées ici), ni
+ * transition sur les jours. Le calendrier apparaît et répond sur place.
+ */
+const STILL =
+  "transition-none motion-safe:hover:translate-y-0 motion-safe:active:not-aria-[haspopup]:scale-100 motion-safe:hover:[&_svg]:scale-100 motion-safe:[&_svg]:transition-none";
+
 export function DatePickerButton({
   inputId,
   otherInputId,
@@ -176,7 +185,9 @@ export function DatePickerButton({
         data-slot="date-picker-trigger"
         className={cn(
           buttonVariants({ variant: "ghost", size: "icon-sm" }),
-          "text-muted-foreground hover:text-foreground absolute top-1/2 right-1 hidden -translate-y-1/2 md:inline-flex",
+          STILL,
+          // Le décalage de centrage reste le même au survol et à l'appui.
+          "text-muted-foreground hover:text-foreground absolute top-1/2 right-1 hidden -translate-y-1/2 motion-safe:hover:-translate-y-1/2 motion-safe:active:not-aria-[haspopup]:-translate-y-1/2 md:inline-flex",
         )}
       >
         <CalendarDays aria-hidden="true" />
@@ -193,17 +204,17 @@ export function DatePickerButton({
             initialFocus={focusRef}
             aria-labelledby={titleId}
             data-slot="date-picker"
-            className="bg-popover text-popover-foreground ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 w-76 origin-(--transform-origin) rounded-xl p-3 shadow-lg ring-1 outline-none"
+            className="bg-popover text-popover-foreground ring-foreground/10 w-76 rounded-xl p-3 shadow-lg ring-1 outline-none"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => showMonth(-1)}
                 aria-label="Mois précédent"
-                className={buttonVariants({
-                  variant: "ghost",
-                  size: "icon-sm",
-                })}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                  STILL,
+                )}
               >
                 <ChevronLeft aria-hidden="true" />
               </button>
@@ -218,10 +229,10 @@ export function DatePickerButton({
                 type="button"
                 onClick={() => showMonth(1)}
                 aria-label="Mois suivant"
-                className={buttonVariants({
-                  variant: "ghost",
-                  size: "icon-sm",
-                })}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                  STILL,
+                )}
               >
                 <ChevronRight aria-hidden="true" />
               </button>
@@ -269,7 +280,7 @@ export function DatePickerButton({
                             data-outside={inMonth ? undefined : ""}
                             onClick={() => commit(day)}
                             className={cn(
-                              "focus-visible:ring-ring/60 flex size-9 items-center justify-center rounded-lg tabular-nums transition-colors outline-none focus-visible:ring-2",
+                              "focus-visible:ring-ring/60 flex size-9 items-center justify-center rounded-lg tabular-nums outline-none focus-visible:ring-2",
                               inMonth
                                 ? "text-foreground hover:bg-muted"
                                 : "text-muted-foreground/45 hover:bg-muted/60",
@@ -294,14 +305,20 @@ export function DatePickerButton({
               <button
                 type="button"
                 onClick={() => commit(today)}
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  STILL,
+                )}
               >
                 Aujourd&apos;hui
               </button>
               <button
                 type="button"
                 onClick={() => commit("")}
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  STILL,
+                )}
               >
                 Effacer
               </button>

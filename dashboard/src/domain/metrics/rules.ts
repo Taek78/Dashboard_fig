@@ -1,3 +1,9 @@
+import {
+  refundShareFrom,
+  refundTotals,
+  type RefundShare,
+  type RefundTotals,
+} from "@/domain/orders/refund";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/domain/orders/status";
 import type { OrderStatus } from "@/domain/orders/status";
 import type { Order } from "@/domain/orders/types";
@@ -225,6 +231,8 @@ export type OrderTotals = {
   communityCount: number;
   /** Clients distincts ayant au moins une commande non annulée. */
   buyers: number;
+  /** Remboursements et avoirs enregistrés sur les commandes de la période. */
+  refunds: RefundTotals;
 };
 
 export type Kpis = {
@@ -242,6 +250,8 @@ export type OrderStats = {
   statusCounts: StatusCounts;
   share: CommunityShare;
   buyers: number;
+  /** Parts des commandes remboursées et des commandes en avoir (sur toutes les commandes). */
+  refunds: RefundShare;
 };
 
 /** Totaux d'une liste de commandes déjà bornée à la période. */
@@ -253,6 +263,7 @@ export function orderTotals(orders: readonly Order[]): OrderTotals {
       .reduce((sum, o) => sum + o.totalCents, 0),
     communityCount: orders.filter((o) => o.community !== null).length,
     buyers: distinctBuyers(orders),
+    refunds: refundTotals(orders),
   };
 }
 
@@ -275,6 +286,7 @@ export function statsFromTotals(totals: OrderTotals): OrderStats {
     statusCounts: totals.statusCounts,
     share: communityShareFrom(totals.communityCount, orderCount),
     buyers: totals.buyers,
+    refunds: refundShareFrom(totals.refunds, orderCount),
   };
 }
 

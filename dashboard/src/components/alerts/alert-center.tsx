@@ -1,10 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertBanner } from "@/components/alerts/alert-banner";
 import {
   hasOrderNotice,
+  listShows,
+  noticesForPrefs,
+  noticeTarget,
   readAlertFeed,
   summarizeNotices,
 } from "@/domain/alerts/rules";
@@ -16,7 +19,7 @@ import {
   type AlertNotice,
   type AlertWatch,
 } from "@/domain/alerts/types";
-import { announceNewItems } from "@/lib/alert-events";
+import { announceUnread, onSeen } from "@/lib/alert-events";
 import {
   clearAttention,
   desktopPermission,
@@ -24,7 +27,14 @@ import {
   notifyDesktop,
   showAttention,
 } from "@/lib/attention";
-import { playChime, unlockChime } from "@/lib/chime";
+import {
+  addFresh,
+  enterFreshSection,
+  FRESH_KINDS,
+  openFresh,
+  type FreshKind,
+} from "@/lib/fresh-items";
+import { playMessageChime, playOrderChime, unlockChime } from "@/lib/chime";
 
 /*
  * Notifications en direct (demande du 2026-09-18), montées une fois par le
@@ -34,11 +44,13 @@ import { playChime, unlockChime } from "@/lib/chime";
  *   (readAlertFeed) : nouvelle commande, nouveau message client, produit qui
  *   passe en stock critique ou à 0. Le premier relevé sert de point de départ ;
  * - UNE SEULE notification à la fois (demande du 2026-09-18) : elle descend
- *   juste sous le bandeau pour 4 s (AlertBanner). Ce qui arrive pendant
+ *   juste sous le bandeau pour 15 s (AlertBanner). Ce qui arrive pendant
  *   qu'elle est affichée s'y ajoute (summarizeNotices : « 3 nouvelles
- *   commandes ») et relance ses 4 s, au lieu d'empiler des cartes ;
+ *   commandes ») et relance ses 15 s, au lieu d'empiler des cartes ;
  * - une nouvelle commande SONNE, une fois par relevé quel que soit leur
- *   nombre (carillon du Web Audio API, environ deux secondes). Le navigateur
+ *   nombre ; un nouveau message a SON PROPRE son, plus doux (src/lib/chime.ts,
+ *   Web Audio). Chaque compte n'entend que ce que son rôle et ses préférences
+ *   lui font recevoir. Le navigateur
  *   n'autorise le son qu'après un premier clic ou une touche sur la page :
  *   unlockChime() est branché sur ces gestes.
  * - page pas sous les yeux (onglet caché, fenêtre sans focus) : sur
@@ -50,6 +62,12 @@ import { playChime, unlockChime } from "@/lib/chime";
  * Un relevé qui échoue (réseau, session expirée : la réponse n'est alors pas
  * du JSON) est simplement ignoré ; le suivant réessaie.
  */
+/** /commandes, /commandes/… ou /messages, /messages/… : la section du fil. */
+function inSection(pathname: string, kind: FreshKind): boolean {
+  const section = kind === "orders" ? "/commandes" : "/messages";
+  return pathname === section || pathname.startsWith(`${section}/`);
+}
+
 /** Ce qui est affiché : les nouveautés regroupées, et un numéro qui change à chaque ajout. */
 type Shown = { items: AlertNotice[]; version: number };
 
@@ -61,6 +79,40 @@ export function AlertCenter() {
   // Nouveautés arrivées pendant que la page n'était pas sous les yeux.
   const away = useRef<AlertNotice[]>([]);
   const router = useRouter();
+  const pathname = usePathname();
+  const path = useRef(pathname);
+
+  // Nouveautés arrivées : marquées « Nouveau » ; entrées dans leur section si
+  // on y est ; la liste affichée se rafraîchit pour montrer les nouvelles cartes.
+  const markFresh = useCallback(
+    (notices: readonly AlertNotice[]) => {
+      let refresh = false;
+      for (const kind of FRESH_KINDS) {
+        const ids = notices.flatMap((notice) => {
+          const target = noticeTarget(notice);
+          return target?.kind === kind ? [target.id] : [];
+        });
+        if (ids.length === 0) continue;
+        addFresh(kind, ids);
+        if (inSection(path.current, kind)) enterFreshSection(kind);
+        if (listShows(path.current, kind)) refresh = true;
+      }
+      if (refresh) router.refresh();
+    },
+    [router],
+  );
+
+  // Section ouverte : ses nouveautés s'éteindront au prochain rechargement ;
+  // détail ouvert : sa nouveauté s'éteint tout de suite.
+  useEffect(() => {
+    path.current = pathname;
+    for (const kind of FRESH_KINDS) {
+      if (!inSection(pathname, kind)) continue;
+      enterFreshSection(kind);
+      const detail = pathname.split("/")[2];
+      if (detail) openFresh(kind, decodeURIComponent(detail));
+    }
+  }, [pathname]);
 
   const dismiss = useCallback(() => setShown(null), []);
   const summary = shown ? summarizeNotices(shown.items) : null;
@@ -99,6 +151,7 @@ export function AlertCenter() {
     async function poll() {
       if (busy || stopped) return;
       busy = true;
+      const polledAt = Date.now();
       try {
         const query = since.current
           ? `?depuis=${encodeURIComponent(since.current)}`
@@ -112,21 +165,26 @@ export function AlertCenter() {
           ?.includes("application/json");
         if (response.ok && isJson && !stopped) {
           const feed = (await response.json()) as AlertFeed;
+          // Compteurs non lus du menu, à chaque relevé (même sans nouveauté).
+          announceUnread({ counts: feed.unread, polledAt });
           const read = readAlertFeed(watch.current, feed);
           watch.current = read.watch;
           since.current = new Date(
             Date.parse(feed.now) - ALERT_OVERLAP_MS,
           ).toISOString();
-          if (read.notices.length > 0) {
-            if (hasOrderNotice(read.notices)) playChime();
-            // Le menu illumine Commandes et Messages jusqu'à leur ouverture.
-            announceNewItems({
-              "/commandes": read.notices.filter((n) => n.kind === "order")
-                .length,
-              "/messages": read.notices.filter((n) => n.kind === "message")
-                .length,
-            });
-            const fresh = read.notices;
+          // Badges « Nouveau » : TOUTES les commandes et tous les messages
+          // arrivés, quelles que soient les préférences de notification.
+          markFresh(read.notices);
+          // Préférences du compte : ce qui mérite bandeau, son, notification système.
+          const fresh = noticesForPrefs(read.notices, feed.prefs);
+          if (fresh.length > 0) {
+            // Un son par relevé : la commande l'emporte, sinon celui des messages.
+            if (!feed.prefs.muted) {
+              if (hasOrderNotice(fresh)) playOrderChime();
+              else if (fresh.some((n) => n.kind === "message")) {
+                playMessageChime();
+              }
+            }
             if (isAway()) {
               // De loin : compte dans le titre et sur l'icône, notification système.
               away.current = [...away.current, ...fresh];
@@ -167,14 +225,20 @@ export function AlertCenter() {
     };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onBack);
+    // Une section vient d'être ouverte : les compteurs suivent sans attendre.
+    const stopSeen = onSeen(() => {
+      clearTimeout(timer);
+      void poll();
+    });
     void poll();
     return () => {
       stopped = true;
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onBack);
+      stopSeen();
     };
-  }, [router]);
+  }, [router, markFresh]);
 
   return (
     <div

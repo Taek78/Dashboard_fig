@@ -41,6 +41,7 @@ import type {
 import type { CustomerNotification } from "@/domain/notifications/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
+import type { OrderRefund } from "@/domain/orders/refund";
 import type { OrderDiscount } from "@/domain/orders/discount";
 import type { Order, OrderEvent, OrderLine } from "@/domain/orders/types";
 import type { Illustration, OriginCountry } from "@/domain/products/category";
@@ -118,6 +119,20 @@ function toCancellation(
   return reason === null ? null : { reason, detail };
 }
 
+function toRefund(
+  row: Pick<OrderRow, "refundKind" | "refundCents" | "refundedAt">,
+): OrderRefund | null {
+  return row.refundKind === null ||
+    row.refundCents === null ||
+    row.refundedAt === null
+    ? null
+    : {
+        kind: row.refundKind,
+        amountCents: row.refundCents,
+        at: row.refundedAt.toISOString(),
+      };
+}
+
 export function toOrderLine(row: OrderLineRow): OrderLine {
   return {
     productId: row.productId,
@@ -174,6 +189,7 @@ export function toOrder(
       row.cancellationReason,
       row.cancellationDetail,
     ),
+    refund: toRefund(row),
     community: toCommunityRef(joins.community),
     discount: toDiscount(
       row.discountKind,

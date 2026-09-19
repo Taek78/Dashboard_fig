@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
-import { login } from "./helpers";
+import { login, openFilters } from "./helpers";
 
 test.describe("personnel", () => {
   test("ajouter un livreur, puis l'affecter à une commande depuis sa carte", async ({
@@ -8,6 +8,7 @@ test.describe("personnel", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel?type=livreur");
+    await openFilters(page);
     await expect(
       page
         .getByRole("form", { name: "Recherche dans l'équipe" })
@@ -38,6 +39,7 @@ test.describe("personnel", () => {
     // Affectation depuis la carte de commande : le choix écrit aussitôt.
     // La personne est disponible : gommette verte devant son nom.
     await page.goto("/commandes?date=2026-09-08");
+    await openFilters(page);
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-005,/,
     });
@@ -51,6 +53,7 @@ test.describe("personnel", () => {
 
     // L'historique de la personne la retrouve.
     await page.goto("/personnel");
+    await openFilters(page);
     await page
       .getByRole("link", { name: `Nour Sassi ${stamp}` })
       .first()
@@ -68,6 +71,7 @@ test.describe("personnel", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel");
+    await openFilters(page);
     const form = page.getByRole("form", { name: "Recherche dans l'équipe" });
     const search = form.getByLabel("Rechercher une personne");
     await search.pressSequentially("dembele", { delay: 50 });
@@ -81,6 +85,7 @@ test.describe("personnel", () => {
     await expect(search).toHaveValue("dembele");
 
     await page.goto("/personnel");
+    await openFilters(page);
     await form.getByLabel("Disponibilité").selectOption("conge");
     await expect(page).toHaveURL(/dispo=conge/);
     await expect(
@@ -96,6 +101,7 @@ test.describe("personnel", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel/nouveau?type=preparateur");
+    await openFilters(page);
     const stamp = Date.now();
     const name = `Inès Morel ${stamp}`;
     await page.getByLabel("Prénom").fill("Inès");
@@ -159,6 +165,7 @@ test.describe("personnel", () => {
 
     // La liste sépare les présents des partis.
     await page.goto(`/personnel?q=${stamp}`);
+    await openFilters(page);
     const gone = page.getByRole("region", { name: "Partis de l'entreprise" });
     await expect(
       gone.getByRole("article", { name: `Personne ${name}` }),
@@ -167,6 +174,7 @@ test.describe("personnel", () => {
       page.getByRole("region", { name: "Dans l'entreprise" }),
     ).toHaveCount(0);
     await page.goto("/personnel");
+    await openFilters(page);
     await expect(
       page
         .getByRole("region", { name: "Dans l'entreprise" })
@@ -179,11 +187,70 @@ test.describe("personnel", () => {
     ).toBeVisible();
   });
 
+  test("modifications non enregistrées : « Quitter » part sans enregistrer, « Enregistrer les modifications » enregistre puis part", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/personnel/stf-0004");
+    await openFilters(page);
+    const notes = page.getByLabel("Notes internes");
+    const original = await notes.inputValue();
+    const menu = page.locator('[data-slot="sidebar-inner"]');
+
+    // Quitter : la page demandée s'ouvre, rien n'est enregistré.
+    await notes.fill("Note jamais enregistrée");
+    await menu.getByRole("link", { name: "Commandes", exact: true }).click();
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toContainText("Modifications non enregistrées");
+    await expect(dialog).toContainText(
+      "Les modifications seront perdues si vous quittez sans enregistrer.",
+    );
+    await dialog.getByRole("button", { name: "Quitter" }).click();
+    await expect(page).toHaveURL(/\/commandes$/);
+    await page.goto("/personnel/stf-0004");
+    await openFilters(page);
+    await expect(page.getByLabel("Notes internes")).toHaveValue(original);
+
+    // Échap : on reste sur la fiche, la saisie est intacte.
+    await page.getByLabel("Notes internes").fill("Scooter électrique");
+    await menu.getByRole("link", { name: "Commandes", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/\/personnel\/stf-0004$/);
+    await expect(page.getByLabel("Notes internes")).toHaveValue(
+      "Scooter électrique",
+    );
+
+    // Enregistrer les modifications : enregistré, puis la page demandée.
+    await menu.getByRole("link", { name: "Commandes", exact: true }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Enregistrer les modifications" })
+      .click();
+    await expect(page).toHaveURL(/\/commandes$/);
+    await page.goto("/personnel/stf-0004");
+    await openFilters(page);
+    await expect(page.getByLabel("Notes internes")).toHaveValue(
+      "Scooter électrique",
+    );
+
+    // Remise en état, puis plus rien ne retient la navigation.
+    await page.getByLabel("Notes internes").fill(original);
+    await page
+      .getByRole("button", { name: "Enregistrer les modifications" })
+      .click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "enregistrée" }),
+    ).toBeVisible();
+    await menu.getByRole("link", { name: "Commandes", exact: true }).click();
+    await expect(page).toHaveURL(/\/commandes$/);
+  });
+
   test("le filtre des gestionnaires renvoie vers les comptes", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel?type=gestionnaire");
+    await openFilters(page);
     await expect(page.getByText("Accès au back-office")).toBeVisible();
     await expect(page.getByRole("link", { name: "Comptes" })).toBeVisible();
   });
@@ -193,6 +260,7 @@ test.describe("personnel", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/personnel?type=livreur");
+    await openFilters(page);
     const card = page.getByRole("article", { name: "Personne Malik Dembélé" });
     await expect(card.getByRole("link", { name: "Modifier" })).toBeVisible();
     await expect(
@@ -210,6 +278,7 @@ test.describe("personnel", () => {
 
     // La copie d'une personne partie arrive dans l'entreprise, sans date de sortie.
     await page.goto("/personnel/nouveau?depuis=stf-0010");
+    await openFilters(page);
     await expect(
       page.getByText("Duplication de la fiche de Paul Girard"),
     ).toBeVisible();
@@ -217,6 +286,7 @@ test.describe("personnel", () => {
     await expect(page.getByLabel("Date de sortie")).toHaveCount(0);
 
     await page.goto("/personnel/stf-0001");
+    await openFilters(page);
     await expect(
       page.getByRole("heading", { level: 2, name: "Modifier la fiche" }),
     ).toBeVisible();

@@ -66,6 +66,34 @@ test.describe("livreur", () => {
     ).toHaveCount(0);
   });
 
+  test("le livreur change le statut d'une livraison, depuis la liste et depuis la fiche", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.driver);
+    await page.goto("/commandes?q=FIG-260907-003");
+    const card = page.getByRole("article", {
+      name: /^Commande FIG-260907-003,/,
+    });
+    const select = card.getByLabel("Statut de la commande");
+    const original = await select.inputValue();
+    const next = original === "delivering" ? "delivered" : "delivering";
+    await card.getByLabel("Notifier le client").uncheck();
+    await select.selectOption(next);
+    await expect(
+      card.getByRole("status").filter({ hasText: "Statut mis à jour" }),
+    ).toBeVisible();
+    await expect(select).toHaveValue(next);
+
+    // Depuis la fiche : retour au statut d'origine, sans notifier.
+    // Rendu par <Button render> : rôle « button » (voir CLAUDE.md).
+    await card.getByText("Détail de la commande").click();
+    const detail = page.getByLabel("Statut de la commande");
+    await expect(detail).toHaveValue(next);
+    await page.getByLabel("Notifier le client").uncheck();
+    await detail.selectOption(original);
+    await expect(detail).toHaveValue(original);
+  });
+
   test("au téléphone (400 px), le tableau de bord tient dans la largeur", async ({
     page,
   }) => {

@@ -204,6 +204,16 @@ export const SECURITY_EVENT_META: Record<
     label: "Statut de commande changé",
     tone: "normal",
   },
+  order_refund_recorded: {
+    family: "commandes",
+    label: "Remboursement ou avoir enregistré",
+    tone: "sensible",
+  },
+  order_refund_removed: {
+    family: "commandes",
+    label: "Remboursement ou avoir retiré",
+    tone: "sensible",
+  },
   notification_requeued: {
     family: "commandes",
     label: "Notification client renvoyée",
@@ -387,6 +397,12 @@ const text = (value: unknown): string | null =>
 
 const yes = (value: unknown): boolean => value === true;
 
+/** Un montant en centimes lu dans les détails : « 12,50 € », sinon null. */
+const cents = (value: unknown): string | null =>
+  Number.isInteger(value)
+    ? `${((value as number) / 100).toFixed(2).replace(".", ",")} €`
+    : null;
+
 /** « — » quand le détail manque : l'écran reste lisible, la ligne reste vraie. */
 const or = (value: string | null) => value ?? "—";
 
@@ -446,6 +462,10 @@ export function describeSecurityEvent(
       return `compte ${or(text(d.targetId))}`;
     case "order_status_changed":
       return `commande ${or(text(d.orderId))} : ${or(text(d.from))} → ${or(text(d.to))}, par ${or(text(d.userId))}`;
+    case "order_refund_recorded":
+      return `commande ${or(text(d.orderId))} : ${or(text(d.kind))} de ${or(cents(d.amountCents))}, par ${or(text(d.userId))}`;
+    case "order_refund_removed":
+      return `commande ${or(text(d.orderId))}, par ${or(text(d.userId))}`;
     case "notification_requeued":
       return `notification ${or(text(d.notificationId))}, commande ${or(text(d.orderId))}, par ${or(text(d.userId))}`;
     case "order_staff_assigned":

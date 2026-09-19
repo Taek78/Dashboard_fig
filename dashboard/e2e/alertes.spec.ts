@@ -52,7 +52,8 @@ test("stock critique puis rupture : notification colorée, fermée par la croix,
   await setStock(page, "24000");
 });
 
-test("une notification part seule après 4 s", async ({ page }) => {
+test("une notification part seule après 15 s", async ({ page }) => {
+  test.setTimeout(60_000);
   await login(page, E2E_ACCOUNTS.admin);
   const firstFeed = page.waitForResponse(
     (r) => new URL(r.url()).pathname === "/alertes" && r.ok(),
@@ -66,7 +67,8 @@ test("une notification part seule après 4 s", async ({ page }) => {
   await expect(out).toBeVisible({ timeout: 15_000 });
   // Le pointeur ailleurs : le décompte n'est pas suspendu.
   await page.mouse.move(0, 400);
-  await expect(out).toHaveCount(0, { timeout: 6_000 });
+  await expect(out).toBeVisible();
+  await expect(out).toHaveCount(0, { timeout: 18_000 });
   await setStock(page, "24000");
 });
 
@@ -125,6 +127,95 @@ test("nouveau message : la section Messages s'illumine avec le compte, puis s'é
     await expect(messages).not.toHaveClass(/nav-lit/);
   } finally {
     await sql`delete from customer_messages where id = 'msg-e2e-lumiere'`;
+    await sql.end();
+  }
+});
+
+test("« Mon profil » : messages désactivés, pas de notification, mais compteur et badge « Nouveau » actifs ; son et cloche", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const sql = postgres(TEST_DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    await login(page, E2E_ACCOUNTS.admin);
+    await page.goto("/profil");
+    const messagesBox = page.getByLabel("Activer les notifications messages");
+    const ordersBox = page.getByLabel("Activer les notifications commandes");
+    const mute = page.getByLabel("Désactiver le son");
+    await expect(messagesBox).toBeChecked();
+    await expect(ordersBox).toBeChecked();
+    await expect(mute).not.toBeChecked();
+    await expect(mute).toBeEnabled();
+
+    // Son coupé, puis les deux notifications coupées : la case se grise et se décoche.
+    await mute.check();
+    await expect(page.getByText("Préférences enregistrées.")).toBeVisible();
+    await ordersBox.uncheck();
+    await messagesBox.uncheck();
+    await expect(mute).toBeDisabled();
+    await expect(mute).not.toBeChecked();
+    await ordersBox.check();
+    await expect(mute).toBeEnabled();
+    await expect(page.getByText("Préférences enregistrées.")).toBeVisible();
+
+    // Messages désactivés : un nouveau message ne fait aucune notification…
+    await page.goto("/commandes");
+    const firstFeed = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/alertes" && r.ok(),
+    );
+    await page.reload();
+    await firstFeed;
+    await sql`insert into customer_messages (id, customer_id, subject, body)
+      values ('msg-e2e-muet', 'cli-0001', 'other', 'Message sans notification.')`;
+    const messages = page
+      .locator('[data-slot="sidebar-inner"]')
+      .getByRole("link", { name: /^Messages/ });
+    // … mais le compteur du menu s'allume quand même.
+    await expect(messages).toHaveClass(/nav-lit/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("region", { name: "Notifications" }),
+    ).not.toContainText("message");
+
+    // Remise des préférences par défaut.
+    await page.goto("/profil");
+    await page.getByLabel("Activer les notifications messages").check();
+    await expect(page.getByText("Préférences enregistrées.")).toBeVisible();
+  } finally {
+    await sql`delete from customer_messages where id = 'msg-e2e-muet'`;
+    await sql.end();
+  }
+});
+
+test("nouveau message dans la boîte de réception : carte « Nouveau » en surbrillance, éteinte par l'ouverture du détail", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  const sql = postgres(TEST_DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    await login(page, E2E_ACCOUNTS.admin);
+    const firstFeed = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/alertes" && r.ok(),
+    );
+    await page.goto("/messages");
+    await firstFeed;
+    await sql`insert into customer_messages (id, customer_id, subject, body)
+      values ('msg-e2e-nouveau', 'cli-0001', 'product_question', 'Vos poires sont-elles mûres ?')`;
+    // La liste se rafraîchit seule ; la carte porte le badge qui scintille.
+    const fresh = page.locator("[data-fresh]").filter({
+      hasText: "Vos poires sont-elles mûres ?",
+    });
+    await expect(fresh).toBeVisible({ timeout: 15_000 });
+    await expect(fresh).toContainText("Nouveau");
+    await expect(fresh).toHaveClass(/fresh-card/);
+
+    await page.goto("/messages/msg-e2e-nouveau");
+    await page.goto("/messages");
+    await expect(
+      page.getByText("Vos poires sont-elles mûres ?").first(),
+    ).toBeVisible();
+    await expect(page.locator("[data-fresh]")).toHaveCount(0);
+  } finally {
+    await sql`delete from customer_messages where id = 'msg-e2e-nouveau'`;
     await sql.end();
   }
 });

@@ -1,34 +1,16 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import {
-  addNewItems,
-  LIT_SECTIONS,
-  onNewItems,
-  type NewItems,
-} from "@/lib/alert-events";
-import { isNavActive } from "@/lib/navigation";
+import { useUnread } from "@/components/alerts/use-unread";
 
 /*
  * Point lumineux sur le bouton du menu, TÉLÉPHONE seulement (md:hidden) : le
- * menu y est replié, la section illuminée ne se voit pas. Il apparaît avec
- * une nouvelle commande ou un nouveau message (onNewItems) et s'éteint quand
- * les sections concernées ont été ouvertes. Décoratif : le nombre est dit
- * par le lien illuminé du menu et par la notification.
+ * menu y est replié, ses compteurs ne se voient pas. Allumé tant qu'une
+ * section a des nouveautés non lues (useUnread). Décoratif : les nombres sont
+ * dits par les compteurs du menu et par la notification.
  */
 export function NewItemsDot() {
-  const pathname = usePathname();
-  const [fresh, setFresh] = useState<NewItems>({});
-  useEffect(
-    () => onNewItems((items) => setFresh((c) => addNewItems(c, items))),
-    [],
-  );
-  const opened = LIT_SECTIONS.find(
-    (section) => fresh[section] && isNavActive(pathname, section),
-  );
-  if (opened) setFresh((c) => ({ ...c, [opened]: 0 }));
-  const lit = LIT_SECTIONS.some((section) => (fresh[section] ?? 0) > 0);
+  const { counts } = useUnread();
+  const lit = counts.orders + counts.messages + counts.stock > 0;
   if (!lit) return null;
   return (
     <span

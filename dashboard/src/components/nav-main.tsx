@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -14,13 +14,9 @@ import {
 } from "@/components/ui/sidebar";
 import { canViewSection, type Role } from "@/domain/auth/roles";
 import { groupNavItems, isNavActive, NAV_ITEMS } from "@/lib/navigation";
-import {
-  addNewItems,
-  LIT_SECTIONS,
-  onNewItems,
-  type LitSection,
-  type NewItems,
-} from "@/lib/alert-events";
+import { useUnread } from "@/components/alerts/use-unread";
+import { readKindOfSection } from "@/domain/alerts/rules";
+import { ALERT_KINDS_READ, SECTION_OF_READ_KIND } from "@/domain/alerts/types";
 import { cn } from "@/lib/utils";
 
 /*
@@ -36,26 +32,32 @@ import { cn } from "@/lib/utils";
  * l'empêche de capter les clics destinés au dernier lien de ce groupe.
  * Les sections interdites au rôle ne sont pas listées ; le proxy les refuse
  * de toute façon.
- * Nouvelle commande ou nouveau message (relevé des alertes, onNewItems) : la
- * section s'ILLUMINE (halo lumineux qui respire, `nav-lit` de globals.css,
- * immobile sous prefers-reduced-motion) avec le nombre de nouveautés, jusqu'à
- * ce qu'on l'ouvre (demande du 2026-09-18).
+ * Compteurs NON LUS (demande du 2026-09-18) : à côté de Commandes, Messages
+ * et Catalogue (stock critique ou à 0), le nombre de nouveautés depuis la
+ * dernière visite de la section, calculé par le serveur et publié par le
+ * relevé des alertes (useUnread) ; la section s'ILLUMINE (halo qui respire,
+ * `nav-lit` de globals.css, immobile sous prefers-reduced-motion). Cliquer
+ * sur la section (ou l'ouvrir autrement) enregistre la visite : le badge
+ * disparaît.
  */
 export function NavMain({ role }: { role: Role }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const visible = NAV_ITEMS.filter((item) => canViewSection(role, item.href));
-  // Nouveautés annoncées par le relevé des alertes, par section.
-  const [fresh, setFresh] = useState<NewItems>({});
-  useEffect(
-    () => onNewItems((items) => setFresh((c) => addNewItems(c, items))),
-    [],
-  );
-  // Ouvrir la section éteint son illumination (ajusté au rendu, pas d'effet).
-  const opened = LIT_SECTIONS.find(
-    (section) => fresh[section] && isNavActive(pathname, section),
-  );
-  if (opened) setFresh((c) => ({ ...c, [opened]: 0 }));
+  // Compteurs non lus publiés par le relevé des alertes (serveur).
+  const { counts, markSeen } = useUnread();
+  // La section ouverte (clic ou lien direct) : sa dernière visite est
+  // enregistrée, son compteur repart de zéro.
+  useEffect(() => {
+    for (const kind of ALERT_KINDS_READ) {
+      if (
+        counts[kind] > 0 &&
+        isNavActive(pathname, SECTION_OF_READ_KIND[kind])
+      ) {
+        markSeen(kind);
+      }
+    }
+  }, [pathname, counts, markSeen]);
 
   return (
     <nav aria-label="Navigation principale" className="flex flex-col">
@@ -68,9 +70,8 @@ export function NavMain({ role }: { role: Role }) {
             <SidebarMenu className="gap-1">
               {group.items.map((item) => {
                 const active = isNavActive(pathname, item.href);
-                const count = active
-                  ? 0
-                  : (fresh[item.href as LitSection] ?? 0);
+                const kind = readKindOfSection(item.href);
+                const count = kind === null || active ? 0 : counts[kind];
                 return (
                   <SidebarMenuItem
                     key={item.href}
@@ -89,7 +90,11 @@ export function NavMain({ role }: { role: Role }) {
                         count > 0 &&
                           "nav-lit text-sidebar-foreground font-semibold",
                       )}
-                      onClick={() => setOpenMobile(false)}
+                      onClick={() => {
+                        setOpenMobile(false);
+                        // Le badge disparaît au clic, avant même la navigation.
+                        if (kind !== null && count > 0) markSeen(kind);
+                      }}
                       render={
                         <Link
                           href={item.href}

@@ -32,6 +32,14 @@ export function canChangeOrderStatus(role: Role): boolean {
   return WRITERS.includes(role) || role === "livreur";
 }
 
+/**
+ * Enregistrer ou retirer le remboursement ou l'avoir d'une commande annulée
+ * (demande du 2026-09-19) : l'équipe seulement, jamais le livreur ni la lecture.
+ */
+export function canRecordRefund(role: Role): boolean {
+  return WRITERS.includes(role);
+}
+
 /** Créer, modifier ou supprimer un produit du catalogue. */
 export function canEditProduct(role: Role): boolean {
   return WRITERS.includes(role);

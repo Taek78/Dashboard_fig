@@ -20,6 +20,15 @@ Dernière mise à jour : 2026-09-18.
 
 ## Reste à faire
 
+### AVANT LA LIVRAISON AU CLIENT (obligatoire)
+
+- **Retirer les outils de démonstration** (ajoutés le 2026-09-18 pour tester les alertes en direct). Ils ne s'affichent pas et refusent tout en production (`src/lib/demo-tools.ts`), mais ne doivent pas être livrés :
+  - les boutons « Simuler une commande » et « Simuler un message » : `src/components/demo/`, `src/app/(dashboard)/demo/`, le bloc `SimulationButtons` de `src/app/(dashboard)/page.tsx`, `src/lib/demo-tools.ts` ;
+  - `src/db/demo.ts`, `scripts/demo-commandes.ts`, `scripts/demo-message.ts` et `scripts/demo-accounts.ts`, avec leurs commandes npm (`demo:commandes`, `db:demo-accounts`) et les variables `AUTH_DEMO_*` de `.env.example` ;
+  - leurs tests (`test/lib/demo-tools.test.ts`, `test/app/demo/`) et le parcours « aucun bouton de simulation » de `e2e/tableau-de-bord.spec.ts` ;
+  - les comptes de démonstration (« Livreur Démo », « Lecture Démo ») de toute base autre que locale ;
+  - puis mettre à jour CLAUDE.md, le README et ce fichier.
+
 ### Dépend du client
 
 | #   | Sujet                                                                                                                                                                                                                       | Ce qui bloque                                        |

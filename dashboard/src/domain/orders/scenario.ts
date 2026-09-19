@@ -56,6 +56,7 @@ type ScenarioSeed = Omit<
   | "deliveryFeeCents"
   | "totalCents"
   | "paymentReference"
+  | "refund"
 > & { customer: Omit<Order["customer"], "notifyOrderStatus"> };
 
 const seeds: readonly ScenarioSeed[] = [
@@ -662,5 +663,6 @@ export const scenarioOrders: readonly Order[] = seeds.map((seed) => {
     discount: null,
     ...(ASSIGNMENTS[seed.id] ?? { preparer: null, driver: null }),
     paymentReference: null,
+    refund: null,
   };
 });

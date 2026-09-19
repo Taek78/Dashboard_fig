@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { ALERT_MAX_LOOKBACK_MS, ALERT_OVERLAP_MS } from "@/domain/alerts/types";
+import {
+  ALERT_KINDS_READ,
+  ALERT_MAX_LOOKBACK_MS,
+  ALERT_OVERLAP_MS,
+  type AlertPrefs,
+} from "@/domain/alerts/types";
 
 /*
  * Lecture tolérante du paramètre ?depuis= du flux des alertes (GET /alertes).
@@ -15,3 +20,22 @@ export function alertSince(raw: string | null, now: Date): Date {
   const floor = now.getTime() - ALERT_MAX_LOOKBACK_MS;
   return new Date(Math.min(Math.max(wanted, floor), now.getTime()));
 }
+
+/** Le fil dont on enregistre la visite (action markSectionSeen). */
+export const alertReadKindSchema = z.enum(ALERT_KINDS_READ);
+
+/**
+ * Les deux cases de « Mon profil » : une case cochée arrive avec la valeur
+ * « on », une case décochée n'est pas envoyée (= désactivée).
+ */
+const box = z
+  .literal("on")
+  .optional()
+  .transform((value) => value === "on");
+export const alertPrefsSchema = z
+  .object({ orders: box, messages: box, muted: box })
+  .transform((v): AlertPrefs => ({
+    orders: v.orders,
+    messages: v.messages,
+    muted: v.muted,
+  }));

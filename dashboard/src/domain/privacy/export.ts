@@ -11,6 +11,7 @@ import {
   type MessageSubject,
 } from "@/domain/messages/subject";
 import type { Cancellation } from "@/domain/orders/cancellation";
+import type { OrderRefund } from "@/domain/orders/refund";
 import type { OrderDiscount } from "@/domain/orders/discount";
 import { sortOrdersBySlot } from "@/domain/orders/rules";
 import type { OrderStatus } from "@/domain/orders/status";
@@ -40,7 +41,7 @@ import { toIso } from "@/lib/days";
  * traitée » est repris : il la concerne.
  */
 /** Version 4 (2026-09-18) : pièce jointe hébergée désignée par `fileId`, `url` devenue facultative. */
-export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/4";
+export const CUSTOMER_EXPORT_FORMAT = "fig-donnees-client/5";
 
 export type CustomerDataExport = {
   format: typeof CUSTOMER_EXPORT_FORMAT;
@@ -129,6 +130,8 @@ export type CustomerDataExport = {
     deliveryFeeCents: number;
     totalCents: number;
     cancellation: Cancellation | null;
+    /** Remboursement ou avoir d'une commande annulée (format 5). */
+    refund: OrderRefund | null;
     pickupCommunity: CommunityRef | null;
     statusHistory: {
       from: OrderStatus;
@@ -255,6 +258,7 @@ export function buildCustomerExport(
       deliveryFeeCents: order.deliveryFeeCents,
       totalCents: order.totalCents,
       cancellation: order.cancellation,
+      refund: order.refund,
       pickupCommunity: order.community,
       statusHistory: (history.get(order.id) ?? [])
         .toSorted((a, b) => a.at.localeCompare(b.at))

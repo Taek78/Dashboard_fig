@@ -1,6 +1,8 @@
 import type {
   AlertFeed,
   AlertKind,
+  AlertPrefs,
+  AlertReadKind,
   AlertNotice,
   AlertWatch,
   MessageAlertItem,
@@ -30,12 +32,23 @@ export function stockLevel(
 
 const LEVEL_RANK: Record<StockLevel, number> = { ok: 0, low: 1, out: 2 };
 
+/** « 12 rue des Lilas, 75011 Paris » ; sans rue connue, « 75011 Paris ». */
+export function orderAlertAddress(
+  order: Pick<OrderAlertItem, "addressLine" | "postalCode" | "city">,
+): string {
+  return `${order.addressLine ? `${order.addressLine}, ` : ""}${order.postalCode} ${order.city}`;
+}
+
+/** Une commande : le client, le total et l'adresse ; plus la référence (2026-09-19). */
 export function orderNotice(order: OrderAlertItem): AlertNotice {
+  const total = formatEuros(order.totalCents);
+  const address = orderAlertAddress(order);
   return {
     key: `order:${order.id}`,
     kind: "order",
     title: "Nouvelle commande",
-    body: `${order.reference} · ${order.customerName} · ${formatEuros(order.totalCents)}`,
+    body: `${order.customerName} · ${total} · ${address}`,
+    order: { customerName: order.customerName, total, address },
     href: `/commandes/${order.id}`,
   };
 }
@@ -133,7 +146,7 @@ const KIND_PRIORITY: readonly AlertKind[] = [
 const plural = (n: number, one: string, many: string) =>
   `${n} ${n > 1 ? many : one}`;
 
-/** « FIG-1, FIG-2, FIG-3 et 2 autres » : trois éléments au plus, puis le reste compté. */
+/** « A, B, C et 2 autres » : trois éléments au plus, puis le reste compté. */
 function shortList(items: readonly string[]): string {
   const shown = items.slice(0, 3).join(", ");
   const rest = items.length - 3;
@@ -167,8 +180,9 @@ export function summarizeNotices(
       : messages.length > 0
         ? "/messages"
         : "/catalogue";
-  // Le détail d'une commande est « référence · client · total » : la référence d'abord.
-  const firstPart = (n: AlertNotice) => n.body.split(" · ")[0]!;
+  // Plusieurs commandes : les noms des clients.
+  const customerName = (n: AlertNotice) =>
+    n.order?.customerName ?? n.body.split(" · ")[0]!;
   const productName = (n: AlertNotice) => n.body.split(" : ")[0]!;
 
   if (orders.length === notices.length) {
@@ -176,7 +190,7 @@ export function summarizeNotices(
       key,
       kind,
       title: plural(orders.length, "nouvelle commande", "nouvelles commandes"),
-      body: shortList(orders.map(firstPart)),
+      body: shortList(orders.map(customerName)),
       href,
     };
   }
@@ -221,4 +235,59 @@ export function summarizeNotices(
 /** Vrai si une notification annonce une commande : c'est elle qui sonne. */
 export function hasOrderNotice(notices: readonly AlertNotice[]): boolean {
   return notices.some((n) => n.kind === "order");
+}
+
+/* ---------- Préférences et compteurs non lus ---------- */
+
+/**
+ * Les nouveautés qui méritent une NOTIFICATION (bandeau, son, notification
+ * système) selon les préférences du compte : commandes et messages selon
+ * leur case, le stock toujours. Les compteurs et badges « Nouveau » ne passent
+ * pas par ici : ils restent actifs quoi qu'il arrive.
+ */
+export function noticesForPrefs(
+  notices: readonly AlertNotice[],
+  prefs: Pick<AlertPrefs, "orders" | "messages">,
+): AlertNotice[] {
+  return notices.filter(
+    (n) =>
+      (n.kind !== "order" || prefs.orders) &&
+      (n.kind !== "message" || prefs.messages),
+  );
+}
+
+/** Le fil dont une section du menu porte le compteur ; null pour les autres sections. */
+export function readKindOfSection(href: string): AlertReadKind | null {
+  if (href === "/commandes") return "orders";
+  if (href === "/messages") return "messages";
+  if (href === "/catalogue") return "stock";
+  return null;
+}
+
+/** Ce que désigne une notification de commande ou de message (badge « Nouveau ») ; null pour le stock. */
+export function noticeTarget(
+  notice: Pick<AlertNotice, "kind" | "key">,
+): { kind: "orders" | "messages"; id: string } | null {
+  if (notice.kind === "order") {
+    return { kind: "orders", id: notice.key.slice("order:".length) };
+  }
+  if (notice.kind === "message") {
+    return { kind: "messages", id: notice.key.slice("message:".length) };
+  }
+  return null;
+}
+
+/**
+ * La page affichée liste-t-elle ces nouveautés (pour la rafraîchir quand il
+ * en arrive) ? Commandes : la liste et le tableau de bord (commandes en
+ * préparation) ; messages : la boîte de réception. Jamais une fiche ou un
+ * formulaire, pour ne rien déranger.
+ */
+export function listShows(
+  pathname: string,
+  kind: "orders" | "messages",
+): boolean {
+  return kind === "orders"
+    ? pathname === "/" || pathname === "/commandes"
+    : pathname === "/messages";
 }

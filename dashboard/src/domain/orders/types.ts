@@ -3,6 +3,7 @@ import type { ClientType } from "@/domain/customers/client-type";
 import type { NotificationDraft } from "@/domain/notifications/types";
 import type { StaffRef } from "@/domain/orders/assignment";
 import type { Cancellation } from "@/domain/orders/cancellation";
+import type { OrderRefund, RefundKind } from "@/domain/orders/refund";
 import type { OrderDiscount } from "@/domain/orders/discount";
 import type { OrderStatus } from "@/domain/orders/status";
 
@@ -66,6 +67,8 @@ export type Order = {
   totalCents: number;
   /** Motif communiqué au client quand la commande est annulée, sinon null. */
   cancellation: Cancellation | null;
+  /** Remboursement ou avoir enregistré par l'équipe (annulée seulement), sinon null. */
+  refund: OrderRefund | null;
   /** Communauté dont le client est membre : livraison au point de retrait. */
   community: CommunityRef | null;
   /**
@@ -147,6 +150,16 @@ export type NewOrder = {
  * suit son envoi) ; null sinon.
  */
 export type UpdatedOrder = Order & { notificationId: string | null };
+
+/**
+ * Remboursement ou avoir à ENREGISTRER (type et montant déjà validés et
+ * comparés au total relu par l'action), ou null pour le RETIRER ; `at` =
+ * l'horloge de l'application.
+ */
+export type RefundChange = {
+  refund: { kind: RefundKind; amountCents: number } | null;
+  at: Date;
+};
 
 /*
  * Trace métier durable d'un changement de statut : qui, quand, de

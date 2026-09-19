@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
  * la surface reprennent la couleur de la carte (règle de globals.css sur
  * data-slot="filter-tray"). Le lien est un vrai lien : il vide l'URL et
  * AutoSubmitForm remonte les champs.
- * Sur téléphone (zone de contenu sous @xl/main), l'intitulé devient un bouton
- * qui replie les champs (CollapsibleTray, client), fermés d'emblée sauf si un
- * filtre est actif (le lien de réinitialisation existe alors).
+ * L'icône et l'intitulé forment un BOUTON qui déroule ou replie les champs,
+ * sur toutes les recherches et à toutes les largeurs (CollapsibleTray,
+ * client ; 2026-09-18) : REPLIÉ par défaut, un clic le déroule.
  */
 export function FilterTray({
   label = "Filtres",
@@ -44,7 +44,6 @@ export function FilterTray({
       <CollapsibleTray
         label={label}
         reset={reset ? <ResetLink {...reset} /> : null}
-        defaultOpen={Boolean(reset)}
       >
         {children}
       </CollapsibleTray>

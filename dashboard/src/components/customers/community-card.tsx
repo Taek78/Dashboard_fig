@@ -74,7 +74,7 @@ export function CommunityCard({
       aria-label={`Communauté ${community.name}`}
       className={cn(
         // Fond nuancé de la couleur « communauté » du thème (token --community).
-        "bg-card from-community/12 to-community/4 text-card-foreground ring-foreground/10 card-lift cv-auto flex h-full flex-col gap-4 rounded-2xl bg-linear-to-b p-4 shadow-sm ring-1 @2xl/main:p-5",
+        "bg-card from-community/12 to-community/4 text-card-foreground ring-foreground/10 card-highlight cv-auto flex h-full flex-col gap-4 rounded-2xl bg-linear-to-b p-4 shadow-sm ring-1 @2xl/main:p-5",
         !community.active && "opacity-70",
       )}
     >

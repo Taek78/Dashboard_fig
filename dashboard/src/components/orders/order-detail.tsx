@@ -1,5 +1,8 @@
 import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
+import { OrderRefundBadge } from "@/components/orders/order-refund-badge";
+import { RefundForm } from "@/components/orders/refund-form";
+import { RefundLock } from "@/components/orders/refund-lock";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderStatusSelect } from "@/components/orders/order-status-select";
 import {
@@ -21,7 +24,9 @@ import { ORDER_STATUS_LABELS } from "@/domain/orders/status";
 import type { CustomerNotification } from "@/domain/notifications/types";
 import { formatCancellation } from "@/domain/orders/cancellation";
 import { formatDiscount } from "@/domain/orders/discount";
+import { acceptsRefund, refundScopeLabel } from "@/domain/orders/refund";
 import { computeOrderSubtotalCents, orderKindOf } from "@/domain/orders/rules";
+import { centsToEurosInput } from "@/domain/products/rules";
 import type { Order, OrderEvent } from "@/domain/orders/types";
 import Link from "next/link";
 import {
@@ -57,6 +62,7 @@ export function OrderDetail({
   notifications,
   canEdit,
   canAssign,
+  canRefund,
   options,
 }: {
   order: Order;
@@ -68,6 +74,8 @@ export function OrderDetail({
   canEdit: boolean;
   /** Rôle autorisé à affecter l'équipe. */
   canAssign: boolean;
+  /** Rôle autorisé à enregistrer un remboursement ou un avoir (admin, gestionnaire). */
+  canRefund: boolean;
   options: AssignmentOptions;
 }) {
   const done = order.status === "delivered" || order.status === "cancelled";
@@ -210,6 +218,7 @@ export function OrderDetail({
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap gap-1.5">
               <OrderStatusBadge status={order.status} />
+              <OrderRefundBadge order={order} />
               <OrderDiscountBadge order={order} />
             </div>
             {order.cancellation ? (
@@ -225,6 +234,8 @@ export function OrderDetail({
             <p className="text-muted-foreground text-sm">
               Compte en lecture seule.
             </p>
+          ) : order.refund ? (
+            <RefundLock kind={order.refund.kind} />
           ) : (
             <OrderStatusSelect
               orderId={order.id}
@@ -233,6 +244,42 @@ export function OrderDetail({
               wasDelivered={order.wasDelivered}
             />
           )}
+          {acceptsRefund(order) ? (
+            <section
+              aria-labelledby="remboursement"
+              className="flex flex-col gap-3 border-t pt-4"
+            >
+              <h3 id="remboursement" className="text-sm font-semibold">
+                Remboursement ou avoir
+              </h3>
+              {order.refund ? (
+                <p className="text-sm">
+                  <span className="font-medium">
+                    {refundScopeLabel(order.refund, order.totalCents)}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-semibold tabular-nums">
+                    {formatEuros(order.refund.amountCents)}
+                  </span>{" "}
+                  sur {formatEuros(order.totalCents)}
+                  <span className="text-muted-foreground block text-xs">
+                    Enregistré le {formatDateTimeFr(order.refund.at)}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Aucun remboursement ni avoir pour l&apos;instant.
+                </p>
+              )}
+              {canRefund ? (
+                <RefundForm
+                  orderId={order.id}
+                  refund={order.refund}
+                  totalInput={centsToEurosInput(order.totalCents)}
+                />
+              ) : null}
+            </section>
+          ) : null}
           <section aria-labelledby="historique" className="border-t pt-4">
             <h3 id="historique" className="mb-2 text-sm font-semibold">
               Historique

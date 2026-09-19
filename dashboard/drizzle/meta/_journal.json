@@ -162,6 +162,27 @@
       "when": 1789766403386,
       "tag": "0022_notifications-echec",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1789770252261,
+      "tag": "0023_alertes-non-lues",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1789773440938,
+      "tag": "0024_alertes-son",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789777333638,
+      "tag": "0025_remboursements",
+      "breakpoints": true
     }
   ]
 }

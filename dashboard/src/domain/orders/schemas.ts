@@ -5,7 +5,9 @@ import {
   CANCELLATION_DETAIL_MAX_LENGTH,
   CANCELLATION_REASONS,
 } from "@/domain/orders/cancellation";
+import { REFUND_KINDS } from "@/domain/orders/refund";
 import { ORDER_STATUSES } from "@/domain/orders/status";
+import { eurosToCents } from "@/domain/products/rules";
 import {
   ORDER_SEARCH_MAX_LENGTH,
   UNASSIGNED_FILTER,
@@ -69,6 +71,37 @@ export const changeStatusSchema = z
         : null,
     notify: notify === "1",
   }));
+
+/*
+ * Remboursement ou avoir d'une commande annulée (2026-09-19) :
+ * `intent` = « enregistrer » (type + montant en euros, « 12,50 ») ou
+ * « retirer ». Le montant est comparé au total RELU par l'action, jamais à
+ * une valeur du formulaire. Sortie : { orderId, refund | null }.
+ */
+export const refundInputSchema = z
+  .object({
+    orderId: orderIdSchema,
+    intent: z.enum(["enregistrer", "retirer"]),
+    kind: z.enum(REFUND_KINDS).optional(),
+    amount: z.string().trim().max(20).optional(),
+  })
+  .transform(({ orderId, intent, kind, amount }, ctx) => {
+    if (intent === "retirer") return { orderId, refund: null };
+    if (!kind) {
+      ctx.addIssue({ code: "custom", path: ["kind"], message: "Type requis" });
+      return z.NEVER;
+    }
+    const amountCents = eurosToCents(amount ?? "");
+    if (amountCents === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["amount"],
+        message: "Montant invalide",
+      });
+      return z.NEVER;
+    }
+    return { orderId, refund: { kind, amountCents } };
+  });
 
 /*
  * Période « du / au » d'une recherche (?du=&au=, et ?date= ancienne clé d'un

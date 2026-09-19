@@ -91,6 +91,9 @@ function orderRow(o: Order): OrderRow {
     totalCents: o.totalCents,
     cancellationReason: o.cancellation?.reason ?? null,
     cancellationDetail: o.cancellation?.detail ?? null,
+    refundKind: o.refund?.kind ?? null,
+    refundCents: o.refund?.amountCents ?? null,
+    refundedAt: o.refund ? new Date(o.refund.at) : null,
     communityId: o.community?.id ?? null,
     discountKind: o.discount?.kind ?? null,
     discountPercent: o.discount?.percent ?? null,
@@ -418,6 +421,12 @@ describe("toEngagementPoint / toUserAccount", () => {
       invitationMailFailedAt: null,
       invitationMailError: null,
       invitationMailSentAt: null,
+      notifyOrders: true,
+      notifyMessages: true,
+      alertSoundMuted: false,
+      ordersSeenAt: new Date("2026-01-01T00:00:00.000Z"),
+      messagesSeenAt: new Date("2026-01-01T00:00:00.000Z"),
+      stockSeenAt: new Date("2026-01-01T00:00:00.000Z"),
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
     expect(toUserAccount(row)).toEqual({

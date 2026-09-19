@@ -9,6 +9,7 @@ import { ATTACHMENT_CONTENT_TYPES } from "@/domain/messages/attachment";
 import { MESSAGE_STATUSES } from "@/domain/messages/status";
 import { MESSAGE_SUBJECTS } from "@/domain/messages/subject";
 import { CANCELLATION_REASONS } from "@/domain/orders/cancellation";
+import { REFUND_KINDS } from "@/domain/orders/refund";
 import { DISCOUNT_KINDS } from "@/domain/orders/discount";
 import { QUOTE_PROBLEM_CODES } from "@/domain/orders/quote";
 import { ORDER_STATUSES } from "@/domain/orders/status";
@@ -264,6 +265,18 @@ export const orderResponse = z.object({
       detail: z.string().nullable(),
     })
     .nullable(),
+  refund: z
+    .object({
+      kind: z.enum(REFUND_KINDS),
+      label: z.string(),
+      amountCents: cents,
+      at: iso,
+    })
+    .nullable()
+    .meta({
+      description:
+        "Remboursement (argent rendu) ou avoir (crédit) enregistré par l'équipe sur une commande annulée ; null sinon.",
+    }),
   community: communityRefResponse.nullable(),
   paymentReference: z.string().nullable(),
   cancellable: z.boolean().meta({

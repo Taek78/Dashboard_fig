@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { FreshMark } from "@/components/alerts/fresh-mark";
 import { OrderCard } from "@/components/orders/order-card";
 import type { AssignmentOptions } from "@/components/orders/order-team";
 import type { Order } from "@/domain/orders/types";
@@ -27,14 +28,17 @@ export function OrdersCards({
     <ul className="flex flex-col gap-4">
       {orders.map((order) => (
         <li key={order.id}>
-          <Suspense>
-            <OrderCard
-              order={order}
-              canChangeStatus={canChangeStatus}
-              canAssign={canAssign}
-              options={options}
-            />
-          </Suspense>
+          {/* Badge « Nouveau » d'une commande qui vient d'arriver. */}
+          <FreshMark kind="orders" id={order.id}>
+            <Suspense>
+              <OrderCard
+                order={order}
+                canChangeStatus={canChangeStatus}
+                canAssign={canAssign}
+                options={options}
+              />
+            </Suspense>
+          </FreshMark>
         </li>
       ))}
     </ul>

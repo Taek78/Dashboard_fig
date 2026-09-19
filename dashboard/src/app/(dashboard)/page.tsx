@@ -9,6 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { DashboardClock } from "@/components/dashboard-clock";
+import { SimulationButtons } from "@/components/demo/simulation-buttons";
 import { TourProgress } from "@/components/deliveries/tour-progress";
 import { KpiCard } from "@/components/metrics/kpi-card";
 import { PeriodForm } from "@/components/metrics/period-form";
@@ -53,6 +54,7 @@ import {
   formatEuros,
   formatPeriodFr,
 } from "@/lib/format";
+import { canUseDemoTools } from "@/lib/demo-tools";
 import { cn } from "@/lib/utils";
 
 /*
@@ -117,6 +119,9 @@ export default async function TableauDeBordPage({
         description={revenue ? `${title} · montants ${taxLabel}.` : title}
         actions={<DashboardClock initial={now.toISOString()} />}
       />
+
+      {/* DÉVELOPPEMENT SEULEMENT, à retirer avant la livraison (docs/backlog.md). */}
+      {canUseDemoTools(user.role) ? <SimulationButtons /> : null}
 
       <StaffShortageAlert roles={unavailableRoles(staff)} />
 

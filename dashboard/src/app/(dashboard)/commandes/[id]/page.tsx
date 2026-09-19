@@ -9,7 +9,11 @@ import { getOrderNotifications } from "@/data/notifications";
 import { getOrder, getOrderEvents } from "@/data/orders";
 import { getCurrentUser } from "@/data/session";
 import { listStaff } from "@/data/staff";
-import { canAssignStaff, canChangeOrderStatus } from "@/domain/auth/roles";
+import {
+  canAssignStaff,
+  canChangeOrderStatus,
+  canRecordRefund,
+} from "@/domain/auth/roles";
 import { orderIdSchema } from "@/domain/orders/schemas";
 import { assignmentOptions } from "@/domain/staff/rules";
 import { formatSlot } from "@/lib/format";
@@ -71,6 +75,7 @@ export default async function CommandePage({
         notifications={notifications}
         canEdit={canChangeOrderStatus(user.role)}
         canAssign={canAssignStaff(user.role)}
+        canRefund={canRecordRefund(user.role)}
         options={assignmentOptions(staff)}
       />
     </>

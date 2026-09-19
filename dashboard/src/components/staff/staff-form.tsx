@@ -7,6 +7,7 @@ import {
   saveStaffMember,
 } from "@/app/(dashboard)/personnel/actions";
 import { DepartureField } from "@/components/staff/departure-field";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,10 +63,13 @@ export function StaffForm({
     member ? saveStaffMember : addStaffMember,
     idleActionResult,
   );
+  // Quitter la page avec des modifications non enregistrées demande confirmation.
+  const { formRef, dialog } = useUnsavedChanges(result);
   const workDays = member?.workDays ?? template?.workDays ?? DEFAULT_DAYS;
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-6">
+      {dialog}
       {member ? <input type="hidden" name="staffId" value={member.id} /> : null}
       <fieldset className="grid gap-4 @2xl/main:grid-cols-2">
         <legend className="mb-3 text-sm font-semibold">Identité</legend>

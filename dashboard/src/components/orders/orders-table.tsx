@@ -1,4 +1,5 @@
 import { HoverPrefetchLink } from "@/components/ui/hover-prefetch-link";
+import { OrderRefundBadge } from "@/components/orders/order-refund-badge";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import {
   Table,
@@ -136,7 +137,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   </HoverPrefetchLink>
                 </p>
               </div>
-              <OrderStatusBadge status={order.status} />
+              <span className="inline-flex flex-wrap gap-1">
+                <OrderStatusBadge status={order.status} />
+                <OrderRefundBadge order={order} withAmount={false} />
+              </span>
             </div>
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
               <dt className="text-muted-foreground">Créneau</dt>
@@ -206,7 +210,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   {formatEuros(order.totalCents)}
                 </TableCell>
                 <TableCell>
-                  <OrderStatusBadge status={order.status} />
+                  <span className="inline-flex flex-wrap gap-1">
+                    <OrderStatusBadge status={order.status} />
+                    <OrderRefundBadge order={order} withAmount={false} />
+                  </span>
                 </TableCell>
               </TableRow>
             ))}

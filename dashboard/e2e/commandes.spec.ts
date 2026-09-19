@@ -1,13 +1,31 @@
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
-import { login } from "./helpers";
+import { login, openFilters } from "./helpers";
 
 test.describe("commandes", () => {
+  test("filtres repliés par défaut ; le bouton « Filtres » les déroule et les replie", async ({
+    page,
+  }) => {
+    await login(page, E2E_ACCOUNTS.manager);
+    await page.goto("/commandes");
+    const toggle = page.getByRole("button", { name: "Filtres" });
+    const status = page.getByLabel("Statut", { exact: true });
+    // Replié par défaut : il faut cliquer pour dérouler.
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(status).toBeHidden();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(status).toBeVisible();
+    await toggle.click();
+    await expect(status).toBeHidden();
+  });
+
   test("la liste mène au détail, et le changement de statut laisse une trace", async ({
     page,
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?statut=preparing");
+    await openFilters(page);
     await page.getByRole("link", { name: "FIG-260907-001" }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Commande FIG-260907-001" }),
@@ -60,6 +78,7 @@ test.describe("commandes", () => {
     await login(page, E2E_ACCOUNTS.manager);
     // cmd-0013 : Mathis, aucune autorisation.
     await page.goto("/commandes/cmd-0013");
+    await openFilters(page);
     await expect(
       page.getByRole("region", { name: "Notifications au client" }),
     ).toContainText("n'a pas autorisé les notifications d'état");
@@ -77,6 +96,7 @@ test.describe("commandes", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes/cmd-0009");
+    await openFilters(page);
     const select = page.getByLabel("Statut de la commande");
     const values = await select
       .locator("option")
@@ -118,6 +138,7 @@ test.describe("commandes : cartes, tournée et annulation", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/commandes?du=2026-09-07&au=2026-09-07");
+    await openFilters(page);
     await expect(page.getByRole("status").first()).toContainText(
       "livraison le lun. 7 sept. 2026",
     );
@@ -159,6 +180,7 @@ test.describe("commandes : cartes, tournée et annulation", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?du=2026-09-08&au=2026-09-08");
+    await openFilters(page);
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-005,/,
     });
@@ -180,6 +202,7 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     // Le jour du scénario : une fois annulée, la carte resterait absente d'une
     // liste filtrée sur « en préparation », et la liste complète est paginée.
     await page.goto("/commandes?date=2026-09-08");
+    await openFilters(page);
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-006,/,
     });
@@ -205,6 +228,7 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     await expect(card).toContainText("Autre : Client absent, injoignable");
 
     await page.goto("/commandes/cmd-0010");
+    await openFilters(page);
     await expect(page.getByText("Motif communiqué au client :")).toContainText(
       "Autre : Client absent, injoignable",
     );
@@ -220,6 +244,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes");
+    await openFilters(page);
     const form = page.getByRole("form", {
       name: "Recherche et filtres des commandes",
     });
@@ -250,6 +275,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?du=2026-09-07");
+    await openFilters(page);
     const form = page.getByRole("form", {
       name: "Recherche et filtres des commandes",
     });
@@ -260,6 +286,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     await expect(form.getByRole("alert")).toHaveCount(0);
 
     await page.goto("/commandes?du=2026-09-09&au=2026-09-05");
+    await openFilters(page);
     await expect(form.getByRole("alert")).toContainText(
       "La date de début est après la date de fin",
     );
@@ -274,6 +301,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?du=2026-03-04");
+    await openFilters(page);
     const form = page.getByRole("form", {
       name: "Recherche et filtres des commandes",
     });
@@ -310,6 +338,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
 
     // Sans date, chaque ouverture revient au mois actuel.
     await page.goto("/commandes");
+    await openFilters(page);
     await openFrom.click();
     const now = new Intl.DateTimeFormat("fr-FR", {
       month: "long",
@@ -329,6 +358,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
     await page.setViewportSize({ width: 400, height: 860 });
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes");
+    await openFilters(page);
     const form = page.getByRole("form", {
       name: "Recherche et filtres des commandes",
     });
@@ -346,6 +376,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?du=2026-09-20&au=2026-09-21&statut=preparing");
+    await openFilters(page);
     const notice = page.getByRole("status").filter({ hasText: "Aucune" });
     await expect(notice).toContainText(
       "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. 2026 avec ces filtres.",
@@ -360,6 +391,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?statut=delivered");
+    await openFilters(page);
     const shortcuts = page.getByRole("navigation", {
       name: "7 derniers jours",
     });
@@ -377,6 +409,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?du=2026-09-07&au=2026-09-07");
+    await openFilters(page);
     await expect(
       page.getByRole("heading", {
         level: 2,
@@ -396,6 +429,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
 
     // Toutes pages : la barre compte au-delà des 40 commandes de la page.
     await page.goto("/commandes?statut=delivered");
+    await openFilters(page);
     const total = Number(
       await page
         .getByRole("progressbar", { name: "Avancement des commandes listées" })
@@ -409,6 +443,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?type=communaute");
+    await openFilters(page);
     const cards = page.getByRole("article", { name: /^Commande FIG-/ });
     await expect(cards.first()).toBeVisible();
     for (const card of await cards.all()) {
@@ -438,6 +473,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/commandes?du=2026-09-05&au=2026-09-09");
+    await openFilters(page);
     const form = page.getByRole("form", {
       name: "Recherche et filtres des commandes",
     });
@@ -461,6 +497,7 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/livraisons?du=2026-09-07&au=2026-09-07");
+    await openFilters(page);
     await expect(page).toHaveURL(/\/commandes\?du=2026-09-07&au=2026-09-07$/);
     await expect(
       page.getByRole("heading", { level: 1, name: "Commandes" }),

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
-import { login } from "./helpers";
+import { login, openFilters } from "./helpers";
 
 test.describe("clients", () => {
   test("la recherche commune trouve un particulier, sa carte mène à la fiche", async ({
@@ -9,6 +9,7 @@ test.describe("clients", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients");
+    await openFilters(page);
     const form = page.getByRole("form", { name: "Recherche de clients" });
     await form
       .getByLabel("Rechercher un client ou une communauté")
@@ -62,6 +63,7 @@ test.describe("clients", () => {
   test("un filleul mène à son parrain depuis sa fiche", async ({ page }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients/cli-0002");
+    await openFilters(page);
     await page.getByRole("link", { name: "Amel Benali" }).click();
     await expect(
       page.getByRole("heading", { level: 1, name: "Amel Benali" }),
@@ -73,6 +75,7 @@ test.describe("clients", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients/cli-0001");
+    await openFilters(page);
     const period = page.getByRole("form", { name: "Période de l'historique" });
     await period.getByLabel("Livraison du").fill("2026-09-05");
     await period.getByLabel("Livraison au").fill("2026-09-09");
@@ -93,6 +96,7 @@ test.describe("clients", () => {
 
     // Une période sans commande : bandeau bleu, pas une liste vide.
     await page.goto("/clients/cli-0001?du=2026-09-20&au=2026-09-21");
+    await openFilters(page);
     const notice = page.getByRole("status").filter({ hasText: "Aucune" });
     await expect(notice).toContainText(
       "Aucune commande livrée du dim. 20 sept. au lun. 21 sept. 2026 pour ce client.",
@@ -106,6 +110,7 @@ test.describe("clients", () => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto("/clients/cli-0001");
+    await openFilters(page);
     const consents = page.getByRole("list", {
       name: "Autorisations données par le client",
     });
@@ -134,6 +139,7 @@ test.describe("clients", () => {
     // Client généré qu'aucun autre parcours n'utilise : l'anonymisation reste en base.
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/clients/cli-g-001");
+    await openFilters(page);
     await expect(
       page.getByRole("heading", { level: 1, name: "Noah Okafor" }),
     ).toBeVisible();
@@ -147,7 +153,7 @@ test.describe("clients", () => {
       /^fig-client-cli-g-001-\d{4}-\d{2}-\d{2}\.json$/,
     );
     const exported = JSON.parse(await readFile(await download.path(), "utf8"));
-    expect(exported.format).toBe("fig-donnees-client/4");
+    expect(exported.format).toBe("fig-donnees-client/5");
     expect(exported.customer.fullName).toBe("Noah Okafor");
     expect(exported.customer.referralCode).toBe("Okafor#1000");
     expect(exported.orders.length).toBeGreaterThan(0);
@@ -176,6 +182,7 @@ test.describe("clients", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients/cli-0001");
+    await openFilters(page);
     const panel = page.locator("#donnees-personnelles");
     await expect(panel).toContainText("traitée par un administrateur");
     await expect(
@@ -194,6 +201,7 @@ test.describe("clients", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients");
+    await openFilters(page);
     const form = page.getByRole("form", { name: "Recherche de clients" });
     const shown = form.getByRole("radiogroup", { name: "Afficher" });
     // Le tri par membres n'existe pas tant que les communautés ne sont pas affichées.
@@ -282,6 +290,7 @@ test.describe("clients", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients");
+    await openFilters(page);
     const form = page.getByRole("form", { name: "Recherche de clients" });
     await form
       .getByRole("radiogroup", { name: "Afficher" })
@@ -315,6 +324,7 @@ test.describe("clients", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/clients");
+    await openFilters(page);
     const form = page.getByRole("form", { name: "Recherche de clients" });
     await form.getByLabel("Trier par").selectOption("anciennete");
     // Sens naturel du critère : décroissant, donc pas de ?sens= dans l'URL.

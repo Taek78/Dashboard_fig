@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
+  MapPin,
   MessageSquareText,
   PackageX,
   ShoppingBasket,
@@ -28,8 +29,11 @@ import { cn } from "@/lib/utils";
  * rouge (--destructive).
  * - Un clic sur le corps (un lien) mène à ce que la notification désigne et
  *   la ferme ; la croix la ferme seulement.
- * - Elle part seule après 4 s ; une nouveauté qui s'y ajoute (`version`
- *   change) relance les 4 s et la barre. Le décompte se met en PAUSE tant que le
+ * - UNE commande (demande du 2026-09-19) : pas de référence ; le nom du
+ *   client en clair (jamais tronqué), le TOTAL en grand à droite, et
+ *   l'adresse de livraison dessous.
+ * - Elle part seule après 15 s ; une nouveauté qui s'y ajoute (`version`
+ *   change) relance les 15 s et la barre. Le décompte se met en PAUSE tant que le
  *   pointeur est dessus ou que le focus y est (le temps de lire, WCAG 2.2.1),
  *   et une barre fine montre le temps restant.
  * - Elle descend de sous le bandeau et remonte en partant (alert-drop,
@@ -83,7 +87,7 @@ export function AlertBanner({
   onDismiss,
 }: {
   notice: AlertNotice;
-  /** Change quand des nouveautés s'ajoutent : les 4 s repartent. */
+  /** Change quand des nouveautés s'ajoutent : les 15 s repartent. */
   version: number;
   onDismiss: () => void;
 }) {
@@ -102,14 +106,14 @@ export function AlertBanner({
   const paused = hovered || focused || hidden;
   const tone = TONES[notice.kind];
 
-  // Des nouveautés s'ajoutent : les 4 s repartent, même pendant la sortie.
+  // Des nouveautés s'ajoutent : les 15 s repartent, même pendant la sortie.
   // Ajuster l'état au rendu (et non dans un effet) : pas de rendu intermédiaire.
   const [seenVersion, setSeenVersion] = useState(version);
   if (seenVersion !== version) {
     setSeenVersion(version);
     setLeaving(false);
   }
-  // Déclaré AVANT le décompte : ses 4 s repartent de zéro au même rendu.
+  // Déclaré AVANT le décompte : ses 15 s repartent de zéro au même rendu.
   useEffect(() => {
     remaining.current = ALERT_DISPLAY_MS;
   }, [version]);
@@ -121,7 +125,7 @@ export function AlertBanner({
     return () => clearTimeout(timer);
   }, [leaving, onDismiss]);
 
-  // Décompte de 4 s, suspendu pendant la pause, repris là où il en était.
+  // Décompte de 15 s, suspendu pendant la pause, repris là où il en était.
   useEffect(() => {
     if (paused || leaving) return;
     const startedAt = Date.now();
@@ -179,9 +183,40 @@ export function AlertBanner({
             </span>
           </span>
           <span className="leading-snug font-semibold">{notice.title}</span>
-          <span className="text-muted-foreground line-clamp-2 text-sm wrap-anywhere">
-            {notice.body}
-          </span>
+          {notice.order ? (
+            <>
+              <span className="mt-0.5 flex items-baseline justify-between gap-3">
+                <span
+                  data-slot="alert-customer"
+                  className="text-foreground min-w-0 text-base leading-snug font-semibold wrap-break-word"
+                >
+                  {notice.order.customerName}
+                </span>
+                <span
+                  data-slot="alert-total"
+                  className={cn(
+                    "shrink-0 text-2xl leading-none font-bold tracking-tight tabular-nums",
+                    tone.text,
+                  )}
+                >
+                  {notice.order.total}
+                </span>
+              </span>
+              <span className="text-muted-foreground flex items-start gap-1.5 text-sm leading-snug">
+                <MapPin
+                  className="mt-0.5 size-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 wrap-break-word">
+                  {notice.order.address}
+                </span>
+              </span>
+            </>
+          ) : (
+            <span className="text-muted-foreground line-clamp-2 text-sm wrap-anywhere">
+              {notice.body}
+            </span>
+          )}
         </span>
       </Link>
       <button

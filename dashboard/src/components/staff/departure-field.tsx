@@ -42,9 +42,16 @@ export function DepartureField({
   const boxRef = useRef<HTMLButtonElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
 
+  // Un bouton n'émet pas d'événement de formulaire : on le signale, pour
+  // l'avertissement « Modifications non enregistrées ».
+  function changed() {
+    boxRef.current?.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   function confirm() {
     setDeparted(true);
     setAsking(false);
+    changed();
   }
 
   return (
@@ -56,7 +63,14 @@ export function DepartureField({
           type="button"
           role="checkbox"
           aria-checked={departed}
-          onClick={() => (departed ? setDeparted(false) : setAsking(true))}
+          onClick={() => {
+            if (departed) {
+              setDeparted(false);
+              changed();
+            } else {
+              setAsking(true);
+            }
+          }}
           className="border-input aria-checked:border-destructive aria-checked:bg-destructive focus-visible:ring-ring/50 flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-white outline-none focus-visible:ring-3 motion-safe:transition-[background-color,border-color,scale] motion-safe:active:scale-90"
         >
           {departed ? <Check className="size-3.5" aria-hidden="true" /> : null}

@@ -57,7 +57,7 @@ export function ArticleCard({
     <article
       aria-label={article.title}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 @xl/main:flex-row",
+        "bg-card text-card-foreground ring-foreground/10 card-highlight flex flex-col overflow-hidden rounded-2xl shadow-sm ring-1 @xl/main:flex-row",
         state === "hidden" && "opacity-75",
       )}
     >

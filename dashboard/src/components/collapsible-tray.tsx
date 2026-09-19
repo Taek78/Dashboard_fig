@@ -1,37 +1,49 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
- * Corps repliable du panneau des filtres (FilterTray), pour le TÉLÉPHONE
- * (demande du 2026-09-18) : sur une zone de contenu étroite (sous @xl/main),
- * les filtres occupaient tout le premier écran avant le premier résultat.
- * L'intitulé devient alors un bouton « Filtres » (aria-expanded) qui ouvre ou
- * ferme les champs ; il est ouvert d'emblée quand un filtre est actif
- * (`defaultOpen`), pour qu'on voie ce qui restreint la liste. Sur une zone
- * plus large, rien ne change : intitulé simple, champs toujours visibles.
- * Replié, un champ reste dans le formulaire (display: none) : il garde sa
- * valeur et part toujours dans l'URL.
+ * Corps repliable du panneau des filtres (FilterTray), sur TOUTES les
+ * recherches (demandes du 2026-09-18) : l'icône et l'intitulé « Filtres »
+ * forment un bouton (aria-expanded) qui déroule ou replie les champs.
+ * REPLIÉ PAR DÉFAUT, à toutes les largeurs : il faut cliquer pour dérouler.
+ * Un filtre actif se voit quand même : le lien « Réinitialiser » reste dans
+ * l'en-tête, à côté du bouton. L'état est retenu pour la page pendant la
+ * visite (raccourcis de dates, « Réinitialiser » : le formulaire est recréé,
+ * le panneau reste ouvert) ; un rechargement repart replié. Replié, un champ
+ * reste dans le formulaire (display: none) : il garde sa valeur et part
+ * toujours dans l'URL.
  */
+
+/**
+ * Panneaux ouverts pendant la visite (mémoire du module : elle survit aux
+ * navigations dans l'application, pas au rechargement, qui repart replié).
+ */
+const OPENED = new Set<string>();
+
 export function CollapsibleTray({
   label,
   reset,
-  defaultOpen,
   children,
 }: {
   label: string;
   /** Le lien « Réinitialiser », rendu par le serveur. */
   reset: ReactNode;
-  defaultOpen: boolean;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  // Ouvert ou replié, retenu pour la page : un raccourci de date ou
+  // « Réinitialiser » recrée le formulaire, le panneau reste comme il était.
+  const key = `${usePathname()}|${label}`;
+  const [open, setOpenState] = useState(() => OPENED.has(key));
+  const setOpen = (next: boolean) => {
+    if (next) OPENED.add(key);
+    else OPENED.delete(key);
+    setOpenState(next);
+  };
   const bodyId = useId();
-  const icon = (
-    <SlidersHorizontal className="text-primary size-4" aria-hidden="true" />
-  );
 
   return (
     <>
@@ -40,10 +52,13 @@ export function CollapsibleTray({
           type="button"
           aria-expanded={open}
           aria-controls={bodyId}
-          onClick={() => setOpen((value) => !value)}
-          className="focus-visible:ring-ring/50 -m-1 flex items-center gap-2 rounded-md p-1 text-sm font-medium outline-none focus-visible:ring-3 @xl/main:hidden"
+          onClick={() => setOpen(!open)}
+          className="hover:bg-foreground/5 focus-visible:ring-ring/50 -m-1 flex items-center gap-2 rounded-md p-1 text-sm font-medium outline-none focus-visible:ring-3 motion-safe:transition-[background-color,scale] motion-safe:active:scale-95"
         >
-          {icon}
+          <SlidersHorizontal
+            className="text-primary size-4"
+            aria-hidden="true"
+          />
           {label}
           <ChevronDown
             aria-hidden="true"
@@ -53,18 +68,11 @@ export function CollapsibleTray({
             )}
           />
         </button>
-        <span className="hidden items-center gap-2 text-sm font-medium @xl/main:flex">
-          {icon}
-          {label}
-        </span>
         {reset}
       </div>
       <div
         id={bodyId}
-        className={cn(
-          "min-w-0 flex-col gap-3 @xl/main:flex",
-          open ? "flex" : "hidden",
-        )}
+        className={cn("min-w-0 flex-col gap-3", open ? "flex" : "hidden")}
       >
         {children}
       </div>

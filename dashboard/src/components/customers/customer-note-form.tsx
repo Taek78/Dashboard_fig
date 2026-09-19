@@ -1,7 +1,8 @@
 "use client";
 
 import { CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect } from "react";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { addCustomerNote } from "@/app/(dashboard)/clients/[id]/actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,14 +20,16 @@ export function CustomerNoteForm({ customerId }: { customerId: string }) {
     addCustomerNote,
     idleActionResult,
   );
-  const formRef = useRef<HTMLFormElement>(null);
+  // Une note commencée : quitter la page demande confirmation.
+  const { formRef, dialog } = useUnsavedChanges(result);
 
   useEffect(() => {
     if (result.status === "success") formRef.current?.reset();
-  }, [result]);
+  }, [result, formRef]);
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+      {dialog}
       <input type="hidden" name="customerId" value={customerId} />
       <div className="grid gap-1.5">
         <Label htmlFor="text">Nouvelle note interne</Label>

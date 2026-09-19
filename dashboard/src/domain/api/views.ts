@@ -41,6 +41,7 @@ import { MESSAGE_SUBJECT_LABELS } from "@/domain/messages/subject";
 import type { Message, MessageUpload } from "@/domain/messages/types";
 import type { CustomerNotification } from "@/domain/notifications/types";
 import { CANCELLATION_REASON_LABELS } from "@/domain/orders/cancellation";
+import { REFUND_KIND_LABELS } from "@/domain/orders/refund";
 import { DELIVERY_FEE_TIERS } from "@/domain/orders/delivery-fee";
 import {
   bestDiscount,
@@ -276,6 +277,14 @@ export function orderView(order: Order): ApiOrder {
           reason: order.cancellation.reason,
           label: CANCELLATION_REASON_LABELS[order.cancellation.reason],
           detail: order.cancellation.detail,
+        }
+      : null,
+    refund: order.refund
+      ? {
+          kind: order.refund.kind,
+          label: REFUND_KIND_LABELS[order.refund.kind],
+          amountCents: order.refund.amountCents,
+          at: order.refund.at,
         }
       : null,
     community: order.community,

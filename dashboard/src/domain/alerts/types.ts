@@ -10,12 +10,18 @@ import type { Product } from "@/domain/products/types";
  * notification. Rien n'est stocké en base pour ces alertes.
  */
 
-/** Une commande récente, ce qu'il faut pour la notification. */
+/**
+ * Une commande récente, ce qu'il faut pour la notification : le client, le
+ * total et l'adresse de livraison (ou de retrait), sans la référence
+ * (demande du 2026-09-19).
+ */
 export type OrderAlertItem = {
   id: string;
-  reference: string;
   customerName: string;
   totalCents: number;
+  addressLine: string | null;
+  postalCode: string;
+  city: string;
   /** ISO 8601. */
   createdAt: string;
 };
@@ -45,6 +51,46 @@ export type AlertFeed = {
   orders: OrderAlertItem[];
   messages: MessageAlertItem[];
   stock: StockAlertItem[];
+  /** Compteurs du menu : nouveautés depuis la dernière visite de chaque section. */
+  unread: UnreadCounts;
+  /** Préférences du compte : le navigateur y règle notification et son. */
+  prefs: AlertPrefs;
+};
+
+/*
+ * Compteurs NON LUS du menu (demande du 2026-09-18) : commandes créées et
+ * messages reçus depuis la dernière visite de la section, produits passés en
+ * stock critique ou à 0 (modifiés) depuis la dernière visite du catalogue.
+ * La dernière visite est enregistrée sur le compte (users.*_seen_at) : les
+ * compteurs survivent au rechargement et suivent la personne d'un poste à
+ * l'autre. 0 pour ce que le rôle ou les préférences excluent.
+ */
+export type UnreadCounts = { orders: number; messages: number; stock: number };
+
+/** Les trois fils suivis ; chacun a sa section du menu et sa dernière visite. */
+export const ALERT_KINDS_READ = ["orders", "messages", "stock"] as const;
+export type AlertReadKind = (typeof ALERT_KINDS_READ)[number];
+
+/** Section du menu de chaque fil (son compteur s'affiche à côté). */
+export const SECTION_OF_READ_KIND: Record<AlertReadKind, string> = {
+  orders: "/commandes",
+  messages: "/messages",
+  stock: "/catalogue",
+};
+
+/**
+ * Préférences cochées dans « Mon profil » (2026-09-18) : notifications de
+ * commandes et de messages, et « Désactiver le son ». Décochée, une
+ * notification ne produit plus ni bandeau, ni son, ni notification système ;
+ * les COMPTEURS du menu et les badges « Nouveau » des cartes restent, eux,
+ * toujours actifs. `muted` coupe le son seul ; il retombe à faux quand les
+ * deux notifications sont désactivées (il n'y a plus rien à faire sonner).
+ */
+export type AlertPrefs = { orders: boolean; messages: boolean; muted: boolean };
+export const DEFAULT_ALERT_PREFS: AlertPrefs = {
+  orders: true,
+  messages: true,
+  muted: false,
 };
 
 /** Ce que le flux contient pour un rôle (sections qu'il peut ouvrir). */
@@ -68,7 +114,13 @@ export type AlertNotice = {
   key: string;
   kind: AlertKind;
   title: string;
+  /** Texte d'une ligne : notification système, lecteurs d'écran. */
   body: string;
+  /**
+   * UNE commande : ce que la notification met en forme (nom en clair, total
+   * en grand, adresse). Absent pour un regroupement ou une autre nature.
+   */
+  order?: { customerName: string; total: string; address: string };
   /** Ce vers quoi mène un clic sur la notification. */
   href: string;
 };
@@ -95,8 +147,8 @@ export const ALERT_POLL_MS = 5_000;
  * nouveauté (demande du 2026-09-18).
  */
 export const ALERT_HIDDEN_POLL_MS = 15_000;
-/** Durée d'affichage d'une notification (demande : 4 s). */
-export const ALERT_DISPLAY_MS = 4_000;
+/** Durée d'affichage d'une notification (demande du 2026-09-19 : 15 s). */
+export const ALERT_DISPLAY_MS = 15_000;
 /**
  * Recouvrement entre deux relevés : une ligne créée juste avant l'instant du
  * relevé précédent mais validée après reste attrapée ; les doublons sont

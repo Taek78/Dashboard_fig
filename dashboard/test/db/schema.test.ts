@@ -16,6 +16,7 @@ import { NOTIFICATION_KINDS } from "@/domain/notifications/types";
 import { DISCOUNT_KINDS } from "@/domain/orders/discount";
 import { AVAILABILITIES, SHIFTS, STAFF_KINDS } from "@/domain/staff/kind";
 import { CANCELLATION_REASONS } from "@/domain/orders/cancellation";
+import { REFUND_KINDS } from "@/domain/orders/refund";
 import { ORDER_STATUSES } from "@/domain/orders/status";
 import { CONTAINERS, PRODUCT_CATEGORIES } from "@/domain/products/category";
 
@@ -32,6 +33,7 @@ describe("enums du schéma = constantes du domaine", () => {
       schema.cancellationReasonEnum.enumValues,
       CANCELLATION_REASONS,
     ],
+    ["refund_kind", schema.refundKindEnum.enumValues, REFUND_KINDS],
     [
       "product_category",
       schema.productCategoryEnum.enumValues,

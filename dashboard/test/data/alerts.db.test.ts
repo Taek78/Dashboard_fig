@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { customerMessages, customers, products } from "@/db/schema";
+import { customerMessages, customers, products, users } from "@/db/schema";
 import { stockLevel } from "@/domain/alerts/rules";
 import { customersFixtures } from "@/domain/customers/fixtures";
 import type { NewOrder } from "@/domain/orders/types";
@@ -21,6 +21,7 @@ const { alertsDb } = await import("@/data/alerts.db");
 const { insertOrder } = await import("@/db/order-insert");
 
 const all = { orders: true, messages: true, stock: true };
+const ADMIN = "usr-0001";
 const customer = customersFixtures.find((c) => c.community === null)!;
 
 function newOrder(): NewOrder {
@@ -63,15 +64,15 @@ describe("alertsDb.getAlertFeed", () => {
       .from(customers)
       .where(eq(customers.id, customer.id));
 
-    const feed = await alertsDb.getAlertFeed(since, all, now);
+    const feed = await alertsDb.getAlertFeed(since, all, now, ADMIN);
     expect(feed.now).toBe(now.toISOString());
     expect(feed.orders.find((o) => o.id === id)).toMatchObject({
       customerName: fullName,
       totalCents: 940,
+      addressLine: null,
+      postalCode: "75011",
+      city: "Paris",
     });
-    expect(feed.orders.find((o) => o.id === id)?.reference).toMatch(
-      /^FIG-260919-\d{3}$/,
-    );
     expect(feed.messages.map((m) => m.id)).toContain("msg-alerte");
     for (const o of feed.orders) {
       expect(Date.parse(o.createdAt)).toBeGreaterThan(since.getTime());
@@ -82,6 +83,7 @@ describe("alertsDb.getAlertFeed", () => {
       new Date(Date.now() + 60_000),
       all,
       now,
+      ADMIN,
     );
     expect(later.orders).toEqual([]);
     expect(later.messages).toEqual([]);
@@ -105,7 +107,12 @@ describe("alertsDb.getAlertFeed", () => {
       .filter((p) => stockLevel(p) !== "ok")
       .map((p) => p.id)
       .toSorted();
-    const feed = await alertsDb.getAlertFeed(new Date(), all, new Date());
+    const feed = await alertsDb.getAlertFeed(
+      new Date(),
+      all,
+      new Date(),
+      ADMIN,
+    );
     expect(feed.stock.map((p) => p.id).toSorted()).toEqual(expected);
     expect(expected).toContain(a!.id);
     expect(expected).toContain(b!.id);
@@ -117,7 +124,94 @@ describe("alertsDb.getAlertFeed", () => {
       new Date(Date.now() - 60_000),
       { orders: false, messages: false, stock: false },
       new Date(),
+      ADMIN,
     );
-    expect(feed).toMatchObject({ orders: [], messages: [], stock: [] });
+    expect(feed).toMatchObject({
+      orders: [],
+      messages: [],
+      stock: [],
+      unread: { orders: 0, messages: 0, stock: 0 },
+    });
+  });
+});
+
+describe("alertsDb : compteurs non lus et préférences", () => {
+  it("compte depuis la dernière visite ; la visite remet à zéro, jamais en arrière", async () => {
+    const past = new Date(Date.now() - 60_000);
+    // Un instant de départ connu pour les trois fils.
+    await testDb()
+      .update(users)
+      .set({ ordersSeenAt: past, messagesSeenAt: past, stockSeenAt: past })
+      .where(eq(users.id, ADMIN));
+    await testDb().transaction((tx) => insertOrder(tx, newOrder()));
+    await testDb().transaction((tx) => insertOrder(tx, newOrder()));
+    await testDb().insert(customerMessages).values({
+      id: "msg-non-lu",
+      customerId: customer.id,
+      subject: "other",
+      body: "Bonjour",
+    });
+    const [product] = await testDb().select().from(products).limit(1);
+    await testDb()
+      .update(products)
+      .set({ stockQuantity: 0, updatedAt: new Date() })
+      .where(eq(products.id, product!.id));
+
+    const feed = await alertsDb.getAlertFeed(
+      new Date(),
+      all,
+      new Date(),
+      ADMIN,
+    );
+    expect(feed.unread).toEqual({ orders: 2, messages: 1, stock: 1 });
+
+    const now = new Date(Date.now() + 1000);
+    await alertsDb.markAlertsSeen(ADMIN, "orders", now);
+    await alertsDb.markAlertsSeen(ADMIN, "orders", past); // ignoré : en arrière
+    const after = await alertsDb.getAlertFeed(
+      new Date(),
+      all,
+      new Date(),
+      ADMIN,
+    );
+    expect(after.unread).toEqual({ orders: 0, messages: 1, stock: 1 });
+    // Hors périmètre : 0.
+    const none = await alertsDb.getAlertFeed(
+      new Date(),
+      { orders: false, messages: false, stock: false },
+      new Date(),
+      ADMIN,
+    );
+    expect(none.unread).toEqual({ orders: 0, messages: 0, stock: 0 });
+  });
+
+  it("préférences : activées par défaut, enregistrées par compte", async () => {
+    expect(await alertsDb.getAlertPrefs(ADMIN)).toEqual({
+      orders: true,
+      messages: true,
+      muted: false,
+    });
+    await alertsDb.setAlertPrefs(ADMIN, {
+      orders: false,
+      messages: true,
+      muted: true,
+    });
+    expect(await alertsDb.getAlertPrefs(ADMIN)).toEqual({
+      orders: false,
+      messages: true,
+      muted: true,
+    });
+    // Les deux notifications coupées : la case du son retombe.
+    await alertsDb.setAlertPrefs(ADMIN, {
+      orders: false,
+      messages: false,
+      muted: true,
+    });
+    expect((await alertsDb.getAlertPrefs(ADMIN)).muted).toBe(false);
+    expect(await alertsDb.getAlertPrefs("usr-inconnu")).toEqual({
+      orders: true,
+      messages: true,
+      muted: false,
+    });
   });
 });

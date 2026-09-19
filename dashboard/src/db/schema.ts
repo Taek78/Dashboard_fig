@@ -45,6 +45,8 @@ export const cancellationReasonEnum = pgEnum("cancellation_reason", [
   "customer",
   "other",
 ]);
+/** Remboursement (argent rendu) ou avoir (crédit) d'une commande annulée (0025). */
+export const refundKindEnum = pgEnum("refund_kind", ["refund", "credit"]);
 export const productCategoryEnum = pgEnum("product_category", [
   "fruit",
   "vegetable",
@@ -191,6 +193,18 @@ export const users = pgTable(
     invitationMailError: mailFailureReasonEnum("invitation_mail_error"),
     /** Dernier envoi d'invitation CONFIRMÉ par le fournisseur ; null si aucun. */
     invitationMailSentAt: timestampTz("invitation_mail_sent_at"),
+    /**
+     * Alertes en direct (migration 0023) : les préférences cochées dans
+     * « Mon profil » (commandes, messages) et la DERNIÈRE VISITE de chaque
+     * section, d'où se comptent les nouveautés non lues du menu.
+     */
+    notifyOrders: boolean("notify_orders").notNull().default(true),
+    notifyMessages: boolean("notify_messages").notNull().default(true),
+    /** « Désactiver le son » de « Mon profil » (migration 0024). */
+    alertSoundMuted: boolean("alert_sound_muted").notNull().default(false),
+    ordersSeenAt: timestampTz("orders_seen_at").notNull().defaultNow(),
+    messagesSeenAt: timestampTz("messages_seen_at").notNull().defaultNow(),
+    stockSeenAt: timestampTz("stock_seen_at").notNull().defaultNow(),
     createdAt: timestampTz("created_at").notNull().defaultNow(),
   },
   (t) => [
@@ -452,6 +466,14 @@ export const orders = pgTable(
     totalCents: integer("total_cents").notNull(),
     cancellationReason: cancellationReasonEnum("cancellation_reason"),
     cancellationDetail: text("cancellation_detail"),
+    /**
+     * Remboursement ou avoir enregistré par l'équipe sur une commande ANNULÉE
+     * (migration 0025) : les trois colonnes ensemble ou aucune, montant
+     * 0 < montant ≤ total ; la commande ne peut plus quitter « annulée ».
+     */
+    refundKind: refundKindEnum("refund_kind"),
+    refundCents: integer("refund_cents"),
+    refundedAt: timestampTz("refunded_at"),
     /** Communauté de retrait ; remise appliquée par l'application (jamais par le dashboard). */
     communityId: text("community_id").references(() => communities.id, {
       onDelete: "set null",
@@ -523,6 +545,18 @@ export const orders = pgTable(
       sql`(${t.status} = 'cancelled') = (${t.cancellationReason} IS NOT NULL)`,
     ),
     check("orders_fee_non_negative", sql`${t.deliveryFeeCents} >= 0`),
+    check(
+      "orders_refund_consistent",
+      sql`(${t.refundKind} IS NULL) = (${t.refundCents} IS NULL) AND (${t.refundKind} IS NULL) = (${t.refundedAt} IS NULL)`,
+    ),
+    check(
+      "orders_refund_cancelled",
+      sql`${t.refundKind} IS NULL OR ${t.status} = 'cancelled'`,
+    ),
+    check(
+      "orders_refund_amount",
+      sql`${t.refundCents} IS NULL OR (${t.refundCents} > 0 AND ${t.refundCents} <= ${t.totalCents})`,
+    ),
     // Toute communauté a la livraison offerte (décision du client, 2026-09-16).
     check(
       "orders_community_delivery_free",

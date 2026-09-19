@@ -200,8 +200,9 @@ test.describe("comptes et profil", () => {
     await page.getByLabel("Nouveau mot de passe").fill("Gestion-nouveau-mdp-1");
     await page.getByLabel("Confirmer le nouveau").fill("Gestion-nouveau-mdp-1");
     await page.getByRole("button", { name: "Changer le mot de passe" }).click();
-    await expect(page.getByRole("status").first()).toContainText(
-      "Le mot de passe actuel est incorrect.",
-    );
+    // La carte Notifications a aussi sa ligne d'état : on vise le message.
+    await expect(
+      page.getByRole("status").filter({ hasText: "mot de passe actuel" }),
+    ).toContainText("Le mot de passe actuel est incorrect.");
   });
 });

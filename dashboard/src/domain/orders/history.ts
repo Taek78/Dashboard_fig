@@ -496,6 +496,31 @@ function applyLoyalty(orders: Order[]): void {
   }
 }
 
+/* ---------- Remboursements ---------- */
+/**
+ * Troisième passe, SANS aléa (le reste du jeu de données ne bouge pas) :
+ * parmi les annulées, dans l'ordre de la liste, une sur trois reste sans
+ * suite, une est remboursée en totalité et une reçoit un avoir de la moitié
+ * du total ; enregistré le lendemain de la livraison prévue, à 16:00 UTC.
+ */
+function applyRefunds(orders: Order[]): void {
+  let rank = 0;
+  for (const o of orders) {
+    if (o.status !== "cancelled" || o.totalCents <= 0) continue;
+    rank += 1;
+    const at = `${addDays(o.deliverySlot.date, 1)}T16:00:00.000Z`;
+    if (rank % 3 === 1) {
+      o.refund = { kind: "refund", amountCents: o.totalCents, at };
+    } else if (rank % 3 === 2) {
+      o.refund = {
+        kind: "credit",
+        amountCents: Math.max(1, Math.round(o.totalCents / 2)),
+        at,
+      };
+    }
+  }
+}
+
 /* ---------- Construction ---------- */
 function build(): { customers: Customer[]; orders: Order[] } {
   const random = rng(20260914);
@@ -585,11 +610,13 @@ function build(): { customers: Customer[]; orders: Order[] } {
           ? pickStaff("livreur", day, random)
           : null,
         paymentReference: null,
+        refund: null,
       });
     }
   }
 
   applyLoyalty(orders);
+  applyRefunds(orders);
 
   // Seuls les clients générés ayant commandé existent ; créés peu avant leur
   // première commande, autorisations datées de ce jour-là.

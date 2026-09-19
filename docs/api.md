@@ -174,7 +174,7 @@ Refus :
 - `GET /commandes/{id}` : une commande ; celle d'un autre client répond `404`.
 - `POST /commandes/{id}/annulation { "detail"? }` : annulation par la personne, possible tant que la commande est **en préparation** (`cancellable`). Motif « Annulée par le client », précision facultative (100 caractères). `409 not_cancellable` ensuite : l'équipe est le recours. Rejouer l'annulation renvoie `200` sans effet.
 
-Les statuts (`status` / `statusLabel`) : `preparing` En préparation, `delivering` Expédiée, `delivered` Livrée, `cancelled` Annulée. Les changements faits par l'équipe déposent une notification pour la personne si elle l'a autorisé (`consents.orderStatus`).
+Les statuts (`status` / `statusLabel`) : `preparing` En préparation, `delivering` Expédiée, `delivered` Livrée, `cancelled` Annulée. Une commande annulée peut porter `refund` (sinon `null`) : `{ kind: "refund" | "credit", label: "Remboursement" | "Avoir", amountCents, at }`, enregistré par l'équipe dans le dashboard (argent rendu, ou crédit à valoir), total ou partiel ; l'application l'affiche, elle ne l'écrit jamais. Les changements faits par l'équipe déposent une notification pour la personne si elle l'a autorisé (`consents.orderStatus`).
 
 ## 6. Messages « Nous contacter » (jeton requis)
 

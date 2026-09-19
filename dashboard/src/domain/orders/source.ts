@@ -16,6 +16,7 @@ import type {
   OrderEvent,
   UpdatedOrder,
   OrderFilters,
+  RefundChange,
   StatusChange,
 } from "@/domain/orders/types";
 import type { StaffWorkSummary } from "@/domain/staff/rules";
@@ -56,6 +57,8 @@ import type { KeysetPage, KeysetResult } from "@/lib/api/cursor";
  *   motif d'annulation éventuel, notification à déposer) et ÉCRIT l'événement
  *   d'historique avec le statut, puis la notification si le client l'a
  *   autorisée (même transaction) ; null si `from` ne correspond plus.
+ * - setOrderRefund enregistre (commande ANNULÉE, montant ≤ total, relus par la
+ *   base) ou retire le remboursement ou l'avoir ; null si rien n'a été écrit.
  * - assignStaff pose ou retire le préparateur ou le livreur (la personne a déjà
  *   été relue et vérifiée par l'action) ; null (rien d'écrit) si la commande
  *   n'existe pas, si elle est terminée ou si la personne affectée n'est plus
@@ -92,6 +95,7 @@ export type OrdersSource = {
   ): Promise<UpdatedOrder | null>;
   getOrderEvents(orderId: string): Promise<OrderEvent[]>;
   assignStaff(id: string, assignment: StaffAssignment): Promise<Order | null>;
+  setOrderRefund(id: string, change: RefundChange): Promise<Order | null>;
   getOrderStats(range: DateRange): Promise<OrderStats>;
   getOrderSeries(range: DateRange, bucket: Bucket): Promise<SeriesPoint[]>;
   getDeliveryDayCounts(range: DateRange): Promise<ReadonlyMap<string, number>>;

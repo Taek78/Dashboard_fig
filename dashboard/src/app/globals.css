@@ -23,6 +23,8 @@
  * --loyal : catégorie « fidèle » d'un client (or) ; « basique » reste neutre.
  * --attachment : pièce jointe d'un message (violet), pour qu'elle ne se rate
  *   pas ; teinte réservée, distincte des quatre signaux de la boîte de réception.
+ * --refund / --credit : commande annulée REMBOURSÉE (cuivre) ou en AVOIR
+ *   (sarcelle), teintes réservées, distinctes des quatre statuts.
  */
 @custom-variant dark (&:where(
   [data-theme="dark"],
@@ -64,6 +66,8 @@
   --color-community: var(--community);
   --color-loyal: var(--loyal);
   --color-attachment: var(--attachment);
+  --color-refund: var(--refund);
+  --color-credit: var(--credit);
   --color-facebook: var(--facebook);
   --color-instagram: var(--instagram);
   --color-brand-from: var(--brand-from);
@@ -102,7 +106,7 @@
   --animate-clock-colon: clock-colon 2s ease-in-out infinite;
   --animate-alert-drop: alert-drop 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-alert-lift: alert-lift 220ms ease-in both;
-  --animate-alert-countdown: alert-countdown 4s linear both;
+  --animate-alert-countdown: alert-countdown 15s linear both;
 
   @keyframes shimmer {
     from {
@@ -176,7 +180,7 @@
       transform: translateY(-110%);
     }
   }
-  /* Barre du temps restant (4 s, ALERT_DISPLAY_MS). */
+  /* Barre du temps restant (15 s, ALERT_DISPLAY_MS). */
   @keyframes alert-countdown {
     from {
       transform: scaleX(1);
@@ -260,6 +264,9 @@
   /* Catégorie fidèle : or chaud, lisible en texte sur fond clair. */
   --loyal: oklch(0.6 0.13 85);
   --attachment: oklch(0.52 0.18 300);
+  /* Remboursement (cuivre) et avoir (sarcelle) d'une commande annulée. */
+  --refund: oklch(0.5 0.14 45);
+  --credit: oklch(0.47 0.09 185);
   /* Réseaux sociaux (pied du menu, survol) : bleu Facebook, magenta Instagram. */
   --facebook: oklch(0.55 0.2 260);
   --instagram: oklch(0.58 0.24 355);
@@ -317,6 +324,8 @@
   --community: oklch(0.76 0.15 355);
   --loyal: oklch(0.85 0.13 90);
   --attachment: oklch(0.8 0.14 300);
+  --refund: oklch(0.78 0.13 50);
+  --credit: oklch(0.78 0.1 180);
   --facebook: oklch(0.68 0.18 258);
   --instagram: oklch(0.7 0.22 355);
   --halo-1: color-mix(in oklch, var(--primary) 16%, transparent);
@@ -383,6 +392,8 @@
   --community: oklch(0.82 0.1 50);
   --loyal: oklch(0.87 0.11 88);
   --attachment: oklch(0.82 0.12 305);
+  --refund: oklch(0.8 0.12 35);
+  --credit: oklch(0.82 0.09 175);
   --facebook: oklch(0.7 0.17 258);
   --instagram: oklch(0.72 0.2 355);
   --halo-1: color-mix(in oklch, var(--brand-from) 20%, transparent);
@@ -516,20 +527,45 @@
  * suivent le mode d'affichage sans rien connaître des couleurs.
  */
 
-/* Carte interactive : légère élévation au survol, sans mouvement si l'utilisateur le refuse. */
-@utility card-lift {
+/*
+ * Carte interactive (cartes des listes, KPI, métriques) : AUCUN mouvement au
+ * survol (demande du 2026-09-19), seulement une légère SURBRILLANCE dans la
+ * couleur principale du thème choisi (fond à peine teinté, liseré et halo
+ * doux), en ease-in-out. Les tokens suivent clair, sombre et fig.
+ */
+@utility card-highlight {
   transition:
-    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 200ms ease;
-  @media (prefers-reduced-motion: no-preference) {
-    &:hover {
-      transform: translateY(-2px);
-    }
-  }
+    background-color 300ms ease-in-out,
+    box-shadow 300ms ease-in-out;
   &:hover {
+    background-color: color-mix(in oklch, var(--card) 93%, var(--primary));
     box-shadow:
-      0 10px 30px -12px color-mix(in oklch, var(--primary) 25%, transparent),
-      0 1px 2px color-mix(in oklch, var(--foreground) 6%, transparent);
+      0 0 0 1px color-mix(in oklch, var(--primary) 35%, transparent),
+      0 10px 30px -18px color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+}
+
+/*
+ * Bande de couleur au bord gauche d'une carte (statut d'une commande ou d'un
+ * message, remboursement) : une barre DROITE, rognée par les coins arrondis
+ * de la carte (overflow hidden), au lieu d'une bordure épaisse qui dessinait
+ * un croissant dans le coin (demande du 2026-09-19 : rien qui dépasse). La
+ * couleur reste donnée par la classe border-l-<token> de la carte, que la
+ * barre hérite (border-left-color: inherit).
+ */
+@utility edge-bar {
+  position: relative;
+  overflow: hidden;
+  border-left-width: 0;
+  &::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    border-left: 5px solid;
+    border-left-color: inherit;
+    pointer-events: none;
+    z-index: 1;
   }
 }
 
@@ -659,6 +695,78 @@
   transform-origin: left;
   @media (prefers-reduced-motion: no-preference) {
     animation: var(--animate-alert-countdown);
+  }
+}
+
+/*
+ * Cloche qui vibre (« Désactiver le son » décochée, profil) : petites
+ * oscillations, puis une pause ; immobile sous prefers-reduced-motion.
+ */
+@utility bell-ring {
+  transform-origin: 50% 10%;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: bell-ring 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes bell-ring {
+  0%,
+  40%,
+  100% {
+    rotate: 0deg;
+  }
+  5%,
+  15%,
+  25% {
+    rotate: 14deg;
+  }
+  10%,
+  20%,
+  30% {
+    rotate: -14deg;
+  }
+}
+
+/*
+ * Badge « Nouveau » d'une carte de commande ou de message qui vient
+ * d'arriver (FreshMark) : un éclat qui scintille ; la carte, elle, est en
+ * légère surbrillance (fresh-card). Immobiles sous prefers-reduced-motion.
+ */
+@utility fresh-twinkle {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: fresh-twinkle 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes fresh-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 0%, transparent);
+  }
+  50% {
+    opacity: 0.72;
+    box-shadow: 0 0 12px 1px
+      color-mix(in oklch, var(--primary) 70%, transparent);
+  }
+}
+
+/*
+ * La carte elle-même (l'enveloppe FreshMark) : liseré et halo de la couleur
+ * principale autour, et un voile léger PAR-DESSUS la carte (::after, sans
+ * capter les clics), pour que la surbrillance se voie malgré son fond plein.
+ */
+@utility fresh-card {
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--primary) 65%, transparent),
+    0 0 24px -2px color-mix(in oklch, var(--primary) 60%, transparent);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: color-mix(in oklch, var(--primary) 10%, transparent);
+    pointer-events: none;
   }
 }
 

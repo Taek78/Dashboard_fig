@@ -20,6 +20,7 @@ export const {
   updateOrderStatus,
   getOrderEvents,
   assignStaff,
+  setOrderRefund,
   getOrderStats,
   getOrderSeries,
   getDeliveryDayCounts,

@@ -158,6 +158,11 @@ describe("pagination et agrégats SQL = règles pures", () => {
 
   it("getOrderStats : mêmes chiffres qu'orderStats sur la période", async () => {
     const all = await ordersDb.getOrders();
+    // Le seed contient des remboursements et des avoirs : la parité les couvre.
+    expect(
+      (await ordersDb.getOrderStats({ from: "2025-01-01", to: "2026-12-31" }))
+        .refunds.credit.count,
+    ).toBeGreaterThan(0);
     for (const range of [
       MONTH,
       YEAR,
@@ -629,5 +634,60 @@ describe("ordersDb.assignStaff (conditionnelle)", () => {
         })
       )?.driver,
     ).toBeNull();
+  });
+});
+
+describe("ordersDb.setOrderRefund (écriture conditionnelle)", () => {
+  const at = new Date("2026-09-19T10:00:00.000Z");
+
+  it("seulement sur une commande annulée, montant ≤ total relu par la base", async () => {
+    const cancelled = (await ordersDb.getOrder("cmd-0006"))!;
+    expect(
+      await ordersDb.setOrderRefund("cmd-0001", {
+        refund: { kind: "refund", amountCents: 100 },
+        at,
+      }),
+    ).toBeNull();
+    expect(
+      await ordersDb.setOrderRefund("cmd-0006", {
+        refund: { kind: "refund", amountCents: cancelled.totalCents + 1 },
+        at,
+      }),
+    ).toBeNull();
+    const saved = await ordersDb.setOrderRefund("cmd-0006", {
+      refund: { kind: "refund", amountCents: cancelled.totalCents },
+      at,
+    });
+    expect(saved?.refund).toEqual({
+      kind: "refund",
+      amountCents: cancelled.totalCents,
+      at: at.toISOString(),
+    });
+  });
+
+  it("une commande remboursée ne quitte pas « annulée » ; retirer la libère", async () => {
+    const cancelled = (await ordersDb.getOrder("cmd-0006"))!;
+    await ordersDb.setOrderRefund("cmd-0006", {
+      refund: { kind: "credit", amountCents: 100 },
+      at,
+    });
+    expect(
+      await ordersDb.updateOrderStatus(
+        "cmd-0006",
+        change("cancelled", "preparing"),
+      ),
+    ).toBeNull();
+    expect(
+      await ordersDb.setOrderRefund("cmd-0006", { refund: null, at }),
+    ).toMatchObject({ refund: null, status: cancelled.status });
+    expect(
+      await ordersDb.setOrderRefund("cmd-0006", { refund: null, at }),
+    ).toBeNull();
+    expect(
+      await ordersDb.updateOrderStatus(
+        "cmd-0006",
+        change("cancelled", "preparing"),
+      ),
+    ).toMatchObject({ status: "preparing" });
   });
 });

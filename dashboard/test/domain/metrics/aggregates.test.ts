@@ -44,6 +44,10 @@ describe("orderTotals / statsFromTotals", () => {
       statusCounts: countByStatus([]),
       share: { community: 0, individual: 0, percent: null },
       buyers: 0,
+      refunds: {
+        refund: { count: 0, amountCents: 0, percent: null },
+        credit: { count: 0, amountCents: 0, percent: null },
+      },
     });
     expect(communityShareFrom(1, 3)).toEqual({
       community: 1,

@@ -6,9 +6,11 @@ import {
   Download,
   Euro,
   Gift,
+  HandCoins,
   MessageSquareWarning,
   ShoppingBasket,
   Star,
+  TicketPercent,
   UserCheck,
   UserPlus,
   Users,
@@ -85,7 +87,8 @@ import {
  */
 export const metadata: Metadata = { title: "Métriques" };
 
-const pct = (value: number | null) => (value === null ? "—" : `${value} %`);
+const pct = (value: number | null) =>
+  value === null ? "—" : `${value.toLocaleString("fr-FR")} %`;
 const plural = (n: number) => (n > 1 ? "s" : "");
 
 export default async function MetriquesPage({
@@ -309,6 +312,59 @@ export default async function MetriquesPage({
             <StatusChart points={statuses} />
           </CardContent>
         </Card>
+      </Section>
+
+      {/* Remboursements et avoirs (demande du 2026-09-19) : part de TOUTES les
+          commandes de la période, en %, avec le nombre et le montant. */}
+      <Section id="remboursements" title="Remboursements et avoirs">
+        <div className="grid gap-4 @xl/main:grid-cols-2">
+          {(
+            [
+              {
+                kind: "refund",
+                label: "Commandes remboursées",
+                verb: "rendus",
+                icon: <HandCoins />,
+              },
+              {
+                kind: "credit",
+                label: "Commandes en avoir",
+                verb: "en avoir",
+                icon: <TicketPercent />,
+              },
+            ] as const
+          ).map(({ kind, label, verb, icon }) => {
+            const current = stats.refunds[kind];
+            const previous = statsRef.refunds[kind];
+            return (
+              <KpiCard
+                key={kind}
+                label={label}
+                value={pct(current.percent)}
+                hint={
+                  current.percent === null
+                    ? "aucune commande sur la période"
+                    : `${current.count} commande${plural(current.count)} · ${money(current.amountCents)} ${verb}`
+                }
+                icon={icon}
+                trend={trend(current.percent, previous.percent, true)}
+                visual={
+                  <RatioPie
+                    label={`part des ${label.toLowerCase()}`}
+                    slices={[
+                      { label, value: current.count, tone: kind },
+                      {
+                        label: "Autres commandes",
+                        value: kpis.orderCount - current.count,
+                        tone: "rest",
+                      },
+                    ]}
+                  />
+                }
+              />
+            );
+          })}
+        </div>
       </Section>
 
       <Section id="clients" title="Clients">

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
-import { login } from "./helpers";
+import { login, openFilters } from "./helpers";
 
 /*
  * Boîte de réception : la liste (ordre, recherche, filtres), la fiche complète
@@ -15,6 +15,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages");
+    await openFilters(page);
 
     // Deux groupes séparés : les épinglés, puis les autres.
     const pinned = page.getByRole("region", { name: "Épinglés" });
@@ -54,6 +55,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages?du=2026-08-01&au=2026-08-31");
+    await openFilters(page);
     const notice = page.getByRole("status").filter({ hasText: "Aucun" });
     await expect(notice).toContainText(
       "Aucun message reçu du sam. 1 août au lun. 31 août 2026.",
@@ -66,6 +68,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages");
+    await openFilters(page);
     const form = page.getByRole("form", {
       name: "Recherche et filtres des messages",
     });
@@ -121,6 +124,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages");
+    await openFilters(page);
     // Amel a écrit deux fois : on ouvre le premier de la liste (l'épinglé).
     await page
       .getByRole("article", { name: "Message de Amel Benali" })
@@ -191,6 +195,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages");
+    await openFilters(page);
     const important = page
       .getByRole("article", { name: "Message de Amel Benali" })
       .first();
@@ -204,6 +209,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages/msg-0004");
+    await openFilters(page);
     const message = page.getByRole("article", {
       name: "Message de Inès Rocher",
     });
@@ -221,6 +227,7 @@ test.describe("messages", () => {
 
     // La liste le remonte en tête du groupe des épinglés, le plus récent d'abord.
     await page.goto("/messages");
+    await openFilters(page);
     const pinned = page.getByRole("region", { name: "Épinglés" });
     await expect(pinned.getByRole("article")).toHaveCount(2);
     await expect(pinned.getByRole("article").first()).toHaveAccessibleName(
@@ -229,6 +236,7 @@ test.describe("messages", () => {
 
     // On remet le message dans son état de départ pour les autres parcours.
     await page.goto("/messages/msg-0004");
+    await openFilters(page);
     await message.getByRole("button", { name: "Désépingler" }).click();
     await expect(message).not.toContainText("Épinglé");
     await message
@@ -245,6 +253,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages");
+    await openFilters(page);
     const card = page
       .getByRole("article", { name: "Message de Amel Benali" })
       .first();
@@ -288,6 +297,7 @@ test.describe("messages", () => {
   }) => {
     await login(page, E2E_ACCOUNTS.manager);
     await page.goto("/messages/msg-0001");
+    await openFilters(page);
     const message = page.getByRole("article", {
       name: "Message de Amel Benali",
     });
@@ -306,6 +316,7 @@ test.describe("messages", () => {
 
     // Un PDF a aussi son icône, qui vise la route du fichier en téléchargement.
     await page.goto("/messages/msg-0003");
+    await openFilters(page);
     await expect(
       page.getByRole("link", { name: "Télécharger bon-de-livraison.pdf" }),
     ).toHaveAttribute("href", "/messages/fichiers/upl-0003?telecharger=1");

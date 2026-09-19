@@ -10,6 +10,12 @@ import { ClientTypeLabel } from "@/components/customers/client-type-label";
 import { OrderStatusSelect } from "@/components/orders/order-status-select";
 import { OrderDiscountBadge } from "@/components/orders/order-discount-badge";
 import {
+  OrderRefundBadge,
+  REFUND_ACCENT,
+  REFUND_BAND,
+} from "@/components/orders/order-refund-badge";
+import { RefundLock } from "@/components/orders/refund-lock";
+import {
   OrderStatusBadge,
   STATUS_ACCENT,
 } from "@/components/orders/order-status-badge";
@@ -80,54 +86,61 @@ export function OrderCard({
           : order.customer.fullName
       }`}
       className={cn(
-        "bg-card text-card-foreground ring-foreground/10 card-lift cv-auto grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border-l-4 shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]",
-        STATUS_ACCENT[order.status],
-        done && "opacity-80",
+        "bg-card text-card-foreground ring-foreground/10 card-highlight cv-auto edge-bar grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl shadow-sm ring-1 @xl/main:grid-cols-2 @4xl/main:grid-cols-[14rem_minmax(0,1fr)_20rem]",
+        order.refund
+          ? REFUND_ACCENT[order.refund.kind]
+          : STATUS_ACCENT[order.status],
+        done && !order.refund && "opacity-80",
       )}
     >
-      {/* 1. Créneau en grand, référence, type, statut, remise */}
+      {/* 1. Créneau en grand et statut sur une ligne ; dessous, sur toute la
+          largeur, la référence et les badges (type, remboursement, remise), qui
+          passent à la ligne au lieu de s'entasser dans une colonne étroite. */}
       <div
         className={cn(
-          "flex flex-row items-start justify-between gap-3 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:flex-col @4xl/main:justify-start @4xl/main:border-r @4xl/main:border-b-0",
-          KIND_BAND[kind],
+          "flex min-w-0 flex-col gap-2.5 border-b p-4 @xl/main:col-span-2 @xl/main:p-5 @4xl/main:col-span-1 @4xl/main:border-r @4xl/main:border-b-0",
+          order.refund ? REFUND_BAND[order.refund.kind] : KIND_BAND[kind],
         )}
       >
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm font-medium first-letter:uppercase">
-            {formatDateFr(order.deliverySlot.date)}
-          </span>
-          <span className="text-2xl leading-none font-semibold tabular-nums">
-            <span className="sr-only">Créneau </span>
-            {order.deliverySlot.start}
-            <span className="text-muted-foreground text-base font-normal">
-              {" "}
-              → {order.deliverySlot.end}
+        <div className="flex items-start justify-between gap-3 @4xl/main:flex-col">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-sm font-medium first-letter:uppercase">
+              {formatDateFr(order.deliverySlot.date)}
             </span>
-          </span>
+            <span className="text-2xl leading-none font-semibold tabular-nums">
+              <span className="sr-only">Créneau </span>
+              {order.deliverySlot.start}
+              <span className="text-muted-foreground text-base font-normal">
+                {" "}
+                → {order.deliverySlot.end}
+              </span>
+            </span>
+          </div>
+          <OrderStatusBadge status={order.status} />
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <HoverPrefetchLink
             href={`/commandes/${order.id}`}
-            className="text-muted-foreground mt-1 font-mono text-xs font-semibold underline-offset-4 hover:underline focus-visible:underline"
+            className="text-muted-foreground mr-1 font-mono text-xs font-semibold underline-offset-4 hover:underline focus-visible:underline"
           >
             {order.reference}
           </HoverPrefetchLink>
-          <ClientTypeLabel type={kind} className="mt-1 w-fit" />
-        </div>
-        <div className="flex min-w-0 flex-col items-end gap-1.5 @4xl/main:items-start">
-          <OrderStatusBadge status={order.status} />
+          <ClientTypeLabel type={kind} className="w-fit" />
+          <OrderRefundBadge order={order} />
           <OrderDiscountBadge order={order} />
-          {order.cancellation ? (
-            <span className="text-muted-foreground text-xs">
-              {formatCancellation(order.cancellation)}
-            </span>
-          ) : null}
         </div>
+        {order.cancellation ? (
+          <p className="text-muted-foreground text-xs wrap-break-word">
+            {formatCancellation(order.cancellation)}
+          </p>
+        ) : null}
       </div>
 
       {/* 2. Client (communauté et interlocuteur, ou particulier), gestes rapides et contenu */}
       <div className="flex min-w-0 flex-col gap-3 p-4 @xl/main:p-5">
         {community ? (
           <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="truncate text-lg font-semibold">
+            <p className="text-lg leading-snug font-semibold wrap-break-word">
               <HoverPrefetchLink
                 href={`/clients/communautes/${community.id}`}
                 className="underline-offset-4 hover:underline focus-visible:underline"
@@ -135,7 +148,7 @@ export function OrderCard({
                 {community.name}
               </HoverPrefetchLink>
             </p>
-            <p className="text-muted-foreground truncate text-sm">
+            <p className="text-muted-foreground text-sm wrap-break-word">
               Interlocuteur :{" "}
               <HoverPrefetchLink
                 href={`/clients/${order.customer.id}`}
@@ -146,7 +159,7 @@ export function OrderCard({
             </p>
           </div>
         ) : (
-          <p className="truncate text-lg font-semibold">
+          <p className="text-lg leading-snug font-semibold wrap-break-word">
             <HoverPrefetchLink
               href={`/clients/${order.customer.id}`}
               className="underline-offset-4 hover:underline focus-visible:underline"
@@ -155,14 +168,16 @@ export function OrderCard({
             </HoverPrefetchLink>
           </p>
         )}
-        <div className="flex flex-col gap-2 @xl/main:flex-row @xl/main:flex-wrap">
+        {/* Appeler et Itinéraire côte à côte, même sur téléphone : deux gestes
+            d'un pouce, et la carte raccourcit d'une ligne. */}
+        <div className="grid grid-cols-2 gap-2 @xl/main:flex @xl/main:flex-wrap">
           {/* Téléphone vide : client anonymisé (RGPD). */}
           {order.customer.phone ? (
             <a
               href={toTelHref(order.customer.phone)}
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
-                "justify-start tabular-nums @xl/main:justify-center",
+                "min-w-0 px-3 tabular-nums",
               )}
             >
               <Phone />
@@ -179,7 +194,8 @@ export function OrderCard({
             rel="noopener noreferrer"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
-              "justify-start @xl/main:justify-center",
+              "min-w-0 px-3",
+              !order.customer.phone && "col-span-2",
             )}
           >
             <Navigation />
@@ -233,7 +249,7 @@ export function OrderCard({
             <Mail className="size-4" aria-hidden="true" />
             <span className="sr-only">E-mail</span>
           </dt>
-          <dd className="truncate">{order.customer.email}</dd>
+          <dd className="min-w-0 wrap-anywhere">{order.customer.email}</dd>
         </dl>
         <div>
           <Button
@@ -256,7 +272,9 @@ export function OrderCard({
           canAssign={canAssign && !done}
         />
         <div className="border-t pt-3">
-          {canChangeStatus ? (
+          {canChangeStatus && order.refund ? (
+            <RefundLock kind={order.refund.kind} />
+          ) : canChangeStatus ? (
             <OrderStatusSelect
               orderId={order.id}
               status={order.status}

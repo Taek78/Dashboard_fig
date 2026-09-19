@@ -29,8 +29,12 @@ vi.mock("next/cache", () => ({ revalidatePath }));
 const { isolateEachTest } = await import("../../support/test-database");
 isolateEachTest();
 
-const { assignOrderStaff, changeOrderStatus, requeueCustomerNotification } =
-  await import("@/app/(dashboard)/commandes/[id]/actions");
+const {
+  assignOrderStaff,
+  changeOrderStatus,
+  recordOrderRefund,
+  requeueCustomerNotification,
+} = await import("@/app/(dashboard)/commandes/[id]/actions");
 const { markNotificationFailed, getNotificationDelivery } =
   await import("@/data/notifications");
 const { getOrder, getOrderEvents } = await import("@/data/orders");
@@ -50,6 +54,8 @@ const run = (fields: Record<string, string | string[]>) =>
   changeOrderStatus(idleActionResult, form({ notify: "1", ...fields }));
 const assign = (fields: Record<string, string>) =>
   assignOrderStaff(idleActionResult, form(fields));
+const refund = (fields: Record<string, string>) =>
+  recordOrderRefund(idleActionResult, form(fields));
 
 beforeEach(() => {
   session.role = "gestionnaire";
@@ -57,6 +63,17 @@ beforeEach(() => {
 });
 
 describe("changeOrderStatus", () => {
+  it("le livreur change le statut d'une livraison (expédiée, livrée)", async () => {
+    session.role = "livreur";
+    expect(
+      await run({ orderId: "cmd-0001", nextStatus: "delivering" }),
+    ).toMatchObject({ status: "success" });
+    expect(
+      await run({ orderId: "cmd-0001", nextStatus: "delivered" }),
+    ).toMatchObject({ status: "success" });
+    expect((await getOrder("cmd-0001"))?.status).toBe("delivered");
+  });
+
   it("refuse le rôle lecture avant même de valider l'entrée", async () => {
     session.role = "lecture";
     expect(
@@ -567,5 +584,116 @@ describe("assignOrderStaff", () => {
       message: "Vous n'avez pas les droits pour affecter l'équipe.",
     });
     expect((await getOrder("cmd-0001"))?.driver).toBeNull();
+  });
+});
+
+describe("recordOrderRefund (remboursement ou avoir)", () => {
+  // cmd-0006 : commande annulée du scénario.
+  it("enregistre un avoir partiel sur une commande annulée, puis le retire", async () => {
+    const before = await getOrder("cmd-0006");
+    expect(before?.status).toBe("cancelled");
+    expect(before?.refund).toBeNull();
+    const half = Math.floor(before!.totalCents / 2);
+    const euros = `${Math.floor(half / 100)},${String(half % 100).padStart(2, "0")}`;
+
+    expect(
+      await refund({
+        orderId: "cmd-0006",
+        intent: "enregistrer",
+        kind: "credit",
+        amount: euros,
+      }),
+    ).toMatchObject({ status: "success" });
+    expect((await getOrder("cmd-0006"))?.refund).toMatchObject({
+      kind: "credit",
+      amountCents: half,
+      at: expect.any(String),
+    });
+    expect(revalidatePath).toHaveBeenCalled();
+
+    expect(await refund({ orderId: "cmd-0006", intent: "retirer" })).toEqual({
+      status: "success",
+      message: "Remboursement retiré.",
+    });
+    expect((await getOrder("cmd-0006"))?.refund).toBeNull();
+  });
+
+  it("une commande remboursée RESTE annulée : le statut est refusé jusqu'au retrait", async () => {
+    const total = (await getOrder("cmd-0006"))!.totalCents;
+    await refund({
+      orderId: "cmd-0006",
+      intent: "enregistrer",
+      kind: "refund",
+      amount: `${Math.floor(total / 100)},${String(total % 100).padStart(2, "0")}`,
+    });
+    expect(
+      await run({ orderId: "cmd-0006", nextStatus: "preparing" }),
+    ).toMatchObject({ status: "error" });
+    expect((await getOrder("cmd-0006"))?.status).toBe("cancelled");
+
+    await refund({ orderId: "cmd-0006", intent: "retirer" });
+    expect(
+      await run({ orderId: "cmd-0006", nextStatus: "preparing" }),
+    ).toMatchObject({ status: "success" });
+  });
+
+  it("refuse une commande non annulée, un montant au-dessus du total, un type absent", async () => {
+    expect(
+      await refund({
+        orderId: "cmd-0001",
+        intent: "enregistrer",
+        kind: "refund",
+        amount: "1,00",
+      }),
+    ).toEqual({
+      status: "error",
+      message:
+        "Seule une commande annulée peut être remboursée ou recevoir un avoir.",
+    });
+    expect(
+      await refund({
+        orderId: "cmd-0006",
+        intent: "enregistrer",
+        kind: "refund",
+        amount: "99999,00",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Le montant dépasse le total de la commande.",
+    });
+    expect(
+      await refund({
+        orderId: "cmd-0006",
+        intent: "enregistrer",
+        amount: "1,00",
+      }),
+    ).toEqual({
+      status: "error",
+      message: "Choisissez « Remboursement » ou « Avoir ».",
+    });
+    expect(await refund({ orderId: "cmd-0006", intent: "retirer" })).toEqual({
+      status: "error",
+      message: "Aucun remboursement à retirer.",
+    });
+    expect((await getOrder("cmd-0001"))?.refund).toBeNull();
+  });
+
+  it("réservé à l'admin et au gestionnaire : ni le livreur ni la lecture", async () => {
+    for (const role of ["livreur", "lecture"]) {
+      session.role = role;
+      expect(
+        await refund({
+          orderId: "cmd-0006",
+          intent: "enregistrer",
+          kind: "refund",
+          amount: "1,00",
+        }),
+      ).toEqual({
+        status: "error",
+        message:
+          "Vous n'avez pas les droits pour enregistrer un remboursement ou un avoir.",
+      });
+    }
+    expect((await getOrder("cmd-0006"))?.refund).toBeNull();
   });
 });

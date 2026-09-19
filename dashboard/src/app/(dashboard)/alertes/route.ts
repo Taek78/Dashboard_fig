@@ -8,7 +8,8 @@ import { isCrossSiteRequest } from "@/lib/fetch-site";
  * GET /alertes?depuis=<ISO> : le flux des alertes en direct, relevé toutes
  * les 5 s par AlertCenter (onglet visible seulement). Session obligatoire
  * (getCurrentUser) ; chaque liste est limitée à ce que le rôle peut ouvrir
- * (alertScopeFor) ; une requête d'un autre site est refusée. Réponse JSON
+ * (alertScopeFor), avec les compteurs non lus du menu et les préférences du
+ * compte (appliquées par le navigateur, noticesForPrefs) ; une requête d'un autre site est refusée. Réponse JSON
  * jamais mise en cache. Le proxy ne renouvelle jamais la session sur ce
  * chemin (session-refresh.ts) : un onglet ouvert qui relève ne doit pas
  * prolonger une session indéfiniment.
@@ -27,6 +28,14 @@ export async function GET(request: Request) {
     new URL(request.url).searchParams.get("depuis"),
     now,
   );
-  const feed = await getAlertFeed(since, alertScopeFor(user.role), now);
+  // Le périmètre du RÔLE seulement : les préférences (notification, son)
+  // voyagent avec le flux et sont appliquées par le navigateur, pour que
+  // compteurs du menu et badges « Nouveau » restent toujours actifs.
+  const feed = await getAlertFeed(
+    since,
+    alertScopeFor(user.role),
+    now,
+    user.id,
+  );
   return Response.json(feed, { headers: NO_STORE });
 }

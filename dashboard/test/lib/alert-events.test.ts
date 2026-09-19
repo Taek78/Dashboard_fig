@@ -1,13 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { addNewItems } from "@/lib/alert-events";
+import { visibleUnread } from "@/lib/alert-events";
 
-describe("addNewItems (sections illuminées du menu)", () => {
-  it("additionne par section, ignore les zéros", () => {
-    expect(addNewItems({}, { "/commandes": 2, "/messages": 0 })).toEqual({
-      "/commandes": 2,
+describe("visibleUnread (compteurs du menu)", () => {
+  const update = {
+    counts: { orders: 3, messages: 2, stock: 1 },
+    polledAt: 1000,
+  };
+
+  it("affiche les compteurs du relevé", () => {
+    expect(visibleUnread(update, {})).toEqual({
+      orders: 3,
+      messages: 2,
+      stock: 1,
     });
+  });
+
+  it("un relevé parti AVANT la visite d'une section ne rallume pas son compteur", () => {
+    expect(visibleUnread(update, { orders: 1500 })).toEqual({
+      orders: 0,
+      messages: 2,
+      stock: 1,
+    });
+    // Relevé parti après la visite : il fait foi.
     expect(
-      addNewItems({ "/commandes": 2 }, { "/commandes": 1, "/messages": 1 }),
-    ).toEqual({ "/commandes": 3, "/messages": 1 });
+      visibleUnread({ ...update, polledAt: 2000 }, { orders: 1500 }),
+    ).toEqual({ orders: 3, messages: 2, stock: 1 });
   });
 });

@@ -20,6 +20,8 @@ export const PIE_TONES = {
   destructive: "var(--destructive)",
   community: "var(--community)",
   individual: "var(--individual)",
+  refund: "var(--refund)",
+  credit: "var(--credit)",
   rest: "color-mix(in oklch, var(--muted-foreground) 30%, transparent)",
 } as const;
 export type PieTone = keyof typeof PIE_TONES;

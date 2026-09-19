@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CustomerTypeLabels } from "@/components/customers/client-type-label";
+import { OrderRefundBadge } from "@/components/orders/order-refund-badge";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrdersPagination } from "@/components/orders/orders-pagination";
 import {
@@ -147,7 +148,10 @@ export function StaffHistory({
                           <CustomerNameLink customer={order.customer} />
                         </p>
                       </div>
-                      <OrderStatusBadge status={order.status} />
+                      <span className="inline-flex flex-wrap gap-1">
+                        <OrderStatusBadge status={order.status} />
+                        <OrderRefundBadge order={order} withAmount={false} />
+                      </span>
                     </div>
                     <CustomerTypeLabels
                       community={order.community}
@@ -204,7 +208,13 @@ export function StaffHistory({
                           {formatEuros(order.totalCents)}
                         </TableCell>
                         <TableCell>
-                          <OrderStatusBadge status={order.status} />
+                          <span className="inline-flex flex-wrap gap-1">
+                            <OrderStatusBadge status={order.status} />
+                            <OrderRefundBadge
+                              order={order}
+                              withAmount={false}
+                            />
+                          </span>
                         </TableCell>
                       </TableRow>
                     ))}

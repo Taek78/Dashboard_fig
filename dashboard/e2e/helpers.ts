@@ -13,3 +13,17 @@ export async function login(page: Page, account: Account): Promise<void> {
     page.getByRole("heading", { level: 1, name: "Tableau de bord" }),
   ).toBeVisible();
 }
+
+/**
+ * Déroule le panneau des filtres de la page (replié par défaut) : clique
+ * chaque bouton « Filtres » encore fermé.
+ */
+export async function openFilters(page: Page): Promise<void> {
+  const closed = page.locator('button[aria-expanded="false"]', {
+    hasText: "Filtres",
+  });
+  const count = await closed.count();
+  for (let i = 0; i < count; i += 1) {
+    await closed.first().click();
+  }
+}

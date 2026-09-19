@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { CalendarDays, KeyRound, Mail } from "lucide-react";
+import { BellRing, CalendarDays, KeyRound, Mail } from "lucide-react";
+import { AlertPrefsForm } from "@/components/accounts/alert-prefs-form";
 import { PasswordForm } from "@/components/accounts/password-form";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser } from "@/data/session";
 import { getUser } from "@/data/users";
-import { ROLE_LABELS } from "@/domain/auth/roles";
+import { getAlertPrefs } from "@/data/alerts";
+import { alertScopeFor, ROLE_LABELS } from "@/domain/auth/roles";
 import { formatDateFr } from "@/lib/format";
 import { initials } from "@/lib/text";
 
@@ -15,6 +17,8 @@ import { initials } from "@/lib/text";
  * - L'identité : initiales en grand, nom et rôle ; à droite sur grand écran,
  *   l'adresse de connexion (lecture seule : elle ne se modifie jamais) et la
  *   date de création du compte.
+ * - Notifications (2026-09-18) : « Activer les notifications commandes » et
+ *   « … messages » (AlertPrefsForm), seulement ce que le rôle voit.
  * - Le changement de mot de passe, ses trois champs sur une ligne alignés
  *   par le haut (PasswordForm).
  * Le compte est relu par la source (getUser, sans le hachage) : le nom et le
@@ -24,7 +28,12 @@ export const metadata: Metadata = { title: "Profil" };
 
 export default async function ProfilPage() {
   const user = await getCurrentUser();
-  const account = await getUser(user.id);
+  const [account, prefs] = await Promise.all([
+    getUser(user.id),
+    getAlertPrefs(user.id),
+  ]);
+  const scope = alertScopeFor(user.role);
+  const available = { orders: scope.orders, messages: scope.messages };
 
   return (
     <>
@@ -71,6 +80,20 @@ export default async function ProfilPage() {
             ) : null}
           </CardContent>
         </Card>
+
+        {available.orders || available.messages ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BellRing className="text-primary size-5" aria-hidden="true" />
+                <h2>Notifications</h2>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AlertPrefsForm prefs={prefs} available={available} />
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader>
