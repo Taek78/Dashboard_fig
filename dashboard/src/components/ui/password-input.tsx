@@ -41,7 +41,7 @@ export function PasswordInput({
         aria-controls={props.id}
         title={visible ? "Masquer le mot de passe" : "Voir le mot de passe"}
         onClick={() => setVisible((v) => !v)}
-        className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-ring/50 absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-items-center rounded-md outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,scale] motion-safe:active:scale-90"
+        className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-ring/50 absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-items-center rounded-none outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,scale] motion-safe:active:scale-90"
       >
         <Eye aria-hidden="true" className={swap(!visible)} />
         <EyeOff aria-hidden="true" className={swap(visible)} />

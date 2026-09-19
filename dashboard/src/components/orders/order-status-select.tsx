@@ -125,7 +125,7 @@ export function OrderStatusSelect({
     <form action={formAction} className="flex flex-col gap-2">
       <input type="hidden" name="orderId" value={orderId} />
       <label htmlFor={id} className="text-muted-foreground text-xs font-medium">
-        Statut de la commande
+        Statut<span className="sr-only"> de la commande</span>
       </label>
       <div className="flex items-center gap-2">
         <span
@@ -170,7 +170,7 @@ export function OrderStatusSelect({
         />
         {notifyAllowed
           ? "Notifier le client"
-          : "Notifications non autorisées par le client"}
+          : "Notifications refusées par le client"}
       </label>
 
       {cancelling ? (

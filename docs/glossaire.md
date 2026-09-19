@@ -461,3 +461,7 @@ Termes d'architecture employés dans le code et les documents, avec le fichier o
 **Surbrillance au survol** (cartes, KPI) : depuis le 2026-09-19, une carte ne bouge plus au survol ; son fond se teinte légèrement et un liseré doux apparaît, dans la couleur principale du thème, en ease-in-out (`card-highlight`).
 
 **Requête de conteneur** (CSS) : une règle qui s'applique selon la largeur d'un ÉLÉMENT (ici la carte KPI, `@container/kpi`) plutôt que celle de la fenêtre ; la même carte se dispose différemment à deux par ligne et seule sur sa ligne.
+
+**Prévenir par mail** (comptes, 2026-09-19) : case de la carte d'un compte, cochée par défaut. Décochée, désactiver, réactiver, supprimer un compte ou annuler une invitation se fait sans avis à la personne. La création envoie toujours le lien d'activation.
+
+**FIG pro** (bandeau, 2026-09-19) : le repère au centre du bandeau sur ordinateur, lien vers le tableau de bord, avec son logo animé.

@@ -707,6 +707,69 @@
  * rouge oscille et grossit un instant, puis se repose, en boucle ; immobile
  * sous prefers-reduced-motion.
  */
+/*
+ * Logo « FIG pro » du bandeau (2026-09-19) : la carotte se balance doucement
+ * et un reflet traverse la tuile toutes les quelques secondes ; au survol du
+ * lien, la carotte se redresse et grossit un peu. Immobile sous
+ * prefers-reduced-motion.
+ */
+@utility brand-logo {
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      115deg,
+      transparent 30%,
+      color-mix(in oklch, white 45%, transparent) 50%,
+      transparent 70%
+    );
+    translate: -120% 0;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    &::after {
+      animation: brand-shine 5s ease-in-out infinite;
+    }
+  }
+}
+
+@utility brand-logo-icon {
+  transform-origin: 50% 85%;
+  transition:
+    rotate 300ms ease-in-out,
+    scale 300ms ease-in-out;
+  @media (prefers-reduced-motion: no-preference) {
+    animation: brand-sway 4s ease-in-out infinite;
+    :where(.group\/brand:hover) & {
+      animation: none;
+      rotate: 0deg;
+      scale: 1.12;
+    }
+  }
+}
+
+@keyframes brand-sway {
+  0%,
+  100% {
+    rotate: -7deg;
+  }
+  50% {
+    rotate: 7deg;
+  }
+}
+
+@keyframes brand-shine {
+  0%,
+  60% {
+    translate: -120% 0;
+  }
+  85%,
+  100% {
+    translate: 120% 0;
+  }
+}
+
 @utility warn-wiggle {
   transform-origin: 50% 90%;
   @media (prefers-reduced-motion: no-preference) {

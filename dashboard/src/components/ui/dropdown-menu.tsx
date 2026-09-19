@@ -52,7 +52,7 @@ function DropdownMenuContent({
 }
 
 const itemClass =
-  "data-highlighted:bg-accent data-highlighted:text-accent-foreground flex min-h-9 cursor-default items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0";
+  "data-highlighted:bg-accent data-highlighted:text-accent-foreground flex min-h-9 cursor-default items-center gap-2 rounded-none px-2.5 py-1.5 text-sm outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0";
 
 function DropdownMenuItem({ className, ...props }: MenuPrimitive.Item.Props) {
   return (

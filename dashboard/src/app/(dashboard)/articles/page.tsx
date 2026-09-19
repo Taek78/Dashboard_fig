@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Empty,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -60,10 +59,7 @@ export default async function ArticlesPage({
           </CardContent>
         </Card>
       ) : (
-        <p className="text-muted-foreground text-sm">
-          Votre compte est en lecture seule : les articles ne peuvent pas être
-          modifiés.
-        </p>
+        <p className="text-muted-foreground text-sm">Lecture seule</p>
       )}
 
       <section className="flex flex-col gap-3">
@@ -99,9 +95,6 @@ export default async function ArticlesPage({
                 <Newspaper />
               </EmptyMedia>
               <EmptyTitle>Aucun article</EmptyTitle>
-              <EmptyDescription>
-                Le premier article rédigé ci-dessus apparaîtra ici.
-              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

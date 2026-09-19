@@ -13,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -145,14 +144,9 @@ export default async function CommandesPage({
         />
         <p role="status" className="text-base font-semibold">
           {formatOrdersCount(page.total)}
-          {period.range ? (
-            <span className="text-muted-foreground text-sm font-normal">
-              {` · livraison ${formatPeriodFr(period.range.from, period.range.to)}`}
-            </span>
-          ) : null}
           {page.pageCount > 1 ? (
             <span className="text-muted-foreground text-sm font-normal">
-              {` · les plus récentes d'abord, page ${page.page} sur ${page.pageCount}`}
+              {` · page ${page.page} sur ${page.pageCount}`}
             </span>
           ) : null}
         </p>
@@ -199,10 +193,6 @@ export default async function CommandesPage({
                 <SearchX />
               </EmptyMedia>
               <EmptyTitle>Aucune commande ne correspond</EmptyTitle>
-              <EmptyDescription>
-                Modifiez les filtres ou réinitialisez-les pour revoir toutes les
-                commandes.
-              </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Button variant="outline" render={<Link href="/commandes" />}>
@@ -217,10 +207,6 @@ export default async function CommandesPage({
                 <Inbox />
               </EmptyMedia>
               <EmptyTitle>Aucune commande</EmptyTitle>
-              <EmptyDescription>
-                Les commandes passées dans l&apos;application FIG apparaîtront
-                ici.
-              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

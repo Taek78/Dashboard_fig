@@ -63,16 +63,32 @@ export const updateUserSchema = z.object({
 export const sendPasswordLinkSchema = z.object({ userId: userIdSchema });
 
 /** Annulation d'une invitation : le compte, jamais activé, est supprimé (confirmation à l'écran, sans mot). */
-export const cancelInvitationSchema = z.object({ userId: userIdSchema });
+/**
+ * Case « Prévenir par mail » des statuts de compte (2026-09-19) : un champ
+ * caché « 0 » suivi de la case « 1 » ; Object.fromEntries garde la DERNIÈRE
+ * valeur, donc « 1 » si elle est cochée. Absent (ancien formulaire, API
+ * interne) = prévenir : un avis n'est coupé que sur demande explicite.
+ */
+const notifyByMail = z
+  .enum(["0", "1"])
+  .optional()
+  .transform((v) => v !== "0");
+
+export const cancelInvitationSchema = z.object({
+  userId: userIdSchema,
+  notify: notifyByMail,
+});
 
 export const setUserActiveSchema = z.object({
   userId: userIdSchema,
   active: z.enum(["1", "0"]).transform((v) => v === "1"),
+  notify: notifyByMail,
 });
 
 /** Suppression définitive : le mot SUPPRIMER, en toute casse, tapé par l'administrateur. */
 export const deleteUserSchema = z.object({
   userId: userIdSchema,
+  notify: notifyByMail,
   confirm: z
     .string()
     .trim()

@@ -43,11 +43,11 @@ export function SiteHeader({ user }: { user: CurrentUser }) {
 
   return (
     <header className="bg-card/70 supports-backdrop-filter:bg-card/55 border-border/70 sticky top-0 z-10 border-b backdrop-blur-md">
-      <div className="flex h-14 items-center gap-2 px-3 md:h-16 md:gap-3 md:px-6">
+      <div className="relative flex h-14 items-center gap-2 px-3 md:h-16 md:gap-3 md:px-6">
         <span className="relative shrink-0">
           <SidebarTrigger
             size="icon"
-            className="bg-card/70 text-foreground border-foreground/15 hover:bg-muted hover:border-primary/50 size-10 shrink-0 rounded-xl border shadow-sm"
+            className="bg-card/70 text-foreground border-foreground/15 hover:bg-muted hover:border-primary/50 size-10 shrink-0 rounded-none border shadow-sm"
           />
           {/* Téléphone : nouvelle commande ou nouveau message, menu replié. */}
           <NewItemsDot />
@@ -60,9 +60,33 @@ export function SiteHeader({ user }: { user: CurrentUser }) {
         >
           <span
             aria-hidden="true"
-            className="bg-gradient-brand flex size-8 items-center justify-center rounded-lg text-white shadow-sm"
+            className="bg-gradient-brand flex size-8 items-center justify-center rounded-none text-white shadow-sm"
           >
             <Carrot className="size-4" />
+          </span>
+        </Link>
+
+        {/* « FIG pro » au CENTRE du bandeau (demande du 2026-09-19), ordinateur
+            seulement (lg) : lien vers le tableau de bord, logo animé (brand-logo
+            de globals.css, immobile sous prefers-reduced-motion). */}
+        <Link
+          href="/"
+          aria-label="FIG pro : tableau de bord"
+          className="group/brand focus-visible:ring-ring/50 absolute left-1/2 hidden -translate-x-1/2 items-center gap-2.5 px-3 py-1.5 outline-none focus-visible:ring-3 lg:flex"
+        >
+          <span
+            aria-hidden="true"
+            className="brand-logo bg-gradient-brand relative flex size-9 items-center justify-center overflow-hidden text-white shadow-md"
+          >
+            <Carrot className="brand-logo-icon size-5" />
+          </span>
+          <span className="flex items-baseline gap-1.5 leading-none">
+            <span className="text-gradient-brand text-xl font-extrabold tracking-tight">
+              FIG
+            </span>
+            <span className="text-foreground/80 group-hover/brand:text-foreground border-foreground/20 border px-1.5 py-0.5 text-[0.65rem] font-semibold tracking-[0.22em] uppercase transition-colors">
+              Pro
+            </span>
           </span>
         </Link>
 
@@ -76,7 +100,7 @@ export function SiteHeader({ user }: { user: CurrentUser }) {
             href="/profil"
             aria-label={`${user.name}, ${role} : mon profil`}
             title={`${user.name} · ${role}`}
-            className="bg-card/60 hover:bg-muted hover:border-primary/40 focus-visible:ring-ring/50 flex min-w-0 items-center gap-2 rounded-full border p-0.5 transition-colors outline-none focus-visible:ring-3 lg:pr-3.5"
+            className="bg-card/60 hover:bg-muted hover:border-primary/40 focus-visible:ring-ring/50 flex min-w-0 items-center gap-2 rounded-none border p-0.5 transition-colors outline-none focus-visible:ring-3 lg:pr-3.5"
           >
             <span
               aria-hidden="true"

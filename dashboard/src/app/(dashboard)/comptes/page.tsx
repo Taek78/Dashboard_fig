@@ -128,18 +128,15 @@ export default async function ComptesPage() {
                   </div>
                   {invitation === "pending" && account.invitationExpiresAt ? (
                     <p className="text-warning -mt-2 text-sm">
-                      Lien d&apos;invitation valable jusqu&apos;au{" "}
-                      {formatDateTimeFr(account.invitationExpiresAt)} : le
-                      compte s&apos;activera quand la personne aura choisi son
-                      mot de passe.
+                      Invitation valable jusqu&apos;au{" "}
+                      {formatDateTimeFr(account.invitationExpiresAt)}
                     </p>
                   ) : null}
                   {invitation === "expired" ? (
                     <p className="text-destructive -mt-2 text-sm">
                       {account.invitationExpiresAt
-                        ? `Lien d'invitation expiré le ${formatDateTimeFr(account.invitationExpiresAt)} sans avoir été utilisé`
-                        : "Aucun lien d'invitation en cours"}{" "}
-                      : renvoyez l&apos;invitation ou annulez-la.
+                        ? `Expirée le ${formatDateTimeFr(account.invitationExpiresAt)}`
+                        : "Aucun lien d'invitation en cours"}
                     </p>
                   ) : null}
                   {invitation !== "none" ? (

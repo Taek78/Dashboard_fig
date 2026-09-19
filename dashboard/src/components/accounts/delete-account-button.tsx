@@ -22,8 +22,11 @@ import { idleActionResult } from "@/lib/action-result";
  */
 export function DeleteAccountButton({
   account,
+  notify,
 }: {
   account: Pick<ManagedUser, "id" | "name" | "email">;
+  /** Case « Prévenir par mail » de la carte. */
+  notify: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
@@ -56,6 +59,9 @@ export function DeleteAccountButton({
       className="border-destructive/40 bg-destructive/5 flex w-full flex-col gap-3 rounded-none border p-4"
     >
       <input type="hidden" name="userId" value={account.id} />
+      {/* « 0 » puis « 1 » : la dernière valeur l'emporte (schéma notifyByMail). */}
+      <input type="hidden" name="notify" value="0" />
+      {notify ? <input type="hidden" name="notify" value="1" /> : null}
       <p className="flex items-start gap-2 text-sm">
         <CircleAlert
           className="text-destructive mt-0.5 size-4 shrink-0"
@@ -66,9 +72,9 @@ export function DeleteAccountButton({
             Suppression définitive du compte de {account.name} ({account.email}
             ).
           </strong>{" "}
-          Ses sessions sont fermées aussitôt et ses liens en cours annulés ;
-          l&apos;historique des commandes garde son nom. Pour un départ,
-          préférez « Désactiver » : le compte reste consultable.
+          Sessions fermées, liens annulés ; l&apos;historique garde son nom.
+          Pour un départ, préférez « Désactiver ».{" "}
+          {notify ? "Un mail l'en informera." : "Aucun mail ne sera envoyé."}
         </span>
       </p>
       <div className="grid gap-1.5">

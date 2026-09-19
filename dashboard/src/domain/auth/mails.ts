@@ -295,6 +295,32 @@ export function accountDeactivatedMail(input: {
 }
 
 /**
+ * Compte RÉACTIVÉ par un administrateur (demande du 2026-09-19) : la personne
+ * peut de nouveau se connecter, avec son mot de passe habituel ; l'adresse de
+ * connexion et son identifiant, l'administrateur à contacter, jamais son nom.
+ */
+export function accountReactivatedMail(input: {
+  to: MailRecipient & { name: string };
+  at: string;
+  loginUrl: string;
+  admin: AccountSummary;
+}): MailMessage {
+  return {
+    to: input.to,
+    subject: "Votre accès au back-office FIG est rétabli",
+    text:
+      greet(input.to.name) +
+      `Votre compte d'accès au back-office FIG a été réactivé le ${formatDateTimeFr(input.at)}. Vous pouvez de nouveau vous connecter.\n\n` +
+      `Pour vous connecter :\n` +
+      `- adresse de connexion : ${input.loginUrl}\n` +
+      `- identifiant : ${input.to.email}\n` +
+      `- mot de passe : celui que vous utilisiez. Si vous l'avez oublié, « Mot de passe oublié » sur la page de connexion vous enverra un code par e-mail.\n\n` +
+      `Si vous n'attendiez pas ce message, ou pour toute question, contactez ${adminContact([input.admin])}.` +
+      SIGNATURE,
+  };
+}
+
+/**
  * Compte supprimé : envoyé à l'ancienne adresse du compte. Un nouveau compte
  * peut y être créé, sur invitation ; seul un administrateur est habilité à
  * créer un compte et à envoyer cette invitation.

@@ -18,7 +18,7 @@ export default async function ConnexionPage() {
   return (
     <LoginShell
       title="Bienvenue"
-      subtitle="Connectez-vous avec votre compte d'équipe."
+      subtitle="Espace de l'équipe"
       footer="Accès réservé à l'équipe FIG."
     >
       <LoginForm />

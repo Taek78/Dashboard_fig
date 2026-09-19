@@ -71,7 +71,7 @@ export function DepartureField({
               setAsking(true);
             }
           }}
-          className="border-input aria-checked:border-destructive aria-checked:bg-destructive focus-visible:ring-ring/50 flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-white outline-none focus-visible:ring-3 motion-safe:transition-[background-color,border-color,scale] motion-safe:active:scale-90"
+          className="border-input aria-checked:border-destructive aria-checked:bg-destructive focus-visible:ring-ring/50 flex size-4 shrink-0 items-center justify-center rounded-none border text-white outline-none focus-visible:ring-3 motion-safe:transition-[background-color,border-color,scale] motion-safe:active:scale-90"
         >
           {departed ? <Check className="size-3.5" aria-hidden="true" /> : null}
         </button>

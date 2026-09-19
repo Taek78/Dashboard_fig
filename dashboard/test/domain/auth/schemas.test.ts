@@ -62,7 +62,7 @@ describe("createUserSchema / deleteUserSchema", () => {
   it("deleteUserSchema exige le mot SUPPRIMER, en toute casse", () => {
     expect(
       deleteUserSchema.parse({ userId: " usr-1 ", confirm: " supprimer " }),
-    ).toEqual({ userId: "usr-1", confirm: "SUPPRIMER" });
+    ).toEqual({ userId: "usr-1", confirm: "SUPPRIMER", notify: true });
     expect(
       deleteUserSchema.safeParse({ userId: "usr-1", confirm: "oui" }).success,
     ).toBe(false);

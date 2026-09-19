@@ -117,9 +117,6 @@ export function OrderDetail({
                   >
                     {order.customer.fullName}
                   </Link>
-                  <span className="text-muted-foreground block text-xs font-normal">
-                    Reçoit la commande groupée pour tous les membres.
-                  </span>
                 </dd>
               </>
             ) : (
@@ -223,7 +220,7 @@ export function OrderDetail({
             </div>
             {order.cancellation ? (
               <p className="text-sm">
-                Motif communiqué au client :{" "}
+                Motif :{" "}
                 <span className="font-medium">
                   {formatCancellation(order.cancellation)}
                 </span>
@@ -231,9 +228,7 @@ export function OrderDetail({
             ) : null}
           </div>
           {!canEdit ? (
-            <p className="text-muted-foreground text-sm">
-              Compte en lecture seule.
-            </p>
+            <p className="text-muted-foreground text-sm">Lecture seule</p>
           ) : order.refund ? (
             <RefundLock kind={order.refund.kind} />
           ) : (
@@ -268,7 +263,7 @@ export function OrderDetail({
                 </p>
               ) : (
                 <p className="text-muted-foreground text-sm">
-                  Aucun remboursement ni avoir pour l&apos;instant.
+                  Aucun remboursement ni avoir
                 </p>
               )}
               {canRefund ? (
@@ -286,7 +281,7 @@ export function OrderDetail({
             </h3>
             {events.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                Aucun changement de statut pour l&apos;instant.
+                Aucun changement de statut
               </p>
             ) : (
               <ol className="flex flex-col gap-3 text-sm">
@@ -321,11 +316,11 @@ export function OrderDetail({
             </h3>
             {!order.customer.notifyOrderStatus ? (
               <p className="text-muted-foreground text-sm">
-                Le client n&apos;a pas autorisé les notifications d&apos;état.
+                Refusées par le client
               </p>
             ) : notifications.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                Aucune notification pour l&apos;instant.
+                Aucune notification
               </p>
             ) : (
               <ol className="flex flex-col gap-3 text-sm">

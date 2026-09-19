@@ -42,18 +42,12 @@ import {
 } from "@/domain/deliveries/rules";
 import {
   applyTaxMode,
-  METRIC_PERIOD_LABELS,
   periodRange,
   TAX_MODE_LABELS,
 } from "@/domain/metrics/rules";
 import { parsePeriodQuery, periodParams } from "@/domain/metrics/schemas";
 import { assignmentOptions, unavailableRoles } from "@/domain/staff/rules";
-import {
-  endSentence,
-  formatDateFr,
-  formatEuros,
-  formatPeriodFr,
-} from "@/lib/format";
+import { endSentence, formatEuros, formatPeriodFr } from "@/lib/format";
 import { canUseDemoTools } from "@/lib/demo-tools";
 import { cn } from "@/lib/utils";
 
@@ -88,9 +82,6 @@ export default async function TableauDeBordPage({
   const now = new Date();
   const today = todayInParis(now);
   const range = query.customRange ?? periodRange(query.period, today);
-  const title = query.customRange
-    ? `Du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`
-    : METRIC_PERIOD_LABELS[query.period];
   const taxLabel = TAX_MODE_LABELS[query.tax];
   const money = (cents: number) => formatEuros(applyTaxMode(cents, query.tax));
   const baseParams = periodParams(query);
@@ -116,7 +107,6 @@ export default async function TableauDeBordPage({
     <>
       <PageHeader
         title="Tableau de bord"
-        description={revenue ? `${title} · montants ${taxLabel}.` : title}
         actions={<DashboardClock initial={now.toISOString()} />}
       />
 
@@ -182,7 +172,6 @@ export default async function TableauDeBordPage({
           metric
           label="Expédiées"
           value={String(delivering)}
-          hint="en cours de livraison"
           icon={<Truck />}
         />
       </div>
@@ -191,8 +180,7 @@ export default async function TableauDeBordPage({
         <CardContent className="flex flex-col gap-3">
           <h2 className="flex items-center gap-2 text-sm font-medium">
             <Activity className="text-primary size-4" aria-hidden="true" />
-            Avancement des commandes ·{" "}
-            {query.customRange ? "période choisie" : title.toLowerCase()}
+            Avancement
           </h2>
           {kpis.orderCount > 0 ? (
             <TourProgress
@@ -220,8 +208,7 @@ export default async function TableauDeBordPage({
                   Aucune commande
                 </EmptyTitle>
                 <EmptyDescription>
-                  {title} : rien à préparer ni à livrer. Choisissez une autre
-                  période ci-dessus.
+                  Rien à préparer ni à livrer.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -251,12 +238,7 @@ export default async function TableauDeBordPage({
 
       <Section
         id="preparation"
-        title={`Commandes en préparation (${preparingCount}, toutes dates)`}
-        description={
-          preparingCount > preparing.length
-            ? `Les ${preparing.length} créneaux les plus proches.`
-            : undefined
-        }
+        title={`En préparation (${preparingCount})`}
         actions={
           preparingCount > preparing.length ? (
             <Link

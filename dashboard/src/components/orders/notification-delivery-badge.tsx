@@ -111,7 +111,7 @@ export function NotificationDeliveryBadge({
             disabled={retrying}
             aria-label="Réessayer l'envoi de la notification"
             title="Réessayer"
-            className="border-destructive/40 hover:bg-destructive/10 focus-visible:ring-ring/50 inline-flex size-7 shrink-0 items-center justify-center rounded-full border outline-none focus-visible:ring-3 disabled:opacity-60 motion-safe:transition-[background-color,scale] motion-safe:active:scale-90"
+            className="border-destructive/40 hover:bg-destructive/10 focus-visible:ring-ring/50 inline-flex size-7 shrink-0 items-center justify-center rounded-none border outline-none focus-visible:ring-3 disabled:opacity-60 motion-safe:transition-[background-color,scale] motion-safe:active:scale-90"
           >
             <RotateCcw
               className={cn("size-3.5", retrying && "motion-safe:animate-spin")}

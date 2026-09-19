@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -46,9 +45,6 @@ export async function ProductsResults({
             <SearchX />
           </EmptyMedia>
           <EmptyTitle>Aucun produit{scope}</EmptyTitle>
-          <EmptyDescription>
-            Modifiez la recherche ou les filtres, ou créez un produit.
-          </EmptyDescription>
         </EmptyHeader>
         <EmptyContent className="flex-row flex-wrap justify-center gap-2">
           <Button variant="outline" render={<Link href="/catalogue" />}>

@@ -123,12 +123,6 @@ export function CustomerCard({
           <dd className="wrap-anywhere">
             {customer.addressLine ? `${customer.addressLine}, ` : ""}
             {customer.postalCode} {customer.city}
-            {customer.community ? (
-              <span className="text-muted-foreground">
-                {" "}
-                · livraison au point de retrait de sa communauté
-              </span>
-            ) : null}
           </dd>
         </dl>
       )}

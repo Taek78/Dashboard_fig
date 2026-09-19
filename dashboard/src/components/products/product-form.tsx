@@ -279,7 +279,7 @@ export function ProductForm({ product }: ProductFormProps) {
                   <label
                     key={emoji}
                     className={cn(
-                      "has-focus-visible:ring-ring flex size-9 cursor-pointer items-center justify-center rounded-lg text-xl transition-colors has-focus-visible:ring-2",
+                      "has-focus-visible:ring-ring flex size-9 cursor-pointer items-center justify-center rounded-none text-xl transition-colors has-focus-visible:ring-2",
                       emoji === illustration
                         ? "bg-primary/15 ring-primary ring-2"
                         : "hover:bg-muted",
@@ -338,7 +338,7 @@ export function ProductForm({ product }: ProductFormProps) {
             <Label
               key={name}
               htmlFor={name}
-              className="bg-muted/40 cursor-pointer rounded-lg border px-3 py-2"
+              className="bg-muted/40 cursor-pointer rounded-none border px-3 py-2"
             >
               <input
                 id={name}

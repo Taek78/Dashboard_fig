@@ -54,7 +54,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       role="group"
       aria-label="Mode d'affichage"
       className={cn(
-        "bg-muted/60 inline-flex items-center gap-0.5 rounded-full border p-0.5",
+        "bg-muted/60 inline-flex items-center gap-0.5 rounded-none border p-0.5",
         className,
       )}
     >
@@ -69,7 +69,7 @@ export function ThemeToggle({ className }: { className?: string }) {
             title={THEME_LABELS[option]}
             onClick={() => applyTheme(option)}
             className={cn(
-              "focus-visible:ring-ring/50 group/theme inline-flex size-7 items-center justify-center rounded-full transition-colors outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-90",
+              "focus-visible:ring-ring/50 group/theme inline-flex size-7 items-center justify-center rounded-none transition-colors outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-90",
               active
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

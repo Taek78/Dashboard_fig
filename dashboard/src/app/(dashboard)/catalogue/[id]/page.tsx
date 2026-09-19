@@ -72,7 +72,7 @@ export default async function ProduitPage({
       ) : null}
       <div className="grid gap-6 @4xl/main:grid-cols-[minmax(16rem,20rem)_1fr]">
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold">Aperçu dans le catalogue</h2>
+          <h2 className="text-sm font-semibold">Aperçu</h2>
           <ProductCard product={product} settings={settings} />
         </div>
         <Card>

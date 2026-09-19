@@ -37,7 +37,7 @@ const LOGOS: Record<SocialNetwork, ReactNode> = {
 
 /* Le rond : il monte d'un cran au survol, s'enfonce à l'appui. */
 const ROUND =
-  "group/social flex size-9 items-center justify-center rounded-full border outline-none motion-safe:transition-[color,border-color,background-color,box-shadow,translate,scale] motion-safe:duration-300 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-90";
+  "group/social flex size-9 items-center justify-center rounded-none border outline-none motion-safe:transition-[color,border-color,background-color,box-shadow,translate,scale] motion-safe:duration-300 motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-90";
 
 /*
  * Au repos, la couleur du réseau (logo, contour, fond léger) ; au survol et

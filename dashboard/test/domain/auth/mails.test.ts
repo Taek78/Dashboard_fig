@@ -3,6 +3,7 @@ import {
   accountActivatedMail,
   accountDeactivatedMail,
   accountDeletedMail,
+  accountReactivatedMail,
   adminAccountActivatedMail,
   adminAccountLockedMail,
   adminContact,
@@ -112,6 +113,21 @@ describe("mails de récupération", () => {
   });
 
   it("désactivation et suppression : ton professionnel, date, administrateur à contacter avec son adresse ; la suppression dit qu'un nouveau compte peut être créé à la même adresse, par un administrateur seulement", () => {
+    const back = accountReactivatedMail({
+      to: zaki,
+      at: AT,
+      loginUrl: "https://fig.example/connexion",
+      admin,
+    });
+    expect(back.to).toEqual(zaki);
+    expect(back.subject).toMatch(/rétabli/);
+    expect(back.text).toContain("Bonjour Zaki");
+    expect(back.text).toContain("https://fig.example/connexion");
+    expect(back.text).toContain("identifiant : zaki@fig.invalid");
+    expect(back.text).toContain("admin@fig.invalid");
+    // Jamais le nom de l'administrateur.
+    expect(back.text).not.toContain("Amel");
+
     const off = accountDeactivatedMail({ to: zaki, at: AT, admin });
     expect(off.to).toEqual(zaki);
     expect(off.subject).toMatch(/désactivé/);

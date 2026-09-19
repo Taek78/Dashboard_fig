@@ -82,7 +82,7 @@ export function RefundForm({
             <label
               key={key}
               className={cn(
-                "border-input hover:bg-muted/40 has-focus-visible:ring-ring/50 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium select-none has-focus-visible:ring-3 motion-safe:transition-colors motion-safe:duration-300 motion-safe:ease-in-out",
+                "border-input hover:bg-muted/40 has-focus-visible:ring-ring/50 flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-none border px-3 text-sm font-medium select-none has-focus-visible:ring-3 motion-safe:transition-colors motion-safe:duration-300 motion-safe:ease-in-out",
                 tone,
               )}
             >
@@ -112,7 +112,7 @@ export function RefundForm({
           className="tabular-nums"
         />
         <p id={`${amountId}-aide`} className="text-muted-foreground text-xs">
-          Total ou partiel, au plus {totalInput} €.
+          Au plus {totalInput} €
         </p>
       </div>
       <Button

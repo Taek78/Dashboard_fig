@@ -16,8 +16,11 @@ import { idleActionResult } from "@/lib/action-result";
  */
 export function CancelInvitationButton({
   account,
+  notify,
 }: {
   account: Pick<ManagedUser, "id" | "name" | "email">;
+  /** Case « Prévenir par mail » de la carte. */
+  notify: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [result, formAction, pending] = useActionState(
@@ -47,6 +50,9 @@ export function CancelInvitationButton({
       className="border-destructive/40 bg-destructive/5 flex w-full flex-col gap-3 rounded-none border p-4"
     >
       <input type="hidden" name="userId" value={account.id} />
+      {/* « 0 » puis « 1 » : la dernière valeur l'emporte (schéma notifyByMail). */}
+      <input type="hidden" name="notify" value="0" />
+      {notify ? <input type="hidden" name="notify" value="1" /> : null}
       <p className="flex items-start gap-2 text-sm">
         <CircleAlert
           className="text-destructive mt-0.5 size-4 shrink-0"
@@ -56,9 +62,10 @@ export function CancelInvitationButton({
           <strong>
             Annuler l&apos;invitation de {account.name} ({account.email}) ?
           </strong>{" "}
-          Le compte, jamais activé, est supprimé et le lien reçu ne fonctionnera
-          plus. Aucun message n&apos;est envoyé ; pour l&apos;inviter à nouveau,
-          il faudra recréer le compte.
+          Le compte est supprimé et le lien reçu ne fonctionnera plus.{" "}
+          {notify
+            ? "Si l'invitation était partie, un mail l'en informera."
+            : "Aucun mail ne sera envoyé."}
         </span>
       </p>
       <div className="flex flex-wrap gap-2">

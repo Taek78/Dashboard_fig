@@ -3,6 +3,7 @@
 import {
   KeyRound,
   LoaderCircle,
+  Mail,
   MailPlus,
   ShieldCheck,
   UserCheck,
@@ -45,6 +46,9 @@ import { cn } from "@/lib/utils";
  * de passe) n'a ni « Désactiver » ni « Supprimer » : ses gestes sont
  * « Renvoyer l'invitation » et « Annuler l'invitation » (qui le supprime),
  * plus le dépannage par mot de passe, qui l'active.
+ * « Prévenir par mail » (2026-09-19, cochée par défaut) : décochée, désactiver,
+ * réactiver, supprimer ou annuler l'invitation n'envoie AUCUN avis à la
+ * personne. La création et « Renvoyer l'invitation » envoient toujours le lien.
  */
 export function AccountEditor({
   account,
@@ -73,6 +77,7 @@ export function AccountEditor({
     idleActionResult,
   );
   const [resetOpen, setResetOpen] = useState(false);
+  const [notify, setNotify] = useState(true);
   const ids = {
     firstName: `${account.id}-first-name`,
     lastName: `${account.id}-last-name`,
@@ -115,12 +120,7 @@ export function AccountEditor({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor={ids.email}>
-              E-mail{" "}
-              <span className="text-muted-foreground font-normal">
-                (non modifiable)
-              </span>
-            </Label>
+            <Label htmlFor={ids.email}>E-mail</Label>
             <Input
               id={ids.email}
               type="email"
@@ -166,6 +166,10 @@ export function AccountEditor({
               name="active"
               value={account.active ? "0" : "1"}
             />
+            {/* « 0 » puis « 1 » : la dernière valeur l'emporte (schéma notifyByMail). */}
+            <input type="hidden" name="notify" value="0" />
+            {notify ? <input type="hidden" name="notify" value="1" /> : null}
+
             <Button
               type="submit"
               variant={account.active ? "ghost" : "secondary"}
@@ -218,15 +222,26 @@ export function AccountEditor({
           Nouveau mot de passe
         </Button>
         {pending ? (
-          <CancelInvitationButton account={account} />
+          <CancelInvitationButton account={account} notify={notify} />
         ) : !protectedAccount ? (
-          <DeleteAccountButton account={account} />
+          <DeleteAccountButton account={account} notify={notify} />
+        ) : null}
+        {!protectedAccount || pending ? (
+          <label className="text-muted-foreground has-focus-visible:ring-ring/50 ml-auto flex min-h-9 cursor-pointer items-center gap-2 px-1 text-sm select-none has-focus-visible:ring-3">
+            <input
+              type="checkbox"
+              checked={notify}
+              onChange={(event) => setNotify(event.target.checked)}
+              className="accent-primary size-4"
+            />
+            <Mail className="size-4" aria-hidden="true" />
+            Prévenir par mail
+          </label>
         ) : null}
         {lastAdmin ? (
           <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
             <ShieldCheck className="size-3.5 shrink-0" aria-hidden="true" />
-            Dernier administrateur actif : ce compte ne peut être ni désactivé,
-            ni rétrogradé, ni supprimé.
+            Dernier administrateur actif
           </p>
         ) : null}
         <ActionStatus result={activeResult} />
@@ -240,8 +255,7 @@ export function AccountEditor({
         >
           <input type="hidden" name="userId" value={account.id} />
           <p className="text-muted-foreground text-xs">
-            Dépannage quand le mail ne passe pas : préférez « Envoyer un lien »,
-            la personne choisit alors son mot de passe elle-même.
+            Préférez « Envoyer un lien » : la personne choisit son mot de passe.
           </p>
           <PasswordField
             id={ids.password}

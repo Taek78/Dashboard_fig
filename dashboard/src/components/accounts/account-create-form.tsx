@@ -87,9 +87,9 @@ export function AccountCreateForm() {
         </div>
       </div>
       <p className="text-muted-foreground text-xs">
-        La personne reçoit un lien pour choisir son mot de passe, valable{" "}
-        {AUTH_TOKEN_RULES.invitation.validity} ; son nom lui servira à retrouver
-        son adresse de connexion. L&apos;e-mail ne se modifie plus ensuite.
+        Un lien d&apos;activation part par mail (valable{" "}
+        {AUTH_TOKEN_RULES.invitation.validity}). L&apos;e-mail ne pourra plus
+        être modifié.
       </p>
       <div className="flex flex-col gap-3 @xl/main:flex-row @xl/main:items-center">
         <Button

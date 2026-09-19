@@ -48,7 +48,6 @@ import {
   bucketFor,
   compareSeries,
   COMPARISON_LABELS,
-  METRIC_PERIOD_LABELS,
   periodRange,
   previousYearRange,
   referenceRange,
@@ -56,12 +55,7 @@ import {
   TAX_MODE_LABELS,
 } from "@/domain/metrics/rules";
 import { parseMetricsQuery } from "@/domain/metrics/schemas";
-import {
-  formatDateFr,
-  formatEuros,
-  formatPeriodFr,
-  formatQuantity,
-} from "@/lib/format";
+import { formatEuros, formatPeriodFr, formatQuantity } from "@/lib/format";
 
 /*
  * Métriques : période prédéfinie ou personnalisée, montants HT ou TTC, référence
@@ -145,9 +139,6 @@ export default async function MetriquesPage({
     previous: applyTaxToValues(p.previous, query.tax),
   }));
   const statuses = statusPoints(stats.statusCounts);
-  const title = query.customRange
-    ? `Du ${formatDateFr(range.from)} au ${formatDateFr(range.to)}`
-    : METRIC_PERIOD_LABELS[query.period];
 
   const usage = summarizeEngagement(engagement, yearRange);
   const usageRef = summarizeEngagement(engagement, yearRef);
@@ -177,7 +168,6 @@ export default async function MetriquesPage({
     <>
       <PageHeader
         title="Métriques"
-        description={`${title} · montants ${taxLabel} · variations vs ${referenceLabel.toLowerCase()}.`}
         actions={<DashboardClock initial={now.toISOString()} />}
       />
 
@@ -185,7 +175,7 @@ export default async function MetriquesPage({
 
       {query.customRange && kpis.orderCount === 0 ? (
         <PeriodEmptyNotice
-          text={`Aucune commande livrée ${formatPeriodFr(range.from, range.to)} : les chiffres de la période sont à zéro.`}
+          text={`Aucune commande livrée ${formatPeriodFr(range.from, range.to)}.`}
           resetHref={`/metriques?tva=${query.tax}&comparaison=${query.comparison}`}
           resetLabel="Revenir à ce mois-ci"
         />
@@ -228,10 +218,7 @@ export default async function MetriquesPage({
         <Card>
           <CardHeader>
             <CardTitle>
-              <h3>
-                Évolution : {title.toLowerCase()} et{" "}
-                {referenceLabel.toLowerCase()}
-              </h3>
+              <h3>Évolution</h3>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -277,7 +264,7 @@ export default async function MetriquesPage({
             value={String(share.community)}
             hint={
               share.percent === null
-                ? "aucune commande sur la période"
+                ? undefined
                 : `${pct(share.percent)} des commandes · ${share.individual} de particuliers`
             }
             icon={<Users />}
@@ -351,7 +338,7 @@ export default async function MetriquesPage({
                 value={pct(current.percent)}
                 hint={
                   current.percent === null
-                    ? "aucune commande sur la période"
+                    ? undefined
                     : `${current.count} commande${plural(current.count)} · ${money(current.amountCents)} ${verb}`
                 }
                 icon={icon}
@@ -390,7 +377,7 @@ export default async function MetriquesPage({
             value={String(signups.referred)}
             hint={
               referredRate === null
-                ? "aucune inscription sur la période"
+                ? undefined
                 : `${pct(referredRate)} des nouveaux clients`
             }
             icon={<Gift />}
@@ -470,7 +457,7 @@ export default async function MetriquesPage({
       <Section
         id="usage"
         title={`Usage de l'application en ${year}`}
-        description={`Variations par rapport à ${Number(year) - 1}.`}
+        description={`vs ${Number(year) - 1}`}
       >
         <div className="grid gap-4 @xl/main:grid-cols-2">
           <KpiCard

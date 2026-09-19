@@ -21,6 +21,7 @@ import {
   accountActivatedMail,
   accountDeactivatedMail,
   accountDeletedMail,
+  accountReactivatedMail,
   adminAccountActivatedMail,
   invitationCancelledMail,
   invitationMail,
@@ -315,7 +316,7 @@ export async function cancelInvitation(
   }
   const parsed = cancelInvitationSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { status: "error", message: MESSAGES.invalid };
-  const { userId } = parsed.data;
+  const { userId, notify } = parsed.data;
 
   try {
     const target = await getUser(userId);
@@ -338,7 +339,8 @@ export async function cancelInvitation(
      * quand l'envoi a échoué (adresse fausse, par exemple), écrire à cette
      * adresse n'apprendrait rien à personne et pourrait déranger un inconnu.
      */
-    if (target.invitationMail?.state === "sent") {
+    const told = notify && target.invitationMail?.state === "sent";
+    if (told) {
       const mail = invitationCancelledMail({
         to: { email: target.email, name: target.name },
         at: new Date().toISOString(),
@@ -350,9 +352,11 @@ export async function cancelInvitation(
     return {
       status: "success",
       message: `Invitation de « ${target.name} » annulée : le compte est supprimé et le lien reçu ne fonctionne plus.${
-        target.invitationMail?.state === "sent"
+        told
           ? " Un message le lui annonce."
-          : " Aucun message envoyé : son invitation n'était jamais partie."
+          : notify
+            ? " Aucun message envoyé : son invitation n'était jamais partie."
+            : " Aucun message envoyé."
       }`,
     };
   } catch (error) {
@@ -431,7 +435,7 @@ export async function setAccountActive(
   }
   const parsed = setUserActiveSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { status: "error", message: MESSAGES.invalid };
-  const { userId, active } = parsed.data;
+  const { userId, active, notify } = parsed.data;
   if (!active && userId === user.id) {
     return { status: "error", message: MESSAGES.self };
   }
@@ -448,15 +452,26 @@ export async function setAccountActive(
     if (!updated || updated === "name_taken") {
       return { status: "error", message: MESSAGES.notFound };
     }
-    if (!active) {
-      const at = new Date();
-      await revokeSessions(userId, at);
-      const mail = accountDeactivatedMail({
-        to: { email: updated.email, name: updated.name },
-        at: at.toISOString(),
-        admin: contactOf(users, user),
-      });
-      after(() => trySendMail("account_deactivated", mail));
+    const at = new Date();
+    if (!active) await revokeSessions(userId, at);
+    // Avis à la personne, après la réponse, sauf si « Prévenir par mail » est décochée.
+    if (notify) {
+      const to = { email: updated.email, name: updated.name };
+      const admin = contactOf(users, user);
+      const mail = active
+        ? accountReactivatedMail({
+            to,
+            at: at.toISOString(),
+            loginUrl: appUrl("/connexion"),
+            admin,
+          })
+        : accountDeactivatedMail({ to, at: at.toISOString(), admin });
+      after(() =>
+        trySendMail(
+          active ? "account_reactivated" : "account_deactivated",
+          mail,
+        ),
+      );
     }
     logSecurity({
       type: active ? "account_reactivated" : "account_deactivated",
@@ -466,9 +481,9 @@ export async function setAccountActive(
     revalidatePath("/comptes", "layout");
     return {
       status: "success",
-      message: active
-        ? `Compte « ${updated.name} » réactivé.`
-        : `Compte « ${updated.name} » désactivé : il ne peut plus se connecter, ses sessions sont fermées et un message l'en informe.`,
+      message: `Compte « ${updated.name} » ${active ? "réactivé" : "désactivé"}${
+        notify ? " ; un message l'en informe." : " ; aucun message envoyé."
+      }`,
     };
   } catch (error) {
     console.error(
@@ -495,7 +510,7 @@ export async function deleteAccount(
   }
   const parsed = deleteUserSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { status: "error", message: MESSAGES.confirm };
-  const { userId } = parsed.data;
+  const { userId, notify } = parsed.data;
   if (userId === user.id) {
     return { status: "error", message: MESSAGES.selfDelete };
   }
@@ -511,16 +526,22 @@ export async function deleteAccount(
     if (!deleted) return { status: "error", message: MESSAGES.notFound };
     logSecurity({ type: "account_deleted", userId: user.id, targetId: userId });
     // À l'ancienne adresse du compte : un nouveau compte peut y être créé, sur invitation.
-    const mail = accountDeletedMail({
-      to: { email: target.email, name: target.name },
-      at: new Date().toISOString(),
-      admin: contactOf(users, user),
-    });
-    after(() => trySendMail("account_deleted", mail));
+    if (notify) {
+      const mail = accountDeletedMail({
+        to: { email: target.email, name: target.name },
+        at: new Date().toISOString(),
+        admin: contactOf(users, user),
+      });
+      after(() => trySendMail("account_deleted", mail));
+    }
     revalidatePath("/comptes", "layout");
     return {
       status: "success",
-      message: `Compte « ${target.name} » supprimé ; un message l'en informe à son ancienne adresse.`,
+      message: `Compte « ${target.name} » supprimé${
+        notify
+          ? " ; un message l'en informe à son ancienne adresse."
+          : " ; aucun message envoyé."
+      }`,
     };
   } catch (error) {
     console.error(

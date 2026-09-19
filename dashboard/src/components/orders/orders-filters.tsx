@@ -61,14 +61,12 @@ const KIND_OPTIONS: readonly TypeSwitchOption[] = [
     label: `${CLIENT_TYPE_LABELS.particulier}s`,
     icon: User,
     tone: "individual",
-    title: "Commandes d'une personne, livrées chez elle",
   },
   {
     value: "communaute",
     label: `${CLIENT_TYPE_LABELS.communaute}s`,
     icon: Users,
     tone: "community",
-    title: "Commandes groupées d'une communauté, livrées à son interlocuteur",
   },
 ];
 

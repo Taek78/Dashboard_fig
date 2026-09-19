@@ -114,7 +114,7 @@ test.describe("messages", () => {
     await expect(page.getByRole("article")).toHaveCount(2);
 
     await reset();
-    await form.getByLabel("Seulement les messages signalés importants").check();
+    await form.getByLabel("Importants seulement").check();
     await expect(page).toHaveURL(/important=oui/);
     await expect(page.getByRole("article")).toHaveCount(2);
   });
@@ -177,7 +177,7 @@ test.describe("messages", () => {
     expect(file.headers()["content-security-policy"]).toContain("sandbox");
     // La commande jointe, en détail : dates, adresse, préparateur et livreur.
     const order = message.getByRole("region", {
-      name: /Commande jointe par le client/,
+      name: /Commande jointe/,
     });
     await expect(
       order.getByRole("link", { name: "FIG-260907-001" }),

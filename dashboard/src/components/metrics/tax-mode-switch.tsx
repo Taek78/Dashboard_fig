@@ -29,7 +29,7 @@ export function TaxModeSwitch({
       <div
         role="group"
         aria-label="Mode de TVA"
-        className="bg-card border-input inline-flex h-9 items-center gap-0.5 rounded-lg border p-0.5"
+        className="bg-card border-input inline-flex h-9 items-center gap-0.5 rounded-none border p-0.5"
       >
         {TAX_MODES.map((mode) => {
           const active = mode === tax;
@@ -39,7 +39,7 @@ export function TaxModeSwitch({
               href={`${action}?${baseParams}&tva=${mode}`}
               aria-current={active ? "true" : undefined}
               className={cn(
-                "focus-visible:ring-ring/50 rounded-md px-3 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-95",
+                "focus-visible:ring-ring/50 rounded-none px-3 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-3 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-95",
                 active
                   ? "bg-primary/12 text-primary shadow-xs"
                   : "text-muted-foreground hover:text-foreground",

@@ -7,7 +7,6 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -71,10 +70,6 @@ export async function CustomersResults({
             <SearchX />
           </EmptyMedia>
           <EmptyTitle>Aucun résultat{scope}</EmptyTitle>
-          <EmptyDescription>
-            Essayez un autre nom, une partie de l&apos;e-mail, une ville, le nom
-            d&apos;une communauté ou les derniers chiffres du téléphone.
-          </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Link

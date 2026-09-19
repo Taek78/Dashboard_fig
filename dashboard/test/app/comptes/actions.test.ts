@@ -104,13 +104,18 @@ const { findActiveToken } = await import("@/data/auth-tokens");
 const { verifyPassword } = await import("@/lib/password");
 const { idleActionResult } = await import("@/lib/action-result");
 
-function form(fields: Record<string, string>): FormData {
+/** Un champ répété (case « Prévenir par mail » : « 0 » puis « 1 ») se donne en tableau. */
+function form(fields: Record<string, string | string[]>): FormData {
   const data = new FormData();
-  for (const [k, v] of Object.entries(fields)) data.append(k, v);
+  for (const [k, v] of Object.entries(fields)) {
+    for (const value of Array.isArray(v) ? v : [v]) data.append(k, value);
+  }
   return data;
 }
-const run = (action: typeof createAccount, fields: Record<string, string>) =>
-  action(idleActionResult, form(fields));
+const run = (
+  action: typeof createAccount,
+  fields: Record<string, string | string[]>,
+) => action(idleActionResult, form(fields));
 const flush = () => Promise.all(hoisted.jobs.splice(0));
 
 beforeEach(() => {
@@ -377,9 +382,43 @@ describe("setAccountActive / updateAccount", () => {
       (await run(setAccountActive, { userId: "usr-0002", active: "1" })).status,
     ).toBe("success");
     expect((await findUserByEmail(email))?.id).toBe("usr-0002");
-    // Réactiver n'envoie rien.
+    // Réactiver prévient aussi la personne (2026-09-19), adresse de connexion comprise.
     await flush();
-    expect(hoisted.mails).toHaveLength(1);
+    expect(hoisted.mails).toHaveLength(2);
+    expect(hoisted.mails[1]).toMatchObject({
+      kind: "account_reactivated",
+      to: email,
+    });
+    expect(hoisted.mails[1]?.subject).toMatch(/rétabli/);
+    expect(hoisted.mails[1]?.text).toContain("/connexion");
+  });
+
+  it("« Prévenir par mail » décochée : désactiver et réactiver n'envoient rien", async () => {
+    const off = await run(setAccountActive, {
+      userId: "usr-0002",
+      active: "0",
+      notify: ["0"],
+    });
+    expect(off).toMatchObject({ status: "success" });
+    if (off.status === "success")
+      expect(off.message).toContain("aucun message");
+    await run(setAccountActive, {
+      userId: "usr-0002",
+      active: "1",
+      notify: ["0"],
+    });
+    await flush();
+    expect(hoisted.mails).toEqual([]);
+    // Case cochée : « 0 » puis « 1 », la dernière valeur l'emporte.
+    await run(setAccountActive, {
+      userId: "usr-0002",
+      active: "0",
+      notify: ["0", "1"],
+    });
+    await flush();
+    expect(hoisted.mails).toEqual([
+      expect.objectContaining({ kind: "account_deactivated" }),
+    ]);
   });
 
   it("refuse de renommer un compte avec le nom d'un autre", async () => {

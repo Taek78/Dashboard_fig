@@ -35,7 +35,7 @@ function ConfirmButton() {
 }
 
 const TRIGGER =
-  "group text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 focus-visible:text-destructive focus-visible:ring-destructive/30 relative inline-flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors outline-none focus-visible:ring-3 motion-safe:active:scale-90 motion-safe:transition-[color,background-color,border-color,scale]";
+  "group text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/40 focus-visible:text-destructive focus-visible:ring-destructive/30 relative inline-flex size-9 shrink-0 items-center justify-center rounded-none border transition-colors outline-none focus-visible:ring-3 motion-safe:active:scale-90 motion-safe:transition-[color,background-color,border-color,scale]";
 
 export function LogoutButton() {
   return (
@@ -48,7 +48,7 @@ export function LogoutButton() {
         >
           <span
             aria-hidden="true"
-            className="border-destructive/50 absolute inset-0 rounded-full border opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 motion-safe:group-hover:animate-ping motion-safe:group-focus-visible:animate-ping"
+            className="border-destructive/50 absolute inset-0 rounded-none border opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 motion-safe:group-hover:animate-ping motion-safe:group-focus-visible:animate-ping"
           />
           <Power
             aria-hidden="true"

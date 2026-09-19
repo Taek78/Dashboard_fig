@@ -44,9 +44,6 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
                 <span className="text-gradient-brand text-base font-bold tracking-tight">
                   FIG Back-office
                 </span>
-                <span className="text-sidebar-foreground/70 text-xs">
-                  Livraison de fruits et légumes
-                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

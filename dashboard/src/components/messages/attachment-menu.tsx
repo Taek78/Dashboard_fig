@@ -40,7 +40,7 @@ export function AttachmentMenu({
       <DropdownMenuTrigger
         aria-label={`${label} : télécharger`}
         className={cn(
-          "bg-attachment/15 text-attachment ring-attachment/40 hover:bg-attachment/25 focus-visible:ring-ring data-popup-open:bg-attachment/25 inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ring-1 transition-colors outline-none focus-visible:ring-3",
+          "bg-attachment/15 text-attachment ring-attachment/40 hover:bg-attachment/25 focus-visible:ring-ring data-popup-open:bg-attachment/25 inline-flex cursor-pointer items-center gap-1 rounded-none px-2 py-1 text-xs font-semibold ring-1 transition-colors outline-none focus-visible:ring-3",
           className,
         )}
       >

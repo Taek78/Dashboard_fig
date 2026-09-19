@@ -1,6 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_ACCOUNTS } from "../playwright.config";
+import { todayInParis } from "../src/domain/deliveries/rules";
+import { addDays } from "../src/lib/days";
+import { formatPeriodFr } from "../src/lib/format";
 import { login } from "./helpers";
+
+/** La légende de la période « Hier » (plus de description d'en-tête depuis le 2026-09-19). */
+const yesterday = addDays(todayInParis(new Date()), -1);
+const YESTERDAY_LEGEND = `Période affichée : ${formatPeriodFr(yesterday, yesterday)}.`;
 
 /*
  * Tableau de bord : l'alerte quand plus aucun préparateur n'est présent, le
@@ -91,9 +98,7 @@ test.describe("tableau de bord", () => {
     await expect(
       page.getByText("Aucune commande", { exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByText(/Aujourd'hui : rien à préparer ni à livrer/),
-    ).toBeVisible();
+    await expect(page.getByText(/Rien à préparer ni à livrer/)).toBeVisible();
     await expect(page.getByRole("progressbar")).toHaveCount(0);
   });
 
@@ -112,7 +117,7 @@ test.describe("tableau de bord", () => {
     );
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.locator("header")).not.toContainText("Du mer.");
-    await expect(page.getByText(/^Hier ·/)).toBeVisible();
+    await expect(page.getByText(YESTERDAY_LEGEND)).toBeVisible();
   });
 
   test("la zone de dates n'existe qu'avec « Période personnalisée » ; le choix survit au passage HT / TTC et se referme avec une période prédéfinie", async ({
@@ -158,7 +163,7 @@ test.describe("tableau de bord", () => {
     await expect(page).toHaveURL(/\/\?tva=ttc&periode=hier$/);
     await expect(form.getByRole("button", { name: "Afficher" })).toHaveCount(0);
     await expect(form.getByLabel("Du")).toHaveCount(0);
-    await expect(page.getByText(/^Hier ·/)).toBeVisible();
+    await expect(page.getByText(YESTERDAY_LEGEND)).toBeVisible();
   });
 
   test("une période prédéfinie s'applique dès son choix, sans bouton", async ({
@@ -169,7 +174,7 @@ test.describe("tableau de bord", () => {
     const form = page.getByRole("form", { name: "Choix de la période" });
     await form.getByLabel("Période", { exact: true }).selectOption("hier");
     await expect(page).toHaveURL(/\/\?tva=ht&periode=hier$/);
-    await expect(page.getByText(/^Hier ·/)).toBeVisible();
+    await expect(page.getByText(YESTERDAY_LEGEND)).toBeVisible();
     await form.getByLabel("Période", { exact: true }).selectOption("ce-mois");
     await expect(page).toHaveURL(/periode=ce-mois$/);
   });

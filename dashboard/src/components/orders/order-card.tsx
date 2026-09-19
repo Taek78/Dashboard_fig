@@ -282,9 +282,7 @@ export function OrderCard({
               wasDelivered={order.wasDelivered}
             />
           ) : (
-            <p className="text-muted-foreground text-sm">
-              Compte en lecture seule.
-            </p>
+            <p className="text-muted-foreground text-sm">Lecture seule</p>
           )}
         </div>
       </div>

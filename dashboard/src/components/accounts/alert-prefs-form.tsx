@@ -33,7 +33,7 @@ const CHOICES = [
 ] as const;
 
 const BOX =
-  "bg-card border-input has-focus-visible:ring-ring/50 flex min-h-11 items-center gap-3 rounded-lg border px-3 text-sm font-medium select-none has-focus-visible:ring-3";
+  "bg-card border-input has-focus-visible:ring-ring/50 flex min-h-11 items-center gap-3 rounded-none border px-3 text-sm font-medium select-none has-focus-visible:ring-3";
 
 export function AlertPrefsForm({
   prefs: initial,

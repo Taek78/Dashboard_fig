@@ -9,7 +9,6 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -156,10 +155,6 @@ export default async function PersonnelPage({
                 <SearchX />
               </EmptyMedia>
               <EmptyTitle>Personne ne correspond</EmptyTitle>
-              <EmptyDescription>
-                Essayez une partie du nom, de l&apos;e-mail ou du téléphone, ou
-                retirez un filtre.
-              </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Link
@@ -177,9 +172,6 @@ export default async function PersonnelPage({
                 <Users />
               </EmptyMedia>
               <EmptyTitle>Personne dans l&apos;équipe</EmptyTitle>
-              <EmptyDescription>
-                Ajoutez une personne pour pouvoir l&apos;affecter aux commandes.
-              </EmptyDescription>
             </EmptyHeader>
             {canManage ? (
               <EmptyContent>

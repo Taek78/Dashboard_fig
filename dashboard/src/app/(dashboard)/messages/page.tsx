@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -77,12 +76,9 @@ export default async function MessagesPage({
         <p role="status" className="text-base font-semibold">
           {page.total} message{page.total > 1 ? "s" : ""}
           <span className="text-muted-foreground text-sm font-normal">
-            {period.range
-              ? ` · reçu${page.total > 1 ? "s" : ""} ${formatPeriodFr(period.range.from, period.range.to)}`
-              : ""}
-            {` · ${untreated} non traité${untreated > 1 ? "s" : ""} en tout`}
+            {` · ${untreated} non traité${untreated > 1 ? "s" : ""}`}
             {page.pageCount > 1
-              ? `, page ${page.page} sur ${page.pageCount}`
+              ? ` · page ${page.page} sur ${page.pageCount}`
               : ""}
           </span>
         </p>
@@ -111,10 +107,6 @@ export default async function MessagesPage({
                 <SearchX />
               </EmptyMedia>
               <EmptyTitle>Aucun message ne correspond</EmptyTitle>
-              <EmptyDescription>
-                Modifiez les filtres ou réinitialisez-les pour revoir toute la
-                boîte de réception.
-              </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               <Button variant="outline" render={<Link href="/messages" />}>
@@ -129,10 +121,6 @@ export default async function MessagesPage({
                 <Inbox />
               </EmptyMedia>
               <EmptyTitle>Aucun message</EmptyTitle>
-              <EmptyDescription>
-                Les demandes envoyées depuis « Nous contacter » dans
-                l&apos;application FIG apparaîtront ici.
-              </EmptyDescription>
             </EmptyHeader>
           </Empty>
         )}

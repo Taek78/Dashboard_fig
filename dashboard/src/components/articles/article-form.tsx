@@ -110,7 +110,7 @@ export function ArticleForm({
             defaultValue={article?.body ?? ""}
             placeholder="Le texte de l'article. Une ligne vide sépare deux paragraphes."
             aria-describedby="body-help"
-            className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-lg border bg-transparent px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-3"
+            className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-none border bg-transparent px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-3"
           />
           <p id="body-help" className="text-muted-foreground text-xs">
             Texte brut, {BODY_MAX_LENGTH.toLocaleString("fr-FR")} caractères au
@@ -128,7 +128,7 @@ export function ArticleForm({
             {ARTICLE_ILLUSTRATIONS.map((emoji) => (
               <label
                 key={emoji}
-                className="has-checked:bg-primary/15 has-checked:ring-primary has-focus-visible:ring-ring hover:bg-muted flex size-10 cursor-pointer items-center justify-center rounded-lg text-2xl transition-colors has-checked:ring-2 has-focus-visible:ring-2"
+                className="has-checked:bg-primary/15 has-checked:ring-primary has-focus-visible:ring-ring hover:bg-muted flex size-10 cursor-pointer items-center justify-center rounded-none text-2xl transition-colors has-checked:ring-2 has-focus-visible:ring-2"
               >
                 <input
                   type="radio"
@@ -164,7 +164,7 @@ export function ArticleForm({
 
         <Label
           htmlFor="visible"
-          className="bg-muted/40 cursor-pointer self-start rounded-lg border px-3 py-2"
+          className="bg-muted/40 cursor-pointer self-start rounded-none border px-3 py-2"
         >
           <input
             id="visible"

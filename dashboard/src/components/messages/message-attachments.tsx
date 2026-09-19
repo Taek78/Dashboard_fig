@@ -97,7 +97,7 @@ export function AttachmentDownloadLink({
       aria-label={`Télécharger ${file.fileName}`}
       title={`Télécharger ${file.fileName}`}
       className={cn(
-        "bg-card/90 text-attachment ring-attachment/40 hover:bg-attachment hover:text-card focus-visible:ring-ring inline-flex size-9 items-center justify-center rounded-full shadow-sm ring-1 backdrop-blur-sm transition-colors outline-none focus-visible:ring-3",
+        "bg-card/90 text-attachment ring-attachment/40 hover:bg-attachment hover:text-card focus-visible:ring-ring inline-flex size-9 items-center justify-center rounded-none shadow-sm ring-1 backdrop-blur-sm transition-colors outline-none focus-visible:ring-3",
         className,
       )}
     >
@@ -119,9 +119,6 @@ export function MessageAttachments({
     <section className="border-attachment/40 bg-attachment/5 flex flex-col gap-3 rounded-none border p-3">
       <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
         <AttachmentPill messageId={messageId} attachments={attachments} />
-        <span className="text-muted-foreground font-normal">
-          envoyée{plural(attachments.length)} par le client
-        </span>
       </h3>
       <ul className="grid grid-cols-2 gap-3 @2xl/main:grid-cols-3 @4xl/main:grid-cols-4">
         {attachments.map((file) => {

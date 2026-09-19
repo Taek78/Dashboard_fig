@@ -105,9 +105,7 @@ export function MessageCard({
             compact
           />
         ) : (
-          <p className="text-muted-foreground text-sm">
-            Compte en lecture seule.
-          </p>
+          <p className="text-muted-foreground text-sm">Lecture seule</p>
         )}
         {/* Un vrai <a> et non <Button render> : celui-ci NAVIGUE, il doit donc
             être annoncé « lien » et non « bouton » (convention du projet). */}

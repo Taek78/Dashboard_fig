@@ -71,7 +71,7 @@ export function MessageOrderDetails({ order }: { order: MessageOrder }) {
           className="flex items-center gap-2 font-semibold"
         >
           <ShoppingBasket className="size-4 shrink-0" aria-hidden="true" />
-          Commande jointe par le client :{" "}
+          Commande jointe :{" "}
           <Link
             href={`/commandes/${order.id}`}
             className="font-mono underline-offset-4 hover:underline"

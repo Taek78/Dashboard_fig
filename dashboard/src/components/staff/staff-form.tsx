@@ -194,7 +194,7 @@ export function StaffForm({
             {WEEKDAYS.map((day) => (
               <label
                 key={day}
-                className="has-checked:border-primary has-checked:bg-primary/10 has-checked:text-primary flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm select-none"
+                className="has-checked:border-primary has-checked:bg-primary/10 has-checked:text-primary flex cursor-pointer items-center gap-2 rounded-none border px-3 py-1.5 text-sm select-none"
               >
                 <input
                   type="checkbox"
@@ -223,13 +223,12 @@ export function StaffForm({
           rows={3}
           maxLength={STAFF_NOTES_MAX_LENGTH}
           defaultValue={member?.notes ?? ""}
-          placeholder="Véhicule, secteur, remarques. Visible uniquement par l'équipe."
+          placeholder="Véhicule, secteur…"
           aria-describedby="notes-aide"
-          className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
+          className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-none border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
         />
         <p id="notes-aide" className="text-muted-foreground text-xs">
-          Utile à l&apos;organisation seulement, jamais de donnée sensible
-          (RGPD).
+          Pas de donnée sensible (RGPD).
         </p>
       </div>
 

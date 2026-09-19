@@ -39,12 +39,11 @@ export function CustomerNoteForm({ customerId }: { customerId: string }) {
           required
           maxLength={NOTE_MAX_LENGTH}
           rows={3}
-          placeholder="Visible uniquement par l'équipe."
           aria-describedby="text-aide"
-          className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
+          className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 w-full rounded-none border bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:ring-3"
         />
         <p id="text-aide" className="text-muted-foreground text-xs">
-          Utile au service seulement, jamais de donnée sensible (RGPD).
+          Pas de donnée sensible (RGPD).
         </p>
       </div>
       <Button

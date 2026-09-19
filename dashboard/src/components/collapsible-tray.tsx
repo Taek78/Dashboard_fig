@@ -53,7 +53,7 @@ export function CollapsibleTray({
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={() => setOpen(!open)}
-          className="hover:bg-foreground/5 focus-visible:ring-ring/50 -m-1 flex items-center gap-2 rounded-md p-1 text-sm font-medium outline-none focus-visible:ring-3 motion-safe:transition-[background-color,scale] motion-safe:active:scale-95"
+          className="hover:bg-foreground/5 focus-visible:ring-ring/50 -m-1 flex items-center gap-2 rounded-none p-1 text-sm font-medium outline-none focus-visible:ring-3 motion-safe:transition-[background-color,scale] motion-safe:active:scale-95"
         >
           <SlidersHorizontal
             className="text-primary size-4"

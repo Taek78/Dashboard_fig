@@ -52,7 +52,7 @@ export function TypeSwitch({
     <fieldset className={cn("grid min-w-0 gap-1.5", className)}>
       <legend className="text-sm font-medium">{legend}</legend>
       <div
-        className="bg-card border-input inline-flex min-h-9 w-fit max-w-full flex-wrap items-center gap-0.5 rounded-lg border p-0.5"
+        className="bg-card border-input inline-flex min-h-9 w-fit max-w-full flex-wrap items-center gap-0.5 rounded-none border p-0.5"
         role="radiogroup"
         aria-label={legend}
       >
@@ -63,7 +63,7 @@ export function TypeSwitch({
               key={option.value}
               title={option.title}
               className={cn(
-                "text-muted-foreground has-focus-visible:ring-ring relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium transition-colors select-none has-checked:font-semibold has-checked:shadow-xs has-checked:ring-1 has-focus-visible:ring-2 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-95",
+                "text-muted-foreground has-focus-visible:ring-ring relative inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-none px-2.5 text-sm font-medium transition-colors select-none has-checked:font-semibold has-checked:shadow-xs has-checked:ring-1 has-focus-visible:ring-2 motion-safe:transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-95",
                 TONES[option.tone],
               )}
             >

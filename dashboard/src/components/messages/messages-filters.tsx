@@ -110,7 +110,7 @@ export function MessagesFilters({
                 accent="destructive"
                 className="col-span-2 justify-self-start @2xl/main:col-span-1"
               >
-                Seulement les messages signalés importants
+                Importants seulement
               </CheckChip>
             </div>
 

@@ -280,7 +280,7 @@ export function DatePickerButton({
                             data-outside={inMonth ? undefined : ""}
                             onClick={() => commit(day)}
                             className={cn(
-                              "focus-visible:ring-ring/60 flex size-9 items-center justify-center rounded-lg tabular-nums outline-none focus-visible:ring-2",
+                              "focus-visible:ring-ring/60 flex size-9 items-center justify-center rounded-none tabular-nums outline-none focus-visible:ring-2",
                               inMonth
                                 ? "text-foreground hover:bg-muted"
                                 : "text-muted-foreground/45 hover:bg-muted/60",

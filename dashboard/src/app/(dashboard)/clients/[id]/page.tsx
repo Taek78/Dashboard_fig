@@ -218,11 +218,6 @@ export default async function ClientPage({
                       </>
                     ) : null}
                     {customer.postalCode} {customer.city}
-                    {customer.community ? (
-                      <span className="text-muted-foreground block text-xs font-normal">
-                        Livraison au point de retrait de sa communauté.
-                      </span>
-                    ) : null}
                   </dd>
                 </div>
                 {customer.community ? (
@@ -305,7 +300,7 @@ export default async function ClientPage({
               <p className="text-muted-foreground text-sm">
                 {anonymized
                   ? "Notes supprimées lors de l'anonymisation."
-                  : "Aucune note pour l'instant."}
+                  : "Aucune note"}
               </p>
             ) : (
               <ul className="flex flex-col gap-3">
@@ -600,15 +595,11 @@ export default async function ClientPage({
                 resetHref={`/clients/${customer.id}#historique`}
               />
             ) : (
-              <p className="text-muted-foreground text-sm">
-                Aucune commande pour ce client.
-              </p>
+              <p className="text-muted-foreground text-sm">Aucune commande</p>
             )}
           </>
         ) : (
-          <p className="text-muted-foreground text-sm">
-            Aucune commande pour ce client.
-          </p>
+          <p className="text-muted-foreground text-sm">Aucune commande</p>
         )}
       </div>
 

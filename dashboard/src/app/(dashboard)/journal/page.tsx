@@ -7,7 +7,6 @@ import { SecurityEventRows } from "@/components/security/security-event-rows";
 import { SecurityFilters } from "@/components/security/security-filters";
 import {
   Empty,
-  EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
@@ -115,11 +114,6 @@ export default async function JournalPage({
                     ? "Aucun événement ne correspond"
                     : "Le journal est vide"}
                 </EmptyTitle>
-                <EmptyDescription>
-                  {isFiltered
-                    ? "Élargissez la période ou décochez des familles."
-                    : "Rien n'a encore été enregistré, ou la purge a effacé les événements les plus anciens."}
-                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           )

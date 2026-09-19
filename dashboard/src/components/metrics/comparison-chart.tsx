@@ -245,7 +245,7 @@ export function ComparisonChart({
         <div
           role="group"
           aria-label="Mesure affichée"
-          className="bg-muted/60 grid grid-cols-2 gap-1 rounded-2xl border p-1 @xl/main:grid-cols-3 @3xl/main:flex @3xl/main:gap-0.5 @3xl/main:rounded-full @3xl/main:p-0.5"
+          className="bg-muted/60 grid grid-cols-2 gap-1 rounded-none border p-1 @xl/main:grid-cols-3 @3xl/main:flex @3xl/main:gap-0.5 @3xl/main:p-0.5"
         >
           {CHART_METRICS.map((m) => {
             const selected = m === metric;
@@ -256,7 +256,7 @@ export function ComparisonChart({
                 aria-pressed={selected}
                 onClick={() => setMetric(m)}
                 className={cn(
-                  "focus-visible:ring-ring/50 shrink-0 rounded-full px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 @3xl/main:py-1.5",
+                  "focus-visible:ring-ring/50 shrink-0 rounded-none px-3 py-2 text-center text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-3 @3xl/main:py-1.5",
                   m === "revenue" && "col-span-2 @xl/main:col-span-1",
                   selected
                     ? "bg-gradient-brand text-white shadow-sm"

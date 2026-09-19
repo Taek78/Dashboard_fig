@@ -38,7 +38,7 @@ test.describe("comptes et profil", () => {
     await expect(card).toContainText("Lecture seule");
     // En attente d'activation : carte translucide en pointillés, validité du lien, pas de « Désactiver ».
     await expect(card).toContainText("En attente d'activation");
-    await expect(card).toContainText("Lien d'invitation valable jusqu'au");
+    await expect(card).toContainText("Invitation valable jusqu'au");
     // La carte garde la preuve de l'envoi, au rechargement près.
     await expect(card).toContainText(/Invitation envoyée le .*acceptée/);
     await page.reload();

@@ -81,11 +81,9 @@ test.describe("commandes", () => {
     await openFilters(page);
     await expect(
       page.getByRole("region", { name: "Notifications au client" }),
-    ).toContainText("n'a pas autorisé les notifications d'état");
+    ).toContainText("Refusées par le client");
     // La case est désactivée et le dit.
-    const notify = page.getByLabel(
-      "Notifications non autorisées par le client",
-    );
+    const notify = page.getByLabel("Notifications refusées par le client");
     await expect(notify).toBeDisabled();
     await expect(notify).not.toBeChecked();
     await expect(page.getByLabel("Notifier le client")).toHaveCount(0);
@@ -139,9 +137,12 @@ test.describe("commandes : cartes, tournée et annulation", () => {
     await login(page, E2E_ACCOUNTS.admin);
     await page.goto("/commandes?du=2026-09-07&au=2026-09-07");
     await openFilters(page);
-    await expect(page.getByRole("status").first()).toContainText(
-      "livraison le lun. 7 sept. 2026",
-    );
+    // Le jour est dit une fois, dans l'avancement (plus dans le compteur).
+    await expect(
+      page.getByRole("heading", {
+        name: /Avancement · tournée du lundi 7 septembre 2026/,
+      }),
+    ).toBeVisible();
     const card = page.getByRole("article", {
       name: /^Commande FIG-260907-002,/,
     });
@@ -264,9 +265,9 @@ test.describe("commandes : cartes, tournée et annulation", () => {
 
     await page.goto("/commandes/cmd-0010");
     await openFilters(page);
-    await expect(page.getByText("Motif communiqué au client :")).toContainText(
-      "Autre : Client absent, injoignable",
-    );
+    await expect(
+      page.getByRole("paragraph").filter({ hasText: "Motif :" }),
+    ).toContainText("Autre : Client absent, injoignable");
     await expect(
       page.getByRole("region", { name: "Historique" }),
     ).toContainText("Motif : Autre : Client absent, injoignable");
@@ -315,9 +316,12 @@ test.describe("commandes : recherche, dates et raccourcis", () => {
       name: "Recherche et filtres des commandes",
     });
     // Une seule date : ce jour-là, sans erreur.
-    await expect(page.getByRole("status").first()).toContainText(
-      "5 commandes · livraison le lun. 7 sept. 2026",
-    );
+    await expect(page.getByRole("status").first()).toContainText("5 commandes");
+    await expect(
+      page.getByRole("heading", {
+        name: /Avancement · tournée du lundi 7 septembre 2026/,
+      }),
+    ).toBeVisible();
     await expect(form.getByRole("alert")).toHaveCount(0);
 
     await page.goto("/commandes?du=2026-09-09&au=2026-09-05");

@@ -83,9 +83,7 @@ export function MessageDetail({
             important={message.important}
           />
         ) : (
-          <p className="text-muted-foreground text-sm">
-            Compte en lecture seule.
-          </p>
+          <p className="text-muted-foreground text-sm">Lecture seule</p>
         )}
       </div>
     </article>

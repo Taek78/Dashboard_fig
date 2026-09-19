@@ -55,7 +55,7 @@ export default async function ArticlePage({
         }
       />
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold">Aperçu dans l&apos;historique</h2>
+        <h2 className="text-sm font-semibold">Aperçu</h2>
         <ArticleCard article={article} canEdit={false} today={today} />
       </div>
       {canEdit ? (
